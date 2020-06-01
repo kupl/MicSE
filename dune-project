@@ -1,4 +1,4 @@
-(lang dune 2.4.0)
+(lang dune 2.2.0)
 
 (name micse)
 
