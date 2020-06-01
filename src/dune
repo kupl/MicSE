@@ -4,5 +4,6 @@
  (libraries
   tezla
   michelson
+  micse.util
  )
  (package micse))

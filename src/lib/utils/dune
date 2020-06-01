@@ -1,0 +1,4 @@
+(library
+ (name utils)
+ (public_name micse.util)
+ (synopsis "Utility library for MicSE project."))
