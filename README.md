@@ -20,6 +20,7 @@ Michelson Symbolic vErifier, for verifying and testing the integrity of smart co
 
 - OCaml (v.4.10.0): We use OCaml language to programming.
 - Opam (v2.0.4): We use Opam to manage package of OCaml.
+- Dune (v2.4.0): We use Dune to manage build system of OCaml project.
 
 ### Git Commit Guidelines
 
