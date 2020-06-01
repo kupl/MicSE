@@ -1,14 +1,13 @@
-let parse : string -> Michelson.Adt.program = fun s ->
-  let lexbuf = Lexing.from_string s in
-  let program : Michelson.Adt.program = Michelson.Parser.start Michelson.Lexer.next_token lexbuf in
-  program
 
 let main : unit -> unit
 =fun () -> begin
-  let _ = print_endline "Hello!" in
+  let _ = Format.print_string "\n> Parse" in
   let filepath = !Utils.Options.input_file in
-  let _ = Tezla.Parsing_utils.parse filepath in
-  let _ = print_endline "Bye!" in
+  let ast = Utils.Tezlalib.parse filepath in
+  let _ = Utils.Tezlalib.print_original Format.std_formatter ast in
+  let _ = Format.print_string "\n> Convert" in
+  let conv = Utils.Tezlalib.convert ast in
+  let _ = Utils.Tezlalib.print_convertd Format.std_formatter conv in
   ()
 end
 

@@ -1,4 +1,9 @@
 (library
  (name utils)
  (public_name micse.util)
+ (libraries
+  core
+  tezla
+  michelson
+ )
  (synopsis "Utility library for MicSE project."))

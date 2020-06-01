@@ -2,8 +2,6 @@
  (names main)
  (public_names micse-main)
  (libraries
-  tezla
-  michelson
   micse.util
  )
  (package micse))
