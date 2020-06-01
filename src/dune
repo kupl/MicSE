@@ -3,5 +3,6 @@
  (public_names micse-main)
  (libraries
   tezla
+  michelson
  )
  (package micse))
