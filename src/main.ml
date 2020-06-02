@@ -8,6 +8,8 @@ let main : unit -> unit
   let _ = Format.print_string "\n> Convert" in
   let conv = Utils.Tezlalib.convert ast in
   let _ = Utils.Tezlalib.print_convertd Format.std_formatter conv in
+  let cfg = Utils.Tezlalib.cfg ast in
+  let _ = Utils.Tezlalib.display_cfg cfg in
   ()
 end
 

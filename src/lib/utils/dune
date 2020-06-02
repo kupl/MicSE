@@ -4,6 +4,7 @@
  (libraries
   core
   tezla
+  tezla-cfg
   michelson
  )
  (synopsis "Utility library for MicSE project."))
