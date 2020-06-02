@@ -31,6 +31,12 @@ let print_convertd : Format.formatter -> Tezla.Adt.stmt -> unit
   ()
 end
 
+let writefile_cfg : Tezla_cfg.Flow_graph.Cfg.t -> string -> unit
+=fun cfg output_filename -> begin
+  let _ = Tezla_cfg.Flow_graph.Cfg.dot_output cfg output_filename in
+  ()
+end
+
 let display_cfg : Tezla_cfg.Flow_graph.Cfg.t -> unit
 =fun cfg -> begin
   let _ = Tezla_cfg.Flow_graph.Cfg.show cfg in

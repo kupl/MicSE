@@ -9,6 +9,7 @@ let main : unit -> unit
   let conv = Utils.Tezlalib.convert ast in
   let _ = Utils.Tezlalib.print_convertd Format.std_formatter conv in
   let cfg = Utils.Tezlalib.cfg ast in
+  let _ = Utils.Tezlalib.writefile_cfg cfg "toymain_output_cfg.dot" in
   let _ = Utils.Tezlalib.display_cfg cfg in
   ()
 end
