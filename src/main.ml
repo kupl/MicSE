@@ -1,25 +1,31 @@
+let input_file = ref ""
+
+let options =
+  [
+    ("-input", (Arg.String (fun s -> input_file := s)), "File path for input michelson program.");
+  ]
 
 let main : unit -> unit
 =fun () -> begin
+  let filepath = !input_file in
   let _ = Format.print_string "\n> Parse" in
-  let filepath = !Utils.Options.input_file in
-  let ast = Utils.Tezlalib.parse filepath in
-  let _ = Utils.Tezlalib.print_original Format.std_formatter ast in
-  let _ = Format.print_string "\n> Convert" in
-  let conv = Utils.Tezlalib.convert ast in
-  let _ = Utils.Tezlalib.print_convertd Format.std_formatter conv in
-  let cfg = Utils.Tezlalib.cfg ast in
-  let _ = Utils.Tezlalib.writefile_cfg cfg "toymain_output_cfg.dot" in
-  let _ = Utils.Tezlalib.display_cfg cfg in
+  let ast = ProverLib.Adt.parse filepath in
+  let _ = ProverLib.Adt.pp Format.std_formatter ast in
   ()
+end
+
+and activate_detector : string -> unit
+=fun s -> begin
+  match s with
+  | _ -> invalid_arg "invalid option"
 end
 
 let _ = begin
   let usageMsg = "micse-main -input filename" in
-  let _ = Arg.parse Utils.Options.options Utils.Options.activate_detector usageMsg in
+  let _ = Arg.parse options activate_detector usageMsg in
   let _ = Printexc.record_backtrace true in
   try
-    if !Utils.Options.input_file <> ""
+    if !input_file <> ""
     then
       let _ = main () in
       ()

@@ -1,7 +1,7 @@
 (executables
- (names main)
- (public_names micse-main)
- (libraries
-  micse.util
- )
- (package micse))
+  (names main)
+  (public_names micse)
+  (libraries
+    prover
+  )
+  (package micse))

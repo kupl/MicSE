@@ -1,0 +1,8 @@
+(library
+  (name proverLib)
+  (public_name micse.proverLib)
+  (libraries
+    michelson
+    tezla
+    tezla-cfg)
+  (flags -w -a))

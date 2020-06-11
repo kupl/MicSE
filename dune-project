@@ -1,4 +1,4 @@
-(lang dune 2.2.0)
+(lang dune 2.4.0)
 
 (name micse)
 
@@ -20,9 +20,9 @@
 (maintainers "Jisuk Byun <grayplc@korea.ac.kr>" "Heewoong Jang <jormal@korea.ac.kr>")
 
 (package
- (name micse)
- (synopsis "Michelson Symbolic vErifier, for verifying and testing the integrity of smart contracts in the Tezos blockchain")
- (depends
-  (dune :build)
-  (michelson :build)
-  (tezloa :build)))
+  (name micse)
+  (synopsis "Michelson Symbolic vErifier, for verifying and testing the integrity of smart contracts in the Tezos blockchain")
+  (depends
+    (dune :build)
+    (michelson :build)
+    (tezla :build)))
