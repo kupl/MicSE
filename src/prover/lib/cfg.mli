@@ -1,7 +1,8 @@
-type t = Tezla_cfg.Flow_graph.Cfg.t
+type vertex = int
+type edge_label = | Normal | If_true | If_false
 
-val translate : Adt.t -> t
+module V : Graph.Sig.COMPARABLE with type t = vertex         (* VERTEX *)
+module E : Graph.Sig.ORDERED_TYPE_DFT with type t = edge_label   (* EDGE LABLE *)
+module G : module type of Graph.Persistent.Digraph.ConcreteBidirectionalLabeled (V) (E)
 
-val write_dot : t -> string -> unit
-
-val display : t -> unit
+type t = G.t

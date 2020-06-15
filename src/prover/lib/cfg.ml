@@ -1,19 +1,19 @@
-type t = Tezla_cfg.Flow_graph.Cfg.t
+type vertex = int
+type edge_label = | Normal | If_true | If_false
 
-let translate : Adt.t -> t
-=fun ast -> begin
-  let converted_cfg = Tezla_cfg.Flow_graph.Cfg.generate_from_program ast in
-  converted_cfg
+module V = struct
+  type t = int
+  let compare = Int.compare
+  let hash x = x
+  let equal = Int.equal
 end
 
-let write_dot : t -> string -> unit
-=fun cfg output_filename -> begin
-  let _ = Tezla_cfg.Flow_graph.Cfg.dot_output cfg output_filename in
-  ()
+module E = struct
+  type t = edge_label
+  let default = Normal
+  let compare = Stdlib.compare
 end
 
-let display : t -> unit
-=fun cfg -> begin
-  let _ = Tezla_cfg.Flow_graph.Cfg.show cfg in
-  ()
-end
+module G = Graph.Persistent.Digraph.ConcreteBidirectionalLabeled (V) (E)
+
+type t = G.t
