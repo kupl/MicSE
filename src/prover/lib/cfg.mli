@@ -24,7 +24,7 @@ type ident = string
 type decl = ident
 type typ = Tezla.Adt.typ
 type expr = Tezla.Adt.expr
-type stmt = TezlaCfg.TCfg.vertex
+type stmt = TezlaCfg.Node.stmt
   (*
   type stmt =
   | Cfg_assign of string * expr
@@ -44,4 +44,6 @@ type stmt = TezlaCfg.TCfg.vertex
   | Cfg_failwith of string
   *)
 
-type t = {flow: G.t; stmt: (vertex, stmt) Core.Hashtbl.t}
+type t = {flow: G.t; node_info: (vertex, stmt) Core.Hashtbl.t}
+
+val of_tezlaCfg : TezlaCfg.t -> t

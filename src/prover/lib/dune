@@ -2,6 +2,7 @@
   (name proverLib)
   (public_name micse.proverLib)
   (libraries
+    batteries
     michelson
     tezla
     tezla-cfg

@@ -34,6 +34,19 @@ type ident = string
 type decl = ident
 type typ = Tezla.Adt.typ
 type expr = Tezla.Adt.expr
-type stmt = TezlaCfg.TCfg.vertex
+type stmt = TezlaCfg.Node.stmt
 
-type t = {flow: G.t; stmt: (vertex, stmt) Core.Hashtbl.t}
+type t = {flow: G.t; node_info: (vertex, stmt) Core.Hashtbl.t}
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Casting                                                                   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let of_tezlaCfg tcfg =
+  let open TezlaCfg in
+  let open Batteries in
+  let vertices : int list = TCfg.labels tcfg |> BatSet.elements in
+  (*let io_vertices = *){flow = G.empty; node_info = Core.Hashtbl.Poly.create ();}
