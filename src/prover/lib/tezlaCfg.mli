@@ -54,9 +54,11 @@ module TCfg :
     with type vertex = Tezla_cfg.Cfg_node.t
      and type expr = Tezla_cfg.Cfg_node.expr
      and type program = Michelson.Adt.program
+  
+module Node : module type of Tezla_cfg.Cfg_node
 
 type t          = TCfg.t
-type vertex     = Tezla_cfg.Cfg_node.t
+type vertex     = Node.t
 type edge_label = TCfg.edge_label
 type vertex_id  = int
 type path       = (edge_label * vertex_id) list

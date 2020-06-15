@@ -1,7 +1,8 @@
 module TCfg = Tezla_cfg.Flow_graph.Cfg
+module Node = Tezla_cfg.Cfg_node
 
 type t          = TCfg.t
-type vertex     = Tezla_cfg.Cfg_node.t
+type vertex     = Node.t
 type edge_label = TCfg.edge_label
 type vertex_id  = int
 type path       = (edge_label * vertex_id) list

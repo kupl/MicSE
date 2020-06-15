@@ -4,5 +4,6 @@
   (libraries
     michelson
     tezla
-    tezla-cfg)
+    tezla-cfg
+    core)
   (flags -w -a))
