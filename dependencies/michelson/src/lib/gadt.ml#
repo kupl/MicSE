@@ -1,0 +1,150 @@
+(* type var_annot = [ `Var_annot of string ]
+
+type type_annot = [ `Type_annot of string ]
+
+type field_annot = [ `Field_annot of string ]
+
+type annot = [ var_annot | type_annot | field_annot ] *)
+
+type n = N
+
+type z = Z
+
+type _ num = Int : Z.t -> z num | Nat : Z.t -> n num
+
+type address = Address
+
+type signature = Signature
+
+type mutez = Mutez
+
+type key_hash = Key_hash
+
+type key = Key
+
+type timestamp = Timestamp
+
+type ('a, 'b) pair = Pair of 'a * 'b
+
+type ('a, 'b) union = Or of 'a * 'b
+
+type _ data =
+  | D_num : 'a num -> 'a data
+  | D_signature : string -> signature data
+  | D_mutez : n num -> mutez data
+  | D_address : string -> address data
+  | D_key_hash : string -> key_hash data
+  | D_key : string -> key data
+  | D_timestamp : string -> timestamp data
+  | D_pair : 'a data * 'b data -> ('a, 'b) pair data
+  | D_left : 'a * 'b data -> ('a, 'b) union data
+  | D_right : 'b * 'a data -> ('a, 'b) union data
+
+let x = D_pair (D_num (Nat Z.one), D_timestamp "x")
+
+let rec what_is_the_type : type a. a data -> a = function
+  | D_num (Nat _) -> N
+  | D_num (Int _) -> Z
+  | D_signature _ -> Signature
+  | D_mutez _ -> Mutez
+  | D_address _ -> Address
+  | D_key_hash _ -> Key_hash
+  | D_key _ -> Key
+  | D_timestamp _ -> Timestamp
+  | D_pair (x, y) -> Pair (what_is_the_type x, what_is_the_type y)
+  | D_left (t, d) -> Or (what_is_the_type d, t)
+  | D_right (t, d) -> Or (t, what_is_the_type d)
+
+type end_of_stack = unit
+
+type ('arg, 'ret) lambda =
+  | Lam :
+      ('arg * end_of_stack * 'ret * end_of_stack) * _ (* code *)
+      -> ('arg, 'ret) lambda
+
+type comb = Comb
+
+type leaf = Leaf
+
+type (_, _) comparable_struct =
+  | Int_key : type_annot option -> (z num, _) comparable_struct
+  | Nat_key : type_annot option -> (n num, _) comparable_struct
+  | String_key : type_annot option -> (string, _) comparable_struct
+  | Bytes_key : type_annot option -> (bytes, _) comparable_struct
+  | Mutez_key : type_annot option -> (tez, _) comparable_struct
+  | Bool_key : type_annot option -> (bool, _) comparable_struct
+  | Key_hash_key : type_annot option -> (public_key_hash, _) comparable_struct
+  | Timestamp_key : type_annot option -> (timestamp, _) comparable_struct
+  | Address_key : type_annot option -> (address, _) comparable_struct
+  | Pair_key :
+      (('a, leaf) comparable_struct * field_annot option)
+      * (('b, _) comparable_struct * field_annot option)
+      * type_annot option
+      -> (('a, 'b) pair, comb) comparable_struct
+
+type 'a comparable_ty = ('a, comb) comparable_struct
+
+module type Boxed_set = sig
+  type elt
+
+  val elt_ty : elt comparable_ty
+
+  module OPS : S.SET with type elt = elt
+
+  val boxed : OPS.t
+
+  val size : int
+end
+
+type 'elt set = (module Boxed_set with type elt = 'elt)
+
+module type Boxed_map = sig
+  type key
+
+  type value
+
+  val key_ty : key comparable_ty
+
+  module OPS : S.MAP with type key = key
+
+  val boxed : value OPS.t * int
+end
+
+type 'a ty =
+  | Unit_t : type_annot option -> unit ty
+  | Int_t : type_annot option -> z num ty
+  | Nat_t : type_annot option -> n num ty
+  | Signature_t : type_annot option -> signature ty
+  | String_t : type_annot option -> string ty
+  | Bytes_t : type_annot option -> bytes ty
+  | Mutez_t : type_annot option -> tez ty
+  | Key_hash_t : type_annot option -> public_key_hash ty
+  | Key_t : type_annot option -> public_key ty
+  | Timestamp_t : type_annot option -> timestamp ty
+  | Address_t : type_annot option -> address ty
+  | Bool_t : type_annot option -> bool ty
+  | Pair_t :
+      ('a ty * field_annot option * var_annot option)
+      * ('b ty * field_annot option * var_annot option)
+      * type_annot option
+      * bool
+      -> ('a, 'b) pair ty
+  | Union_t :
+      ('a ty * field_annot option)
+      * ('b ty * field_annot option)
+      * type_annot option
+      * bool
+      -> ('a, 'b) union ty
+  | Lambda_t : 'arg ty * 'ret ty * type_annot option -> ('arg, 'ret) lambda ty
+  | Option_t : 'v ty * type_annot option * bool -> 'v option ty
+  | List_t : 'v ty * type_annot option * bool -> 'v list ty
+  | Set_t : 'v comparable_ty * type_annot option -> 'v set ty
+  | Map_t :
+      'k comparable_ty * 'v ty * type_annot option * bool
+      -> ('k, 'v) map ty
+  | Big_map_t :
+      'k comparable_ty * 'v ty * type_annot option
+      -> ('k, 'v) big_map ty
+  | Contract_t : 'arg ty * type_annot option -> 'arg typed_contract ty
+  | Operation_t : type_annot option -> operation ty
+  | Chain_id_t : type_annot option -> Chain_id.t ty

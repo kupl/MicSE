@@ -1,0 +1,12 @@
+(library
+    (name michelson)
+    (public_name michelson)
+    (libraries zarith)
+    (modules_without_implementation location))
+
+(menhir
+    (modules parser)
+    (flags --explain))
+    
+(ocamllex lexer)
+

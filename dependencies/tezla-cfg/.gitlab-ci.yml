@@ -1,0 +1,13 @@
+image: ocaml/opam2
+
+ocaml-latest:
+    stage: build
+    script:
+        - opam pin add -n michelson https://gitlab.com/releaselab/fresco/michelson.git
+        - opam depext michelson
+        - opam pin add -n tezla https://gitlab.com/releaselab/fresco/tezla.git
+        - opam depext tezla
+        - opam pin add -n .
+        - opam depext tezla-cfg
+        - opam install . --deps-only
+        - dune build @install
