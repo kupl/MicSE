@@ -6,6 +6,7 @@
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Development](#development)
+    - [Dependencies](#dependencies)
     - [Prerequisite](#prerequisite)
     - [Git Commit Guidelines](#git-commit-guidelines)
   - [About](#about)
@@ -15,6 +16,29 @@
 Michelson Symbolic vErifier, for verifying and testing the integrity of smart contracts in the Tezos blockchain.
 
 ## Development
+
+### Dependencies
+
+- Michelson: Michelson ADT parser from FRESCO.
+- Tezla: Tezla project from FRESCO.
+- Tezla-cfg: Tezla-cfg project from FRESCO.
+
+``` bash
+$ opam pin add michelson dependencies/michelson
+[michelson.~dev] synchronised from file://...
+michelson is now pinned to file://...
+...
+
+$ opam pin add tezla dependencies/tezla
+[tezla.~dev] synchronised from file://...
+tezla is now pinned to file://...
+...
+
+$ opam pin add tezla-cfg dependencies/tezla-cfg
+[tezla-cfg.~dev] synchronised from file://...
+tezla-cfg is now pinned to file://...
+...
+```
 
 ### Prerequisite
 
