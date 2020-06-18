@@ -7,6 +7,7 @@
   - [Introduction](#introduction)
   - [Development](#development)
     - [Dependencies](#dependencies)
+      - [Copied Commit Hashes of FRESCO Tools](#copied-commit-hashes-of-fresco-tools)
     - [Prerequisite](#prerequisite)
     - [Git Commit Guidelines](#git-commit-guidelines)
   - [About](#about)
@@ -43,7 +44,8 @@ tezla-cfg is now pinned to file://...
 ```
 
 #### Copied Commit Hashes of FRESCO Tools
-```
+
+``` Text
 Michelson: 51cbabede80dcfe77cf960828c9a359e4ae81943
 Tezla: 90b842de39ce18e41e3d1cfde684495d6288286d
 Tezla-cfg: cb75e7bb56ecba46e3007c7937040a605b288b08
