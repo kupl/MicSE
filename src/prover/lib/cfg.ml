@@ -73,9 +73,16 @@ type t = {
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Casting                                                                   *)
+(* Casting (Tezla_cfg to Cfg)                                                *)
 (*****************************************************************************)
 (*****************************************************************************)
+
+let tcfg_cast_edge_label : TezlaCfg.edge_label -> edge_label = function
+  | Normal -> Normal
+  | If_true -> If_true
+  | If_false -> If_false
+let tcfg_get_id n = n.Tezla_cfg.Cfg_node.id
+let tcfg_get_stmt n = n.Tezla_cfg.Cfg_node.stmt
 
 let of_tezlaCfg tcfg =
   let open Core in
@@ -93,30 +100,18 @@ let of_tezlaCfg tcfg =
     then fail ("of_tezlaCfg : size(entry_vertices) =" ^ (string_of_int enlen) ^ ", size(exit_vertices) =" ^ (string_of_int exlen))
     else (List.hd_exn entry_vertices, List.hd_exn exit_vertices)
   in
-  (* Get flow and node informations *)
-  let t_tbl : (int, TezlaCfg.Node.t) Core.Hashtbl.t = TezlaCfg.get_blocks tcfg |> c_hashtbl_of_b_hashtbl in (* tezlaCfg table *)
   (* Get flow (edges) *)
-  let history : int Core.Set.Poly.t = Set.Poly.empty in (* vertex visit history *)
-  let worklist : int List.t = [main_entry] in
-  let rec work : int List.t -> G.t -> G.t
-  =fun wl g -> begin
-    match wl with
-    | [] -> g
-    | v :: tail -> begin
-        if Set.mem history v
-        then work tail g
-        else begin
-          (work tail g) (* PLACEHOLDER, TODO *)
-        end
-      end
-  end in
-  let _ = tcfg.flow in
-  let flow : G.t = work [main_entry] G.empty in
+  let graph_v : G.t = List.fold vertices ~init:G.empty ~f:(fun acc v -> G.add_vertex acc v) in
+  let label_wrap : TezlaCfg.G.E.t -> G.E.t =
+    let open TezlaCfg.G.E in
+    fun e -> G.E.create (src e |> tcfg_get_id) (label e |> tcfg_cast_edge_label) (dst e |> tcfg_get_id) in
+  let flow = TezlaCfg.G.fold_edges_e (fun e acc -> G.add_edge_e acc (label_wrap e)) tcfg.flow graph_v in
   (* Get node_info *)
   let node_info : (vertex, stmt) Core.Hashtbl.t = Core.Hashtbl.Poly.create () in
+  let t_tbl : (int, TezlaCfg.Node.t) Core.Hashtbl.t = TezlaCfg.get_blocks tcfg |> c_hashtbl_of_b_hashtbl in (* tezlaCfg table *)
   let _ = Core.Hashtbl.iter t_tbl (fun x -> Core.Hashtbl.add node_info x.id x.stmt |> Stdlib.ignore) in
-  { flow = G.empty;
-    node_info = Hashtbl.Poly.create ();
+  { flow = flow;
+    node_info = node_info;
     main_entry = main_entry;
     main_exit = main_exit;
   }

@@ -8,7 +8,7 @@ type edge_label = Tezla_cfg.Flow_graph.Cfg.edge_label
 
 module V = Tezla_cfg.Flow_graph.Cfg.V
 module E = Tezla_cfg.Flow_graph.Cfg.E
-module G = Graph.Imperative.Digraph.ConcreteBidirectionalLabeled (V) (E)
+module G = Graph.Imperative.Digraph.ConcreteBidirectionalLabeled (Tezla_cfg.Flow_graph.Cfg.V) (Tezla_cfg.Flow_graph.Cfg.E)
 module Display = Tezla_cfg.Flow_graph.Cfg.Display
 module Wrapper = Tezla_cfg.Flow_graph.Cfg.Wrapper
 

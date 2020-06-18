@@ -62,4 +62,15 @@ type t = {
   main_exit : vertex;
 }
 
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Casting (Tezla_cfg to Cfg)                                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val tcfg_cast_edge_label : TezlaCfg.edge_label -> edge_label
+val tcfg_get_id : TezlaCfg.Node.t -> int
+val tcfg_get_stmt : TezlaCfg.Node.t -> TezlaCfg.Node.stmt
+
 val of_tezlaCfg : TezlaCfg.t -> t

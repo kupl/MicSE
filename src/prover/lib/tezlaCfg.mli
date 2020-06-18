@@ -5,24 +5,27 @@ module Node : sig
   type decl = ident
   type typ = Tezla.Adt.typ
   type expr = Tezla.Adt.expr    (* tezla/src/lib/adt.mli *)
-  type stmt =   
-    | Cfg_assign of string * expr
-    | Cfg_skip
-    | Cfg_drop of string list
-    | Cfg_swap
-    | Cfg_dig
-    | Cfg_dug
-    | Cfg_if of string
-    | Cfg_if_none of string
-    | Cfg_if_left of string
-    | Cfg_if_cons of string
-    | Cfg_loop of string
-    | Cfg_loop_left of string
-    | Cfg_map of string
-    | Cfg_iter of string
-    | Cfg_failwith of string
+  type stmt = Tezla_cfg.Cfg_node.stmt
+    (*
+      (*contents:*)
+      | Cfg_assign of string * expr
+      | Cfg_skip
+      | Cfg_drop of string list
+      | Cfg_swap
+      | Cfg_dig
+      | Cfg_dug
+      | Cfg_if of string
+      | Cfg_if_none of string
+      | Cfg_if_left of string
+      | Cfg_if_cons of string
+      | Cfg_loop of string
+      | Cfg_loop_left of string
+      | Cfg_map of string
+      | Cfg_iter of string
+      | Cfg_failwith of string
+    *)
   
-  type t = { id : int; stmt : stmt}
+  type t = Tezla_cfg.Cfg_node.t
 
   val to_string : t -> string
   val create_node : ?id:int -> stmt -> t
@@ -37,9 +40,9 @@ type vertex = Node.t
 type expr = Node.expr
 type edge_label = Tezla_cfg.Flow_graph.Cfg.edge_label   (* type edge_label = Normal | If_true | If_false *)
 
-module V : Graph.Sig.COMPARABLE
-module E : Graph.Sig.ORDERED_TYPE_DFT
-module G : module type of Graph.Imperative.Digraph.ConcreteBidirectionalLabeled (V) (E)
+module V : Graph.Sig.COMPARABLE with type t = Node.t
+module E : Graph.Sig.ORDERED_TYPE_DFT with type t = edge_label
+module G : module type of Graph.Imperative.Digraph.ConcreteBidirectionalLabeled (Tezla_cfg.Flow_graph.Cfg.V) (Tezla_cfg.Flow_graph.Cfg.E)
 module Display : module type of Tezla_cfg.Flow_graph.Cfg.Display
 module Wrapper : module type of Tezla_cfg.Flow_graph.Cfg.Wrapper
 

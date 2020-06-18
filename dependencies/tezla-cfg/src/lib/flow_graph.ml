@@ -1,4 +1,6 @@
-module Common = struct
+open Batteries
+
+module Cfg = struct
   type program = Michelson.Adt.program
 
   type vertex = Cfg_node.t
@@ -82,9 +84,9 @@ module Common = struct
           }
       end in
       let module Dot_ = Graph.Graphviz.Dot (Display (Helper)) in
-      let oc = open_out f in
+      let oc = Stdlib.open_out f in
       Dot_.output_graph oc g;
-      close_out oc
+      Stdlib.close_out oc
 
     let display_with_gv b g p =
       let tmp_dot = Filename.temp_file "graph" ".dot" in
@@ -95,11 +97,6 @@ module Common = struct
            ("dot -Tps " ^ tmp_dot ^ " > " ^ tmp_ps ^ "; evince " ^ tmp_ps ^ " &"));
       Sys.remove tmp_dot
   end
-end
-
-module Cfg = struct
-  open Batteries
-  include Common
 
   type t = {
     blocks : (int, vertex) Hashtbl.t;
