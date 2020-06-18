@@ -69,6 +69,7 @@ type t = {
 (*****************************************************************************)
 (*****************************************************************************)
 
+val tcfg_cast_stmt : TezlaCfg.Node.stmt -> stmt
 val tcfg_cast_edge_label : TezlaCfg.edge_label -> edge_label
 val tcfg_get_id : TezlaCfg.Node.t -> int
 val tcfg_get_stmt : TezlaCfg.Node.t -> TezlaCfg.Node.stmt

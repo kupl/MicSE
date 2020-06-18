@@ -77,6 +77,7 @@ type t = {
 (*****************************************************************************)
 (*****************************************************************************)
 
+let tcfg_cast_stmt x = x
 let tcfg_cast_edge_label : TezlaCfg.edge_label -> edge_label = function
   | Normal -> Normal
   | If_true -> If_true
@@ -109,7 +110,7 @@ let of_tezlaCfg tcfg =
   (* Get node_info *)
   let node_info : (vertex, stmt) Core.Hashtbl.t = Core.Hashtbl.Poly.create () in
   let t_tbl : (int, TezlaCfg.Node.t) Core.Hashtbl.t = TezlaCfg.get_blocks tcfg |> c_hashtbl_of_b_hashtbl in (* tezlaCfg table *)
-  let _ = Core.Hashtbl.iter t_tbl (fun x -> Core.Hashtbl.add node_info x.id x.stmt |> Stdlib.ignore) in
+  let _ = Core.Hashtbl.iter t_tbl (fun x -> Core.Hashtbl.add node_info x.id (tcfg_cast_stmt x.stmt) |> Stdlib.ignore) in
   { flow = flow;
     node_info = node_info;
     main_entry = main_entry;
