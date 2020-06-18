@@ -1,26 +1,33 @@
-module TCfg = Tezla_cfg.Flow_graph.Cfg
 module Node = Tezla_cfg.Cfg_node
 
-type t          = TCfg.t
-type vertex     = Node.t
-type edge_label = TCfg.edge_label
-type vertex_id  = int
-type path       = (edge_label * vertex_id) list
+open Batteries
+type program = Michelson.Adt.program
+type vertex = Node.t
+type expr = Node.expr
+type edge_label = Tezla_cfg.Flow_graph.Cfg.edge_label
 
-let translate : Adt.t -> t
-=fun ast -> begin
-  let converted_cfg = Tezla_cfg.Flow_graph.Cfg.generate_from_program ast in
-  converted_cfg
-end
+module V = Tezla_cfg.Flow_graph.Cfg.V
+module E = Tezla_cfg.Flow_graph.Cfg.E
+module G = Graph.Imperative.Digraph.ConcreteBidirectionalLabeled (V) (E)
+module Display = Tezla_cfg.Flow_graph.Cfg.Display
+module Wrapper = Tezla_cfg.Flow_graph.Cfg.Wrapper
 
-let write_dot : t -> string -> unit
-=fun cfg output_filename -> begin
-  let _ = Tezla_cfg.Flow_graph.Cfg.dot_output cfg output_filename in
-  ()
-end
+type t = Tezla_cfg.Flow_graph.Cfg.t
 
-let display : t -> unit
-=fun cfg -> begin
-  let _ = Tezla_cfg.Flow_graph.Cfg.show cfg in
-  ()
-end
+let create                = Tezla_cfg.Flow_graph.Cfg.create
+let inflow                = Tezla_cfg.Flow_graph.Cfg.inflow
+let outflow               = Tezla_cfg.Flow_graph.Cfg.outflow
+let is_extremal           = Tezla_cfg.Flow_graph.Cfg.is_extremal
+let is_extremalR          = Tezla_cfg.Flow_graph.Cfg.is_extremalR
+let add                   = Tezla_cfg.Flow_graph.Cfg.add
+let get                   = Tezla_cfg.Flow_graph.Cfg.get
+let connect               = Tezla_cfg.Flow_graph.Cfg.connect
+let get_blocks            = Tezla_cfg.Flow_graph.Cfg.get_blocks
+let get_func_id           = Tezla_cfg.Flow_graph.Cfg.get_func_id
+let extremal              = Tezla_cfg.Flow_graph.Cfg.extremal
+let extremalR             = Tezla_cfg.Flow_graph.Cfg.extremalR
+let labels                = Tezla_cfg.Flow_graph.Cfg.labels
+let dot_output            = Tezla_cfg.Flow_graph.Cfg.dot_output
+let display_with_gv       = Tezla_cfg.Flow_graph.Cfg.display_with_gv
+let show                  = Tezla_cfg.Flow_graph.Cfg.show
+let generate_from_program = Tezla_cfg.Flow_graph.Cfg.generate_from_program 

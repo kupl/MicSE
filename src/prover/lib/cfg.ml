@@ -79,11 +79,11 @@ type t = {
 
 let of_tezlaCfg tcfg =
   let open Core in
-  let vertices : int List.t = TezlaCfg.TCfg.labels tcfg |> c_list_of_batset in
+  let vertices : int List.t = TezlaCfg.labels tcfg |> c_list_of_batset in
   (* Get entry and exit nodes *)
-  let t_vertices = List.filter vertices (fun n -> TezlaCfg.TCfg.is_extremal tcfg n) in (* terminal vertices in Cfg *)
-  let inflow_len g n = TezlaCfg.TCfg.inflow g n |> List.length in   (* # of inflow edges *)
-  let outflow_len g n = TezlaCfg.TCfg.outflow g n |> List.length in  (* # of outflow edges *)
+  let t_vertices = List.filter vertices (fun n -> TezlaCfg.is_extremal tcfg n) in (* terminal vertices in Cfg *)
+  let inflow_len g n = TezlaCfg.inflow g n |> List.length in   (* # of inflow edges *)
+  let outflow_len g n = TezlaCfg.outflow g n |> List.length in  (* # of outflow edges *)
   let entry_vertices = List.filter t_vertices (fun n -> (inflow_len tcfg n = 0) && (outflow_len tcfg n > 0)) in
   let exit_vertices  = List.filter t_vertices (fun n -> (inflow_len tcfg n > 0) && (outflow_len tcfg n = 0)) in
   let enlen = List.length entry_vertices in
@@ -94,7 +94,7 @@ let of_tezlaCfg tcfg =
     else (List.hd_exn entry_vertices, List.hd_exn exit_vertices)
   in
   (* Get flow and node informations *)
-  let t_tbl : (int, TezlaCfg.Node.t) Core.Hashtbl.t = TezlaCfg.TCfg.get_blocks tcfg |> c_hashtbl_of_b_hashtbl in (* tezlaCfg table *)
+  let t_tbl : (int, TezlaCfg.Node.t) Core.Hashtbl.t = TezlaCfg.get_blocks tcfg |> c_hashtbl_of_b_hashtbl in (* tezlaCfg table *)
   (* Get flow (edges) *)
   let history : int Core.Set.Poly.t = Set.Poly.empty in (* vertex visit history *)
   let worklist : int List.t = [main_entry] in
@@ -110,7 +110,7 @@ let of_tezlaCfg tcfg =
         end
       end
   end in
-  (*let _ = tcfg.flow in*)
+  let _ = tcfg.flow in
   let flow : G.t = work [main_entry] G.empty in
   (* Get node_info *)
   let node_info : (vertex, stmt) Core.Hashtbl.t = Core.Hashtbl.Poly.create () in

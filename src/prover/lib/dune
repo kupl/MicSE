@@ -6,5 +6,6 @@
     michelson
     tezla
     tezla-cfg
+    ocamlgraph
     core)
   (flags -w -a))
