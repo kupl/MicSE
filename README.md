@@ -19,6 +19,8 @@ Michelson Symbolic vErifier, for verifying and testing the integrity of smart co
 
 ### Dependencies
 
+Currently, we're using custom modified [FRESCO](https://gitlab.com/releaselab/fresco)'s Michelson tools. They are in `[project-root]/dependencies` directory, so you need to register that packages into opam using `opam pin` command.
+
 - Michelson: Michelson ADT parser from FRESCO.
 - Tezla: Tezla project from FRESCO.
 - Tezla-cfg: Tezla-cfg project from FRESCO.
@@ -38,6 +40,13 @@ $ opam pin add tezla-cfg dependencies/tezla-cfg
 [tezla-cfg.~dev] synchronised from file://...
 tezla-cfg is now pinned to file://...
 ...
+```
+
+#### Copied Commit Hashes of FRESCO Tools
+```
+Michelson: 51cbabede80dcfe77cf960828c9a359e4ae81943
+Tezla: 90b842de39ce18e41e3d1cfde684495d6288286d
+Tezla-cfg: cb75e7bb56ecba46e3007c7937040a605b288b08
 ```
 
 ### Prerequisite
