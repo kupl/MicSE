@@ -2,4 +2,7 @@
   (name prover)
   (public_name micse.prover)
   (libraries
-    proverLib))
+    batteries
+    core
+    proverLib
+    ))
