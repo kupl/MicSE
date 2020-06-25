@@ -8,9 +8,16 @@ let options =
 let main : unit -> unit
 =fun () -> begin
   let filepath = !input_file in
-  let _ = Format.print_string "\n> Parse" in
-  let ast = ProverLib.Adt.parse filepath in
-  let _ = ProverLib.Adt.pp Format.std_formatter ast in
+  let ast = Tezla.Parsing_utils.parse_with_error filepath in
+  let cfg = Tezla_cfg.Flow_graph.Cfg.generate_from_program ast in
+  let cfg = Prover.Translator.of_tezlaCfg cfg in
+  let (bps, _) = Prover.Extractor.extract cfg in
+  let _ = Core.List.iteri bps ~f:(fun idx bp -> (
+    let str = "(" ^ (string_of_int idx) ^ ")\n\n" in
+    let str = str ^ ProverLib.Bp.to_string bp in
+    let _ = print_endline (str ^ "\n") in
+    ()
+  )) in
   ()
 end
 
