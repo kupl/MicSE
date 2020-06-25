@@ -22,6 +22,18 @@ end
 
 module G = Graph.Persistent.Digraph.ConcreteBidirectionalLabeled (V) (E)
 
+let is_edge_normal : E.t -> bool
+=fun edge -> (edge = Normal)
+
+let is_edge_true : E.t -> bool
+=fun edge -> (edge = If_true)
+
+let is_edge_false : E.t -> bool
+=fun edge -> (edge = If_false)
+
+let string_of_vertex : vertex -> string
+=fun vtx -> (string_of_int vtx)
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -42,3 +54,31 @@ type t = {
   main_entry : vertex;
   main_exit : vertex;
 }
+
+let read_stmt_from_vtx : t -> vertex -> stmt
+=fun cfg vtx -> begin
+  try
+    let stmt = Core.Hashtbl.find_exn cfg.node_info vtx in
+    stmt
+  with
+  | Not_found -> raise (Failure "Cfg.read_stmt_from_vtx: Cannot find node from cfg")
+end
+
+let read_succ_from_vtx : t -> vertex -> (E.t * V.t) list
+=fun cfg vtx -> begin
+  let succ_vtxs = G.succ cfg.flow vtx in
+  let succ = Core.List.map succ_vtxs ~f:(fun succ_vtx -> (
+    let (_, succ_edge, _) = G.find_edge cfg.flow vtx succ_vtx in
+    (succ_edge, succ_vtx)
+  )) in
+  succ
+end
+
+let is_main_entry : t -> vertex -> bool
+=fun cfg vtx -> (vtx = cfg.main_entry)
+
+let is_main_exit : t -> vertex -> bool
+=fun cfg vtx -> (vtx = cfg.main_exit)
+
+let string_of_ident : ident -> string
+=fun id -> id

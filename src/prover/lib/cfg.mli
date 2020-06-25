@@ -14,6 +14,13 @@ module V : Graph.Sig.COMPARABLE with type t = vertex         (* VERTEX *)
 module E : Graph.Sig.ORDERED_TYPE_DFT with type t = edge_label   (* EDGE LABLE *)
 module G : module type of Graph.Persistent.Digraph.ConcreteBidirectionalLabeled (V) (E)
 
+val is_edge_normal : E.t -> bool
+
+val is_edge_true : E.t -> bool
+
+val is_edge_false : E.t -> bool
+
+val string_of_vertex : vertex -> string
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -53,3 +60,13 @@ type t = {
   main_entry : vertex;
   main_exit : vertex;
 }
+
+val read_stmt_from_vtx : t -> vertex -> stmt
+
+val read_succ_from_vtx : t -> vertex -> (E.t * V.t) list
+
+val is_main_entry : t -> vertex -> bool
+
+val is_main_exit : t -> vertex -> bool
+
+val string_of_ident : ident -> string
