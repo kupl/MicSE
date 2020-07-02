@@ -48,17 +48,25 @@ type typ = Tezla.Adt.typ
 type expr = Tezla.Adt.expr
 type stmt = TezlaCfg.Node.stmt
 
+(*module IntMap = Core.Map.Make (Core.Int)
+module StringMap = Core.Map.Make (Core.String)*)
+module CPMap = Core.Map.Poly
+
 type t = {
   flow : G.t;
-  node_info : (vertex, stmt) Core.Hashtbl.t;
+  vertex_info : (int, stmt) CPMap.t;  (* vertex-number -> stmt *)
+  type_info : (string, typ) CPMap.t;  (* variable-name -> typ *)
+  stack_info : (int, ((string list) Core.Set.Poly.t)) CPMap.t;  (* possible variable names at that stack position (after that vertex's stmt executed.) *)
   main_entry : vertex;
   main_exit : vertex;
 }
 
+let param_storage_name = "param_storage"
+
 let read_stmt_from_vtx : t -> vertex -> stmt
 =fun cfg vtx -> begin
   try
-    let stmt = Core.Hashtbl.find_exn cfg.node_info vtx in
+    let stmt = CPMap.find_exn cfg.vertex_info vtx in
     stmt
   with
   | Not_found -> raise (Failure "Cfg.read_stmt_from_vtx: Cannot find node from cfg")

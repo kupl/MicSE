@@ -21,3 +21,12 @@ val tcfg_get_id : ProverLib.TezlaCfg.Node.t -> int
 val tcfg_get_stmt : ProverLib.TezlaCfg.Node.t -> ProverLib.TezlaCfg.Node.stmt
 
 val of_tezlaCfg : ProverLib.TezlaCfg.t -> ProverLib.Cfg.t
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Adt to Cfg                                                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val adt_to_cfg : ProverLib.Adt.t -> ProverLib.Cfg.t

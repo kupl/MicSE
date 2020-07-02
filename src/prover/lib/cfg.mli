@@ -54,12 +54,31 @@ type stmt = TezlaCfg.Node.stmt
   | Cfg_failwith of string
   *)
 
+
+(*module IntMap : module type of Core.Map.Make (Core.Int)
+module StringMap : module type of Core.Map.Make (Core.String) *)
+
+module CPMap : module type of Core.Map.Poly
+
 type t = {
   flow : G.t;
-  node_info : (vertex, stmt) Core.Hashtbl.t;
+  (*old : node_info : (vertex, stmt) Core.Hashtbl.t;*)
+  vertex_info : (int, stmt) CPMap.t;  (* vertex-number -> stmt *)
+  type_info : (string, typ) CPMap.t;  (* variable-name -> typ *)
+  stack_info : (int, ((string list) Core.Set.Poly.t)) CPMap.t;  (* possible variable names at that stack position (after that vertex's stmt executed.) *)
   main_entry : vertex;
   main_exit : vertex;
 }
+(* Explain more about stack_info 
+    For every stack_info's mapping-entry (vertex-id (type: integer)), stack_info points ((string list) Core.Set.Poly.t).
+    (string) means a symbolic variable, whose is described at type_info map,
+    and (string list) indicates a single symbolic stack,
+    so ((string list) Core.Set.Poly.t) describes every possible symbolic stack figures.
+    It is useful to contain every merged-after-branching stack figures.
+*)
+
+
+val param_storage_name : string
 
 val read_stmt_from_vtx : t -> vertex -> stmt
 
