@@ -85,8 +85,12 @@ let of_tezlaCfg tcfg =
 (*****************************************************************************)
 
 type ctr = int ref (* counter *)
-let new_v : ctr -> Core.Int.t = fun rx -> (incr rx; !rx)
-(*let new_var : ctr -> Core.String.t = fun rx -> (incr rx; "t" ^ (string_of_int (!rx)))*)
+type cfgcon_ctr = {   (* counter for cfg construction *)
+  vertex_counter : ctr;
+  var_counter : ctr;
+}
+let new_vtx : cfgcon_ctr -> Core.Int.t = fun c -> (incr c.vertex_counter; !(c.vertex_counter))
+let new_var : cfgcon_ctr -> Core.String.t = fun c -> (incr c.var_counter; "v" ^ (string_of_int (!(c.var_counter))))
 
 
 let gen_t : 'a -> 'a Michelson.Adt.t = fun x -> {pos = Michelson.Location.Unknown; d = x;}
@@ -108,10 +112,10 @@ let _ (* map_find *) : string -> ('k, 'v) Core.Map.Poly.t -> 'k -> 'v
 end
 
 (* typical flow manipulation procedure *)
-let add_typical_vertex : ctr -> (Cfg.vertex * Cfg.vertex) -> Cfg.t -> (Cfg.G.t * Cfg.vertex)
+let add_typical_vertex : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Cfg.t -> (Cfg.G.t * Cfg.vertex)
 = let open Cfg in
   fun counter (in_v, out_v) cfg -> begin
-  let mid_v = new_v counter in
+  let mid_v = new_vtx counter in
   let flow_1 = G.add_vertex cfg.flow mid_v in
   let flow_2 = G.add_edge (G.add_edge flow_1 in_v mid_v) mid_v out_v in
   (flow_2, mid_v)
@@ -119,22 +123,24 @@ end
 
 
 (* construct control flow graph from instruction *)
-let rec inst_to_cfg : ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cfg.t * string list) -> (Cfg.t * string list)
+let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cfg.t * string list) -> (Cfg.t * string list)
 = let open Cfg in
+  (* COMMENT TEMPLATE *)
+    (*  flow        : add new vertex between in-and-out
+        vertex_info : Cfg_skip
+        type_info   : no change
+        stack_info  : no change
+    *)
   (* FUNCTION BEGIN *)
-  (* Common operation for (almost) every patterns:
-      cop_1 : stack_info of out_v should be updated.
-  *)
   fun counter (in_v, out_v) ist (cfg, stack_info) -> begin
   match get_d ist with 
   | I_seq (i1, i2) ->
     (*  flow        : add new vertex between in-and-out
         vertex_info : Cfg_skip
         type_info   : no change
-        others      : cop_1 will be violated
         stack_info  : no change
     *)
-    let mid_v = new_v counter in
+    let mid_v = new_vtx counter in
     let flow_1 = G.add_vertex cfg.flow mid_v in
     let vertex_info_1 = map_add "inst_to_cfg : vertex_info_1" cfg.vertex_info mid_v Cfg_skip in
     let cfg_1 = {cfg with flow=flow_1; vertex_info=vertex_info_1;} in
@@ -147,7 +153,6 @@ let rec inst_to_cfg : ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cfg.t * s
     (*  flow        : add new vertex between in-and-out
         vertex_info : Cfg_drop [...]
         type_info   : no change
-        others      : no change
         stack_info  : drop one element from the top of the stack.
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
@@ -156,17 +161,77 @@ let rec inst_to_cfg : ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cfg.t * s
     ({cfg with flow=flow_2; vertex_info=vertex_info_1;}, stack_info_1)
 
   | I_drop_n zn ->
-    (*  flow : add new vertex between in-and-out
+    (*  flow        : add new vertex between in-and-out
         vertex_info : Cfg_drop [...] (* string list, which is flattened string lists. *)
-        type_info : no change
-        others    : no change
-        stack_info : drop "zn" elements from the top of the stack.
+        type_info   : no change
+        stack_info  : drop "zn" elements from the top of the stack.
     *)
     let nn = Z.to_int zn in
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let (slist, stack_info_1) = Core.List.split_n stack_info nn in
     let vertex_info_1 = map_add "inst_to_cfg : I_drop_n : vertex_info_1" cfg.vertex_info mid_v (Cfg_drop slist) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_1;}, stack_info_1)
+
+  | I_dup ->
+    (*  flow        : add new vertex between in-and-out
+        vertex_info : Cfg_assign (new-var, E_dup var)
+        type_info   : no change
+        stack_info  : add new variable on top
+    *)
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let nv_name = new_var counter in
+    let vertex_info_1 = map_add "inst_to_cfg : I_dup" cfg.vertex_info mid_v (Cfg_assign (nv_name, E_dup (Core.List.hd_exn stack_info))) in
+    let stack_info_1 = (Core.List.hd_exn stack_info) :: stack_info in
+    ({cfg with flow=flow_2; vertex_info=vertex_info_1;}, stack_info_1)
+
+  | I_swap ->
+    (*  flow        : add new vertex between in-and-out
+        vertex_info : Cfg_swap
+        type_info   : no change
+        stack_info  : swap top two elements
+    *)
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let vertex_info_1 = map_add "inst_to_cfg : I_swap" cfg.vertex_info mid_v Cfg_swap in
+    let stack_info_1 = let (h, t) = Core.List.split_n stack_info 2 in Core.List.rev_append h t in
+    ({cfg with flow=flow_2; vertex_info=vertex_info_1;}, stack_info_1)
+
+  | I_dig zn ->
+    (*  flow        : add new vertex between in-and-out
+        vertex_info : Cfg_dig
+        type_info   : no change
+        stack_info  : dig-n-change
+    *)
+    let nn = Z.to_int zn in
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let vertex_info_1 = map_add "inst_to_cfg : I_swap" cfg.vertex_info mid_v Cfg_dig in
+    let stack_info_1 = let (h, t) = Core.List.split_n stack_info nn in ((Core.List.hd_exn t) :: h) @ (Core.List.tl_exn t) in
+    ({cfg with flow=flow_2; vertex_info=vertex_info_1;}, stack_info_1)
+
+  | I_dug zn ->
+    (*  flow        : add new vertex between in-and-out
+        vertex_info : Cfg_dug
+        type_info   : no change
+        stack_info  : dug-n-change
+    *)
+    let nn = Z.to_int zn in
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let vertex_info_1 = map_add "inst_to_cfg : I_swap" cfg.vertex_info mid_v Cfg_dug in
+    let stack_info_1 = let (th, tt) = Core.List.split_n (Core.List.tl_exn stack_info) nn in th @ (Core.List.hd_exn stack_info :: tt) in
+    ({cfg with flow=flow_2; vertex_info=vertex_info_1;}, stack_info_1)
+
+  | I_push (ty, d) ->
+    (*  flow        : add new vertex between in-and-out
+        vertex_info : Cfg_assign (new-var, (E_push (d, ty)))
+        type_info   : new-var -> ty
+        stack_info  : new data on stack top
+    *)
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let nv_name = new_var counter in
+    let vertex_info_1 = map_add "inst_to_cfg : I_push : vertex_info_1" cfg.vertex_info mid_v (Cfg_assign (nv_name, E_push (d ,ty))) in
+    let type_info_1 = map_add "inst_to_cfg : I_push : type_info_1" cfg.type_info nv_name ty in
+    let stack_info_1 = nv_name :: stack_info in
+    ({cfg with flow=flow_2; vertex_info=vertex_info_1; type_info=type_info_1;}, stack_info_1)
+
 
   | _ -> fail "inst_to_cfg : not implemented." (* TODO *)
 end
@@ -178,15 +243,15 @@ let adt_to_cfg : Adt.t -> Cfg.t
   let smap_add = map_add "adt_to_cfg" in  (* this duplicated might be refactored later. *)
   (* FUNCTION BEGIN *)
   fun adt ->
-  let counter = ref (-1) in  (* initialize counter *)
+  let counter : cfgcon_ctr = {vertex_counter=(ref (-1)); var_counter=(ref (-1));} in  (* initialize counter *)
   (*  INITIALIZE GRAPH 
       flow : two vertices. main_entry and main_exit.
       vertex_info : both vertices are Cfg_skip
       type_info : type of parameter-storage will be added
       stack_info : put the parameter-storage value to entry-v.
   *)
-  let entry_v = new_v counter in
-  let exit_v = new_v counter in
+  let entry_v = new_vtx counter in
+  let exit_v = new_vtx counter in
   let flow_1 = G.add_vertex (G.add_vertex G.empty entry_v) exit_v in
   let param_storage_type = gen_t (Michelson.Adt.T_pair (adt.param, adt.storage)) in
   let vertex_info_1 = imap_add (imap_add CPMap.empty entry_v Tezla_cfg.Cfg_node.Cfg_skip) exit_v Tezla_cfg.Cfg_node.Cfg_skip in
