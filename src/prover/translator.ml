@@ -104,7 +104,7 @@ let map_add : string -> ('k, 'v) Core.Map.Poly.t -> 'k -> 'v -> ('k, 'v) Cfg.CPM
   | `Ok m' -> m'
   | `Duplicate -> fail (caller_name ^ " : map_add : duplicated entry.")
 end
-let _ (* map_find *) : string -> ('k, 'v) Core.Map.Poly.t -> 'k -> 'v
+let map_find : string -> ('k, 'v) Core.Map.Poly.t -> 'k -> 'v
 =fun caller_name m k -> begin
   match Core.Map.Poly.find m k with
   | Some v -> v
@@ -232,6 +232,47 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     let stack_info_1 = nv_name :: stack_info in
     ({cfg with flow=flow_2; vertex_info=vertex_info_1; type_info=type_info_1;}, stack_info_1)
 
+  | I_some ->
+    (*  flow        : add new vertex between in-and-out
+        vertex_info : Cfg_assign (new-var, (E_some var))
+        type_info   : new-var -> T_option (ty)
+        stack_info  : exchange var to new-var
+    *)
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let nv_name = new_var counter in
+    let v_name = Core.List.hd_exn stack_info in
+    let si_tail = Core.List.tl_exn stack_info in
+    let vertex_info_1 = map_add "inst_to_cfg : I_some : vertex_info_1" cfg.vertex_info mid_v (Cfg_assign (nv_name, E_some v_name)) in
+    let v_type = map_find "inst_to_cfg : I_some : v_type" cfg.type_info v_name in
+    let type_info_1 = map_add "inst_to_cfg : I_some : type_info_1" cfg.type_info nv_name (gen_t (Michelson.Adt.T_option v_type)) in
+    let stack_info_1 = nv_name :: si_tail in
+    ({cfg with flow=flow_2; vertex_info=vertex_info_1; type_info=type_info_1;}, stack_info_1)
+
+  | I_none ty ->
+    (*  flow        : add new vertex between in-and-out
+        vertex_info : Cfg_assign (new-var, (E_none ty))
+        type_info   : new-var -> T_option (ty)
+        stack_info  : push new-var to the top of the stack
+    *)
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let nv_name = new_var counter in
+    let vertex_info_1 = map_add "inst_to_cfg : I_none : vertex_info_1" cfg.vertex_info mid_v (Cfg_assign (nv_name, (Tezla.Adt.E_none ty))) in
+    let type_info_1 = map_add "inst_to_cfg : I_none : type_info_1" cfg.type_info nv_name (gen_t (Michelson.Adt.T_option ty)) in
+    let stack_info_1 = nv_name :: stack_info in
+    ({cfg with flow=flow_2; vertex_info=vertex_info_1; type_info=type_info_1;}, stack_info_1)
+
+  | I_unit ->
+    (*  flow        : add new vertex between in-and-out
+        vertex_info : Cfg_assign (new-var, E_unit)
+        type_info   : new-var -> T_unit
+        stack_info  : push new-var to the top of the stack
+    *)
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let nv_name = new_var counter in
+    let vertex_info_1 = map_add "inst_to_cfg : I_unit : vertex_info_1" cfg.vertex_info mid_v (Cfg_assign (nv_name, Tezla.Adt.E_unit)) in
+    let type_info_1 = map_add "inst_to_cfg : I_unit : type_info_1" cfg.type_info nv_name (gen_t (Michelson.Adt.T_unit)) in
+    let stack_info_1 = nv_name :: stack_info in
+    ({cfg with flow=flow_2; vertex_info=vertex_info_1; type_info=type_info_1;}, stack_info_1)
 
   | _ -> fail "inst_to_cfg : not implemented." (* TODO *)
 end
