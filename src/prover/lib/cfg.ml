@@ -56,7 +56,6 @@ type t = {
   flow : G.t;
   vertex_info : (int, stmt) CPMap.t;  (* vertex-number -> stmt *)
   type_info : (string, typ) CPMap.t;  (* variable-name -> typ *)
-  stack_info : (int, ((string list) Core.Set.Poly.t)) CPMap.t;  (* possible variable names at that stack position (after that vertex's stmt executed.) *)
   main_entry : vertex;
   main_exit : vertex;
 }
