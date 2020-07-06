@@ -213,13 +213,15 @@ and v_operation =
   | VE_origination
   | VE_delegation
 
-val create_rename_var : var -> var
-
 val create_exp_var : var -> v_exp
 
 val create_formula_not : v_formula -> v_formula
 
 val create_formula_and : v_formula -> v_formula -> v_formula
+
+val create_formula_or : v_formula -> v_formula -> v_formula
+
+val create_formula_uni_rel : v_uni_rel -> v_exp -> v_formula
 
 val create_formula_is_true : v_exp -> v_formula
 
@@ -229,10 +231,22 @@ val create_formula_is_left : v_exp -> v_formula
 
 val create_formula_is_cons : v_exp -> v_formula
 
-val create_rewrite_formula : var -> var -> v_formula -> v_formula
+val create_formula_bin_rel : v_bin_rel -> v_exp -> v_exp -> v_formula
 
-val create_rewrite_exp : var -> var -> v_exp -> v_exp
+val create_formula_eq : v_exp -> v_exp -> v_formula
 
-val create_convert_exp : exp -> v_exp
+val create_formula_neq : v_exp -> v_exp -> v_formula
+
+val create_formula_lt : v_exp -> v_exp -> v_formula
+
+val create_formula_gt : v_exp -> v_exp -> v_formula
+
+val create_formula_le : v_exp -> v_exp -> v_formula
+
+val create_formula_ge : v_exp -> v_exp -> v_formula
+
+val create_formula_imply : v_formula -> v_formula -> v_formula
+
+val create_formula_iff : v_formula -> v_formula -> v_formula
 
 val string_of_formula : v_formula -> string
