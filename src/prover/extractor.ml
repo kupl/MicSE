@@ -3,12 +3,6 @@ open ProverLib
 (************************************************)
 (************************************************)
 
-let apply : Bp.inv_map -> Bp.t list -> Bp.t list
-=fun inv_map bp_list -> begin
-  let _ = inv_map in
-  let _ = bp_list in
-  [] (* TODO *)
-end
 
 let inv_pgm_cnt = ref []
 
@@ -25,7 +19,7 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
   let stmt = Cfg.read_stmt_from_vtx cfg cur_vtx in
   let succ = Cfg.read_succ_from_vtx cfg cur_vtx in
   let make_branch_bp f_if = begin
-    let f_else = Bp.create_formula_not f_if in
+    let f_else = Bp.create_cond_not f_if in
     let inst_if = Bp.create_inst_assume f_if in
     let inst_else = Bp.create_inst_assume f_else in
     let new_bp_if = Bp.update_body cur_bp inst_if in
@@ -68,28 +62,28 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
         result
       end
     | Cfg_if id -> begin
-        let f_if = Bp.create_formula_is_true id in
+        let f_if = Bp.create_cond_is_true id in
         let bps = make_branch_bp f_if in
         let search = branch_search bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if_none id -> begin
-        let f_if = Bp.create_formula_is_none id in
+        let f_if = Bp.create_cond_is_none id in
         let bps = make_branch_bp f_if in
         let search = branch_search bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if_left id -> begin
-        let f_if = Bp.create_formula_is_left id in
+        let f_if = Bp.create_cond_is_left id in
         let bps = make_branch_bp f_if in
         let search = branch_search bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if_cons id -> begin
-        let f_if = Bp.create_formula_is_cons id in
+        let f_if = Bp.create_cond_is_cons id in
         let bps = make_branch_bp f_if in
         let search = branch_search bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
