@@ -89,6 +89,7 @@ end
 and create_convert_exp : Vlang.exp -> Vlang.v_exp
 =fun e -> begin
   match e with
+  | E_itself v -> Vlang.create_exp_var v
   | E_push (d, _) -> create_convert_data d
   | E_car v -> VE_uni_op (VE_car, (Vlang.create_exp_var v))
   | E_cdr v -> VE_uni_op (VE_cdr, (Vlang.create_exp_var v))
