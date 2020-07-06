@@ -7,5 +7,6 @@
     tezla
     tezla-cfg
     ocamlgraph
-    core)
+    core
+    zarith)
   (flags -w -a))

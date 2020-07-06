@@ -1,6 +1,6 @@
 (*****************************************************************************)
 (*****************************************************************************)
-(* Formula                                                                   *)
+(* Condition                                                                 *)
 (*****************************************************************************)
 (*****************************************************************************)
 
@@ -8,31 +8,20 @@ type var = Cfg.ident
   (*
     type indent = string
   *)
-type formula = 
-  | F_true  | F_false
-  | F_is_true of var
-  | F_is_none of var
-  | F_is_left of var
-  | F_is_cons of var
-  | F_and of formula * formula
-  | F_or of formula * formula
-  | F_not of formula
-  | F_imply of formula * formula
-  | F_iff of formula * formula
-  | F_forall of var list * formula
-  | F_exists of var list * formula
+  
+type cond = Vlang.v_formula
 
-val create_formula_is_true : var -> formula
+val create_cond_is_true : var -> cond
 
-val create_formula_is_none : var -> formula
+val create_cond_is_none : var -> cond
 
-val create_formula_is_left : var -> formula
+val create_cond_is_left : var -> cond
 
-val create_formula_is_cons : var -> formula
+val create_cond_is_cons : var -> cond
 
-val create_formula_not : formula -> formula
+val create_cond_not : cond -> cond
 
-val string_of_formula : formula -> string
+val string_of_cond : cond -> string
 
 
 (*****************************************************************************)
@@ -121,11 +110,11 @@ type exp = Cfg.expr
     | E_phi of string * string
   *)
 type inst =
-  | I_assume of formula
-  | I_assign of var * exp
-  | I_skip
+  | BI_assume of cond
+  | BI_assign of var * exp
+  | BI_skip
 
-val create_inst_assume : formula -> inst
+val create_inst_assume : cond -> inst
 
 val create_inst_assign : (var * exp) -> inst
 
@@ -144,8 +133,11 @@ type vertex = Cfg.vertex
   (*
     type vertex = int
   *)
+
+type formula = Vlang.t
+
 type inv = { id: vertex; formula: formula option }
-type inv_map = (vertex, formula) Core.Hashtbl.t
+and inv_map = (vertex, formula) Core.Hashtbl.t
 
 val create_dummy_inv : vertex -> inv
 

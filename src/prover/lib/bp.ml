@@ -1,56 +1,29 @@
 (*****************************************************************************)
 (*****************************************************************************)
-(* Formula                                                                   *)
+(* Condition                                                                 *)
 (*****************************************************************************)
 (*****************************************************************************)
 
 type var = Cfg.ident
-type formula = 
-  | F_true  | F_false
-  | F_is_true of var
-  | F_is_none of var
-  | F_is_left of var
-  | F_is_cons of var
-  | F_and of formula * formula
-  | F_or of formula * formula
-  | F_not of formula
-  | F_imply of formula * formula
-  | F_iff of formula * formula
-  | F_forall of var list * formula
-  | F_exists of var list * formula
+type cond = Vlang.v_formula
 
-let create_formula_is_true : var -> formula
-=fun id -> F_is_true id
+let create_cond_is_true : var -> cond
+=fun v -> Vlang.create_formula_is_true (Vlang.create_exp_var v)
 
-let create_formula_is_none : var -> formula
-=fun id -> F_is_none id
+let create_cond_is_none : var -> cond
+=fun v -> Vlang.create_formula_is_none (Vlang.create_exp_var v)
 
-let create_formula_is_left : var -> formula
-=fun id -> F_is_left id
+let create_cond_is_left : var -> cond
+=fun v -> Vlang.create_formula_is_left (Vlang.create_exp_var v)
 
-let create_formula_is_cons : var -> formula
-=fun id -> F_is_cons id
+let create_cond_is_cons : var -> cond
+=fun v -> Vlang.create_formula_is_cons (Vlang.create_exp_var v)
 
-let create_formula_not : formula -> formula
-=fun f -> F_not f
+let create_cond_not : cond -> cond
+=fun f -> Vlang.create_formula_not f
 
-let rec string_of_formula : formula -> string
-=fun f -> begin
-  match f with
-  | F_true -> "True"
-  | F_false -> "False"
-  | F_is_true id -> Cfg.string_of_ident id
-  | F_is_none id -> "(" ^ (Cfg.string_of_ident id) ^ " == None)"
-  | F_is_left id -> "(" ^ (Cfg.string_of_ident id) ^ " == Left a)"
-  | F_is_cons id -> "(" ^ (Cfg.string_of_ident id) ^ " == { a; <rest> })"
-  | F_and (f1, f2) -> "(" ^ (string_of_formula f1) ^ " && " ^ (string_of_formula f2) ^ ")"
-  | F_or (f1, f2) -> "(" ^ (string_of_formula f1) ^ " && " ^ (string_of_formula f2) ^ ")"
-  | F_not f -> "!" ^ (string_of_formula f)
-  | F_imply (f1, f2) -> "(" ^ (string_of_formula f1) ^ " -> " ^ (string_of_formula f2) ^ ")"
-  | F_iff (f1, f2) -> "(" ^ (string_of_formula f1) ^ " <-> " ^ (string_of_formula f2) ^ ")"
-  | F_forall (vl, f) -> "ForAll " ^ (Core.String.concat ~sep:"," vl) ^ ". " ^ (string_of_formula f)
-  | F_exists (vl, f) -> "Exists " ^ (Core.String.concat ~sep:"," vl) ^ ". " ^ (string_of_formula f)
-end
+let rec string_of_cond : cond -> string
+=fun c -> Vlang.string_of_formula c
 
 
 (*****************************************************************************)
@@ -61,26 +34,27 @@ end
 
 type exp = Cfg.expr
 type inst =
-  | I_assume of formula
-  | I_assign of var * exp
-  | I_skip
+  | BI_assume of cond
+  | BI_assign of var * exp
+  | BI_skip
 
-let create_inst_assume : formula -> inst
-=fun f -> I_assume f
+let create_inst_assume : cond -> inst
+=fun f -> BI_assume f
 
 let create_inst_assign : (var * exp) -> inst
-=fun (id, e) -> I_assign (id, e)
+=fun (id, e) -> BI_assign (id, e)
 
 let create_inst_skip : unit -> inst
-=fun () -> I_skip
+=fun () -> BI_skip
 
 let string_of_inst : inst -> string
 =fun inst -> begin
   match inst with
-  | I_assume f -> "Assume " ^ (string_of_formula f) ^ ";"
-  | I_assign (id, e) -> (Cfg.string_of_ident id) ^ " := " ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ";"
-  | I_skip -> "Skip;"
+  | BI_assume f -> "Assume " ^ (string_of_cond f) ^ ";"
+  | BI_assign (id, e) -> (Cfg.string_of_ident id) ^ " := " ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ";"
+  | BI_skip -> "Skip;"
 end
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -89,8 +63,10 @@ end
 (*****************************************************************************)
 
 type vertex = Cfg.vertex
+type formula = Vlang.t
+
 type inv = { id: vertex; formula: formula option }
-type inv_map = (vertex, formula) Core.Hashtbl.t
+and inv_map = (vertex, formula) Core.Hashtbl.t
 
 let create_dummy_inv : vertex -> inv
 =fun vtx -> { id=vtx; formula=None }
@@ -98,7 +74,7 @@ let create_dummy_inv : vertex -> inv
 let string_of_inv : inv -> string
 =fun inv -> begin
   if Option.is_none inv.formula then (Cfg.string_of_vertex inv.id) ^ ": None"
-  else (Cfg.string_of_vertex inv.id) ^ ": " ^ (string_of_formula (Option.get inv.formula))
+  else (Cfg.string_of_vertex inv.id) ^ ": " ^ (Vlang.string_of_formula (Option.get inv.formula))
 end
 
 
