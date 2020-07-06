@@ -92,6 +92,7 @@ and expr ppf = function
   | E_append (v_1, v_2) -> fprintf ppf "append(%s, %s)" v_1 v_2
   | E_phi (v_1, v_2) -> fprintf ppf "phi(%s, %s)" v_1 v_2
   | E_special_nil_list -> fprintf ppf "[]"
+  | E_itself v_1 -> fprintf ppf "%s" v_1
 
 let rec stmt i ppf n =
   match n.stm with

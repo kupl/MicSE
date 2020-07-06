@@ -84,6 +84,9 @@ and expr =
   | E_append of string * string
   | E_special_nil_list
   | E_phi of string * string
+  | E_itself of string  (* E_itself is not defined at Michelson, but added for MicSE internal usage. 
+                            "Cfg_assign (new_varname, (E_itself old_varname)" == "new_varname = old_varname"
+                        *)
 
 and stmt_t =
   | S_seq of stmt * stmt
