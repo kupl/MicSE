@@ -5,8 +5,10 @@ open ProverLib
 
 let rec convert : Bp.t -> Vlang.t
 =fun bp -> begin
-  let _ = bp in
-  VF_false
+  let f, g = ((Option.get bp.pre.formula), (Option.get bp.post.formula)) in
+  let f', g' = Core.List.fold_left bp.body ~init:(f, g) ~f:sp in
+  let vc = Vlang.create_formula_imply f' g' in
+  vc
 end
 
 and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
