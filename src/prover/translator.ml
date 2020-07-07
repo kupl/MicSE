@@ -897,6 +897,160 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
 
   | I_empty_big_map (t1, t2) -> template_of_push_value "I_empty_big_map" counter (in_v, out_v) (E_empty_big_map (t1, t2), Michelson.Adt.T_big_map (t1, t2)) (cfg, stack_info)
 
+  | I_map i ->
+    (*  flow        : (in_v -> result_init -> map_v) & (map_v [If_false]-> out_v)
+                      & (map_v [If_true]-> map_setup_1 -> map_setup_2 -> map_body_begin)
+                      & (map_body_begin -> (i ...) -> map_body_end)
+                          <CASE-LIST> & (map_body_end -> map_update_result -> map_sync_begin)
+                          <CASE-MAP>  & (map_body_end -> map_get_key -> map_update_somev -> map_update_result -> map_sync_begin)
+                      & (map_sync_begin -> (assigns ...) -> map_v)
+        variables   : var-1     : list or map which placed on top of the stack at the beginning of this process.
+                      newvar-r  : list or map which will contain the result of the map instruction.
+                      newvar    : head of list or head of map. In this context, the head of map meaning the <key, value> pair.
+                      newvar-k  : <CASE-MAP> equal to "car newvar"
+                      apply-r   : result value made from each mapping-loop
+                      apply-sr  : E_some (apply-r)
+        vertex_info : in_v                -> Cfg_skip
+                      result_init         -> "Cfg_assign (newvar-r, E_nil t1)" or "Cfg_assign (newvar-r, E_empty_map (t1_k, t1_v)"
+                      map_v               -> Cfg_map var-1
+                      map_setup_1         -> Cfg_assign (var-1, (E_tl var-1))
+                      map_setup_2         -> Cfg_assign (newvar, (E_hd var-1))
+                      map_body_begin      -> decided by i
+                      map_body_end        -> Cfg_skip
+                      map_get_key         -> <CASE-MAP>  Cfg_assign (newvar-k, E_car newvar)
+                      map_update_somev    -> <CASE-MAP>  Cfg_assign (apply-sr, E_some apply-r)
+                      map_update_result   -> <CASE-LIST> Cfg_assign (newvar-r, (E_cons (apply-r, newvar-r)))
+                      map_update_result   -> <CASE-MAP>  Cfg_assign (newvar-r, (E_update (newvar-k, apply-sr, newvar-r)))
+                      map_sync_begin      -> Cfg_skip
+        type_info (list) :
+                      var-1     -> list t1
+                      newvar    -> t1
+                      newvar-r  -> list t_i (In this context, t_i is the result type of the instruction i produces)
+                      apply-r   -> t_i
+        type_info (map)  :
+                      var-1     -> map (t1_k, t1_v)
+                      newvar    -> pair (t1_k, t1_v)
+                      newvar-r  -> map (t1_k, t_i)
+                      newvar-k  -> t1_k
+                      apply-r   -> t_i
+                      apply-sr  -> option t_i
+        stack_info  : top element (list or map) of the stack will be changed into mapped element (list or map)
+    *)
+    (* sugar functions *)
+    let nvtx () : vertex = new_vtx counter in
+    let addvtx vtx flw : G.t = G.add_vertex flw vtx in
+    let addedg v1 v2 flw : G.t = G.add_edge flw v1 v2 in
+    let addedg_e e flw : G.t = G.add_edge_e flw e in
+    (* gather infos *)
+    let topvar_name = Core.List.hd_exn stack_info in
+    let (newvar_name, newvar_result_name) = (new_var counter, new_var counter) in
+    let container_typ = map_find "inst_to_cfg : I_map : container_typ" cfg.type_info topvar_name in
+    let elem_typ = begin
+      match get_d container_typ with
+      | T_list ty -> ty
+      | T_map (tk, tv) -> gen_t (Michelson.Adt.T_pair (tk, tv))
+      | _ -> fail "inst_to_cfg : I_map : elem_typ : type_error"
+    end in
+    (* construct cfg - up to map_body_end *)
+    (* exception: the type-info of the "newvar_result_name" and the vertex-info of "result_init" will be updated after "i" converted into Cfg. *)
+    let (map_v, result_init, map_setup_1, map_setup_2, map_body_begin, map_body_end) = (nvtx (), nvtx (), nvtx (), nvtx (), nvtx (), nvtx ()) in
+    let flow_vtx_added_to_map_body_end = begin
+      cfg.flow |> addvtx map_v |> addvtx result_init |> addvtx map_setup_1 |> addvtx map_setup_2 |> addvtx map_body_begin |> addvtx map_body_end
+    end in
+    let flow_edg_added_to_map_body_begin = begin
+      let t_edg = G.E.create map_v If_true map_setup_1 in
+      let f_edg = G.E.create map_v If_false out_v in
+      flow_vtx_added_to_map_body_end |> addedg in_v result_init |> addedg result_init map_v
+      |> addedg_e f_edg |> addedg_e t_edg 
+      |> addedg map_setup_1 map_setup_2 |> addedg map_setup_2 map_body_begin
+    end in
+    let vertex_info_1 = add_skip_vinfo "I_map : vertex_info_1" cfg.vertex_info in_v in
+    let vertex_info_2 = map_add "inst_to_cfg : I_map : vertex_info_2" vertex_info_1 map_v (Cfg_map topvar_name) in
+    let vertex_info_3 = map_add "inst_to_cfg : I_map : vertex_info_3" vertex_info_2 map_setup_1 (Cfg_assign (topvar_name, E_tl topvar_name)) in
+    let vertex_info_4 = map_add "inst_to_cfg : I_map : vertex_info_4" vertex_info_3 map_setup_2 (Cfg_assign (newvar_name, E_hd topvar_name)) in
+    let vertex_info_5 = add_skip_vinfo "I_map : vertex_info_5" vertex_info_4 map_body_end in
+    let type_info_1   = map_add "inst_to_cfg : I_map : type_info_1"   cfg.type_info newvar_name elem_typ in
+    let cfg_to_map_body_begin = {cfg with flow=flow_edg_added_to_map_body_begin; vertex_info=vertex_info_5; type_info=type_info_1;} in
+    let stack_info_to_map_body_begin = newvar_name :: (Core.List.tl_exn stack_info) in
+    let (cfg_to_map_body_end, stack_info_to_map_body_end) = inst_to_cfg counter (map_body_begin, map_body_end) i (cfg_to_map_body_begin, stack_info_to_map_body_begin) in
+    (* construct cfg - after map_body_end *)
+    (* the variable "newvar_result_name" and the vertex "result_init" will be dealed here. *)
+    let cfg_mbe = cfg_to_map_body_end in
+    let stack_info_mbe = stack_info_to_map_body_end in
+    let apply_r = Core.List.hd_exn stack_info_mbe in
+    let result_typ = map_find "inst_to_cfg : I_map : result_typ" cfg_mbe.type_info apply_r in
+    let (result_container_typ, result_container_init_expr) = begin
+      match get_d container_typ with
+      | Michelson.Adt.T_list _ -> (Michelson.Adt.T_list result_typ), (Tezla.Adt.E_nil result_typ)
+      | Michelson.Adt.T_map (kt, _) -> (Michelson.Adt.T_map (kt, result_typ)), (E_empty_map (kt, result_typ))
+      | _ -> fail "inst_to_cfg : I_map : result_container_typ : match-fail"
+    end in
+    let type_info_mbe_1   = map_add "inst_to_cfg : I_map : type_info_mbe_1"   cfg_mbe.type_info   newvar_result_name (gen_t result_container_typ) in
+    let vertex_info_mbe_1 = map_add "inst_to_cfg : I_map : vertex_info_mbe_1" cfg_mbe.vertex_info result_init (Cfg_assign (newvar_result_name, result_container_init_expr)) in
+    let (cfg_to_map_update_result, stack_info_to_map_update_result, map_sync_begin) = begin
+      match get_d container_typ with
+      | Michelson.Adt.T_list _ ->
+        let gen_errmsg s : string = "inst_to_cfg : I_map : T_list : " ^ s in
+        let (map_update_result, map_sync_begin) = (nvtx (), nvtx ()) in
+        let flow_mbe_vtx_added = begin
+          cfg_mbe.flow |> addvtx map_update_result |> addvtx map_sync_begin
+        end in
+        let flow_mbe_edg_added = begin
+          flow_mbe_vtx_added |> addedg map_body_end map_update_result |> addedg map_update_result map_sync_begin
+        end in
+        let vertex_info_mbe_2 = map_add (gen_errmsg "vertex_info_mbe_2") vertex_info_mbe_1 map_update_result (Cfg_assign (newvar_result_name, (E_cons (apply_r, newvar_result_name)))) in
+        let vertex_info_mbe_3 = add_skip_vinfo (gen_errmsg "vertex_info_mbe_3") vertex_info_mbe_2 map_sync_begin in
+        ({cfg_mbe with flow=flow_mbe_edg_added; vertex_info=vertex_info_mbe_3; type_info=type_info_mbe_1;}, (Core.List.tl_exn stack_info_mbe), map_sync_begin)
+      | Michelson.Adt.T_map (kt, _) ->
+        let gen_errmsg s : string = "inst_to_cfg : I_map : T_map : " ^ s in
+        let (map_get_key, map_update_somev, map_update_result, map_sync_begin) = (nvtx (), nvtx (), nvtx (), nvtx ()) in
+        let flow_mbe_vtx_added = begin
+          cfg_mbe.flow |> addvtx map_get_key |> addvtx map_update_somev |> addvtx map_update_result |> addvtx map_sync_begin
+        end in
+        let flow_mbe_edg_added = begin
+          flow_mbe_vtx_added |> addedg map_body_end map_get_key |> addedg map_get_key map_update_somev |> addedg map_update_somev map_update_result |> addedg map_update_result map_sync_begin
+        end in
+        let (keyvar, apply_sr) = (new_var counter, new_var counter) in
+        let vertex_info_mbe_2 = map_add (gen_errmsg "vertex_info_mbe_2") vertex_info_mbe_1 map_get_key (Cfg_assign (keyvar, E_car newvar_name)) in
+        let vertex_info_mbe_3 = map_add (gen_errmsg "vertex_info_mbe_3") vertex_info_mbe_2 map_update_somev (Cfg_assign (apply_sr, E_some apply_r)) in
+        let vertex_info_mbe_4 = map_add (gen_errmsg "vertex_info_mbe_4") vertex_info_mbe_3 map_update_result (Cfg_assign (newvar_result_name, (E_update (keyvar, apply_sr, newvar_result_name)))) in
+        let vertex_info_mbe_5 = add_skip_vinfo (gen_errmsg "vertex_info_mbe_5") vertex_info_mbe_4 map_sync_begin in
+        let type_info_mbe_2   = map_add (gen_errmsg "type_info_mbe_2")   type_info_mbe_1   apply_sr (gen_t (Michelson.Adt.T_option result_typ)) in
+        let type_info_mbe_3   = map_add (gen_errmsg "type_info_mbe_3")   type_info_mbe_2   keyvar   kt                    in
+        ({cfg_mbe with flow=flow_mbe_edg_added; vertex_info=vertex_info_mbe_5; type_info=type_info_mbe_3;}, (Core.List.tl_exn stack_info_mbe), map_sync_begin)
+      | _ -> fail "inst_to_cfg : I_map : cfg_to_map_update_result : match-fail"
+    end in
+    (* Synchronize stack variables *)
+    (* Add vertices linearly for every name-notequal stack elements, set vertex_info like (Cfg_assign (before-stack-var-name, (E_itself after-stack-var-name))) *)
+    let fold2_func : (Cfg.t * Cfg.vertex) -> string -> string -> (Cfg.t * Cfg.vertex)
+    = fun (acc_cfg, acc_in_v) bstack_var astack_var -> begin
+      if (bstack_var = astack_var) then (acc_cfg, acc_in_v)
+      else begin
+        let nv = nvtx () in
+        let flow_update = begin acc_cfg.flow |> addvtx nv |> addedg acc_in_v nv end in
+        let vi_update = map_add ("inst_to_cfg : I_map : fold2_func : vi_update") acc_cfg.vertex_info nv (Cfg_assign (bstack_var, (E_itself astack_var))) in
+        ({acc_cfg with flow=flow_update; vertex_info=vi_update;}, nv)
+      end
+    end in
+    let cfg_final = begin 
+      match Core.List.fold2 (Core.List.tl_exn stack_info) (stack_info_to_map_update_result) ~init:(cfg_to_map_update_result, map_sync_begin) ~f:fold2_func with
+      | Core.List.Or_unequal_lengths.Ok (cfg_r, last_in_v) -> begin
+          let flow_update = cfg_r.flow |> addedg last_in_v map_v in
+          {cfg_r with flow=flow_update;}
+        end
+      | Core.List.Or_unequal_lengths.Unequal_lengths -> fail "inst_to_cfg : I_map : cfg_final : unequal_lengths"
+    end in
+    (cfg_final, (newvar_result_name :: stack_info))
+    (* TODO *)
+
+
+
+
+
+
+
+
+
   | _ -> fail "inst_to_cfg : not implemented." (* TODO *)
 end
   
