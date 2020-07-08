@@ -1041,9 +1041,197 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
       | Core.List.Or_unequal_lengths.Unequal_lengths -> fail "inst_to_cfg : I_map : cfg_final : unequal_lengths"
     end in
     (cfg_final, (newvar_result_name :: stack_info))
-    (* TODO *)
+    
+  | I_iter i ->
+    (*  flow        : (in_v -> iter_v) & (iter_v [If_false]-> out_v)
+                      & (iter_v [If_true]-> iter_setup_1) & (iter_setup_1 -> iter_setup_2 -> iter_body_begin)
+                      & (iter_body_begin -> (i ...) -> iter_body_end)
+                      & (iter_body_end -> (assigns ...) -> iter_v)
+        variables   : var-1     : list/set/map which placed on the top of the stack at the beginning of this process.
+                      elem      : indicates the element of list/set/map
+        vertex_info : in_v            -> Cfg_skip
+                      iter_v          -> Cfg_init var-1
+                      iter_setup_1    -> Cfg_assign (var-1, E_tl var-1)
+                      iter_setup_2    -> Cfg_assign (elem,  E_hd var-1)
+                      iter_body_begin -> decided by i
+                      iter_body_end   -> Cfg_skip
+        type_info   : var-1     -> list(t1) || set(t1)  || map(t1_k, t1_v)
+                      elem      -> t1       || t1       || pair(t1_k, t1_v)
+        stack_info  : top element will be removed
+    *)
+    (* Unlike MAP instruction, ITER instruction has a single flow scheme for List, Set, and Map argument types. *)
+    (* sugar functions *)
+    let nvtx () : vertex = new_vtx counter in
+    let addvtx vtx flw : G.t = G.add_vertex flw vtx in
+    let addedg v1 v2 flw : G.t = G.add_edge flw v1 v2 in
+    let addedg_e e flw : G.t = G.add_edge_e flw e in
+    let gen_errmsg s : string = ("inst_to_cfg : I_iter : " ^ s) in
+    (* construct cfg - except "i" and "assigns" *)
+    let (iter_v, iter_setup_1, iter_setup_2, iter_body_begin, iter_body_end) = (nvtx (), nvtx (), nvtx (), nvtx (), nvtx ()) in
+    let var_1 = Core.List.hd_exn stack_info in
+    let elem  = new_var counter in
+    let tl_stack_info = Core.List.tl_exn stack_info in
+    let (_, elemtyp) = begin
+      let open Michelson.Adt in
+      let t = map_find (gen_errmsg "vartyp-elemtyp : t") cfg.type_info var_1 in
+      match get_d t with
+      | T_list t1       ->  (t, t1)
+      | T_set t1        ->  (t, t1)
+      | T_map (tk, tv)  ->  (t, gen_t (T_pair (tk, tv)))
+      | _ -> fail (gen_errmsg "vartyp-elemtyp : match-failed")
+    end in
+    let flow_vtx_added_outline = begin
+      cfg.flow |> addvtx iter_v |> addvtx iter_setup_1 |> addvtx iter_setup_2 |> addvtx iter_body_begin |> addvtx iter_body_end
+    end in
+    let flow_edg_added_outline = begin
+      let f_edg = G.E.create iter_v If_false out_v in
+      let t_edg = G.E.create iter_v If_true iter_setup_1 in
+      flow_vtx_added_outline |> addedg in_v iter_v |> addedg_e f_edg |> addedg_e t_edg 
+      |> addedg iter_setup_1 iter_setup_2 |> addedg iter_setup_2 iter_body_begin
+    end in
+    let vertex_info_ol_1 = add_skip_vinfo (gen_errmsg "vertex_info_ol_1") cfg.vertex_info in_v in
+    let vertex_info_ol_2 = map_add (gen_errmsg "vertex_info_ol_2") vertex_info_ol_1 iter_v (Cfg_iter var_1) in
+    let vertex_info_ol_3 = map_add (gen_errmsg "vertex_info_ol_3") vertex_info_ol_2 iter_setup_1 (Cfg_assign (var_1, E_tl var_1)) in
+    let vertex_info_ol_4 = map_add (gen_errmsg "vertex_info_ol_4") vertex_info_ol_3 iter_setup_2 (Cfg_assign (elem,  E_hd var_1)) in
+    let vertex_info_ol_5 = add_skip_vinfo (gen_errmsg "vertex_info_ol_5") vertex_info_ol_4 iter_body_end in
+    let type_info_ol_1   = map_add (gen_errmsg "type_info_ol_1") cfg.type_info elem elemtyp in
+    let stack_info_ol_1  = elem :: tl_stack_info in
+    let cfg_outline      = {cfg with flow=flow_edg_added_outline; vertex_info=vertex_info_ol_5; type_info=type_info_ol_1;} in
+    (* construct cfg - add about "i" *)
+    let (cfg_ol_end, stack_info_ol_end) = inst_to_cfg counter (iter_body_begin, iter_body_end) i (cfg_outline, stack_info_ol_1) in
+    (* construct cfg - add about "assigns" (* Synchronize stack variables *) *)
+    (* Add vertices linearly for every name-notequal stack elements, set vertex_info like (Cfg_assign (before-stack-var-name, (E_itself after-stack-var-name))) *)
+    let fold2_func : (Cfg.t * Cfg.vertex) -> string -> string -> (Cfg.t * Cfg.vertex)
+    = fun (acc_cfg, acc_in_v) bstack_var astack_var -> begin
+      if (bstack_var = astack_var) then (acc_cfg, acc_in_v)
+      else begin
+        let nv = nvtx () in
+        let flow_update = begin acc_cfg.flow |> addvtx nv |> addedg acc_in_v nv end in
+        let vi_update = map_add ("inst_to_cfg : I_iter : fold2_func : vi_update") acc_cfg.vertex_info nv (Cfg_assign (bstack_var, (E_itself astack_var))) in
+        ({acc_cfg with flow=flow_update; vertex_info=vi_update;}, nv)
+      end
+    end in
+    let cfg_final = begin 
+      match Core.List.fold2 tl_stack_info stack_info_ol_end ~init:(cfg_ol_end, iter_body_end) ~f:fold2_func with
+      | Core.List.Or_unequal_lengths.Ok (cfg_r, last_in_v) -> begin
+          let flow_update = cfg_r.flow |> addedg last_in_v iter_v in
+          {cfg_r with flow=flow_update;}
+        end
+      | Core.List.Or_unequal_lengths.Unequal_lengths -> fail "inst_to_cfg : I_iter : cfg_final : unequal_lengths"
+    end in
+    (cfg_final, tl_stack_info)
+    
+  | I_mem ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : var-1   : top element of the stack
+                      var-2   : 2nd top element of the stack
+                      result  : mem operation result value
+        vertex_info : in_v        -> Cfg_skip
+                      new vertex  -> Cfg_assign (result, E_mem (var-1, var-2))
+        type_info   : var-1   : t1
+                      var-2   : set(t1) / map (t1, tv) / big_map (t1, tv)
+                      result  : bool
+        stack_info  : pop two elements and push "result"
+    *)
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let result_var = new_var counter in 
+    let (var_1, var_2, tltl_stack_info) = begin 
+      let (hdl, tltl) = Core.List.split_n stack_info 2 in (Core.List.hd_exn hdl, Core.List.nth_exn hdl 1, tltl) 
+    end in
+    (* type constraint check *)
+    let _ : unit = begin
+      let open Michelson.Adt in
+      let errmsg_gen s : string = "inst_to_cfg : I_mem : type constraint check : " ^ s in
+      let t1 = map_find (errmsg_gen "t1") cfg.type_info var_1 in
+      let t2 = map_find (errmsg_gen "t2") cfg.type_info var_2 in
+      let t = 
+        match get_d t2 with
+        | T_set (t) -> t 
+        | T_map (tk, _) -> tk
+        | T_big_map (tk, _) -> tk
+        | _ -> fail (errmsg_gen "match failed")
+      in
+      if Adt.is_typ_equal t1 t then () else fail (errmsg_gen "constraint check failed")
+    end in
+    (* construct cfg *)
+    let emsg_gen s : string = "inst_to_cfg : I_mem : " ^ s in
+    let vinfo_0 = map_add (emsg_gen "vinfo_0") cfg.vertex_info  in_v  Cfg_skip in
+    let vinfo_1 = map_add (emsg_gen "vinfo_1") vinfo_0          mid_v (Cfg_assign (result_var, E_mem (var_1, var_2))) in
+    let tinfo_1 = map_add (emsg_gen "tinfo_1") cfg.type_info result_var (gen_t Michelson.Adt.T_bool) in
+    ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (result_var :: tltl_stack_info))
 
-
+  | I_get ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : var-1   : top element of the stack
+                      var-2   : 2nd top element of the stack
+                      result  : get operation result value
+        vertex_info : in_v        -> Cfg_skip
+                      new vertex  -> Cfg_assign (result, E_get (var-1, var-2))
+        type_info   : var-1   : tk
+                      var-2   : map (tk, tv) / big_map (tk, tv)
+                      result  : option (tv)
+        stack_info  : pop two elements and push "result"
+    *)
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let result_var = new_var counter in
+    let (var_1, var_2, tltl_stack_info) = begin
+      let (hdl, tltl) = Core.List.split_n stack_info 2 in (Core.List.hd_exn hdl, Core.List.nth_exn hdl 1, tltl) 
+    end in
+    (* type constraint check *)
+    let tc_errmsg_gen s : string = "inst_to_cfg : I_get : type constraint check : " ^ s in
+    let t1 = map_find (tc_errmsg_gen "t1") cfg.type_info var_1 in
+    let t2 = map_find (tc_errmsg_gen "t2") cfg.type_info var_2 in
+    let (tk, tv) = begin
+      match get_d t2 with
+      | T_map (tk, tv) -> (tk, tv)
+      | T_big_map (tk, tv) -> (tk, tv)
+      | _ -> fail (tc_errmsg_gen "match failed")
+    end in
+    let _ : unit = if Adt.is_typ_equal t1 tk then () else fail (tc_errmsg_gen "constraint check failed") in
+    (* construct cfg *)
+    let emsg_gen s : string = "inst_to_cfg : I_get : " ^ s in
+    let vinfo_0 = map_add (emsg_gen "vinfo_0") cfg.vertex_info in_v Cfg_skip in
+    let vinfo_1 = map_add (emsg_gen "vinfo_1") vinfo_0 mid_v (Cfg_assign (result_var, E_get (var_1, var_2))) in
+    let tinfo_1 = map_add (emsg_gen "tinfo_1") cfg.type_info result_var (gen_t (Michelson.Adt.T_option tv)) in
+    ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (result_var :: tltl_stack_info))
+    
+  | I_update ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : var-1   : top element of the stack
+                      var-2   : 2nd top element of the stack
+                      var-3   : 3rd top element of the stack
+                      result  : get operation result value
+        vertex_info : in_v        -> Cfg_skip
+                      new vertex  -> Cfg_assign (result, E_update (var-1, var-2, var-3))
+        type_info   : var-1   : tk
+                      var-2   : bool / option (tv) / option (tv)
+                      var-2   : set (tk) / map (tk, tv) / big_map (tk, tv)
+                      result  : set (tk) / map (tk, tv) / big_map (tk, tv)
+        stack_info  : pop three elements and push "result"
+    *)
+    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
+    let result_var = new_var counter in
+    let (var_1, var_2, var_3, tl3_stack_info) = begin
+      let (hdl, tl3) = Core.List.split_n stack_info 3 in (Core.List.hd_exn hdl, Core.List.nth_exn hdl 1, Core.List.nth_exn hdl 2, tl3)
+    end in
+    (* type constraint check & make rty *)
+    let rty = begin
+      let open Michelson.Adt in
+      let tc_emsg_gen s : string = "inst_to_cfg : I_update : type constraint check : " ^ s in
+      let mfti s v = map_find (tc_emsg_gen s) cfg.type_info v in
+      let t1 = mfti "t1" var_1 in
+      match (get_d (mfti "t2" var_2), get_d (mfti "t3" var_3)) with
+      | T_bool,         T_set (tk)          when (Adt.is_typ_equal t1 tk)                             -> T_set (tk)
+      | T_option (tv1), T_map (tk, tv2)     when (Adt.is_typ_equal t1 tk && Adt.is_typ_equal tv1 tv2) -> T_map (tk, tv2)
+      | T_option (tv1), T_big_map (tk, tv2) when (Adt.is_typ_equal t1 tk && Adt.is_typ_equal tv1 tv2) -> T_big_map (tk, tv2)
+      | _ -> fail (tc_emsg_gen "match failed")
+    end in
+    (* construct cfg *)
+    let emsg_gen s : string = "inst_to_cfg : I_update : " ^ s in
+    let vinfo_0 = map_add (emsg_gen "vinfo_0") cfg.vertex_info in_v Cfg_skip in
+    let vinfo_1 = map_add (emsg_gen "vinfo_1") vinfo_0 mid_v (Cfg_assign (result_var, E_update (var_1, var_2, var_3))) in
+    let tinfo_1 = map_add (emsg_gen "tinfo_1") cfg.type_info result_var (gen_t rty) in
+    ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (result_var :: tl3_stack_info))
 
 
 
