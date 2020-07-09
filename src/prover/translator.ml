@@ -84,13 +84,9 @@ let of_tezlaCfg tcfg =
 (*****************************************************************************)
 (*****************************************************************************)
 
-type ctr = int ref (* counter *)
-type cfgcon_ctr = {   (* counter for cfg construction *)
-  vertex_counter : ctr;
-  var_counter : ctr;
-}
-let new_vtx : cfgcon_ctr -> Core.Int.t = fun c -> (incr c.vertex_counter; !(c.vertex_counter))
-let new_var : cfgcon_ctr -> Core.String.t = fun c -> (incr c.var_counter; "v" ^ (string_of_int (!(c.var_counter))))
+type cfgcon_ctr = Cfg.cfgcon_ctr
+(*let new_vtx : cfgcon_ctr -> Core.Int.t = fun c -> (incr c.vertex_counter; !(c.vertex_counter))*)
+(*let new_var : cfgcon_ctr -> Core.String.t = fun c -> (incr c.var_counter; "v" ^ (string_of_int (!(c.var_counter))))*)
 
 
 let gen_t : 'a -> 'a Michelson.Adt.t = fun x -> {pos = Michelson.Location.Unknown; d = x;}
@@ -99,17 +95,9 @@ let get_d : 'a Michelson.Adt.t -> 'a = fun x -> x.Michelson.Adt.d
 
 
 let map_add : string -> ('k, 'v) Core.Map.Poly.t -> 'k -> 'v -> ('k, 'v) Cfg.CPMap.t
-=fun caller_name m k v -> begin
-  match Core.Map.Poly.add m ~key:k ~data:v with
-  | `Ok m' -> m'
-  | `Duplicate -> fail (caller_name ^ " : map_add : duplicated entry.")
-end
+=fun caller_name m k v -> Cfg.t_map_add ~errtrace:caller_name m k v
 let map_find : string -> ('k, 'v) Core.Map.Poly.t -> 'k -> 'v
-=fun caller_name m k -> begin
-  match Core.Map.Poly.find m k with
-  | Some v -> v
-  | None -> fail (caller_name ^ " : map_find : not found.")
-end
+=fun caller_name m k -> Cfg.t_map_find ~errtrace:caller_name m k
 
 (* typical flow manipulation procedure *)
 let add_typical_vertex : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Cfg.t -> (Cfg.G.t * Cfg.vertex)
@@ -1233,8 +1221,124 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     let tinfo_1 = map_add (emsg_gen "tinfo_1") cfg.type_info result_var (gen_t rty) in
     ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (result_var :: tl3_stack_info))
 
+  | I_if (i1, i2) ->
+    (*  flow        : (in_v [If_true]-> i1_begin) & (in_v [If_false]-> i2_begin)
+                      & (i1_begin -> (i1 ...) -> i1_end) & (i2_begin -> (i2 ...) -> i2_end)
+                      & (i1_end -> (renaming symbols ...) -> out_v) & (i2_end -> (renaming symbols ...) -> out_v)
+        variables   : var-1 : condition boolean variable located at the top of the stack
+        vertex_info : in_v : Cfg_if (var-1)
+                      i1_begin, i2_begin : decided by THEN, ELSE branches.
+                      i1_end, i2_end : Cfg_skip
+        type_info   : no change
+        stack_info  : dramatically renamed at the end.
+    *)
+    (* sugar functions *)
+    let nvtx () : vertex = new_vtx counter in
+    let addvtx vtx flw : G.t = G.add_vertex flw vtx in
+    (*let addedg v1 v2 flw : G.t = G.add_edge flw v1 v2 in*)
+    let addedg_e e flw : G.t = G.add_edge_e flw e in
+    (* set new flow (front) *)
+    let (i1_begin, i1_end, i2_begin, i2_end) = (nvtx (), nvtx (), nvtx (), nvtx ()) in
+    let flow_vtx_added = begin
+      cfg.flow |> addvtx i1_begin |> addvtx i1_end |> addvtx i2_begin |> addvtx i2_end
+    end in
+    let flow_edg_added = begin
+      let true_edg = G.E.create in_v If_true i1_begin in
+      let false_edg = G.E.create in_v If_false i2_begin in
+      flow_vtx_added |> addedg_e true_edg |> addedg_e false_edg
+    end in
+    (* set vertex infos of in_v, i1_end, i2_end *)
+    let var_1 : string = Core.List.hd_exn stack_info in
+    let vertex_info_1 = map_add "inst_to_cfg : I_if : vertex_info_1" cfg.vertex_info in_v (Cfg_if var_1) in
+    let vertex_info_2 = add_skip_vinfo "I_if : vertex_info_2" vertex_info_1 i1_end in
+    let vertex_info_3 = add_skip_vinfo "I_if : vertex_info_3" vertex_info_2 i2_end in
+    let cfg_tb = {cfg with flow=flow_edg_added; vertex_info=vertex_info_3;} in
+    let tl_stack_info = Core.List.tl_exn stack_info in
+    let (cfg_tb_fin, stack_info_tb_fin) = inst_to_cfg counter (i1_begin, i1_end) i1 (cfg_tb, tl_stack_info) in
+    let (cfg_eb_fin, stack_info_eb_fin) = inst_to_cfg counter (i2_begin, i2_end) i2 (cfg_tb_fin, tl_stack_info) in
+    (* merge two stack-infos *)
+    let (cfg_collect, stack_info_collect) = begin
+      merge_two_stack_infos
+        counter
+        "inst_to_cfg : I_if"
+        cfg_eb_fin
+        (stack_info_tb_fin, stack_info_eb_fin)
+        (i1_end, i2_end, out_v, out_v)
+    end in
+    (cfg_collect, stack_info_collect)
 
+  | I_loop i ->
+    (*  flow        : (in_v [If_true]-> body_begin) & (in_v [If_false] -> out_v)
+                      & (body_begin -> (i ...) -> body_end) & (body_end -> (assigns ...) -> in_v)
+        variables   : var-1 : condition boolean variable located at the top of the stack
+        vertex_info : in_v        ->  Cfg_loop (var-1)
+                      body_begin  ->  decided by "i"
+                      body_end    ->  Cfg_skip
+        type_info   : no change
+        stack_info  : top element will be removed.
+        others      : be aware of stack_info scheme when enter "body_begin" and get out of "out_v"
+    *)
+    (* sugar functions *)
+    let nvtx () : vertex = new_vtx counter in
+    let addvtx vtx flw : G.t = G.add_vertex flw vtx in
+    let addedg v1 v2 flw : G.t = G.add_edge flw v1 v2 in
+    let addedg_e e flw : G.t = G.add_edge_e flw e in
+    (* construct cfg *)
+    let (body_begin, body_end) = (nvtx (), nvtx ()) in
+    let var_1 = Core.List.hd_exn stack_info in
+    let tl_stack_info = Core.List.tl_exn stack_info in
+    let flow_vtx_added = begin
+      cfg.flow |> addvtx body_begin |> addvtx body_end
+    end in
+    let flow_edg_added = begin
+      let t_edg = G.E.create in_v If_true body_begin in
+      let f_edg = G.E.create in_v If_false out_v in
+      flow_vtx_added |> addedg_e t_edg |> addedg_e f_edg
+    end in
+    let gen_emsg s : string = "inst_to_cfg : I_loop : " ^ s in
+    let vinfo_1 = map_add (gen_emsg "vinfo_1") cfg.vertex_info in_v (Cfg_loop var_1) in
+    let vinfo_2 = map_add (gen_emsg "vinfo_2") vinfo_1 body_end Cfg_skip in
+    (* fill in the loop body *)
+    let cfg_body = {cfg with flow=flow_edg_added; vertex_info=vinfo_2;} in
+    let (cfg_body_end, stack_info_body_end) = inst_to_cfg counter (body_begin, body_end) i (cfg_body, tl_stack_info) in
+    (* insert Cfg_assigns to sync variable names *)
+    (* Add vertices linearly for every name-notequal stack elements, set vertex_info like (Cfg_assign (before-stack-var-name, (E_itself after-stack-var-name))) *)
+    let fold2_func : (Cfg.t * Cfg.vertex) -> string -> string -> (Cfg.t * Cfg.vertex)
+    = fun (acc_cfg, acc_in_v) bstack_var astack_var -> begin
+      if (bstack_var = astack_var) then (acc_cfg, acc_in_v)
+      else begin
+        let nv = nvtx () in
+        let flow_update = begin acc_cfg.flow |> addvtx nv |> addedg acc_in_v nv end in
+        let vi_update = map_add ("inst_to_cfg : I_loop : fold2_func : vi_update") acc_cfg.vertex_info nv (Cfg_assign (bstack_var, (E_itself astack_var))) in
+        ({acc_cfg with flow=flow_update; vertex_info=vi_update;}, nv)
+      end
+    end in
+    let cfg_final = begin 
+      match Core.List.fold2 stack_info stack_info_body_end ~init:(cfg_body_end, body_end) ~f:fold2_func with
+      | Core.List.Or_unequal_lengths.Ok (cfg_r, last_in_v) -> begin
+          let flow_update = cfg_r.flow |> addedg last_in_v in_v in
+          {cfg_r with flow=flow_update;}
+        end
+      | Core.List.Or_unequal_lengths.Unequal_lengths -> fail "inst_to_cfg : I_loop : cfg_final : unequal_lengths"
+    end in
+    (cfg_final, tl_stack_info)
 
+  (*| I_loop_left i ->*)
+    (*  flow        : (in_v [If_true]-> unwrap_l) & (in_v [If_false]-> unwrap_r -> out_v)
+                      & (unwrap_l -> body_begin -> (i ...) -> body_end -> (assigns ...) -> in_v)
+        variables   : var-1   : condition or-type variable located at the top of the stack
+                      var-ul  : unwrapped left value.
+                      var-ur  : unwrapped right value.
+        vertex_info : in_v        ->  Cfg_loop_left (var-1)
+                      unwrap_l    ->  Cfg_assign (var-ul, E_unlift_or var-1)
+                      unwrap_r    ->  Cfg_assign (var-ur, E_unlift_or var-1)
+                      body_begin  ->  decided by "i"
+                      body_end    ->  Cfg_skip
+        type_info   : var-1   -> or (t1_u)
+                      var-ul  -> t1_u
+                      var-ur  -> t1_u
+        stack_info  : top element will be replaced into var-ur.
+    *)
 
 
 

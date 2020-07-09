@@ -55,8 +55,11 @@ type stmt = TezlaCfg.Node.stmt
   *)
 
 
-(*module IntMap : module type of Core.Map.Make (Core.Int)
-module StringMap : module type of Core.Map.Make (Core.String) *)
+(*****************************************************************************)
+(*****************************************************************************)
+(* Context Flow Graph                                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
 
 module CPMap : module type of Core.Map.Poly
 
@@ -79,3 +82,49 @@ val is_main_entry : t -> vertex -> bool
 val is_main_exit : t -> vertex -> bool
 
 val string_of_ident : ident -> string
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Utilities                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type cfgcon_ctr = { (* counter for cfg construction *)
+  vertex_counter : vertex ref;
+  var_counter : vertex ref;
+}
+
+val new_vtx : cfgcon_ctr -> Core.Int.t
+val new_var : cfgcon_ctr -> Core.String.t
+
+val t_map_add : ?errtrace:string -> ('k, 'v) CPMap.t -> 'k -> 'v -> ('k, 'v) CPMap.t
+val t_map_find : ?errtrace:string -> ('k, 'v) CPMap.t -> 'k -> 'v
+
+val vtx_add : vertex -> t-> t
+val edg_add : (vertex * vertex) -> t-> t
+val tedg_add : (vertex * vertex) -> t -> t
+val fedg_add : (vertex * vertex) -> t -> t
+
+val t_add_vtx   : cfgcon_ctr -> (t * 'a) -> (t * vertex)                                        (* t_add_vtx counter (cfg, _) = (cfg-flow-updated, created-vertex) *)
+val t_add_vtx_2 : cfgcon_ctr -> (t * 'a) -> (t * (vertex * vertex))                             (* t_add_vtx_2 (cfg, _) = (cfg-flow-updated, created-vertices) *)
+val t_add_vtx_3 : cfgcon_ctr -> (t * 'a) -> (t * (vertex * vertex * vertex))
+val t_add_vtx_4 : cfgcon_ctr -> (t * 'a) -> (t * (vertex * vertex * vertex * vertex))
+val t_add_vtx_5 : cfgcon_ctr -> (t * 'a) -> (t * (vertex * vertex * vertex * vertex * vertex))
+
+val t_add_edg   : (vertex * vertex)       -> (t * 'a) -> (t * vertex)                           (* t_add_edg (v1, v2) (cfg, _) = (cfg-(v1->v2)-updated, v2 *)
+val t_add_edgs  : (vertex * vertex) list  -> (t * 'a) -> (t * (vertex list))                    (* t_add_edg (v1, v2)-list (cfg, _) = (cfg-(edges)-updated, v2-list) *)
+val t_add_tedg  : (vertex * vertex)       -> (t * 'a) -> (t * vertex)
+val t_add_fedg  : (vertex * vertex)       -> (t * 'a) -> (t * vertex)
+
+val t_con_edg   : vertex -> (t * vertex) -> (t * vertex)  (* t_con_edg v1 (cfg, v2) = (cfg-(v1->v2)-updated, v2) *)
+val t_con_tedg  : vertex -> (t * vertex) -> (t * vertex)
+val t_con_fedg  : vertex -> (t * vertex) -> (t * vertex)
+
+val t_add_vinfo   : ?errtrace:string  -> (vertex * stmt)      -> (t * 'a) -> (t * vertex)
+val t_add_vinfos  : ?errtrace:string -> (vertex * stmt) list  -> (t * 'a) -> (t * (vertex list))
+
+val t_add_tinfo   : ?errtrace:string  -> (string * typ)       -> (t * 'a) -> (t * string)
+val t_add_tinfos  : ?errtrace:string -> (string * typ) list   -> (t * 'a) -> (t * (string list))
+
+val t_add_nv_tinfo : ?errtrace:string -> cfgcon_ctr -> typ -> (t * 'a) -> (t * string)                                  (* t_add_nv_tinfo errtrace type (cfg, _) = (cfg-tinfo-updated, added-new-var-name) *)

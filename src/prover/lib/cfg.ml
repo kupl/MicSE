@@ -1,3 +1,7 @@
+exception Exn_Cfg of string
+
+let fail s = raise (Exn_Cfg s)
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Graph (Flow)                                                              *)
@@ -89,3 +93,102 @@ let is_main_exit : t -> vertex -> bool
 
 let string_of_ident : ident -> string
 =fun id -> id
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Utilities                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type cfgcon_ctr = { (* counter for cfg construction *)
+  vertex_counter : vertex ref;
+  var_counter : vertex ref;
+}
+
+let new_vtx : cfgcon_ctr -> Core.Int.t = fun c -> (incr c.vertex_counter; !(c.vertex_counter))
+let new_var : cfgcon_ctr -> Core.String.t = fun c -> (incr c.var_counter; "v" ^ (string_of_int (!(c.var_counter))))
+
+let vtx_add : vertex -> t -> t = begin fun v cfg -> {cfg with flow=(G.add_vertex cfg.flow v);} end
+let edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> {cfg with flow=(G.add_edge cfg.flow v1 v2);} end
+let tedg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 If_true v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
+let fedg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 If_false v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
+
+let t_map_add ?(errtrace = "") m k v = begin
+  match Core.Map.Poly.add m ~key:k ~data:v with
+  | `Ok m' -> m'
+  | `Duplicate -> fail (errtrace ^ " : map_add : duplicated entry.")
+end
+let t_map_find ?(errtrace = "") m k = begin
+  match Core.Map.Poly.find m k with
+  | Some v -> v
+  | None -> fail (errtrace ^ " : map_find : not found.")
+end
+
+let t_add_vtx   c (cfg, _) = begin let v = new_vtx c in (vtx_add v cfg, v) end
+let t_add_vtx_2 c (cfg, _) = begin
+  let v1 = new_vtx c in
+  let v2 = new_vtx c in
+  ((cfg |> vtx_add v1 |> vtx_add v2), (v1, v2))
+end
+let t_add_vtx_3 c (cfg, _) = begin
+  let v1 = new_vtx c in
+  let v2 = new_vtx c in
+  let v3 = new_vtx c in
+  ((cfg |> vtx_add v1 |> vtx_add v2 |> vtx_add v3), (v1, v2, v3))
+end
+let t_add_vtx_4 c (cfg, _) = begin
+  let v1 = new_vtx c in
+  let v2 = new_vtx c in
+  let v3 = new_vtx c in
+  let v4 = new_vtx c in
+  ((cfg |> vtx_add v1 |> vtx_add v2 |> vtx_add v3 |> vtx_add v4), (v1, v2, v3, v4))
+end
+let t_add_vtx_5 c (cfg, _) = begin
+  let v1 = new_vtx c in
+  let v2 = new_vtx c in
+  let v3 = new_vtx c in
+  let v4 = new_vtx c in
+  let v5 = new_vtx c in
+  ((cfg |> vtx_add v1 |> vtx_add v2 |> vtx_add v3 |> vtx_add v4 |> vtx_add v5), (v1, v2, v3, v4, v5))
+end
+
+let t_add_edg (v1, v2) (cfg, _) = (edg_add (v1, v2) cfg, v2)
+let t_add_edgs vvlist (cfg, _) = begin 
+  let cf = Core.List.fold vvlist ~init:cfg ~f:(fun acc_cfg (v1, v2) -> edg_add (v1, v2) acc_cfg) in
+  let v2list = (Core.List.unzip vvlist |> Stdlib.snd) in
+  (cf, v2list)
+end
+let t_add_tedg (v1, v2) (cfg, _) = (tedg_add (v1, v2) cfg, v2)
+let t_add_fedg (v1, v2) (cfg, _) = (fedg_add (v1, v2) cfg, v2)
+
+(* tip: use it with t_add_nv_tinfo *)
+let t_con_edg v1 (cfg, v2) = t_add_edg (v1, v2) (cfg, ())
+let t_con_tedg v1 (cfg, v2) = t_add_tedg (v1, v2) (cfg, ())
+let t_con_fedg v1 (cfg, v2) = t_add_fedg (v1, v2) (cfg, ())
+
+let t_add_vinfo ?(errtrace = "") (v, s) (cfg, _) = begin
+  ({cfg with vertex_info=(t_map_add ~errtrace:(errtrace ^ " : t_add_vinfo") cfg.vertex_info v s);}, v)
+end
+let t_add_vinfos ?(errtrace = "") vslist (cfg, _) = begin
+  let et : string = errtrace ^ " : t_add_vinfos" in
+  let (cf, _) : t * vertex = Core.List.fold vslist ~init:(cfg, 1) ~f:(fun (acc_cfg, _) (v, s) -> (t_add_vinfo ~errtrace:et (v, s) (acc_cfg, 1))) in
+  let vlist = (Core.List.unzip vslist |> Stdlib.fst) in
+  (cf, vlist)
+end
+
+let t_add_tinfo ?(errtrace = "") (s, t) (cfg, _) = begin
+  ({cfg with type_info=(t_map_add ~errtrace:(errtrace ^ " : t_add_tinfo") cfg.type_info s t);}, s)
+end
+let t_add_tinfos ?(errtrace = "") stlist (cfg, _) = begin
+  let et : string = errtrace ^ " : t_add_tinfos" in
+  let (cf, _) = Core.List.fold stlist ~init:(cfg, "") ~f:(fun (acc_cfg, _) (s, t) -> (t_add_tinfo ~errtrace:et (s, t) (acc_cfg, ""))) in
+  let slist = (Core.List.unzip stlist |> Stdlib.fst) in
+  (cf, slist)
+end
+
+let t_add_nv_tinfo ?(errtrace = "") counter ty (cfg, _) = begin
+  let et : string = errtrace ^ " : t_add_nv_tinfo" in
+  let s = new_var counter in
+  t_add_tinfo ~errtrace:et (s, ty) (cfg, ())
+end
