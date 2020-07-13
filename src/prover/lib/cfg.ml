@@ -176,6 +176,7 @@ let t_add_vinfos ?(errtrace = "") vslist (cfg, _) = begin
   let vlist = (Core.List.unzip vslist |> Stdlib.fst) in
   (cf, vlist)
 end
+let t_add_vinfo_now ?(errtrace = "") s (cfg, v) = begin t_add_vinfo ~errtrace:errtrace (v, s) (cfg, ()) end
 
 let t_add_tinfo ?(errtrace = "") (s, t) (cfg, _) = begin
   ({cfg with type_info=(t_map_add ~errtrace:(errtrace ^ " : t_add_tinfo") cfg.type_info s t);}, s)

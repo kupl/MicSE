@@ -123,8 +123,9 @@ val t_con_fedg  : vertex -> (t * vertex) -> (t * vertex)
 
 val t_add_vinfo   : ?errtrace:string  -> (vertex * stmt)      -> (t * 'a) -> (t * vertex)
 val t_add_vinfos  : ?errtrace:string -> (vertex * stmt) list  -> (t * 'a) -> (t * (vertex list))
+val t_add_vinfo_now : ?errtrace:string -> stmt -> (t * vertex) -> (t * vertex)
 
 val t_add_tinfo   : ?errtrace:string  -> (string * typ)       -> (t * 'a) -> (t * string)
 val t_add_tinfos  : ?errtrace:string -> (string * typ) list   -> (t * 'a) -> (t * (string list))
 
-val t_add_nv_tinfo : ?errtrace:string -> cfgcon_ctr -> typ -> (t * 'a) -> (t * string)                                  (* t_add_nv_tinfo errtrace type (cfg, _) = (cfg-tinfo-updated, added-new-var-name) *)
+val t_add_nv_tinfo : ?errtrace:string -> cfgcon_ctr -> typ -> (t * 'a) -> (t * string)          (* t_add_nv_tinfo errtrace type (cfg, _) = (cfg-tinfo-updated, added-new-var-name) *)
