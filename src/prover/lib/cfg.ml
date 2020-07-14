@@ -162,11 +162,6 @@ end
 let t_add_tedg (v1, v2) (cfg, _) = (tedg_add (v1, v2) cfg, v2)
 let t_add_fedg (v1, v2) (cfg, _) = (fedg_add (v1, v2) cfg, v2)
 
-(* tip: use it with t_add_nv_tinfo *)
-let t_con_edg v1 (cfg, v2) = t_add_edg (v1, v2) (cfg, ())
-let t_con_tedg v1 (cfg, v2) = t_add_tedg (v1, v2) (cfg, ())
-let t_con_fedg v1 (cfg, v2) = t_add_fedg (v1, v2) (cfg, ())
-
 let t_add_vinfo ?(errtrace = "") (v, s) (cfg, _) = begin
   ({cfg with vertex_info=(t_map_add ~errtrace:(errtrace ^ " : t_add_vinfo") cfg.vertex_info v s);}, v)
 end
@@ -193,3 +188,16 @@ let t_add_nv_tinfo ?(errtrace = "") counter ty (cfg, _) = begin
   let s = new_var counter in
   t_add_tinfo ~errtrace:et (s, ty) (cfg, ())
 end
+
+let t_con_vtx_back      v1 (cfg, v2) = (edg_add  (v1, v2) cfg, v2)
+let t_con_vtx_front     v2 (cfg, v1) = (edg_add  (v1, v2) cfg, v2)
+let t_con_vtx_backr     v1 (cfg, v2) = (edg_add  (v1, v2) cfg, v1)
+let t_con_vtx_frontr    v2 (cfg, v1) = (edg_add  (v1, v2) cfg, v1)
+let t_con_vtx_back_t    v1 (cfg, v2) = (tedg_add (v1, v2) cfg, v2)
+let t_con_vtx_front_t   v2 (cfg, v1) = (tedg_add (v1, v2) cfg, v2)
+let t_con_vtx_backr_t   v1 (cfg, v2) = (tedg_add (v1, v2) cfg, v1)
+let t_con_vtx_frontr_t  v2 (cfg, v1) = (tedg_add (v1, v2) cfg, v1)
+let t_con_vtx_back_f    v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v2)
+let t_con_vtx_front_f   v2 (cfg, v1) = (fedg_add (v1, v2) cfg, v2)
+let t_con_vtx_backr_f   v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v1)
+let t_con_vtx_frontr_f  v2 (cfg, v1) = (fedg_add (v1, v2) cfg, v1)

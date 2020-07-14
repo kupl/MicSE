@@ -100,6 +100,7 @@ let map_find : string -> ('k, 'v) Core.Map.Poly.t -> 'k -> 'v
 =fun caller_name m k -> Cfg.t_map_find ~errtrace:caller_name m k
 
 (* typical flow manipulation procedure *)
+(*
 let add_typical_vertex : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Cfg.t -> (Cfg.G.t * Cfg.vertex)
 = let open Cfg in
   fun counter (in_v, out_v) cfg -> begin
@@ -107,6 +108,17 @@ let add_typical_vertex : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Cfg.t -> (Cf
   let flow_1 = G.add_vertex cfg.flow mid_v in
   let flow_2 = G.add_edge (G.add_edge flow_1 in_v mid_v) mid_v out_v in
   (flow_2, mid_v)
+end
+*)
+let add_typical_vertex : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Cfg.t -> (Cfg.G.t * Cfg.vertex)
+= let open Cfg in 
+  fun counter (in_v, out_v) cfg -> begin
+  let (c, mid_v) = begin
+    t_add_vtx counter (cfg, ())
+    |> t_con_vtx_front in_v
+    |> t_con_vtx_backr out_v
+  end in
+  (c.flow, mid_v)
 end
 
 (* Merge two stacks (variable-renaming process). It reconstructs flow, type-info too. *)
@@ -1379,7 +1391,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
       else begin
         t_add_vtx counter (acc_cfg, ())
         |> t_add_vinfo_now ~errtrace:(errmsg_gen "fold2_func") (Cfg_assign (bstack_var, (E_itself astack_var)))
-        |> t_con_edg acc_in_v
+        |> t_con_vtx_back acc_in_v
       end
     end in
     let (cfg_final, _) = begin 
@@ -1423,19 +1435,95 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
         stack_info  : pop two elements and push "result"
     *)
   
-  (*| I_exec ->*)   (* TODO *)
+  | I_exec ->
     (*  flow        : add new vertex between in-and-out
         variables   : var-1   : top element of the stack. (parameter)
                       var-2   : 2nd top element of the stack. (function)
-                      result  : get operation result value
+                      v_r     : get operation result value
         vertex_info : in_v        -> Cfg_skip
-                      new vertex  -> Cfg_assign (result, E_exec (var-1, var-2))
+                      new vertex  -> Cfg_assign (v_r, E_exec (var-1, var-2))
         type_info   : var-1   : 'a
                       var-2   : T_lambda ('a, 'b)
-                      result  : 'b
-        stack_info  : pop two elements and push "result"
+                      v_r     : 'b
+        stack_info  : pop two elements and push "v_r"
     *)
+    let gen_errmsg s : string = ("inst_to_cfg : I_exec : " ^ s) in
+    let (v_1, v_2, tltl_stack_info) = begin
+      (Core.List.hd_exn stack_info,
+        Core.List.hd_exn (Core.List.tl_exn stack_info),
+        Core.List.tl_exn (Core.List.tl_exn stack_info))
+    end in
+    let t_r = begin
+      (* no type constract check here. We assume that the input program has valid types. *)
+      match get_d (t_map_find ~errtrace:(gen_errmsg "t_r") cfg.type_info v_2) with
+      | Michelson.Adt.T_lambda (_, r) -> r
+      | _ -> fail (gen_errmsg "t_r : match failed")
+    end in
+    let (cfg_var_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_errmsg "cfg_var_added") counter t_r (cfg, ()) in
+    let (c, _) = begin
+      (cfg_var_added, ())
+      |> t_add_vinfo ~errtrace:(gen_errmsg "in_v vinfo") (in_v, Cfg_skip)
+      |> t_add_vtx counter
+      |> t_con_vtx_front in_v
+      |> t_con_vtx_backr out_v
+      |> t_add_vinfo_now ~errtrace:(gen_errmsg "mid_v vinfo") (Cfg_assign (v_r, E_exec (v_1, v_2)))
+    end in
+    (c, v_r :: tltl_stack_info)
 
+  | I_dip i ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : N/A
+        vertex_info : no change
+        type_info   : no change
+        stack_info  : recursive call with one-popped-stack_info
+    *)
+    let gen_errmsg s : string = ("inst_to_cfg : I_dip : " ^ s) in
+    let (cfg_vv_added, (v_begin, v_end)) = t_add_vtx_2 counter (cfg, ()) in
+    let (cfg_v_linked, _) = begin
+      (cfg_vv_added, ())
+      |> t_add_edgs [(in_v, v_begin); (v_end, out_v);] 
+      |> t_add_vinfos ~errtrace:(gen_errmsg "add vinfos") [(in_v, Cfg_skip); (v_end, Cfg_skip); ]
+    end in
+    let (cfg_i_added, stack_info_i_added) = inst_to_cfg counter (v_begin, v_end) i (cfg_v_linked, Core.List.tl_exn stack_info) in
+    (cfg_i_added, (Core.List.hd_exn stack_info) :: stack_info_i_added)
+
+  | I_dip_n (zn, i) ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : N/A
+        vertex_info : no change
+        type_info   : no change
+        stack_info  : recursive call with n-popped-stack_info
+    *)
+    let nn : int = Z.to_int zn in
+    let gen_errmsg s : string = ("inst_to_cfg : I_dip_n : " ^ s) in
+    let (hdn_stack_info, tln_stack_info) = Core.List.split_n stack_info nn in
+    let (cfg_vv_added, (v_begin, v_end)) = t_add_vtx_2 counter (cfg, ()) in
+    let (cfg_v_linked, _) = begin
+      (cfg_vv_added, ())
+      |> t_add_edgs [(in_v, v_begin); (v_end, out_v);] 
+      |> t_add_vinfos ~errtrace:(gen_errmsg "add vinfos") [(in_v, Cfg_skip); (v_end, Cfg_skip); ]
+    end in
+    let (cfg_i_added, stack_info_i_added) = inst_to_cfg counter (v_begin, v_end) i (cfg_v_linked, tln_stack_info) in
+    (cfg_i_added, hdn_stack_info @ stack_info_i_added)
+
+  | I_failwith ->
+    (*  flow        : (in_v -> failwith_vtx)
+        variables   : N/A
+        vertex_info : no change
+        type_info   : no change
+        stack_info  : no change
+    *)
+    let gen_errmsg s : string = ("inst_to_cfg : I_failwith : " ^ s) in
+    let (cfg_vtx_added, _) = begin
+      (cfg, ())
+      |> t_add_vinfo ~errtrace:(gen_errmsg "in_v vinfo") (in_v, Cfg_skip)
+      |> t_add_vtx counter
+      |> t_add_vinfo_now ~errtrace:(gen_errmsg "add_vinfo_now") (Cfg_failwith (Core.List.hd_exn stack_info))
+      |> t_con_vtx_front in_v
+    end in
+    (cfg_vtx_added, Core.List.tl_exn stack_info)
+
+    
 
 
   | _ -> fail "inst_to_cfg : not implemented." (* TODO *)
