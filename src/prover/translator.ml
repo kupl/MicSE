@@ -1523,7 +1523,140 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     end in
     (cfg_vtx_added, Core.List.tl_exn stack_info)
 
-    
+  | I_cast ty ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : var-1   : top element of the stack.
+                      v_r     : new variable
+        vertex_info : in_v        -> Cfg_skip
+                      new vertex  -> Cfg_assign (v_r, E_itself var-1)
+        type_info   : v_r     : ty
+        stack_info  : pop top element and push "v_r"
+    *)
+    let gen_errmsg s : string = ("inst_to_cfg : I_cast : " ^ s) in
+    let (var_1, tl_stack_info) = (Core.List.hd_exn stack_info, Core.List.tl_exn stack_info) in
+    let (cfg_var_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_errmsg "cfg_var_added") counter ty (cfg, ()) in
+    let (cfg_end, _) = begin
+      (cfg_var_added, ())
+      |> t_add_vinfo ~errtrace:(gen_errmsg "in_v vinfo") (in_v, Cfg_skip)
+      |> t_add_vtx counter
+      |> t_add_vinfo_now ~errtrace:(gen_errmsg "mid_v vinfo") (Cfg_assign (v_r, E_itself var_1))
+      |> t_con_vtx_front in_v
+      |> t_con_vtx_back out_v
+    end in
+    (cfg_end, v_r :: tl_stack_info)
+
+  | I_rename ->
+    (* Cfg_skip for now. Current Cfg.t does not supports any annotation. *)
+    (*  flow        : connect in_v and out_v
+        variables   : N/A
+        vertex_info : in_v        -> Cfg_skip
+        type_info   : no change
+        stack_info  : no change
+    *)
+    let (cfg_end, _) = begin
+      (cfg, ())
+      |> t_add_edg (in_v, out_v)
+      |> t_add_vinfo ~errtrace:("inst_to-cfg : I_rename : in_v vinfo") (in_v, Cfg_skip)
+    end in
+    (cfg_end, stack_info)
+  
+  | I_concat ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack. (If necessary)
+                      v_r   : new variable
+        vertex_info : in_v        -> Cfg_skip
+                      <string, string> new vertex -> Cfg_assign (v_r, E_concat (v_1, v_2))
+                      <bytes,  bytes > new vertex -> Cfg_assign (v_r, E_concat (v_1, v_2))
+                      <string list   > new vertex -> Cfg_assign (v_r, E_concat_list v_1)
+                      <bytes  list   > new vertex -> Cfg_assign (v_r, E_concat_list v_1)
+        type_info   : <string, string> v_r        -> string
+                      <bytes,  bytes > v_r        -> bytes
+                      <string list   > v_r        -> string
+                      <bytes  list   > v_r        -> bytes
+        stack_info  : pop one or two elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_concat : " ^ s) in
+    let (v_1, tl_stack_info) = (Core.List.hd_exn stack_info, Core.List.tl_exn stack_info) in
+    let (t_1) = t_map_find ~errtrace:(gen_emsg "t_1") cfg.type_info v_1 in
+    let (cfg_in_v_checked, _) = t_add_vinfo ~errtrace:(gen_emsg "") (in_v, Cfg_skip) (cfg, ()) in
+    let (cfg_end, stack_info_end) = begin
+      match get_d t_1 with
+      | T_string -> begin
+          let gen_emsg s : string = (gen_emsg ("T_string matched : " ^ s)) in
+          let (v_2, tltl_stack_info) = (Core.List.hd_exn tl_stack_info, Core.List.tl_exn tl_stack_info) in
+          let (cfg_nv_added, v_r) = begin (cfg_in_v_checked, ()) |> t_add_nv_tinfo ~errtrace:(gen_emsg "cfg_nv_added") counter t_1 end in
+          let (cfg_end, _) = begin 
+            (cfg_nv_added, ())
+            |> t_add_vtx counter
+            |> t_add_vinfo_now ~errtrace:(gen_emsg "add mid_v vinfo") (Cfg_assign (v_r, E_concat (v_1, v_2)))
+            |> t_con_vtx_front in_v
+            |> t_con_vtx_back out_v
+          end in
+          (cfg_end, v_r :: tltl_stack_info)
+        end
+      | T_bytes -> begin
+          let gen_emsg s : string = (gen_emsg ("T_bytes matched : " ^ s)) in
+          let (v_2, tltl_stack_info) = (Core.List.hd_exn tl_stack_info, Core.List.tl_exn tl_stack_info) in
+          let (cfg_nv_added, v_r) = begin (cfg_in_v_checked, ()) |> t_add_nv_tinfo ~errtrace:(gen_emsg "cfg_nv_added") counter t_1 end in
+          let (cfg_end, _) = begin 
+            (cfg_nv_added, ())
+            |> t_add_vtx counter
+            |> t_add_vinfo_now ~errtrace:(gen_emsg "add mid_v vinfo") (Cfg_assign (v_r, E_concat (v_1, v_2)))
+            |> t_con_vtx_front in_v
+            |> t_con_vtx_back out_v
+          end in
+          (cfg_end, v_r :: tltl_stack_info)
+        end
+      | T_list t_i -> begin
+          let gen_emsg s : string = (gen_emsg ("T_list t_i matched : " ^ s)) in
+          let (cfg_nv_added, v_r) = begin (cfg_in_v_checked, ()) |> t_add_nv_tinfo ~errtrace:(gen_emsg "cfg_nv_added") counter t_i end in
+          let (cfg_end, _) = begin
+            (cfg_nv_added, ())
+            |> t_add_vtx counter
+            |> t_add_vinfo_now ~errtrace:(gen_emsg "add mid_v vinfo") (Cfg_assign (v_r, E_concat_list v_1))
+            |> t_con_vtx_front in_v
+            |> t_con_vtx_back out_v
+          end in
+          (cfg_end, v_r :: tl_stack_info)
+        end
+      | _ -> fail (gen_emsg "t_1 : match failed")
+    end in
+    (cfg_end, stack_info_end)
+
+  | I_slice ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_3   : target string / bytes
+                      v_r   : new variable
+        vertex_info : in_v        -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_slice (v1, v2, v3))
+        type_info   : v_1   -> nat
+                      v_2   -> nat
+                      v_3   -> string / bytes
+                      v_r   -> option(string) / option(bytes)
+        stack_info  : pop three elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_slice : " ^ s) in
+    let (clh, clt) = (Core.List.hd_exn, Core.List.tl_exn) in
+    let (v_1, tl_si) = (clh stack_info, clt stack_info) in
+    let (v_2, ttl_si) = (clh tl_si, clt tl_si) in
+    let (v_3, tttl_si) = (clh ttl_si, clt ttl_si) in
+    let t_3 = t_map_find ~errtrace:(gen_emsg "t_3") cfg.type_info v_3 in
+    let (cfg_v_r_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "gen v_r") counter (gen_t (Michelson.Adt.T_option t_3)) (cfg, ()) in
+    let (cfg_end, _) = begin
+      (cfg_v_r_added, ())
+      |> t_add_vinfo ~errtrace:(gen_emsg "in_v vinfo") (in_v, Cfg_skip)
+      |> t_add_vtx counter
+      |> t_add_vinfo_now ~errtrace:(gen_emsg "mid_v vinfo") (Cfg_assign (v_r, E_slice (v_1, v_2, v_3)))
+      |> t_con_vtx_front in_v
+      |> t_con_vtx_back out_v
+    end in
+    (cfg_end, v_r :: tttl_si)
+
+
+
 
 
   | _ -> fail "inst_to_cfg : not implemented." (* TODO *)
