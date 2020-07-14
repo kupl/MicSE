@@ -41,8 +41,8 @@ and v_exp =
   | VE_bin_cont of v_bin_cont * v_exp * v_exp
   | VE_list of v_exp list
   | VE_var of var
-  | VE_read of v_exp * v_exp (* A[i] in RHS *)
-  | VE_write of v_exp * v_exp * v_exp (* A[i] = v *)
+  | VE_read of v_exp * v_exp (* (i, A) : A[i] in RHS *)
+  | VE_write of v_exp * v_exp * v_exp (* (i, v, A) : A[i] = v *)
   | VE_nul_op of v_nul_op
   | VE_uni_op of v_uni_op * v_exp
   | VE_bin_op of v_bin_op * v_exp * v_exp

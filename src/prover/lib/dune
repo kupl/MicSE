@@ -8,5 +8,6 @@
     tezla-cfg
     ocamlgraph
     core
-    zarith)
+    zarith
+    z3)
   (flags -w -a))
