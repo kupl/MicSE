@@ -43,7 +43,8 @@ and expr ppf = function
   | E_add (e_1, e_2) -> fprintf ppf "ADD %s %s" e_1 e_2
   | E_sub (e_1, e_2) -> fprintf ppf "SUB %s %s" e_1 e_2
   | E_mul (e_1, e_2) -> fprintf ppf "MUL %s %s" e_1 e_2
-  | E_div (e_1, e_2) -> fprintf ppf "EDIV %s %s" e_1 e_2
+  | E_ediv (e_1, e_2) -> fprintf ppf "EDIV %s %s" e_1 e_2   
+  | E_div (e_1, e_2) -> fprintf ppf "EDIV %s %s" e_1 e_2    (* Original Tezla print E_div as EDIV, so I don't want to change it. *)
   | E_mod (e_1, e_2) -> fprintf ppf "mod %s %s" e_1 e_2
   | E_shiftL (e_1, e_2) -> fprintf ppf "LSL %s %s" e_1 e_2
   | E_shiftR (e_1, e_2) -> fprintf ppf "LSR %s %s" e_1 e_2

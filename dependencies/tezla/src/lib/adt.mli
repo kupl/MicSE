@@ -18,8 +18,9 @@ and expr =
   | E_add of string * string
   | E_sub of string * string
   | E_mul of string * string
-  | E_div of string * string
-  | E_mod of string * string
+  | E_ediv of string * string   (* Newly proposed to replace E_div and E_mod *)
+  | E_div of string * string    (* DEPRECATED. reserved for backward compatibility *)
+  | E_mod of string * string    (* DEPRECATED. reserved for backward compatibility *)
   | E_shiftL of string * string
   | E_shiftR of string * string
   | E_and of string * string
@@ -83,7 +84,7 @@ and expr =
   | E_empty_big_map of typ * typ
   | E_append of string * string
   | E_special_nil_list
-  | E_phi of string * string
+  | E_phi of string * string    (* DEPRECATED. reserved for backward compatibility *)
   | E_itself of string  (* E_itself is not defined at Michelson, but added for MicSE internal usage. 
                             "Cfg_assign (new_varname, (E_itself old_varname)" == "new_varname = old_varname"
                         *)
