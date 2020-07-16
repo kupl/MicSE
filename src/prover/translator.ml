@@ -1841,8 +1841,51 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_mul (v_1, v_2))) cfg_vr_added in
     (cfg_ended, v_r :: ttl_si)
 
-  (*| I_ediv ->*)
-  (* TODO : Current Tezla.Adt implementation has only E_div and E_mod expression. I want E_ediv expression instead. *)
+  | I_ediv ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_ediv (v_1, v_2))
+        type_info   : v_r   -> t_r
+                      t_r = match (t_1, t_2) with
+                            | nat, nat -> option (pair nat nat)
+                            | nat, int -> option (pair int nat)
+                            | int, nat -> option (pair int nat)
+                            | int, int -> option (pair int nat)
+                            | mutez, nat -> option (pair mutez mutez)
+                            | mutez, mutez -> option (pair nat mutez)
+        stack_info  : pop two elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_ediv : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let (t_1, t_2) = (
+      t_map_find ~errtrace:(gen_emsg "t_1") cfg.type_info v_1,
+      t_map_find ~errtrace:(gen_emsg "t_2") cfg.type_info v_2
+    ) in
+    let t_r = begin
+      let open Michelson.Adt in
+      let tnat = gen_t T_nat in
+      let tint = gen_t T_int in
+      let tmutez = gen_t T_mutez in
+      let tpair a b = gen_t (T_pair (a, b)) in
+      let t_r_i = 
+        match (get_d t_1, get_d t_2) with
+        | T_nat, T_nat -> T_option (tpair tnat tnat)
+        | T_nat, T_int -> T_option (tpair tint tnat)
+        | T_int, T_nat -> T_option (tpair tint tnat)
+        | T_int, T_int -> T_option (tpair tint tnat)
+        | T_mutez, T_nat -> T_option (tpair tmutez tmutez)
+        | T_mutez, T_mutez -> T_option (tpair tnat tmutez)
+        | _ -> fail (gen_emsg "t_r match failed")
+      in
+      gen_t t_r_i
+    end in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_ediv (v_1, v_2))) cfg_vr_added in
+    (cfg_ended, v_r :: ttl_si)
 
   | I_abs ->
     (*  flow        : add new vertex between in-and-out
@@ -1860,6 +1903,338 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_abs v_1)) cfg_vr_added in
     (cfg_ended, v_r :: tl_si)
 
+  | I_isnat ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_isnat v_1)
+        type_info   : v_r   -> T_option (T_nat)
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_isnat : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t (Michelson.Adt.T_option (gen_t Michelson.Adt.T_nat)) in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_isnat v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_int ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_int_of_nat v_1)
+        type_info   : v_r   -> T_nat
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_int : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_nat in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_int_of_nat v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_neg ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_neg v_1)
+        type_info   : v_r   -> T_int
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_neg : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_int in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_neg v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_lsl ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_shiftL (v_1, v_2))
+        type_info   : v_r   -> T_nat
+        stack_info  : pop two elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_lsl : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let t_r = gen_t Michelson.Adt.T_nat in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_shiftL (v_1, v_2))) cfg_vr_added in
+    (cfg_ended, v_r :: ttl_si)
+
+  | I_lsr ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_shiftR (v_1, v_2))
+        type_info   : v_r   -> T_nat
+        stack_info  : pop two elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_lsr : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let t_r = gen_t Michelson.Adt.T_nat in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_shiftR (v_1, v_2))) cfg_vr_added in
+    (cfg_ended, v_r :: ttl_si)
+
+  | I_or ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_or (v_1, v_2))
+        type_info   : v_r   -> t_r
+                      t_r = match (t_1, t_2) with
+                            | bool, bool -> bool
+                            | nat, nat -> nat
+        stack_info  : pop two elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_or : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let (t_1, t_2) = (
+      t_map_find ~errtrace:(gen_emsg "t_1") cfg.type_info v_1,
+      t_map_find ~errtrace:(gen_emsg "t_2") cfg.type_info v_2
+    ) in
+    let t_r = begin
+      let open Michelson.Adt in
+      let t_r_i = 
+        match (get_d t_1, get_d t_2) with
+        | T_bool, T_bool -> T_bool
+        | T_nat, T_nat -> T_nat
+        | _ -> fail (gen_emsg "t_r match failed")
+      in
+      gen_t t_r_i
+    end in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_or (v_1, v_2))) cfg_vr_added in
+    (cfg_ended, v_r :: ttl_si)
+
+  | I_and ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_and (v_1, v_2))
+        type_info   : v_r   -> t_r
+                      t_r = match (t_1, t_2) with
+                            | bool, bool -> bool
+                            | nat, nat -> nat
+                            | int, nat -> nat
+        stack_info  : pop two elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_and : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let (t_1, t_2) = (
+      t_map_find ~errtrace:(gen_emsg "t_1") cfg.type_info v_1,
+      t_map_find ~errtrace:(gen_emsg "t_2") cfg.type_info v_2
+    ) in
+    let t_r = begin
+      let open Michelson.Adt in
+      let t_r_i = 
+        match (get_d t_1, get_d t_2) with
+        | T_bool, T_bool -> T_bool
+        | T_nat, T_nat -> T_nat
+        | T_int, T_nat -> T_nat
+        | _ -> fail (gen_emsg "t_r match failed")
+      in
+      gen_t t_r_i
+    end in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_and (v_1, v_2))) cfg_vr_added in
+    (cfg_ended, v_r :: ttl_si)
+
+  | I_xor ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_xor (v_1, v_2))
+        type_info   : v_r   -> t_r
+                      t_r = match (t_1, t_2) with
+                            | bool, bool -> bool
+                            | nat, nat -> nat
+        stack_info  : pop two elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_xor : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let (t_1, t_2) = (
+      t_map_find ~errtrace:(gen_emsg "t_1") cfg.type_info v_1,
+      t_map_find ~errtrace:(gen_emsg "t_2") cfg.type_info v_2
+    ) in
+    let t_r = begin
+      let open Michelson.Adt in
+      let t_r_i = 
+        match (get_d t_1, get_d t_2) with
+        | T_bool, T_bool -> T_bool
+        | T_nat, T_nat -> T_nat
+        | _ -> fail (gen_emsg "t_r match failed")
+      in
+      gen_t t_r_i
+    end in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_xor (v_1, v_2))) cfg_vr_added in
+    (cfg_ended, v_r :: ttl_si)
+
+  | I_not ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_not v_1)
+        type_info   : v_r   -> t_r
+                      t_r = match (t_1, t_2) with
+                            | bool -> bool
+                            | nat  -> int
+                            | int  -> int
+        stack_info  : pop two elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_not : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_1 = t_map_find ~errtrace:(gen_emsg "t_1") cfg.type_info v_1 in
+    let t_r = begin
+      let open Michelson.Adt in
+      let t_r_i = 
+        match get_d t_1 with
+        | T_bool -> T_bool
+        | T_nat -> T_int
+        | T_int -> T_int
+        | _ -> fail (gen_emsg "t_r match failed")
+      in
+      gen_t t_r_i
+    end in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_not v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_compare ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_compare (v_1, v_2))
+        type_info   : v_r   -> T_int
+        stack_info  : pop two elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_compare : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let t_r = gen_t (Michelson.Adt.T_int) in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_compare (v_1, v_2))) cfg_vr_added in
+    (cfg_ended, v_r :: ttl_si)
+
+  | I_eq ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_eq v_1)
+        type_info   : v_r   -> T_bool
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_eq : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_bool in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_eq v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_neq ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_neq v_1)
+        type_info   : v_r   -> T_bool
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_neq : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_bool in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_neq v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_lt ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_lt v_1)
+        type_info   : v_r   -> T_bool
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_lt : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_bool in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_lt v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_gt ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_gt v_1)
+        type_info   : v_r   -> T_bool
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_gt : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_bool in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_gt v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_le ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_leq v_1)
+        type_info   : v_r   -> T_bool
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_le : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_bool in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_leq v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_ge ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_geq v_1)
+        type_info   : v_r   -> T_bool
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_ge : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_bool in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_geq v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
 
 
 
