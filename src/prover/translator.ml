@@ -204,14 +204,10 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
         type_info   : new-var -> <Type>
         stack_info  : push new-var on top of the stack
     *)
-    let gen_errmsg s : string = ("inst_to_cfg : " ^ errmsg_trace ^ " : template_of_push_value : " ^ s) in
-    let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
-    let nv_name = new_var counter in
-    let vertex_info_1 = add_skip_vinfo (gen_errmsg "vertex_info_1") cfg.vertex_info in_v in
-    let vertex_info_2 = map_add (gen_errmsg "vertex_info_2") vertex_info_1 mid_v (Cfg_assign (nv_name, expr)) in
-    let type_info_1   = map_add (gen_errmsg "type_info_1") cfg.type_info nv_name (gen_t typ) in
-    let stack_info_1  = nv_name :: stack_info in
-    ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
+    let gen_emsg s : string = ("inst_to_cfg : " ^ errmsg_trace ^ " : template_of_push_value : " ^ s) in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter (gen_t typ) (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, expr)) cfg_vr_added in
+    (cfg_ended, v_r :: stack_info)
   end in
   let stack_hdtl : 'a list -> ('a * 'a list) = fun li -> (Core.List.hd_exn li, Core.List.tl_exn li) in
 
@@ -2236,6 +2232,60 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_geq v_1)) cfg_vr_added in
     (cfg_ended, v_r :: tl_si)
 
+  (*| I_self ->*) (* TODO *)
+  (* To deal with this problem properly, we need to put Adt.t into the Cfg.t.
+      At least the parameter type should be included.
+      For example, we can put the entire program's Adt into Cfg, like
+        - After:  Cfg.t = {
+                    flow : G.t;
+                    vertex_info : (int, stmt) CPMap.t;
+                    type_info : (string, typ) CPMap.t;
+                    main_entry : vertex;
+                    main_exit : vertex;
+                    (...);
+                    adt : Adt.t;
+                  }
+  *)
+  (* This case can be done with just one line, using "template_of_push_value". *)
+
+  | I_contract ty ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_contract_of_address v_1)
+        type_info   : v_r   -> T_option (T_contract ty)
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_contract : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t (Michelson.Adt.T_option (gen_t (Michelson.Adt.T_contract ty))) in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_contract_of_address v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+
+  | I_transfer_tokens ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_3   : third top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_operation (O_transfer_tokens (v_1, v_2, v_3)))
+        type_info   : v_r   -> T_operation
+        stack_info  : pop three elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_transfer_tokens : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let (v_3, tttl_si) = stack_hdtl ttl_si in
+    let t_r = gen_t Michelson.Adt.T_operation in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_operation (O_transfer_tokens (v_1, v_2, v_3)))) cfg_vr_added in
+    (cfg_ended, v_r :: tttl_si)
+
+
 
 
   | _ -> fail "inst_to_cfg : not implemented." (* TODO *)
@@ -2243,6 +2293,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
   (* val t_add_typical_vertex : string -> cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Cfg.stmt -> Cfg.t -> (Cfg.t * Cfg.vertex) *)
 
   (* val inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cfg.t * string list) -> (Cfg.t * string list) *)
+
+  (* val template_of_push_value : string -> cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Tezla.Adt.expr * Michelson.Adt.typ) -> (Cfg.t * string list) -> (Cfg.t * string list) *)
 end
   
 
