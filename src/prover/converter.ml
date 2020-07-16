@@ -99,6 +99,7 @@ and create_convert_exp : Vlang.exp -> Vlang.v_exp
   | E_add (v1, v2) -> VE_bin_op (VE_add, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
   | E_sub (v1, v2) -> VE_bin_op (VE_sub, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
   | E_mul (v1, v2) -> VE_bin_op (VE_mul, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
+  | E_ediv (v1, v2) -> VE_bin_op (VE_ediv, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
   | E_div (v1, v2) -> VE_bin_op (VE_div, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
   | E_mod (v1, v2) -> VE_bin_op (VE_mod, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
   | E_shiftL (v1, v2) -> VE_bin_op (VE_lsl, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))

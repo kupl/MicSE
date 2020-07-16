@@ -64,9 +64,10 @@ and v_uni_op =
   | VE_tl       | VE_size     | VE_isnat    | VE_int
   
 and v_bin_op =
-  | VE_add      | VE_sub      | VE_mul      | VE_div      | VE_mod
-  | VE_lsl      | VE_lsr      | VE_and      | VE_or       | VE_xor
-  | VE_cmp      | VE_cons     | VE_concat   | VE_exec     | VE_append
+  | VE_add      | VE_sub      | VE_mul      | VE_ediv     | VE_div
+  | VE_mod      | VE_lsl      | VE_lsr      | VE_and      | VE_or
+  | VE_xor      | VE_cmp      | VE_cons     | VE_concat   | VE_exec
+  | VE_append
 
 and v_tri_op =
   | VE_slice    | VE_check_signature
