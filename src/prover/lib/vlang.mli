@@ -151,17 +151,12 @@ and v_formula =
   | VF_and of v_formula * v_formula
   | VF_or of v_formula * v_formula
   | VF_uni_rel of v_uni_rel * v_exp
-  | VF_bin_rel of v_bin_rel * v_exp * v_exp
+  | VF_eq of v_exp * v_exp
   | VF_imply of v_formula * v_formula
   | VF_iff of v_formula * v_formula
 
 and v_uni_rel =
   | VF_is_true  | VF_is_none  | VF_is_left  | VF_is_cons
-
-and v_bin_rel =
-  | VF_eq       | VF_neq
-  | VF_gt       | VF_lt
-  | VF_ge       | VF_le
 
 and v_exp =
   | VE_int of Z.t
@@ -231,19 +226,7 @@ val create_formula_is_left : v_exp -> v_formula
 
 val create_formula_is_cons : v_exp -> v_formula
 
-val create_formula_bin_rel : v_bin_rel -> v_exp -> v_exp -> v_formula
-
 val create_formula_eq : v_exp -> v_exp -> v_formula
-
-val create_formula_neq : v_exp -> v_exp -> v_formula
-
-val create_formula_lt : v_exp -> v_exp -> v_formula
-
-val create_formula_gt : v_exp -> v_exp -> v_formula
-
-val create_formula_le : v_exp -> v_exp -> v_formula
-
-val create_formula_ge : v_exp -> v_exp -> v_formula
 
 val create_formula_imply : v_formula -> v_formula -> v_formula
 

@@ -41,7 +41,7 @@ and create_rewrite_formula : Vlang.var -> Vlang.var -> Vlang.v_formula -> Vlang.
   | VF_and (vf1, vf2) -> Vlang.create_formula_and (nested_rewrite vf1) (nested_rewrite vf2)
   | VF_or (vf1, vf2) -> Vlang.create_formula_or (nested_rewrite vf1) (nested_rewrite vf2)
   | VF_uni_rel (vr, ve) -> Vlang.create_formula_uni_rel vr (exp_rewrite ve)
-  | VF_bin_rel (vr, ve1, ve2) -> Vlang.create_formula_bin_rel vr (exp_rewrite ve1) (exp_rewrite ve2)
+  | VF_eq (e1, e2) -> Vlang.create_formula_eq (exp_rewrite e1) (exp_rewrite e2)
   | VF_imply (vf1, vf2) -> Vlang.create_formula_imply (nested_rewrite vf1) (nested_rewrite vf2)
   | VF_iff (vf1, vf2) -> Vlang.create_formula_iff (nested_rewrite vf1) (nested_rewrite vf2)
 end

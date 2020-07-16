@@ -10,13 +10,13 @@ and v_exp = Vlang.v_exp
 
 let ctx = ref (Z3.mk_context [])
 
-let option_symbol = Z3.Symbol.mk_string !ctx "option"
-let option_none_symbol = Z3.Symbol.mk_string !ctx "none"
-let option_some_symbol = Z3.Symbol.mk_string !ctx "some"
+let option_symbol = Z3.Symbol.mk_string !ctx "Option"
+let option_none_symbol = Z3.Symbol.mk_string !ctx "None"
+let option_some_symbol = Z3.Symbol.mk_string !ctx "Some"
 let option_sort = Z3.Enumeration.mk_sort !ctx option_symbol [option_none_symbol; option_some_symbol]
-let or_symbol = Z3.Symbol.mk_string !ctx "or"
-let or_left_symbol = Z3.Symbol.mk_string !ctx "left"
-let or_right_symbol = Z3.Symbol.mk_string !ctx "right"
+let or_symbol = Z3.Symbol.mk_string !ctx "Or"
+let or_left_symbol = Z3.Symbol.mk_string !ctx "Left"
+let or_right_symbol = Z3.Symbol.mk_string !ctx "Right"
 let or_sort = Z3.Enumeration.mk_sort !ctx or_symbol [or_left_symbol; or_right_symbol]
 
 let rec sort_of_typt : typ -> Z3.Sort.sort
@@ -25,16 +25,16 @@ let rec sort_of_typt : typ -> Z3.Sort.sort
   let mk_simple_symbol s = Z3.Symbol.mk_string !ctx s in
   match typ.d with
   | T_key -> Z3.Seq.mk_string_sort !ctx
-  | T_unit -> Z3.Sort.mk_uninterpreted_s !ctx "unit" (* UNINTERPRETED *)
+  | T_unit -> Z3.Sort.mk_uninterpreted_s !ctx "Unit" (* UNINTERPRETED *)
   | T_signature -> Z3.Seq.mk_string_sort !ctx
-  | T_option t -> Z3.Tuple.mk_sort !ctx (mk_typt_symbol "option" [t]) [(mk_simple_symbol "exist"); (mk_simple_symbol "value")] [option_sort; (sort_of_typt t)]
-  | T_list t -> Z3.Z3List.mk_sort !ctx (mk_typt_symbol "list" [t]) (sort_of_typt t)
+  | T_option t -> Z3.Tuple.mk_sort !ctx (mk_typt_symbol "Option" [t]) [(mk_simple_symbol "exist"); (mk_simple_symbol "value")] [option_sort; (sort_of_typt t)]
+  | T_list t -> Z3.Z3List.mk_sort !ctx (mk_typt_symbol "List" [t]) (sort_of_typt t)
   | T_set t -> Z3.Set.mk_sort !ctx (sort_of_typt t)
-  | T_operation -> Z3.Sort.mk_uninterpreted_s !ctx "operation" (* UNINTERPRETED *)
-  | T_contract _ ->  Z3.Sort.mk_uninterpreted_s !ctx "contract" (* UNINTERPRETED *)
-  | T_pair (t1, t2) -> Z3.Tuple.mk_sort !ctx (mk_typt_symbol "pair" [t1; t2]) [(mk_simple_symbol "fst"); (mk_simple_symbol "snd")] [(sort_of_typt t1); (sort_of_typt t2)]
-  | T_or (t1, t2) -> Z3.Tuple.mk_sort !ctx (mk_typt_symbol "or" [t1; t2]) [(mk_simple_symbol "loc"); (mk_simple_symbol "left"); (mk_simple_symbol "right")] [or_sort; (sort_of_typt t1); (sort_of_typt t2)]
-  | T_lambda (t1, t2) -> Z3.Sort.mk_uninterpreted_s !ctx "lambda" (* UNINTERPRETED *)
+  | T_operation -> Z3.Sort.mk_uninterpreted_s !ctx "Operation" (* UNINTERPRETED *)
+  | T_contract _ ->  Z3.Sort.mk_uninterpreted_s !ctx "Contract" (* UNINTERPRETED *)
+  | T_pair (t1, t2) -> Z3.Tuple.mk_sort !ctx (mk_typt_symbol "Pair" [t1; t2]) [(mk_simple_symbol "fst"); (mk_simple_symbol "snd")] [(sort_of_typt t1); (sort_of_typt t2)]
+  | T_or (t1, t2) -> Z3.Tuple.mk_sort !ctx (mk_typt_symbol "Or" [t1; t2]) [(mk_simple_symbol "loc"); (mk_simple_symbol "left"); (mk_simple_symbol "right")] [or_sort; (sort_of_typt t1); (sort_of_typt t2)]
+  | T_lambda (t1, t2) -> Z3.Sort.mk_uninterpreted_s !ctx "Lambda" (* UNINTERPRETED *)
   | T_map (t1, t2) -> Z3.Z3Array.mk_sort !ctx (sort_of_typt t1) (sort_of_typt t2)
   | T_big_map (t1, t2) -> Z3.Z3Array.mk_sort !ctx (sort_of_typt t1) (sort_of_typt t2)
   | T_chain_id -> Z3.Seq.mk_string_sort !ctx
@@ -49,7 +49,45 @@ let rec sort_of_typt : typ -> Z3.Sort.sort
   | T_address -> Z3.Seq.mk_string_sort !ctx
 end
 
+let rec zexp_of_vformula : v_formula -> Z3.Expr.expr
+=fun vf -> begin
+  match vf with
+  | VF_true -> Z3.Boolean.mk_true !ctx
+  | VF_false -> Z3.Boolean.mk_false !ctx
+  | VF_not f -> Z3.Boolean.mk_not !ctx (zexp_of_vformula f)
+  | VF_and (f1, f2) -> Z3.Boolean.mk_and !ctx [(zexp_of_vformula f1); (zexp_of_vformula f2)]
+  | VF_or (f1, f2) -> Z3.Boolean.mk_or !ctx [(zexp_of_vformula f1); (zexp_of_vformula f2)]
+  | VF_uni_rel (vur, e) -> begin
+      let e' = zexp_of_vexp e in
+      let sort_of_e = Z3.Expr.get_sort e' in
+      match vur with
+      | VF_is_true -> Z3.Boolean.mk_eq !ctx e' (Z3.Boolean.mk_true !ctx)
+      | VF_is_none -> begin
+          let fields = Z3.Tuple.get_field_decls sort_of_e in
+          let exist_func = Core.List.nth_exn fields 0 in
+          let exist = Z3.FuncDecl.apply exist_func [e'] in
+          Z3.Boolean.mk_eq !ctx exist (Z3.Enumeration.get_const option_sort 0)
+        end
+      | VF_is_left -> begin
+          let fields = Z3.Tuple.get_field_decls sort_of_e in
+          let loc_func = Core.List.nth_exn fields 0 in
+          let loc = Z3.FuncDecl.apply loc_func [e'] in
+          Z3.Boolean.mk_eq !ctx loc (Z3.Enumeration.get_const or_sort 0)
+        end
+      | VF_is_cons -> begin
+          let is_cons_func = Z3.Z3List.get_is_cons_decl sort_of_e in
+          Z3.FuncDecl.apply is_cons_func [e']
+        end
+    end
+  | VF_eq (e1, e2) -> Z3.Boolean.mk_eq !ctx (zexp_of_vexp e1) (zexp_of_vexp e2)
+  | VF_imply (f1, f2) -> Z3.Boolean.mk_implies !ctx (zexp_of_vformula f1) (zexp_of_vformula f2)
+  | VF_iff (f1, f2) -> Z3.Boolean.mk_iff !ctx (zexp_of_vformula f1) (zexp_of_vformula f2)
+end
 
+and zexp_of_vexp : v_exp -> Z3.Expr.expr
+=fun ve -> begin
+  Z3.Boolean.mk_true !ctx
+end
 
 let solver : unit -> Z3.Solver.solver
 =fun () -> Z3.Solver.mk_solver !ctx None
