@@ -8,6 +8,7 @@ and exp = Cfg.expr
 type v_formula = Vlang.v_formula
 and v_exp = Vlang.v_exp
 
+val unit_sort : Z3.Sort.sort
 val option_symbol : Z3.Symbol.symbol
 val option_none_symbol : Z3.Symbol.symbol
 val option_some_symbol : Z3.Symbol.symbol

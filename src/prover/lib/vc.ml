@@ -10,6 +10,7 @@ and v_exp = Vlang.v_exp
 
 let ctx = ref (Z3.mk_context [])
 
+let unit_sort = Z3.Sort.mk_uninterpreted_s !ctx "Unit" (* UNINTERPRETED *)
 let option_symbol = Z3.Symbol.mk_string !ctx "Option"
 let option_none_symbol = Z3.Symbol.mk_string !ctx "None"
 let option_some_symbol = Z3.Symbol.mk_string !ctx "Some"
@@ -25,7 +26,7 @@ let rec sort_of_typt : typ -> Z3.Sort.sort
   let mk_simple_symbol s = Z3.Symbol.mk_string !ctx s in
   match typ.d with
   | T_key -> Z3.Seq.mk_string_sort !ctx
-  | T_unit -> Z3.Sort.mk_uninterpreted_s !ctx "Unit" (* UNINTERPRETED *)
+  | T_unit -> unit_sort
   | T_signature -> Z3.Seq.mk_string_sort !ctx
   | T_option t -> Z3.Tuple.mk_sort !ctx (mk_typt_symbol "Option" [t]) [(mk_simple_symbol "exist"); (mk_simple_symbol "value")] [option_sort; (sort_of_typt t)]
   | T_list t -> Z3.Z3List.mk_sort !ctx (mk_typt_symbol "List" [t]) (sort_of_typt t)
@@ -47,6 +48,20 @@ let rec sort_of_typt : typ -> Z3.Sort.sort
   | T_key_hash -> Z3.Seq.mk_string_sort !ctx
   | T_timestamp -> Z3.Seq.mk_string_sort !ctx
   | T_address -> Z3.Seq.mk_string_sort !ctx
+end
+
+let sort_of_inner_type : typ -> Z3.Sort.sort list
+=fun typ -> begin
+  match typ.d with
+  | T_option t -> [(sort_of_typt t)]
+  | T_list t -> [(sort_of_typt t)]
+  | T_set t -> [(sort_of_typt t)]
+  | T_pair (t1, t2) -> [(sort_of_typt t1); (sort_of_typt t2)]
+  | T_or (t1, t2) -> [(sort_of_typt t1); (sort_of_typt t2)]
+  | T_lambda (t1, t2) -> [(sort_of_typt t1); (sort_of_typt t2)]
+  | T_map (t1, t2) -> [(sort_of_typt t1); (sort_of_typt t2)]
+  | T_big_map (t1, t2) -> [(sort_of_typt t1); (sort_of_typt t2)]
+  | _ -> raise (Failure "Cannot get inner type on this type")
 end
 
 let rec zexp_of_vformula : v_formula -> Z3.Expr.expr
@@ -86,7 +101,47 @@ end
 
 and zexp_of_vexp : v_exp -> Z3.Expr.expr
 =fun ve -> begin
-  Z3.Boolean.mk_true !ctx
+  let mk_simple_symbol s = Z3.Symbol.mk_string !ctx s in
+  let get_inner_sort l id = Core.List.nth_exn l id in
+  match ve with
+  | VE_int n -> Z3.Arithmetic.Integer.mk_numeral_s !ctx (Z.to_string n)
+  | VE_string s -> Z3.Seq.mk_string !ctx s
+  | VE_bool f -> zexp_of_vformula f
+  | VE_unit -> Z3.Expr.mk_const !ctx (mk_simple_symbol "UNIT") unit_sort
+  | VE_none t -> begin
+      let const_func = Z3.Tuple.get_mk_decl (sort_of_typt t) in
+      let inner_sort = get_inner_sort (sort_of_inner_type t) 0 in
+      Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 0); (Z3.Expr.mk_const !ctx (mk_simple_symbol "DUMMY") inner_sort)]
+    end
+  | VE_uni_cont (vuc, e, t) -> begin
+      let const_func = Z3.Tuple.get_mk_decl (sort_of_typt t) in
+      let inner_sorts = sort_of_inner_type t in
+      match vuc with
+      | VE_left -> begin
+          let right_sort = get_inner_sort inner_sorts 1 in
+          Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const or_sort 0); (zexp_of_vexp e); (Z3.Expr.mk_const !ctx (mk_simple_symbol "DUMMY") right_sort)]
+        end
+      | VE_right -> begin
+          let left_sort = get_inner_sort inner_sorts 0 in
+          Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const or_sort 1); (Z3.Expr.mk_const !ctx (mk_simple_symbol "DUMMY") left_sort); (zexp_of_vexp e)]
+        end
+      | VE_some -> begin
+          Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 1); (zexp_of_vexp e)]
+        end
+    end
+  (*
+  | VE_bin_cont of v_bin_cont * v_exp * v_exp
+  | VE_list of v_exp list
+  | VE_var of var
+  | VE_read of v_exp * v_exp (* A[i] in RHS *)
+  | VE_write of v_exp * v_exp * v_exp (* A[i] = v *)
+  | VE_nul_op of v_nul_op
+  | VE_uni_op of v_uni_op * v_exp
+  | VE_bin_op of v_bin_op * v_exp * v_exp
+  | VE_ter_op of v_tri_op * v_exp * v_exp * v_exp
+  | VE_lambda
+  | VE_operation of v_operation *)
+  | _ -> Z3.Boolean.mk_true !ctx (* DUMMY EXPR *)
 end
 
 let solver : unit -> Z3.Solver.solver

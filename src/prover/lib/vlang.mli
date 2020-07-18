@@ -163,10 +163,10 @@ and v_exp =
   | VE_string of string
   | VE_bool of v_formula
   | VE_unit
-  | VE_none
-  | VE_uni_cont of v_uni_cont * v_exp
-  | VE_bin_cont of v_bin_cont * v_exp * v_exp
-  | VE_list of v_exp list
+  | VE_none of typ
+  | VE_uni_cont of v_uni_cont * v_exp * typ
+  | VE_bin_cont of v_bin_cont * v_exp * v_exp * typ
+  | VE_list of v_exp list * typ
   | VE_var of var
   | VE_read of v_exp * v_exp (* A[i] in RHS *)
   | VE_write of v_exp * v_exp * v_exp (* A[i] = v *)
@@ -177,7 +177,7 @@ and v_exp =
   | VE_lambda
   | VE_operation of v_operation
 
-  and v_uni_cont =
+and v_uni_cont =
   | VE_left     | VE_right    | VE_some
 
 and v_bin_cont =

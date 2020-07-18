@@ -1,31 +1,35 @@
 open ProverLib
 
+type typ_map = (Vlang.var, Vlang.typ) Cfg.CPMap.t
+
 (************************************************)
 (************************************************)
 
-let rec convert : Bp.t -> Vlang.t
-=fun bp -> begin
+let rec convert : Bp.t -> Cfg.t -> Vlang.t
+=fun bp cfg -> begin
   let f, g = ((Option.get bp.pre.formula), (Option.get bp.post.formula)) in
-  let f', g' = Core.List.fold_left bp.body ~init:(f, g) ~f:sp in
+  let f', g', _ = Core.List.fold_left bp.body ~init:(f, g, cfg.type_info) ~f:sp in
   let vc = Vlang.create_formula_imply f' g' in
   vc
 end
 
-and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
-=fun (f, g) s -> begin
+and sp : (Vlang.t * Vlang.t * typ_map) -> Bp.inst -> (Vlang.t * Vlang.t * typ_map)
+=fun (f, g, tmap) s -> begin
   match s with
   | BI_assume c -> begin
       let f' = Vlang.create_formula_and c f in
-      (f', g)
+      (f', g, tmap)
     end
   | BI_assign (v, e) -> begin
       let v' = create_rename_var v in
+      let v_typ = Cfg.CPMap.find_exn tmap v in
+      let tmap' = Cfg.CPMap.add_exn tmap ~key:v' ~data:v_typ in
       let f' = create_rewrite_formula v v' f in
-      let e' = create_rewrite_exp v v' (create_convert_exp e) in
+      let e' = create_rewrite_exp v v' (create_convert_exp e v_typ) in
       let f'' = Vlang.create_formula_and f' (Vlang.create_formula_eq (Vlang.create_exp_var v) e') in
-      (f'', g)
+      (f'', g, tmap')
     end
-  | BI_skip -> (f, g)
+  | BI_skip -> (f, g, tmap)
 end
 
 and create_rename_var : Vlang.var -> Vlang.var
@@ -51,8 +55,8 @@ and create_rewrite_exp : Vlang.var -> Vlang.var -> Vlang.v_exp -> Vlang.v_exp
   let nested_rewrite ve = create_rewrite_exp v v' ve in
   let formula_rewrite vf = create_rewrite_formula v v' vf in
   match e with
-  | VE_int _ | VE_string _ | VE_unit | VE_none
-  | VE_uni_cont (_, _) | VE_bin_cont (_, _, _) | VE_list _
+  | VE_int _ | VE_string _ | VE_unit | VE_none _
+  | VE_uni_cont (_, _, _) | VE_bin_cont (_, _, _, _) | VE_list _
   | VE_nul_op _ | VE_lambda | VE_operation _ -> e
   | VE_bool f -> VE_bool (formula_rewrite f)
   | VE_var vv -> begin
@@ -66,31 +70,34 @@ and create_rewrite_exp : Vlang.var -> Vlang.var -> Vlang.v_exp -> Vlang.v_exp
   | VE_ter_op (vo, ve1, ve2, ve3) -> VE_ter_op (vo, (nested_rewrite ve1), (nested_rewrite ve2), (nested_rewrite ve3))
 end
 
-and create_convert_data : Vlang.data -> Vlang.v_exp
-=fun d -> begin
-  match d.d with
-  | D_int x -> VE_int x 
-  | D_string x -> VE_string x
-  | D_bytes x -> VE_string x
-  | D_unit -> VE_unit
-  | D_bool b -> begin
+and create_convert_data : Vlang.data -> Vlang.typ -> Vlang.v_exp
+=fun d t -> begin
+  match (d.d, t.d) with
+  | D_int x, (T_int | T_nat | T_mutez) -> VE_int x 
+  | D_string x, (T_string | T_key | T_key_hash | T_signature | T_address | T_timestamp) -> VE_string x
+  | D_bytes x, T_bytes -> VE_string x
+  | D_unit, T_unit -> VE_unit
+  | D_bool b, T_bool -> begin
       if b then VE_bool (VF_true)
       else VE_bool (VF_false)
     end
-  | D_pair (c1, c2) -> VE_bin_cont (VE_pair, (create_convert_data c1), (create_convert_data c2))
-  | D_left c -> VE_uni_cont (VE_left, (create_convert_data c))
-  | D_right c -> VE_uni_cont (VE_right, (create_convert_data c))
-  | D_some c -> VE_uni_cont (VE_some, (create_convert_data c))
-  | D_none -> VE_none
-  | D_elt (c1, c2) -> VE_bin_cont (VE_elt, (create_convert_data c1), (create_convert_data c2))
-  | D_list cl -> VE_list (Core.List.map cl ~f:(fun c -> (create_convert_data c)))
+  | D_pair (c1, c2), T_pair (t1, t2) -> begin
+      VE_bin_cont (VE_pair, (create_convert_data c1 t1), (create_convert_data c2 t2), t)
+    end
+  | D_left c, T_or(t', _) -> VE_uni_cont (VE_left, (create_convert_data c t'), t)
+  | D_right c, T_or(_, t') -> VE_uni_cont (VE_right, (create_convert_data c t'), t)
+  | D_some c, T_option t' -> VE_uni_cont (VE_some, (create_convert_data c t'), t)
+  | D_none, T_option t' -> VE_none t'
+  | D_elt (c1, c2), T_map (t1, t2) -> VE_bin_cont (VE_elt, (create_convert_data c1 t1), (create_convert_data c2 t2), t)
+  | D_list cl, T_list t' -> VE_list (Core.List.map cl ~f:(fun c -> (create_convert_data c t')), t)
+  | _ -> raise (Failure "Wrong data and type")
 end
 
-and create_convert_exp : Vlang.exp -> Vlang.v_exp
-=fun e -> begin
+and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
+=fun e t -> begin
   match e with
   | E_itself v -> Vlang.create_exp_var v
-  | E_push (d, _) -> create_convert_data d
+  | E_push (d, t') -> create_convert_data d t'
   | E_car v -> VE_uni_op (VE_car, (Vlang.create_exp_var v))
   | E_cdr v -> VE_uni_op (VE_cdr, (Vlang.create_exp_var v))
   | E_abs v -> VE_uni_op (VE_abs, (Vlang.create_exp_var v))
@@ -123,11 +130,11 @@ and create_convert_exp : Vlang.exp -> Vlang.v_exp
       | O_create_account (_, _, _, _) -> VE_operation (VE_origination)
     end
   | E_unit -> VE_unit
-  | E_pair (v1, v2) -> VE_bin_cont (VE_pair, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
-  | E_left (v, _) -> VE_uni_cont (VE_left, (Vlang.create_exp_var v))
-  | E_right (v, _) -> VE_uni_cont (VE_right, (Vlang.create_exp_var v))
-  | E_some v -> VE_uni_cont (VE_some, (Vlang.create_exp_var v))
-  | E_none _ -> VE_none
+  | E_pair (v1, v2) -> VE_bin_cont (VE_pair, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2), t)
+  | E_left (v, t') -> VE_uni_cont (VE_left, (Vlang.create_exp_var v), t')
+  | E_right (v, t') -> VE_uni_cont (VE_right, (Vlang.create_exp_var v), t')
+  | E_some v -> VE_uni_cont (VE_some, (Vlang.create_exp_var v), t)
+  | E_none t' -> VE_none t'
   | E_mem (v1, v2) -> VE_bool (VF_not (VF_uni_rel (VF_is_none, VE_read ((Vlang.create_exp_var v1), (Vlang.create_exp_var v2)))))
   | E_get (v1, v2) -> VE_read ((Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
   | E_update (v1, v2, v3) -> VE_write ((Vlang.create_exp_var v1), (Vlang.create_exp_var v2), (Vlang.create_exp_var v3))
@@ -165,11 +172,11 @@ and create_convert_exp : Vlang.exp -> Vlang.v_exp
   | E_lambda (_, _, _) -> VE_lambda
   | E_exec (v1, v2) -> VE_bin_op (VE_exec, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
   | E_dup v -> (Vlang.create_exp_var v)
-  | E_nil _ -> VE_list []
-  | E_empty_set _ -> VE_list []
-  | E_empty_map _ -> VE_list []
-  | E_empty_big_map _ -> VE_list []
+  | E_nil _ -> VE_list ([], t)
+  | E_empty_set _ -> VE_list ([], t)
+  | E_empty_map _ -> VE_list ([], t)
+  | E_empty_big_map _ -> VE_list ([], t)
   | E_append (v1, v2) -> VE_bin_op (VE_append, (Vlang.create_exp_var v1), (Vlang.create_exp_var v2))
-  | E_special_nil_list -> VE_list []
+  | E_special_nil_list -> VE_list ([], t)
   | E_phi (_, _) -> raise (Failure "Phi Function")
 end
