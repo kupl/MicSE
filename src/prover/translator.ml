@@ -2285,6 +2285,133 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_operation (O_transfer_tokens (v_1, v_2, v_3)))) cfg_vr_added in
     (cfg_ended, v_r :: tttl_si)
 
+  | I_set_delegate ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_operation (O_set_delegate v_1))
+        type_info   : v_r   -> T_operation
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_set_delegate : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_operation in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_operation (O_set_delegate v_1))) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+  
+  | I_create_account -> fail "inst_to_cfg : I_create_account : UNDEFINED"
+
+  | I_create_contract pgm ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_3   : third top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_operation (O_create_contract (pgm, v_1, v_2, v_3)))
+        type_info   : v_r   -> T_operation
+        stack_info  : pop three elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_create_contract : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let (v_3, tttl_si) = stack_hdtl ttl_si in
+    let t_r = gen_t Michelson.Adt.T_operation in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_operation (O_create_contract (pgm, v_1, v_2, v_3)))) cfg_vr_added in
+    (cfg_ended, v_r :: tttl_si)
+
+  | I_implicit_account ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_implicit_accout v_1)
+        type_info   : v_r   -> T_contract T_unit
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_implicit_account : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t (Michelson.Adt.T_contract (gen_t Michelson.Adt.T_unit))  in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_implicit_account v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_now -> template_of_push_value "I_now" counter (in_v, out_v) (E_now, Michelson.Adt.T_timestamp) (cfg, stack_info)
+
+  | I_amount -> template_of_push_value "I_amount" counter (in_v, out_v) (E_amount, Michelson.Adt.T_mutez) (cfg, stack_info)
+
+  | I_balance -> template_of_push_value "I_balance" counter (in_v, out_v) (E_balance, Michelson.Adt.T_mutez) (cfg, stack_info)
+
+  | I_check_signature -> 
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_2   : second top element of the stack.
+                      v_3   : third top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_check_signature (v_1, v_2, v_3))
+        type_info   : v_r   -> T_bool
+        stack_info  : pop three elements and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_check_signature : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let (v_3, tttl_si) = stack_hdtl ttl_si in
+    let t_r = gen_t Michelson.Adt.T_bool in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_check_signature (v_1, v_2, v_3))) cfg_vr_added in
+    (cfg_ended, v_r :: tttl_si)
+  
+  | I_blake2b ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_blake2b v_1)
+        type_info   : v_r   -> T_bytes
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_blake2b : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_bytes  in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_blake2b v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_sha256 ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_sha256 v_1)
+        type_info   : v_r   -> T_bytes
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_sha256 : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_bytes  in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_sha256 v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_sha512 ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_sha512 v_1)
+        type_info   : v_r   -> T_bytes
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_sha512 : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_bytes  in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_sha512 v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
 
 
 
