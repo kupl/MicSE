@@ -1,16 +1,37 @@
 let input_file = ref ""
 
+(* FLAGS - Parsed Michelson File *)
+let flag_adt_print = ref false
+
+(* FLAGS - Control Flow Graph *)
+let flag_cfg_print_dot = ref false
+
 let options =
   [
     ("-input", (Arg.String (fun s -> input_file := s)), "File path for input michelson program.");
+    ("-adt_print", (Arg.Set flag_adt_print), "Print parsed Michelson file.");
+    ("-cfg_print_dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
   ]
 
 let main : unit -> unit
 =fun () -> begin
   let filepath = !input_file in
+  (*
   let ast = Tezla.Parsing_utils.parse_with_error filepath in
   let cfg = Tezla_cfg.Flow_graph.Cfg.generate_from_program ast in
   let cfg = Prover.Translator.of_tezlaCfg cfg in
+  *)
+  (* Parse Michelson File *)
+  let adt = ProverLib.Adt.parse filepath in
+  (* FLAGS - Parsed Michelson File *)
+  let _ : unit = (if (!flag_adt_print) then (ProverLib.Adt.pp Format.std_formatter adt) else ()) in
+
+  (* Construct control flow graph *)
+  let cfg = Prover.Translator.adt_to_cfg adt in
+  (* FLAGS - Control Flow Graph *)
+  let _ : unit = (if (!flag_cfg_print_dot) then print_endline (ProverLib.Cfg.cfg_to_dotformat cfg) else ()) in
+
+  (* Construct basic path *)
   let (bps, _) = Prover.Extractor.extract cfg in
   let _ = Core.List.iteri bps ~f:(fun idx bp -> (
     let str = "(" ^ (string_of_int idx) ^ ")\n\n" in

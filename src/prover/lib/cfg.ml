@@ -97,7 +97,7 @@ let string_of_ident : ident -> string
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Utilities                                                                 *)
+(* Graph Utilities                                                           *)
 (*****************************************************************************)
 (*****************************************************************************)
 
@@ -189,15 +189,83 @@ let t_add_nv_tinfo ?(errtrace = "") counter ty (cfg, _) = begin
   t_add_tinfo ~errtrace:et (s, ty) (cfg, ())
 end
 
-let t_con_vtx_back      v1 (cfg, v2) = (edg_add  (v1, v2) cfg, v2)
-let t_con_vtx_front     v2 (cfg, v1) = (edg_add  (v1, v2) cfg, v2)
-let t_con_vtx_backr     v1 (cfg, v2) = (edg_add  (v1, v2) cfg, v1)
-let t_con_vtx_frontr    v2 (cfg, v1) = (edg_add  (v1, v2) cfg, v1)
-let t_con_vtx_back_t    v1 (cfg, v2) = (tedg_add (v1, v2) cfg, v2)
-let t_con_vtx_front_t   v2 (cfg, v1) = (tedg_add (v1, v2) cfg, v2)
-let t_con_vtx_backr_t   v1 (cfg, v2) = (tedg_add (v1, v2) cfg, v1)
-let t_con_vtx_frontr_t  v2 (cfg, v1) = (tedg_add (v1, v2) cfg, v1)
-let t_con_vtx_back_f    v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v2)
-let t_con_vtx_front_f   v2 (cfg, v1) = (fedg_add (v1, v2) cfg, v2)
-let t_con_vtx_backr_f   v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v1)
-let t_con_vtx_frontr_f  v2 (cfg, v1) = (fedg_add (v1, v2) cfg, v1)
+let t_con_vtx_back      v2 (cfg, v1) = (edg_add  (v1, v2) cfg, v2)
+let t_con_vtx_front     v1 (cfg, v2) = (edg_add  (v1, v2) cfg, v2)
+let t_con_vtx_backr     v2 (cfg, v1) = (edg_add  (v1, v2) cfg, v1)
+let t_con_vtx_frontr    v1 (cfg, v2) = (edg_add  (v1, v2) cfg, v1)
+let t_con_vtx_back_t    v2 (cfg, v1) = (tedg_add (v1, v2) cfg, v2)
+let t_con_vtx_front_t   v1 (cfg, v2) = (tedg_add (v1, v2) cfg, v2)
+let t_con_vtx_backr_t   v2 (cfg, v1) = (tedg_add (v1, v2) cfg, v1)
+let t_con_vtx_frontr_t  v1 (cfg, v2) = (tedg_add (v1, v2) cfg, v1)
+let t_con_vtx_back_f    v2 (cfg, v1) = (fedg_add (v1, v2) cfg, v2)
+let t_con_vtx_front_f   v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v2)
+let t_con_vtx_backr_f   v2 (cfg, v1) = (fedg_add (v1, v2) cfg, v1)
+let t_con_vtx_frontr_f  v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v1)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Print                                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let cfg_to_dotformat : t -> string
+= let only_label_str s : string = ( "label=\"" ^ s ^ "\"" ) in
+  (* FUNCTION BEGIN *)
+  fun cfg -> begin
+  (* flow *)
+  let flow_fold_func : G.E.t -> string list -> string list
+  =fun (in_v, e_label, out_v) acc -> begin
+    let body_s = (string_of_int in_v) ^ " -> " ^ (string_of_int out_v) in
+    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" in
+    (body_s ^ " " ^ edge_s ^ ";") :: acc
+  end in
+  let flow_s = begin
+    G.fold_edges_e flow_fold_func cfg.flow []
+    |> List.map (fun x -> "    " ^ x)
+    |> String.concat "\n"
+  end in
+  (* each vertex *)
+  let vi_fold_func : G.V.t -> string list -> string list
+  =fun v acc -> begin
+    let vs = string_of_int v in
+    let is_main_entry = v = cfg.main_entry in
+    let is_main_exit  = v = cfg.main_exit  in
+    let vi : stmt = t_map_find ~errtrace:"cfg_to_dotformat : vi_fold_func : vi" cfg.vertex_info v in
+    let lb_str : string = 
+      if is_main_entry then (vs ^ " : MAIN-ENTRY")
+      else ( 
+        if is_main_exit then (vs ^ " : MAIN-EXIT")
+        else (
+          let vi_wrapped : TezlaCfg.Node.t = TezlaCfg.Node.create_node ~id:(-1) vi in
+          let vis : string = TezlaCfg.Node.to_string vi_wrapped in
+          (vs ^ " : " ^ vis)
+        )
+      )
+    in
+    if (is_main_entry || is_main_exit) then (vs ^ " [shape=doubleoctagon, " ^ (only_label_str lb_str) ^ "];") :: acc
+    else (
+      match vi with
+      | Cfg_if _ | Cfg_if_none _ | Cfg_if_left _ | Cfg_if_cons _
+      | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _
+        -> (vs ^ " [shape=diamond, " ^ (only_label_str lb_str) ^ "];") :: acc
+      | Cfg_assign _
+        -> (vs ^ " [shape=box, " ^ (only_label_str lb_str) ^ "];") :: acc
+      | _ -> (vs ^ " [" ^ (only_label_str lb_str) ^ "];") :: acc
+    )
+  end in
+  let vi_s = begin
+    G.fold_vertex vi_fold_func cfg.flow []
+    |> List.map (fun x -> "    " ^ x)
+    |> String.concat "\n"
+  end in
+  (* entire graph *)
+  let main_s = begin
+    "digraph G {\n"
+    ^ flow_s
+    ^ "\n"
+    ^ vi_s
+    ^ "\n}"
+  end in
+  main_s
+end

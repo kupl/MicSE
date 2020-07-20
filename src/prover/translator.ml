@@ -222,19 +222,14 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
   match get_d ist with 
   | I_seq (i1, i2) ->
     (*  flow        : add new vertex between in-and-out
-        vertex_info : Cfg_skip
+        vertex_info : no change
         type_info   : no change
         stack_info  : no change
     *)
-    let mid_v = new_vtx counter in
-    let flow_1 = G.add_vertex cfg.flow mid_v in
-    let vertex_info_1 = add_skip_vinfo "I_seq : vertex_info_1" cfg.vertex_info in_v in
-    let vertex_info_2 = map_add "inst_to_cfg : I_seq : vertex_info_2" vertex_info_1 mid_v Cfg_skip in
-    let cfg_1 = {cfg with flow=flow_1; vertex_info=vertex_info_2;} in
-    (* fill about two instructions *)
-    let (cfg_2, stack_info_1) = inst_to_cfg counter (in_v, mid_v) i1 (cfg_1, stack_info) in
-    let (cfg_3, stack_info_2) = inst_to_cfg counter (mid_v, out_v) i2 (cfg_2, stack_info_1) in
-    (cfg_3, stack_info_2)
+    let (cfg_b, mid_v) = t_add_vtx counter (cfg, ()) in
+    let (cfg_1, stack_info_1) = inst_to_cfg counter (in_v, mid_v) i1 (cfg_b, stack_info) in
+    let (cfg_2, stack_info_2) = inst_to_cfg counter (mid_v, out_v) i2 (cfg_1, stack_info_1) in
+    (cfg_2, stack_info_2)
 
   | I_drop ->
     (*  flow        : add new vertex between in-and-out
