@@ -35,7 +35,7 @@ and v_exp =
   | VE_uni_cont of v_uni_cont * v_exp * typ
   | VE_bin_cont of v_bin_cont * v_exp * v_exp * typ
   | VE_list of v_exp list * typ
-  | VE_var of var
+  | VE_var of var * typ
   | VE_read of v_exp * v_exp (* (i, A) : A[i] in RHS *)
   | VE_write of v_exp * v_exp * v_exp (* (i, v, A) : A[i] = v *)
   | VE_nul_op of v_nul_op
@@ -78,8 +78,8 @@ and v_operation =
   | VE_delegation
 
 
-let create_exp_var : var -> v_exp
-=fun v -> VE_var (v)
+let create_exp_var : var -> typ -> v_exp
+=fun v t -> VE_var (v, t)
 
 let create_formula_not : v_formula -> v_formula
 =fun f -> VF_not f

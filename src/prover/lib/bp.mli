@@ -4,6 +4,7 @@
 (*****************************************************************************)
 (*****************************************************************************)
 
+type typ = Adt.typ
 type var = Cfg.ident
   (*
     type indent = string
@@ -11,13 +12,13 @@ type var = Cfg.ident
   
 type cond = Vlang.v_formula
 
-val create_cond_is_true : var -> cond
+val create_cond_is_true : var -> typ -> cond
 
-val create_cond_is_none : var -> cond
+val create_cond_is_none : var -> typ -> cond
 
-val create_cond_is_left : var -> cond
+val create_cond_is_left : var -> typ -> cond
 
-val create_cond_is_cons : var -> cond
+val create_cond_is_cons : var -> typ -> cond
 
 val create_cond_not : cond -> cond
 

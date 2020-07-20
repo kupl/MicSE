@@ -4,20 +4,21 @@
 (*****************************************************************************)
 (*****************************************************************************)
 
+type typ = Adt.typ
 type var = Cfg.ident
 type cond = Vlang.v_formula
 
-let create_cond_is_true : var -> cond
-=fun v -> Vlang.create_formula_is_true (Vlang.create_exp_var v)
+let create_cond_is_true : var -> typ -> cond
+=fun v t -> Vlang.create_formula_is_true (Vlang.create_exp_var v t)
 
-let create_cond_is_none : var -> cond
-=fun v -> Vlang.create_formula_is_none (Vlang.create_exp_var v)
+let create_cond_is_none : var -> typ -> cond
+=fun v t -> Vlang.create_formula_is_none (Vlang.create_exp_var v t)
 
-let create_cond_is_left : var -> cond
-=fun v -> Vlang.create_formula_is_left (Vlang.create_exp_var v)
+let create_cond_is_left : var -> typ -> cond
+=fun v t -> Vlang.create_formula_is_left (Vlang.create_exp_var v t)
 
-let create_cond_is_cons : var -> cond
-=fun v -> Vlang.create_formula_is_cons (Vlang.create_exp_var v)
+let create_cond_is_cons : var -> typ -> cond
+=fun v t -> Vlang.create_formula_is_cons (Vlang.create_exp_var v t)
 
 let create_cond_not : cond -> cond
 =fun f -> Vlang.create_formula_not f

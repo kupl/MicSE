@@ -153,8 +153,8 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
       let cons_func = Z3.Z3List.get_cons_decl array_sort in
       Core.List.fold_right vel ~f:(fun e l -> (Z3.FuncDecl.apply cons_func [(zexp_of_vexp e); l])) ~init:nil
     end
+  | VE_var (v, t) -> Z3.Expr.mk_const !ctx (mk_simple_symbol v) (sort_of_typt t)
   (*
-  | VE_var of var
   | VE_read of v_exp * v_exp (* A[i] in RHS *)
   | VE_write of v_exp * v_exp * v_exp (* A[i] = v *)
   | VE_nul_op of v_nul_op

@@ -18,6 +18,7 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
 =fun cur_bp cur_vtx cfg -> begin
   let stmt = Cfg.read_stmt_from_vtx cfg cur_vtx in
   let succ = Cfg.read_succ_from_vtx cfg cur_vtx in
+  let get_type_of_id id = Cfg.CPMap.find_exn cfg.type_info id in
   let make_branch_bp f_if = begin
     let f_else = Bp.create_cond_not f_if in
     let inst_if = Bp.create_inst_assume f_if in
@@ -62,28 +63,28 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
         result
       end
     | Cfg_if id -> begin
-        let f_if = Bp.create_cond_is_true id in
+        let f_if = Bp.create_cond_is_true id (get_type_of_id id) in
         let bps = make_branch_bp f_if in
         let search = branch_search bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if_none id -> begin
-        let f_if = Bp.create_cond_is_none id in
+        let f_if = Bp.create_cond_is_none id (get_type_of_id id) in
         let bps = make_branch_bp f_if in
         let search = branch_search bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if_left id -> begin
-        let f_if = Bp.create_cond_is_left id in
+        let f_if = Bp.create_cond_is_left id (get_type_of_id id) in
         let bps = make_branch_bp f_if in
         let search = branch_search bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if_cons id -> begin
-        let f_if = Bp.create_cond_is_cons id in
+        let f_if = Bp.create_cond_is_cons id (get_type_of_id id) in
         let bps = make_branch_bp f_if in
         let search = branch_search bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in

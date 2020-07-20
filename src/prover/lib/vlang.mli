@@ -167,7 +167,7 @@ and v_exp =
   | VE_uni_cont of v_uni_cont * v_exp * typ
   | VE_bin_cont of v_bin_cont * v_exp * v_exp * typ
   | VE_list of v_exp list * typ
-  | VE_var of var
+  | VE_var of var * typ
   | VE_read of v_exp * v_exp (* A[i] in RHS *)
   | VE_write of v_exp * v_exp * v_exp (* A[i] = v *)
   | VE_nul_op of v_nul_op
@@ -209,7 +209,7 @@ and v_operation =
   | VE_origination
   | VE_delegation
 
-val create_exp_var : var -> v_exp
+val create_exp_var : var -> typ -> v_exp
 
 val create_formula_not : v_formula -> v_formula
 
