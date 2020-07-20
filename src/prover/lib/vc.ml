@@ -147,6 +147,12 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
         Z3.Z3Array.mk_store !ctx default_array (zexp_of_vexp e1) (zexp_of_vexp e2)
       end
     end
+  | VE_list (vel, t) -> begin
+      let array_sort = sort_of_typt t in
+      let nil = Z3.Z3List.nil array_sort in
+      let cons_func = Z3.Z3List.get_cons_decl array_sort in
+      Core.List.fold_right vel ~f:(fun e l -> (Z3.FuncDecl.apply cons_func [(zexp_of_vexp e); l])) ~init:nil
+    end
   (*
   | VE_var of var
   | VE_read of v_exp * v_exp (* A[i] in RHS *)
