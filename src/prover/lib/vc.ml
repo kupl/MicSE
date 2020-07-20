@@ -108,6 +108,13 @@ end
 and zexp_of_vexp : v_exp -> Z3.Expr.expr
 =fun ve -> begin
   let mk_simple_symbol s = Z3.Symbol.mk_string !ctx s in
+  let mk_option_of e sort = begin
+    let opt_sort = Z3.Tuple.mk_sort !ctx (mk_simple_symbol "Option") [(mk_simple_symbol "exist"); (mk_simple_symbol "value")] [option_sort; sort] in
+    let const_func = Z3.Tuple.get_mk_decl opt_sort in
+    match e with
+    | None -> Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 0); (Z3.Expr.mk_const !ctx (dummy_symbol ()) sort)]
+    | Some x -> Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 1); x]
+  end in
   let get_inner_sort l id = Core.List.nth_exn l id in
   match ve with
   | VE_int n -> Z3.Arithmetic.Integer.mk_numeral_s !ctx (Z.to_string n)
@@ -154,8 +161,14 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
       Core.List.fold_right vel ~f:(fun e l -> (Z3.FuncDecl.apply cons_func [(zexp_of_vexp e); l])) ~init:nil
     end
   | VE_var (v, t) -> Z3.Expr.mk_const !ctx (mk_simple_symbol v) (sort_of_typt t)
+  | VE_read (e1, e2) -> begin
+      let idx, arr = ((zexp_of_vexp e1), (zexp_of_vexp e2)) in
+      let item = Z3.Z3Array.mk_select !ctx arr idx in
+      let sort_of_item = Z3.Expr.get_sort item in
+      let default_value = Z3.Z3Array.mk_term_array !ctx arr in
+      Z3.Boolean.mk_ite !ctx (Z3.Boolean.mk_eq !ctx item default_value) (mk_option_of None sort_of_item) (mk_option_of (Some item) sort_of_item)
+    end
   (*
-  | VE_read of v_exp * v_exp (* A[i] in RHS *)
   | VE_write of v_exp * v_exp * v_exp (* A[i] = v *)
   | VE_nul_op of v_nul_op
   | VE_uni_op of v_uni_op * v_exp
