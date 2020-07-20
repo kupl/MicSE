@@ -142,6 +142,12 @@ val t_con_vtx_frontr_f : vertex -> (t * vertex) -> (t * vertex)
 val t_con_vtx_backr_f  : vertex -> (t * vertex) -> (t * vertex)
 
 
+(* simple optimization - remove meaningless skip node *)
+(* meaningless skip node has only one in-degree and one out-degree and both edges are "Normal" *)
+(* WARNING : this does not remove any vertex-information in Cfg.t *)
+val remove_meaningless_skip_vertices : t -> t
+
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Print                                                                     *)

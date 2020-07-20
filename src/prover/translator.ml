@@ -2477,15 +2477,17 @@ let adt_to_cfg : Adt.t -> Cfg.t
   let flow_1 = G.add_vertex (G.add_vertex G.empty entry_v) exit_v in
   let param_storage_type = gen_t (Michelson.Adt.T_pair (adt.param, adt.storage)) in
   (*let vertex_info_1 = imap_add (imap_add CPMap.empty entry_v Tezla_cfg.Cfg_node.Cfg_skip) exit_v Tezla_cfg.Cfg_node.Cfg_skip in*)
-  let vertex_info_1 = imap_add CPMap.empty exit_v Tezla_cfg.Cfg_node.Cfg_skip in
+  (*let vertex_info_1 = imap_add CPMap.empty exit_v Tezla_cfg.Cfg_node.Cfg_skip in*)
   let type_info_1 = smap_add CPMap.empty param_storage_name param_storage_type in
   let stack_info_1 : string list = [Cfg.param_storage_name] in
   let cfg_init = {
     flow = flow_1;
-    vertex_info = vertex_info_1;
+    vertex_info = CPMap.empty;
     type_info = type_info_1;
     main_entry = entry_v;
     main_exit = exit_v; } in
-  inst_to_cfg counter (cfg_init.main_entry, cfg_init.main_exit) adt.code (cfg_init, stack_info_1)
-  |> Stdlib.fst
+  let (cfg_last, stack_info) = inst_to_cfg counter (cfg_init.main_entry, cfg_init.main_exit) adt.code (cfg_init, stack_info_1) in
+  let hd_stack_info = Core.List.hd_exn stack_info in
+  let vertex_info_last = imap_add cfg_last.vertex_info exit_v (Tezla_cfg.Cfg_node.Cfg_assign (hd_stack_info, E_itself hd_stack_info)) in
+  {cfg_last with vertex_info=vertex_info_last;}
   (* TODO : if necessary, update exit node's stack info. *)

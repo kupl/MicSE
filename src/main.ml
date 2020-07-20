@@ -5,12 +5,14 @@ let flag_adt_print = ref false
 
 (* FLAGS - Control Flow Graph *)
 let flag_cfg_print_dot = ref false
+let flag_cfgopt_svn = ref false (* skip-vertices-naive *)
 
 let options =
   [
     ("-input", (Arg.String (fun s -> input_file := s)), "File path for input michelson program.");
     ("-adt_print", (Arg.Set flag_adt_print), "Print parsed Michelson file.");
     ("-cfg_print_dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
+    ("-cfgopt_svn", (Arg.Set flag_cfgopt_svn), "Naively remove skip vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
   ]
 
 let main : unit -> unit
@@ -27,8 +29,10 @@ let main : unit -> unit
   let _ : unit = (if (!flag_adt_print) then (ProverLib.Adt.pp Format.std_formatter adt) else ()) in
 
   (* Construct control flow graph *)
-  let cfg = Prover.Translator.adt_to_cfg adt in
-  (* FLAGS - Control Flow Graph *)
+  let cfg_first = Prover.Translator.adt_to_cfg adt in
+  let cfg_optimized = (if (!flag_cfgopt_svn) then (ProverLib.Cfg.remove_meaningless_skip_vertices cfg_first) else (cfg_first)) in
+
+  let cfg = cfg_optimized in
   let _ : unit = (if (!flag_cfg_print_dot) then print_endline (ProverLib.Cfg.cfg_to_dotformat cfg) else ()) in
 
   (* Construct basic path *)

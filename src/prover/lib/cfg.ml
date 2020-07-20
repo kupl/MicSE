@@ -203,6 +203,36 @@ let t_con_vtx_backr_f   v2 (cfg, v1) = (fedg_add (v1, v2) cfg, v1)
 let t_con_vtx_frontr_f  v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v1)
 
 
+let remove_meaningless_skip_vertices =
+  let gen_emsg s : string = ("remove_meaningless_skip_vertices : " ^ s) in
+  let is_skip : stmt -> bool = (function | Cfg_skip -> true | _ -> false) in
+  (* FUNCTION BEGIN *)
+  fun cfg -> begin
+    let fold_func : G.V.t -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t)) -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t))
+    =fun v (vvvlist, vset) -> begin
+      if ((t_map_find ~errtrace:(gen_emsg "skipcheck") cfg.vertex_info v |> is_skip) && (G.out_degree cfg.flow v = 1) && (G.in_degree cfg.flow v = 1))
+      then (
+        (* Because of if-condition, pred and succ will return singleton list. *)
+        let (in_v, in_label, mid_v) = G.pred_e cfg.flow v |> Core.List.hd_exn in
+        let (mid_v_2, out_label, out_v) = G.succ_e cfg.flow v |> Core.List.hd_exn in
+        if ((mid_v = mid_v_2) && (in_label = Normal) && (out_label = Normal) && (Core.Set.Poly.for_all vset (fun x -> x <> mid_v)))
+        then ( (in_v, mid_v, out_v) :: vvvlist, Core.Set.add vset v )
+        else ( vvvlist, vset )
+      )
+      else ( vvvlist, vset )
+    end in
+    let (vvvl, _) = G.fold_vertex fold_func cfg.flow ([], Core.Set.Poly.empty) in
+    let optfunc fl (in_v, mid_v, out_v) = begin
+      let fl_1 = G.remove_edge fl in_v mid_v in
+      let fl_2 = G.remove_edge fl_1 mid_v out_v in
+      let fl_3 = G.remove_vertex fl_2 mid_v in
+      (G.add_edge fl_3 in_v out_v)
+    end in
+    let newflow = Core.List.fold vvvl ~init:(cfg.flow) ~f:optfunc in
+    {cfg with flow=newflow;}
+  end
+
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Print                                                                     *)
@@ -211,6 +241,10 @@ let t_con_vtx_frontr_f  v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v1)
 
 let cfg_to_dotformat : t -> string
 = let only_label_str s : string = ( "label=\"" ^ s ^ "\"" ) in
+  let get_lhs_varname : stmt -> string = begin function
+    | Cfg_assign (x, _) -> x
+    | _ -> fail "cfg_to_dotformat : get_lhs_varname : match failed"
+  end in
   (* FUNCTION BEGIN *)
   fun cfg -> begin
   (* flow *)
@@ -235,7 +269,7 @@ let cfg_to_dotformat : t -> string
     let lb_str : string = 
       if is_main_entry then (vs ^ " : MAIN-ENTRY")
       else ( 
-        if is_main_exit then (vs ^ " : MAIN-EXIT")
+        if is_main_exit then (let vn = get_lhs_varname vi in (vs ^ " : " ^ vn ^ " : MAIN-EXIT"))
         else (
           let vi_wrapped : TezlaCfg.Node.t = TezlaCfg.Node.create_node ~id:(-1) vi in
           let vis : string = TezlaCfg.Node.to_string vi_wrapped in
