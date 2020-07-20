@@ -20,6 +20,12 @@ let or_left_symbol = Z3.Symbol.mk_string !ctx "Left"
 let or_right_symbol = Z3.Symbol.mk_string !ctx "Right"
 let or_sort = Z3.Enumeration.mk_sort !ctx or_symbol [or_left_symbol; or_right_symbol]
 
+let dummy_tmp = ref 0
+let dummy_symbol () = begin
+  let _ = dummy_tmp := !dummy_tmp + 1 in
+  Z3.Symbol.mk_string !ctx ("DUMMY" ^ (string_of_int !dummy_tmp))
+end
+
 let rec sort_of_typt : typ -> Z3.Sort.sort
 =fun typ -> begin
   let mk_typt_symbol s tl = Z3.Symbol.mk_string !ctx (Core.List.fold_right tl ~init:s ~f:(fun t str -> str ^ "_" ^ (Adt.string_of_typt t))) in
@@ -111,7 +117,7 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
   | VE_none t -> begin
       let const_func = Z3.Tuple.get_mk_decl (sort_of_typt t) in
       let inner_sort = get_inner_sort (sort_of_inner_type t) 0 in
-      Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 0); (Z3.Expr.mk_const !ctx (mk_simple_symbol "DUMMY") inner_sort)]
+      Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 0); (Z3.Expr.mk_const !ctx (dummy_symbol ()) inner_sort)]
     end
   | VE_uni_cont (vuc, e, t) -> begin
       let const_func = Z3.Tuple.get_mk_decl (sort_of_typt t) in
@@ -119,19 +125,29 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
       match vuc with
       | VE_left -> begin
           let right_sort = get_inner_sort inner_sorts 1 in
-          Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const or_sort 0); (zexp_of_vexp e); (Z3.Expr.mk_const !ctx (mk_simple_symbol "DUMMY") right_sort)]
+          Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const or_sort 0); (zexp_of_vexp e); (Z3.Expr.mk_const !ctx (dummy_symbol ()) right_sort)]
         end
       | VE_right -> begin
           let left_sort = get_inner_sort inner_sorts 0 in
-          Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const or_sort 1); (Z3.Expr.mk_const !ctx (mk_simple_symbol "DUMMY") left_sort); (zexp_of_vexp e)]
+          Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const or_sort 1); (Z3.Expr.mk_const !ctx (dummy_symbol ()) left_sort); (zexp_of_vexp e)]
         end
       | VE_some -> begin
           Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 1); (zexp_of_vexp e)]
         end
     end
+  | VE_bin_cont (vbc, e1, e2, t) -> begin
+    match vbc with
+    | VE_pair -> begin
+        let const_func = Z3.Tuple.get_mk_decl (sort_of_typt t) in
+        Z3.FuncDecl.apply const_func [(zexp_of_vexp e1); (zexp_of_vexp e2)]
+      end
+    | VE_elt -> begin
+        let array_sort = sort_of_typt t in
+        let default_array = Z3.Z3Array.mk_const !ctx (dummy_symbol ()) (Z3.Z3Array.get_domain array_sort) (Z3.Z3Array.get_range array_sort) in
+        Z3.Z3Array.mk_store !ctx default_array (zexp_of_vexp e1) (zexp_of_vexp e2)
+      end
+    end
   (*
-  | VE_bin_cont of v_bin_cont * v_exp * v_exp
-  | VE_list of v_exp list
   | VE_var of var
   | VE_read of v_exp * v_exp (* A[i] in RHS *)
   | VE_write of v_exp * v_exp * v_exp (* A[i] = v *)
