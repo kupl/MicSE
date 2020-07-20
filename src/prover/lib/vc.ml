@@ -168,8 +168,8 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
       let default_value = Z3.Z3Array.mk_term_array !ctx arr in
       Z3.Boolean.mk_ite !ctx (Z3.Boolean.mk_eq !ctx item default_value) (mk_option_of None sort_of_item) (mk_option_of (Some item) sort_of_item)
     end
+  | VE_write (e1, e2, e3) -> Z3.Z3Array.mk_store !ctx (zexp_of_vexp e3) (zexp_of_vexp e1) (zexp_of_vexp e2)
   (*
-  | VE_write of v_exp * v_exp * v_exp (* A[i] = v *)
   | VE_nul_op of v_nul_op
   | VE_uni_op of v_uni_op * v_exp
   | VE_bin_op of v_bin_op * v_exp * v_exp
