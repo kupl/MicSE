@@ -2413,9 +2413,48 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_sha512 v_1)) cfg_vr_added in
     (cfg_ended, v_r :: tl_si)
 
+  | I_hash_key ->
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_hash_key v_1)
+        type_info   : v_r   -> T_key_hash
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_hash_key : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_key_hash  in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_hash_key v_1)) cfg_vr_added in
+    (cfg_ended, v_r :: tl_si)
+
+  | I_steps_to_quota -> template_of_push_value "I_steps_to_quota" counter (in_v, out_v) (E_steps_to_quota, Michelson.Adt.T_nat) (cfg, stack_info)
+
+  | I_source -> template_of_push_value "I_source" counter (in_v, out_v) (E_source, Michelson.Adt.T_address) (cfg, stack_info)
+
+  | I_sender -> template_of_push_value "I_sender" counter (in_v, out_v) (E_sender, Michelson.Adt.T_address) (cfg, stack_info)
+
+  | I_chain_id -> template_of_push_value "I_chain_id" counter (in_v, out_v) (E_chain_id, Michelson.Adt.T_chain_id) (cfg, stack_info)
+
+  | I_noop -> 
+    (* just connect in_v and out_v *)
+    (t_add_edg (in_v, out_v) (cfg, ()) |> Stdlib.fst, stack_info) 
+
+  | I_unpair ->
+    (* UNPAIR = {DUP; CAR; DIP CDR} *)
+    let open Michelson.Adt in
+    let iseq x y = gen_t (I_seq (x, y)) in
+    let idup = gen_t I_dup in
+    let icar = gen_t I_car in
+    let icdr = gen_t I_cdr in
+    let idip x = gen_t (I_dip x) in
+    inst_to_cfg counter (in_v, out_v) (iseq idup (iseq icar (idip icdr))) (cfg, stack_info)
 
 
-  | _ -> fail "inst_to_cfg : not implemented." (* TODO *)
+
+
+  | _ -> fail "inst_to_cfg : not implemented." (* I_self and I_lambda are not implemented yet *)
 
   (* val t_add_typical_vertex : string -> cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Cfg.stmt -> Cfg.t -> (Cfg.t * Cfg.vertex) *)
 
