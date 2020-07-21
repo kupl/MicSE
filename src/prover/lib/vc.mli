@@ -212,11 +212,11 @@ val string_of_expr : z_expr -> string
 type solver = Z3.Solver.solver
 and model = Z3.Model.model
 
-val solver : unit -> solver
+val create_solver : unit -> solver
 
-val add : solver -> z_expr list -> unit
+val update_solver_add : solver -> z_expr list -> unit
 
-val check : solver -> (bool * model option)
+val create_check : solver -> (bool * model option)
 
 val string_of_solver : solver -> string
 

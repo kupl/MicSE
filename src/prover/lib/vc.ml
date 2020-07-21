@@ -323,13 +323,13 @@ let string_of_expr : z_expr -> string
 type solver = Z3.Solver.solver
 and model = Z3.Model.model
 
-let solver : unit -> solver
+let create_solver : unit -> solver
 =fun () -> Z3.Solver.mk_solver !ctx None
 
-let add : solver -> z_expr list -> unit
+let update_solver_add : solver -> z_expr list -> unit
 =fun solver el -> Z3.Solver.add solver el
 
-let check : solver -> (bool * model option)
+let create_check : solver -> (bool * model option)
 =fun solver -> begin
   let check = Z3.Solver.check solver [] in
   match check with

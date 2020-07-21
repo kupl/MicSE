@@ -3,14 +3,16 @@ open ProverLib
 (************************************************)
 (************************************************)
 
-let verify : Vlang.t -> bool
+let rec verify : Vlang.t -> bool
 =fun vc -> begin
-  let _ = vc in
-  let _ = Vc.solver () in
-  false
+  let zexp_of_vc = create_convert_vformula vc in
+  let solver = Vc.create_solver () in
+  let _ = Vc.update_solver_add solver [zexp_of_vc] in
+  let result, _ = Vc.create_check solver in
+  result
 end
 
-let rec sort_of_typt : Vc.typ -> Vc.z_sort
+and sort_of_typt : Vc.typ -> Vc.z_sort
 =fun typ -> begin
   match typ.d with
   | T_key -> Vc.create_string_sort
