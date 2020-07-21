@@ -38,10 +38,10 @@ and v_exp =
   | VE_var of var * typ
   | VE_read of v_exp * v_exp (* (i, A) : A[i] in RHS *)
   | VE_write of v_exp * v_exp * v_exp (* (i, v, A) : A[i] = v *)
-  | VE_nul_op of v_nul_op
-  | VE_uni_op of v_uni_op * v_exp
-  | VE_bin_op of v_bin_op * v_exp * v_exp
-  | VE_ter_op of v_tri_op * v_exp * v_exp * v_exp
+  | VE_nul_op of v_nul_op * typ
+  | VE_uni_op of v_uni_op * v_exp * typ
+  | VE_bin_op of v_bin_op * v_exp * v_exp * typ
+  | VE_ter_op of v_tri_op * v_exp * v_exp * v_exp * typ
   | VE_lambda
   | VE_operation of v_operation
 

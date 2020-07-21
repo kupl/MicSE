@@ -115,7 +115,12 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
     | None -> Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 0); (Z3.Expr.mk_const !ctx (dummy_symbol ()) sort)]
     | Some x -> Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 1); x]
   end in
-  let get_inner_sort l id = Core.List.nth_exn l id in
+  let mk_pair_of e1 e2 = begin
+    let pair_sort = Z3.Tuple.mk_sort !ctx (mk_simple_symbol "Pair") [(mk_simple_symbol "fst"); (mk_simple_symbol "snd")] [(Z3.Expr.get_sort e1); (Z3.Expr.get_sort e2)] in
+    let const_func = Z3.Tuple.get_mk_decl pair_sort in
+    Z3.FuncDecl.apply const_func [e1; e2]
+  end in
+  let get_nth l id = Core.List.nth_exn l id in
   match ve with
   | VE_int n -> Z3.Arithmetic.Integer.mk_numeral_s !ctx (Z.to_string n)
   | VE_string s -> Z3.Seq.mk_string !ctx s
@@ -123,7 +128,7 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
   | VE_unit -> Z3.Expr.mk_const !ctx (mk_simple_symbol "UNIT") unit_sort
   | VE_none t -> begin
       let const_func = Z3.Tuple.get_mk_decl (sort_of_typt t) in
-      let inner_sort = get_inner_sort (sort_of_inner_type t) 0 in
+      let inner_sort = get_nth (sort_of_inner_type t) 0 in
       Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const option_sort 0); (Z3.Expr.mk_const !ctx (dummy_symbol ()) inner_sort)]
     end
   | VE_uni_cont (vuc, e, t) -> begin
@@ -131,11 +136,11 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
       let inner_sorts = sort_of_inner_type t in
       match vuc with
       | VE_left -> begin
-          let right_sort = get_inner_sort inner_sorts 1 in
+          let right_sort = get_nth inner_sorts 1 in
           Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const or_sort 0); (zexp_of_vexp e); (Z3.Expr.mk_const !ctx (dummy_symbol ()) right_sort)]
         end
       | VE_right -> begin
-          let left_sort = get_inner_sort inner_sorts 0 in
+          let left_sort = get_nth inner_sorts 0 in
           Z3.FuncDecl.apply const_func [(Z3.Enumeration.get_const or_sort 1); (Z3.Expr.mk_const !ctx (dummy_symbol ()) left_sort); (zexp_of_vexp e)]
         end
       | VE_some -> begin
@@ -169,11 +174,119 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
       Z3.Boolean.mk_ite !ctx (Z3.Boolean.mk_eq !ctx item default_value) (mk_option_of None sort_of_item) (mk_option_of (Some item) sort_of_item)
     end
   | VE_write (e1, e2, e3) -> Z3.Z3Array.mk_store !ctx (zexp_of_vexp e3) (zexp_of_vexp e1) (zexp_of_vexp e2)
+  | VE_nul_op (vno, t) -> begin
+      match vno with
+      | VE_self -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_now -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_amount -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_balance -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_steps_to_quota -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_source -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_sender -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_chain_id -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+    end
+  | VE_uni_op (vuo, e1, t) -> begin
+      let zero = Z3.Arithmetic.Integer.mk_numeral_i !ctx 0 in
+      match vuo with
+      | VE_car -> begin
+          let fst_func = get_nth (Z3.Tuple.get_field_decls (sort_of_typt t)) 0 in
+          Z3.FuncDecl.apply fst_func [(zexp_of_vexp e1)]
+        end
+      | VE_cdr -> begin
+          let snd_func = get_nth (Z3.Tuple.get_field_decls (sort_of_typt t)) 1 in
+          Z3.FuncDecl.apply snd_func [(zexp_of_vexp e1)]
+        end
+      | VE_abs -> begin
+          let ze1 = zexp_of_vexp e1 in
+          Z3.Boolean.mk_ite !ctx (Z3.Arithmetic.mk_ge !ctx ze1 zero) ze1 (Z3.Arithmetic.mk_unary_minus !ctx ze1)
+        end
+      | VE_neg -> Z3.Arithmetic.mk_unary_minus !ctx (zexp_of_vexp e1)
+      | VE_not -> Z3.Boolean.mk_not !ctx (zexp_of_vexp e1)
+      | VE_eq -> Z3.Boolean.mk_eq !ctx (zexp_of_vexp e1) zero
+      | VE_neq -> Z3.Boolean.mk_not !ctx (Z3.Boolean.mk_eq !ctx (zexp_of_vexp e1) zero)
+      | VE_lt -> Z3.Arithmetic.mk_lt !ctx (zexp_of_vexp e1) zero
+      | VE_gt -> Z3.Arithmetic.mk_gt !ctx (zexp_of_vexp e1) zero
+      | VE_leq -> Z3.Arithmetic.mk_le !ctx (zexp_of_vexp e1) zero
+      | VE_geq -> Z3.Arithmetic.mk_ge !ctx (zexp_of_vexp e1) zero
+      | VE_cast -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_concat -> Z3.Seq.mk_seq_concat !ctx [(zexp_of_vexp e1)]
+      | VE_pack -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_unpack -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_contract -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_account -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_blake2b -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_sha256 -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_sha512 -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_hash_key -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_address -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_un_opt -> begin
+          let value_func = get_nth (Z3.Tuple.get_field_decls (sort_of_typt t)) 1 in
+          Z3.FuncDecl.apply value_func [(zexp_of_vexp e1)]
+        end
+      | VE_un_or -> begin
+          let ze = zexp_of_vexp e1 in
+          let loc_func = get_nth (Z3.Tuple.get_field_decls (sort_of_typt t)) 0 in
+          let left_func = get_nth (Z3.Tuple.get_field_decls (sort_of_typt t)) 1 in
+          let right_func = get_nth (Z3.Tuple.get_field_decls (sort_of_typt t)) 2 in
+          let loc = Z3.FuncDecl.apply loc_func [ze] in
+          Z3.Boolean.mk_ite !ctx (Z3.Boolean.mk_eq !ctx loc (Z3.Enumeration.get_const or_sort 0)) (Z3.FuncDecl.apply left_func [ze]) (Z3.FuncDecl.apply right_func [ze])
+        end
+      | VE_hd -> begin
+          let hd_func = Z3.Z3List.get_head_decl (sort_of_typt t) in
+          Z3.FuncDecl.apply hd_func [(zexp_of_vexp e1)]
+        end
+      | VE_tl -> begin
+          let tl_func = Z3.Z3List.get_tail_decl (sort_of_typt t) in
+          Z3.FuncDecl.apply tl_func [(zexp_of_vexp e1)]
+        end
+      | VE_size -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_isnat -> Z3.Boolean.mk_const !ctx (dummy_symbol ())
+      | VE_int -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+    end
+  | VE_bin_op (vbo, e1, e2, t) -> begin
+      let zero = Z3.Arithmetic.Integer.mk_numeral_i !ctx 0 in
+      let two = Z3.Arithmetic.Integer.mk_numeral_i !ctx 2 in
+      match vbo with
+      | VE_add -> Z3.Arithmetic.mk_add !ctx [(zexp_of_vexp e1); (zexp_of_vexp e2)]
+      | VE_sub -> Z3.Arithmetic.mk_sub !ctx [(zexp_of_vexp e1); (zexp_of_vexp e2)]
+      | VE_mul -> Z3.Arithmetic.mk_mul !ctx [(zexp_of_vexp e1); (zexp_of_vexp e2)]
+      | VE_ediv -> begin
+          let dividend, divisor = ((zexp_of_vexp e1), (zexp_of_vexp e2)) in
+          let x = mk_pair_of (Z3.Arithmetic.mk_div !ctx dividend divisor) (Z3.Arithmetic.Integer.mk_mod !ctx dividend divisor) in
+          let sort_of_x = Z3.Expr.get_sort x in
+          Z3.Boolean.mk_ite !ctx (Z3.Boolean.mk_eq !ctx divisor zero) (mk_option_of None sort_of_x) (mk_option_of (Some x) sort_of_x)
+        end
+      | VE_div -> Z3.Arithmetic.mk_div !ctx (zexp_of_vexp e1) (zexp_of_vexp e2)
+      | VE_mod -> Z3.Arithmetic.Integer.mk_mod !ctx (zexp_of_vexp e1) (zexp_of_vexp e2)
+      | VE_lsl -> begin
+          let powered = Z3.Arithmetic.mk_power !ctx two (zexp_of_vexp e2) in
+          Z3.Arithmetic.mk_mul !ctx [(zexp_of_vexp e1); powered]
+        end
+      | VE_lsr -> begin
+          let powered = Z3.Arithmetic.mk_power !ctx two (zexp_of_vexp e2) in
+          Z3.Arithmetic.mk_div !ctx (zexp_of_vexp e1) powered
+        end
+      | VE_and -> Z3.Boolean.mk_and !ctx [(zexp_of_vexp e1); (zexp_of_vexp e2)]
+      | VE_or -> Z3.Boolean.mk_or !ctx [(zexp_of_vexp e1); (zexp_of_vexp e2)]
+      | VE_xor -> Z3.Boolean.mk_xor !ctx (zexp_of_vexp e1) (zexp_of_vexp e2)
+      | VE_cmp -> Z3.Arithmetic.Integer.mk_numeral_i !ctx (Z3.Expr.compare (zexp_of_vexp e1) (zexp_of_vexp e2))
+      | VE_cons -> begin
+          let cons_func = Z3.Z3List.get_cons_decl (sort_of_typt t) in
+          Z3.FuncDecl.apply cons_func [(zexp_of_vexp e1); (zexp_of_vexp e2)]
+        end
+      | VE_concat -> Z3.Seq.mk_seq_concat !ctx [(zexp_of_vexp e1); (zexp_of_vexp e2)]
+      | VE_exec -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+      | VE_append -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+    end
+  | VE_ter_op (vto, e1, e2, e3, t) -> begin
+      match vto with
+      | VE_slice -> begin
+          let offset, length, s = ((zexp_of_vexp e1), (zexp_of_vexp e2), (zexp_of_vexp e3)) in
+          Z3.Seq.mk_seq_extract !ctx s offset (Z3.Arithmetic.mk_add !ctx [offset; length])
+        end
+      | VE_check_signature -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
+    end
   (*
-  | VE_nul_op of v_nul_op
-  | VE_uni_op of v_uni_op * v_exp
-  | VE_bin_op of v_bin_op * v_exp * v_exp
-  | VE_ter_op of v_tri_op * v_exp * v_exp * v_exp
   | VE_lambda
   | VE_operation of v_operation *)
   | _ -> Z3.Boolean.mk_true !ctx (* DUMMY EXPR *)
