@@ -57,7 +57,7 @@ and create_rewrite_exp : Vlang.var -> Vlang.var -> Vlang.v_exp -> Vlang.v_exp
   match e with
   | VE_int _ | VE_string _ | VE_unit | VE_none _
   | VE_uni_cont (_, _, _) | VE_bin_cont (_, _, _, _) | VE_list _
-  | VE_nul_op (_, _) | VE_lambda | VE_operation _ -> e
+  | VE_nul_op (_, _) | VE_lambda _ | VE_operation _ -> e
   | VE_bool f -> VE_bool (formula_rewrite f)
   | VE_var (vv, t) -> begin
       if vv = v then Vlang.create_exp_var v' t
@@ -169,7 +169,7 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_int_of_nat v -> VE_uni_op (VE_int, (Vlang.create_exp_var v t), t)
   | E_chain_id -> VE_nul_op (VE_chain_id, t)
   | E_create_account_address _ -> VE_operation (VE_origination)
-  | E_lambda (_, _, _) -> VE_lambda
+  | E_lambda (_, _, _) -> VE_lambda t
   | E_exec (v1, v2) -> VE_bin_op (VE_exec, (Vlang.create_exp_var v1 t), (Vlang.create_exp_var v2 t), t)
   | E_dup v -> (Vlang.create_exp_var v t)
   | E_nil _ -> VE_list ([], t)

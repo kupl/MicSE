@@ -42,7 +42,7 @@ and v_exp =
   | VE_uni_op of v_uni_op * v_exp * typ
   | VE_bin_op of v_bin_op * v_exp * v_exp * typ
   | VE_ter_op of v_tri_op * v_exp * v_exp * v_exp * typ
-  | VE_lambda
+  | VE_lambda of typ
   | VE_operation of v_operation
 
 and v_uni_cont =

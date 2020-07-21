@@ -286,8 +286,8 @@ and zexp_of_vexp : v_exp -> Z3.Expr.expr
         end
       | VE_check_signature -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
     end
+  | VE_lambda t -> Z3.Expr.mk_const !ctx (dummy_symbol ()) (sort_of_typt t)
   (*
-  | VE_lambda
   | VE_operation of v_operation *)
   | _ -> Z3.Boolean.mk_true !ctx (* DUMMY EXPR *)
 end
