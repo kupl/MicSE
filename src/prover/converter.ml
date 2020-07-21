@@ -57,7 +57,7 @@ and create_rewrite_exp : Vlang.var -> Vlang.var -> Vlang.v_exp -> Vlang.v_exp
   match e with
   | VE_int _ | VE_string _ | VE_unit | VE_none _
   | VE_uni_cont (_, _, _) | VE_bin_cont (_, _, _, _) | VE_list _
-  | VE_nul_op (_, _) | VE_lambda _ | VE_operation _ -> e
+  | VE_nul_op (_, _) | VE_lambda _ | VE_operation (_, _) -> e
   | VE_bool f -> VE_bool (formula_rewrite f)
   | VE_var (vv, t) -> begin
       if vv = v then Vlang.create_exp_var v' t
@@ -124,10 +124,10 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_cons (v1, v2) -> VE_bin_op (VE_cons, (Vlang.create_exp_var v1 t), (Vlang.create_exp_var v2 t), t)
   | E_operation o -> begin
       match o with
-      | O_create_contract (_, _, _, _) -> VE_operation (VE_origination)
-      | O_transfer_tokens (_, _, _)-> VE_operation (VE_transaction)
-      | O_set_delegate _ -> VE_operation (VE_delegation)
-      | O_create_account (_, _, _, _) -> VE_operation (VE_origination)
+      | O_create_contract (_, _, _, _) -> VE_operation (VE_origination, t)
+      | O_transfer_tokens (_, _, _)-> VE_operation (VE_transaction, t)
+      | O_set_delegate _ -> VE_operation (VE_delegation, t)
+      | O_create_account (_, _, _, _) -> VE_operation (VE_origination, t)
     end
   | E_unit -> VE_unit
   | E_pair (v1, v2) -> VE_bin_cont (VE_pair, (Vlang.create_exp_var v1 t), (Vlang.create_exp_var v2 t), t)
@@ -159,7 +159,7 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_source -> VE_nul_op (VE_source, t)
   | E_sender -> VE_nul_op (VE_sender, t)
   | E_address_of_contract v -> VE_uni_op (VE_address, (Vlang.create_exp_var v t), t)
-  | E_create_contract_address _ -> VE_operation (VE_origination)
+  | E_create_contract_address _ -> VE_operation (VE_origination, t)
   | E_unlift_option v -> VE_uni_op (VE_un_opt, (Vlang.create_exp_var v t), t)
   | E_unlift_or v -> VE_uni_op (VE_un_or, (Vlang.create_exp_var v t), t)
   | E_hd v -> VE_uni_op (VE_hd, (Vlang.create_exp_var v t), t)
@@ -168,7 +168,7 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_isnat v -> VE_uni_op (VE_isnat, (Vlang.create_exp_var v t), t)
   | E_int_of_nat v -> VE_uni_op (VE_int, (Vlang.create_exp_var v t), t)
   | E_chain_id -> VE_nul_op (VE_chain_id, t)
-  | E_create_account_address _ -> VE_operation (VE_origination)
+  | E_create_account_address _ -> VE_operation (VE_origination, t)
   | E_lambda (_, _, _) -> VE_lambda t
   | E_exec (v1, v2) -> VE_bin_op (VE_exec, (Vlang.create_exp_var v1 t), (Vlang.create_exp_var v2 t), t)
   | E_dup v -> (Vlang.create_exp_var v t)
