@@ -163,12 +163,16 @@ let t_add_tedg (v1, v2) (cfg, _) = (tedg_add (v1, v2) cfg, v2)
 let t_add_fedg (v1, v2) (cfg, _) = (fedg_add (v1, v2) cfg, v2)
 
 let t_add_vinfo ?(errtrace = "") (v, s) (cfg, _) = begin
+  print_endline (string_of_int v ^ " : " ^ errtrace);
   ({cfg with vertex_info=(t_map_add ~errtrace:(errtrace ^ " : t_add_vinfo") cfg.vertex_info v s);}, v)
 end
 let t_add_vinfos ?(errtrace = "") vslist (cfg, _) = begin
   let et : string = errtrace ^ " : t_add_vinfos" in
   let (cf, _) : t * vertex = Core.List.fold vslist ~init:(cfg, 1) ~f:(fun (acc_cfg, _) (v, s) -> (t_add_vinfo ~errtrace:et (v, s) (acc_cfg, 1))) in
   let vlist = (Core.List.unzip vslist |> Stdlib.fst) in
+
+  (List.iter (fun (v, _) -> print_int v; print_string " ") vslist)|> Stdlib.ignore |> print_newline;
+
   (cf, vlist)
 end
 let t_add_vinfo_now ?(errtrace = "") s (cfg, v) = begin t_add_vinfo ~errtrace:errtrace (v, s) (cfg, ()) end
@@ -205,17 +209,23 @@ let t_con_vtx_frontr_f  v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v1)
 
 let remove_meaningless_skip_vertices =
   let gen_emsg s : string = ("remove_meaningless_skip_vertices : " ^ s) in
-  let is_skip : stmt -> bool = (function | Cfg_skip -> true | _ -> false) in
+  let is_skip : stmt option -> bool = (function | Some (Tezla_cfg.Cfg_node.Cfg_skip) -> true | _ -> false) in
   (* FUNCTION BEGIN *)
   fun cfg -> begin
     let fold_func : G.V.t -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t)) -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t))
     =fun v (vvvlist, vset) -> begin
-      if ((t_map_find ~errtrace:(gen_emsg "skipcheck") cfg.vertex_info v |> is_skip) && (G.out_degree cfg.flow v = 1) && (G.in_degree cfg.flow v = 1))
+      if ((Core.Map.Poly.find cfg.vertex_info v |> is_skip) && (G.out_degree cfg.flow v = 1) && (G.in_degree cfg.flow v = 1))
       then (
         (* Because of if-condition, pred and succ will return singleton list. *)
         let (in_v, in_label, mid_v) = G.pred_e cfg.flow v |> Core.List.hd_exn in
         let (mid_v_2, out_label, out_v) = G.succ_e cfg.flow v |> Core.List.hd_exn in
-        if ((mid_v = mid_v_2) && (in_label = Normal) && (out_label = Normal) && (Core.Set.Poly.for_all vset (fun x -> x <> mid_v)))
+        if (  (mid_v = mid_v_2)
+              && (in_label = Normal)
+              && (out_label = Normal)
+              && (Core.Set.Poly.for_all vset (fun x -> x <> in_v))
+              && (Core.Set.Poly.for_all vset (fun x -> x <> mid_v))
+              && ((Core.Set.Poly.for_all vset (fun x -> x <> out_v)))
+          )
         then ( (in_v, mid_v, out_v) :: vvvlist, Core.Set.add vset v )
         else ( vvvlist, vset )
       )
@@ -265,7 +275,7 @@ let cfg_to_dotformat : t -> string
     let vs = string_of_int v in
     let is_main_entry = v = cfg.main_entry in
     let is_main_exit  = v = cfg.main_exit  in
-    let vi : stmt = t_map_find ~errtrace:"cfg_to_dotformat : vi_fold_func : vi" cfg.vertex_info v in
+    let vi : stmt = (print_endline (string_of_int v)); t_map_find ~errtrace:"cfg_to_dotformat : vi_fold_func : vi" cfg.vertex_info v in
     let lb_str : string = 
       if is_main_entry then (vs ^ " : MAIN-ENTRY")
       else ( 

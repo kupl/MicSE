@@ -141,10 +141,10 @@ let merge_two_stack_infos : cfgcon_ctr -> string -> Cfg.t -> (string list * stri
   let addedg v1 v2 flw : G.t = G.add_edge flw v1 v2 in
   (* FUNCTION BEGIN *)
   fun counter errmsg_trace cfg (stack_info_1, stack_info_2) (in_1_v, in_2_v, out_1_v, out_2_v) -> begin
-  let errmsg_gen s : string = (errmsg_trace ^ "merge_two_stack_infos : " ^ s) in
+  let errmsg_gen s : string = (errmsg_trace ^ " : merge_two_stack_infos : " ^ s) in
   (* before folding, we need to update vertex_info of in_1_v and in_2_v. Their stmt will become Cfg_skip. *)
   let vertex_info_1 = map_add (errmsg_gen "vertex_info_1") cfg.vertex_info in_1_v Cfg_skip in
-  let vertex_info_2 = map_add (errmsg_gen "vertex_info_2") vertex_info_1 in_2_v Cfg_skip in
+  let vertex_info_2 = if (in_1_v = in_2_v) then (vertex_info_1) else (map_add (errmsg_gen "vertex_info_2") vertex_info_1 in_2_v Cfg_skip) in
   let cfg_1 = {cfg with vertex_info=vertex_info_2;} in
   let fold_func : (Cfg.t * string list * Cfg.vertex * Cfg.vertex) -> string -> string -> (Cfg.t * string list * Cfg.vertex * Cfg.vertex)
   =fun (acc_cfg, acc_stack_info, acc_in_1_v, acc_in_2_v) var_1 var_2 -> begin
@@ -175,7 +175,7 @@ let merge_two_stack_infos : cfgcon_ctr -> string -> Cfg.t -> (string list * stri
       (fold_cfg, (fold_newvar :: acc_stack_info), fold_vtx_1, fold_vtx_2)
     end
   end in
-  let fold_result = Core.List.fold2 stack_info_1 stack_info_2 ~init:(cfg_1, [], in_1_v, out_1_v) ~f:fold_func in
+  let fold_result = Core.List.fold2 stack_info_1 stack_info_2 ~init:(cfg_1, [], in_1_v, in_2_v) ~f:fold_func in
   let (cfg_3, stack_info_3_rev, last_in_1_v, last_in_2_v) = 
   begin
     match fold_result with
@@ -221,14 +221,20 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
   fun counter (in_v, out_v) ist (cfg, stack_info) -> begin
   match get_d ist with 
   | I_seq (i1, i2) ->
-    (*  flow        : add new vertex between in-and-out
+    (*  flow        : add two vertices between in-and-out
+                      in_v -> mid_v_1 -> (i1) -> mid_2 -> (i2) -> out_v
         vertex_info : no change
         type_info   : no change
         stack_info  : no change
     *)
-    let (cfg_b, mid_v) = t_add_vtx counter (cfg, ()) in
-    let (cfg_1, stack_info_1) = inst_to_cfg counter (in_v, mid_v) i1 (cfg_b, stack_info) in
-    let (cfg_2, stack_info_2) = inst_to_cfg counter (mid_v, out_v) i2 (cfg_1, stack_info_1) in
+    let (cfg_2v, (mid_v_1, mid_v_2)) = t_add_vtx_2 counter (cfg, ()) in
+    let (cfg_b, _) = begin
+      (cfg_2v, ())
+      |> t_add_vinfo ~errtrace:("inst_to_cfg : I_seq : in_v") (in_v, Cfg_skip)
+      |> t_add_edg (in_v, mid_v_1)
+    end in
+    let (cfg_1, stack_info_1) = inst_to_cfg counter (mid_v_1, mid_v_2) i1 (cfg_b, stack_info) in
+    let (cfg_2, stack_info_2) = inst_to_cfg counter (mid_v_2, out_v) i2 (cfg_1, stack_info_1) in
     (cfg_2, stack_info_2)
 
   | I_drop ->
@@ -393,9 +399,13 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     (* set vertex infos of in_v, i1_end, i2_end *)
     let topvar_name : string = Core.List.hd_exn stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_none : vertex_info_1" cfg.vertex_info in_v (Cfg_if_none topvar_name) in
+    (*
     let vertex_info_2 = add_skip_vinfo "I_if_none : vertex_info_2" vertex_info_1 i1_end in
     let vertex_info_3 = add_skip_vinfo "I_if_none : vertex_info_3" vertex_info_2 i2_end in
     let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_3;} in
+    *)
+    let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1;} in
+    
     (* complete THEN branch (i1_begin ~ i1_end) *)
     let (cfg_2, stack_info_1) = inst_to_cfg counter (i1_begin, i1_end) i1 (cfg_1, stack_info) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
@@ -461,9 +471,12 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     (* set vertex infos of in_v, i1_end, i2_end *)
     let topvar_name : string = Core.List.hd_exn stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_some : vertex_info_1" cfg.vertex_info in_v (Cfg_if_none topvar_name) in
+    (*
     let vertex_info_2 = add_skip_vinfo "I_if_some : vertex_info_2" vertex_info_1 i1_end in
     let vertex_info_3 = add_skip_vinfo "I_if_some : vertex_info_3" vertex_info_2 i2_end in
     let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_3;} in
+    *)
+    let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1;} in
     (* complete THEN branch (i1_begin ~ i1_end) *)
     let (cfg_2, stack_info_1) = inst_to_cfg counter (i1_begin, i1_end) i1 (cfg_1, stack_info) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
@@ -700,9 +713,12 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     (* set vertex infos of in_v, i1_end, i2_end *)
     let topvar_name : string = Core.List.hd_exn stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_right : vertex_info_1" cfg.vertex_info in_v (Cfg_if_left topvar_name) in
+    (*
     let vertex_info_2 = add_skip_vinfo "I_if_right : vertex_info_2" vertex_info_1 i1_end in
     let vertex_info_3 = add_skip_vinfo "I_if_right : vertex_info_3" vertex_info_2 i2_end in
     let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_3;} in
+    *)
+    let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1;} in
     (* complete THEN branch (i1_begin ~ i1_end) *)
       (*  flow        : (i1_begin -> i1_ready) & (i1_ready -> (i1 ...) -> i1_end)
           vertex_info : i1_begin : Cfg_assign (new-var-left, (E_unlift_or top-var))
@@ -813,9 +829,12 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     (* set vertex infos of in_v, i1_end, i2_end *)
     let topvar_name : string = Core.List.hd_exn stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_cons : vertex_info_1" cfg.vertex_info in_v (Cfg_if_cons topvar_name) in
+    (*
     let vertex_info_2 = add_skip_vinfo "I_if_cons : vertex_info_2" vertex_info_1 i1_end in
     let vertex_info_3 = add_skip_vinfo "I_if_cons : vertex_info_3" vertex_info_2 i2_end in
     let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_3;} in
+    *)
+    let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1;} in
     (* complete THEN branch (i1_begin ~ i1_end) *)
       (*  flow        : (i1_begin -> i1_begin_2) & (i1_begin_2 -> i1_ready) & (i1_ready -> (i1 ...) -> i1_end)
           vertex_info : i1_begin   : Cfg_assign (new-var-hd, (E_hd top-var))
@@ -1265,9 +1284,12 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     (* set vertex infos of in_v, i1_end, i2_end *)
     let var_1 : string = Core.List.hd_exn stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if : vertex_info_1" cfg.vertex_info in_v (Cfg_if var_1) in
+    (*  (* I don't remember why I add such vertex-infos for -end vertices *)
     let vertex_info_2 = add_skip_vinfo "I_if : vertex_info_2" vertex_info_1 i1_end in
     let vertex_info_3 = add_skip_vinfo "I_if : vertex_info_3" vertex_info_2 i2_end in
     let cfg_tb = {cfg with flow=flow_edg_added; vertex_info=vertex_info_3;} in
+    *)
+    let cfg_tb = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1} in
     let tl_stack_info = Core.List.tl_exn stack_info in
     let (cfg_tb_fin, stack_info_tb_fin) = inst_to_cfg counter (i1_begin, i1_end) i1 (cfg_tb, tl_stack_info) in
     let (cfg_eb_fin, stack_info_eb_fin) = inst_to_cfg counter (i2_begin, i2_end) i2 (cfg_tb_fin, tl_stack_info) in
@@ -2433,8 +2455,14 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
   | I_chain_id -> template_of_push_value "I_chain_id" counter (in_v, out_v) (E_chain_id, Michelson.Adt.T_chain_id) (cfg, stack_info)
 
   | I_noop -> 
-    (* just connect in_v and out_v *)
-    (t_add_edg (in_v, out_v) (cfg, ()) |> Stdlib.fst, stack_info) 
+    (* update in_v and just connect in_v and out_v *)
+    let cfg_end = begin
+      (cfg, ())
+      |> t_add_vinfo ~errtrace:("inst_to_cfg : I_noop : in_v") (in_v, Cfg_skip)
+      |> t_add_edg (in_v, out_v) |> Stdlib.fst
+    end in
+    (cfg_end, stack_info)
+    
 
   | I_unpair ->
     (* UNPAIR = {DUP; CAR; DIP CDR} *)
