@@ -112,12 +112,12 @@ type exp = Cfg.expr
   *)
 type inst =
   | BI_assume of cond
-  | BI_assign of var * exp
+  | BI_assign of var * exp * typ
   | BI_skip
 
 val create_inst_assume : cond -> inst
 
-val create_inst_assign : (var * exp) -> inst
+val create_inst_assign : (var * exp * typ) -> inst
 
 val create_inst_skip : unit -> inst
 
@@ -152,6 +152,7 @@ val string_of_inv : inv -> string
 (*****************************************************************************)
 
 type t = { pre: inv; body: inst list; post: inv }
+and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
 val create_new_bp : vertex -> vertex -> t
 

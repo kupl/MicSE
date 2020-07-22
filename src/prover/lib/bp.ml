@@ -36,14 +36,14 @@ let rec string_of_cond : cond -> string
 type exp = Cfg.expr
 type inst =
   | BI_assume of cond
-  | BI_assign of var * exp
+  | BI_assign of var * exp * typ
   | BI_skip
 
 let create_inst_assume : cond -> inst
 =fun f -> BI_assume f
 
-let create_inst_assign : (var * exp) -> inst
-=fun (id, e) -> BI_assign (id, e)
+let create_inst_assign : (var * exp * typ) -> inst
+=fun (id, e, t) -> BI_assign (id, e, t)
 
 let create_inst_skip : unit -> inst
 =fun () -> BI_skip
@@ -52,7 +52,7 @@ let string_of_inst : inst -> string
 =fun inst -> begin
   match inst with
   | BI_assume f -> "Assume " ^ (string_of_cond f) ^ ";"
-  | BI_assign (id, e) -> (Cfg.string_of_ident id) ^ " := " ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ";"
+  | BI_assign (id, e, _) -> (Cfg.string_of_ident id) ^ " := " ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ";"
   | BI_skip -> "Skip;"
 end
 
@@ -72,6 +72,9 @@ and inv_map = (vertex, formula) Core.Hashtbl.t
 let create_dummy_inv : vertex -> inv
 =fun vtx -> { id=vtx; formula=None }
 
+let create_inv : vertex -> formula -> inv
+=fun vtx f -> { id=vtx; formula=Some f }
+
 let string_of_inv : inv -> string
 =fun inv -> begin
   if Option.is_none inv.formula then (Cfg.string_of_vertex inv.id) ^ ": None"
@@ -86,6 +89,7 @@ end
 (*****************************************************************************)
 
 type t = { pre: inv; body: inst list; post: inv }
+and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
 let create_new_bp : vertex -> vertex -> t
 =fun pre post -> { pre=(create_dummy_inv pre); body=[]; post=(create_dummy_inv post) }

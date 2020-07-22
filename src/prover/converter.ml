@@ -1,35 +1,31 @@
 open ProverLib
 
-type typ_map = (Vlang.var, Vlang.typ) Cfg.CPMap.t
-
 (************************************************)
 (************************************************)
 
-let rec convert : Bp.t -> Cfg.t -> Vlang.t
-=fun bp cfg -> begin
+let rec convert : Bp.t -> Vlang.t
+=fun bp -> begin
   let f, g = ((Option.get bp.pre.formula), (Option.get bp.post.formula)) in
-  let f', g', _ = Core.List.fold_left bp.body ~init:(f, g, cfg.type_info) ~f:sp in
+  let f', g' = Core.List.fold_left bp.body ~init:(f, g) ~f:sp in
   let vc = Vlang.create_formula_imply f' g' in
   vc
 end
 
-and sp : (Vlang.t * Vlang.t * typ_map) -> Bp.inst -> (Vlang.t * Vlang.t * typ_map)
-=fun (f, g, tmap) s -> begin
+and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
+=fun (f, g) s -> begin
   match s with
   | BI_assume c -> begin
       let f' = Vlang.create_formula_and c f in
-      (f', g, tmap)
+      (f', g)
     end
-  | BI_assign (v, e) -> begin
+  | BI_assign (v, e, t) -> begin
       let v' = create_rename_var v in
-      let v_typ = Cfg.CPMap.find_exn tmap v in
-      let tmap' = Cfg.CPMap.add_exn tmap ~key:v' ~data:v_typ in
       let f' = create_rewrite_formula v v' f in
-      let e' = create_rewrite_exp v v' (create_convert_exp e v_typ) in
-      let f'' = Vlang.create_formula_and f' (Vlang.create_formula_eq (Vlang.create_exp_var v v_typ) e') in
-      (f'', g, tmap')
+      let e' = create_rewrite_exp v v' (create_convert_exp e t) in
+      let f'' = Vlang.create_formula_and f' (Vlang.create_formula_eq (Vlang.create_exp_var v t) e') in
+      (f'', g)
     end
-  | BI_skip -> (f, g, tmap)
+  | BI_skip -> (f, g)
 end
 
 and create_rename_var : Vlang.var -> Vlang.var

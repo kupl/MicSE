@@ -1,13 +1,11 @@
 open ProverLib
 
-type typ_map = (Vlang.var, Vlang.typ) Cfg.CPMap.t
-
 (************************************************)
 (************************************************)
 
-val convert : Bp.t -> Cfg.t -> Vlang.t
+val convert : Bp.t -> Vlang.t
 
-val sp : (Vlang.t * Vlang.t * typ_map) -> Bp.inst -> (Vlang.t * Vlang.t * typ_map)
+val sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
 
 val create_rename_var : Vlang.var -> Vlang.var
 

@@ -3,15 +3,13 @@ open ProverLib
 (************************************************)
 (************************************************)
 
+let loop_inv_vtx = ref []
 
-let inv_pgm_cnt = ref []
-
-let rec extract : Cfg.t -> (Bp.t list * Cfg.vertex list)
+let rec extract : Cfg.t -> Bp.raw_t_list
 =fun cfg -> begin
-  let _ = inv_pgm_cnt := (cfg.main_entry)::(cfg.main_exit)::!inv_pgm_cnt in
   let entry_bp = Bp.create_new_bp cfg.main_entry cfg.main_exit in
   let result = translate entry_bp cfg.main_entry cfg in
-  (result, !inv_pgm_cnt)
+  { bps=result; trx_inv_vtx=[cfg.main_entry; cfg.main_exit]; loop_inv_vtx=(!loop_inv_vtx) }
 end
 
 and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
@@ -49,7 +47,7 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
   else begin
     match stmt with
     | Cfg_assign (id, e) -> begin
-        let inst = Bp.create_inst_assign (id, e) in
+        let inst = Bp.create_inst_assign (id, e, (get_type_of_id id)) in
         let new_bp = Bp.update_body cur_bp inst in
         let search = normal_search new_bp in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
@@ -91,7 +89,7 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
         result
       end
     | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _ -> begin
-        let _ = inv_pgm_cnt := cur_vtx::!inv_pgm_cnt in
+        let _ = loop_inv_vtx := cur_vtx::!loop_inv_vtx in
         let (terminated_bp, loop_bp, new_bp) = make_loop_bp cur_vtx in
         let search = normal_search new_bp in
         let result = terminated_bp::[] in
