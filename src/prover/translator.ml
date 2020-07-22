@@ -270,10 +270,13 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
+    let topvar_name : string = Core.List.hd_exn stack_info in
+    let topvar_typ    = map_find "inst_to_cfg : I_dup : topvar_typ" cfg.type_info topvar_name in
     let vertex_info_1 = add_skip_vinfo "I_dup : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_dup : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_dup (Core.List.hd_exn stack_info))) in
-    let stack_info_1 = (Core.List.hd_exn stack_info) :: stack_info in
-    ({cfg with flow=flow_2; vertex_info=vertex_info_2;}, stack_info_1)
+    let type_info_1   = map_add "inst_to_cfg : I_dup : type_info_1" cfg.type_info nv_name topvar_typ in
+    let stack_info_1  = (Core.List.hd_exn stack_info) :: stack_info in
+    ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
 
   | I_swap ->
     (*  flow        : add new vertex between in-and-out
