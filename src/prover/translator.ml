@@ -935,8 +935,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
         vertex_info : in_v                -> Cfg_skip
                       result_init         -> "Cfg_assign (newvar-r, E_nil t1)" or "Cfg_assign (newvar-r, E_empty_map (t1_k, t1_v)"
                       map_v               -> Cfg_map var-1
-                      map_setup_1         -> Cfg_assign (var-1, (E_tl var-1))
-                      map_setup_2         -> Cfg_assign (newvar, (E_hd var-1))
+                      map_setup_1         -> Cfg_assign (newvar, (E_hd var-1))
+                      map_setup_2         -> Cfg_assign (var-1, (E_tl var-1))
                       map_body_begin      -> decided by i
                       map_body_end        -> Cfg_skip
                       map_get_key         -> <CASE-MAP>  Cfg_assign (newvar-k, E_car newvar)
@@ -988,8 +988,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     end in
     let vertex_info_1 = add_skip_vinfo "I_map : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_map : vertex_info_2" vertex_info_1 map_v (Cfg_map topvar_name) in
-    let vertex_info_3 = map_add "inst_to_cfg : I_map : vertex_info_3" vertex_info_2 map_setup_1 (Cfg_assign (topvar_name, E_tl topvar_name)) in
-    let vertex_info_4 = map_add "inst_to_cfg : I_map : vertex_info_4" vertex_info_3 map_setup_2 (Cfg_assign (newvar_name, E_hd topvar_name)) in
+    let vertex_info_3 = map_add "inst_to_cfg : I_map : vertex_info_3" vertex_info_2 map_setup_1 (Cfg_assign (newvar_name, E_hd topvar_name)) in
+    let vertex_info_4 = map_add "inst_to_cfg : I_map : vertex_info_4" vertex_info_3 map_setup_2 (Cfg_assign (topvar_name, E_tl topvar_name)) in
     let vertex_info_5 = add_skip_vinfo "I_map : vertex_info_5" vertex_info_4 map_body_end in
     let type_info_1   = map_add "inst_to_cfg : I_map : type_info_1"   cfg.type_info newvar_name elem_typ in
     let cfg_to_map_body_begin = {cfg with flow=flow_edg_added_to_map_body_begin; vertex_info=vertex_info_5; type_info=type_info_1;} in
@@ -1073,8 +1073,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
                       elem      : indicates the element of list/set/map
         vertex_info : in_v            -> Cfg_skip
                       iter_v          -> Cfg_init var-1
-                      iter_setup_1    -> Cfg_assign (var-1, E_tl var-1)
-                      iter_setup_2    -> Cfg_assign (elem,  E_hd var-1)
+                      iter_setup_1    -> Cfg_assign (elem,  E_hd var-1)
+                      iter_setup_2    -> Cfg_assign (var-1, E_tl var-1)
                       iter_body_begin -> decided by i
                       iter_body_end   -> Cfg_skip
         type_info   : var-1     -> list(t1) || set(t1)  || map(t1_k, t1_v)
@@ -1113,8 +1113,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cf
     end in
     let vertex_info_ol_1 = add_skip_vinfo (gen_errmsg "vertex_info_ol_1") cfg.vertex_info in_v in
     let vertex_info_ol_2 = map_add (gen_errmsg "vertex_info_ol_2") vertex_info_ol_1 iter_v (Cfg_iter var_1) in
-    let vertex_info_ol_3 = map_add (gen_errmsg "vertex_info_ol_3") vertex_info_ol_2 iter_setup_1 (Cfg_assign (var_1, E_tl var_1)) in
-    let vertex_info_ol_4 = map_add (gen_errmsg "vertex_info_ol_4") vertex_info_ol_3 iter_setup_2 (Cfg_assign (elem,  E_hd var_1)) in
+    let vertex_info_ol_3 = map_add (gen_errmsg "vertex_info_ol_3") vertex_info_ol_2 iter_setup_1 (Cfg_assign (elem,  E_hd var_1)) in
+    let vertex_info_ol_4 = map_add (gen_errmsg "vertex_info_ol_4") vertex_info_ol_3 iter_setup_2 (Cfg_assign (var_1, E_tl var_1)) in
     let vertex_info_ol_5 = add_skip_vinfo (gen_errmsg "vertex_info_ol_5") vertex_info_ol_4 iter_body_end in
     let type_info_ol_1   = map_add (gen_errmsg "type_info_ol_1") cfg.type_info elem elemtyp in
     let stack_info_ol_1  = elem :: tl_stack_info in
