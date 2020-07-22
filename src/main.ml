@@ -18,11 +18,6 @@ let options =
 let main : unit -> unit
 =fun () -> begin
   let filepath = !input_file in
-  (*
-  let ast = Tezla.Parsing_utils.parse_with_error filepath in
-  let cfg = Tezla_cfg.Flow_graph.Cfg.generate_from_program ast in
-  let cfg = Prover.Translator.of_tezlaCfg cfg in
-  *)
   (* Parse Michelson File *)
   let adt = ProverLib.Adt.parse filepath in
   (* FLAGS - Parsed Michelson File *)
@@ -36,13 +31,17 @@ let main : unit -> unit
   let _ : unit = (if (!flag_cfg_print_dot) then print_endline (ProverLib.Cfg.cfg_to_dotformat cfg) else ()) in
 
   (* Construct basic path *)
-  let (bps, _) = Prover.Extractor.extract cfg in
-  let _ = Core.List.iteri bps ~f:(fun idx bp -> (
-    let str = "(" ^ (string_of_int idx) ^ ")\n\n" in
-    let str = str ^ ProverLib.Bp.to_string bp in
-    let _ = print_endline (str ^ "\n") in
-    ()
+  let raw_bp_list = Prover.Extractor.extract cfg in
+  let bp_list = Prover.Generator.generate raw_bp_list in
+
+  (* Verify each basic path *)
+  let _ = Core.List.iter bp_list ~f:(fun bp -> (
+    let vlang_vc = Prover.Converter.convert bp in
+    let verify_result = Prover.Verifier.verify vlang_vc in
+    print_endline (string_of_bool verify_result)
   )) in
+
+  (* Get *)
   ()
 end
 

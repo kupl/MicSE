@@ -70,7 +70,16 @@ and create_convert_vformula : Vlang.v_formula -> Smt.z_expr
       | VF_is_left -> Smt.create_bool_eq (Smt.read_or_location e') (Smt.create_or_enum_left)
       | VF_is_cons -> Smt.create_bool_list_is_cons e'
     end
-  | VF_eq (e1, e2) -> Smt.create_bool_eq (create_convert_vexp e1) (create_convert_vexp e2)
+  | VF_bin_rel (vbr, e1, e2) -> begin
+      let e1', e2' = ((create_convert_vexp e1), (create_convert_vexp e2)) in
+      match vbr with
+      | VF_eq -> Smt.create_bool_eq e1' e2'
+      | VF_neq -> Smt.create_bool_not (Smt.create_bool_eq e1' e2')
+      | VF_lt -> Smt.create_bool_int_lt e1' e2'
+      | VF_le -> Smt.create_bool_int_le e1' e2'
+      | VF_gt -> Smt.create_bool_int_gt e1' e2'
+      | VF_ge -> Smt.create_bool_int_ge e1' e2'
+    end
   | VF_imply (f1, f2) -> Smt.create_bool_imply (create_convert_vformula f1) (create_convert_vformula f2)
   | VF_iff (f1, f2) -> Smt.create_bool_iff (create_convert_vformula f1) (create_convert_vformula f2)
 end

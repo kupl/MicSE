@@ -19,12 +19,16 @@ and v_formula =
   | VF_and of v_formula * v_formula
   | VF_or of v_formula * v_formula
   | VF_uni_rel of v_uni_rel * v_exp
-  | VF_eq of v_exp * v_exp
+  | VF_bin_rel of v_bin_rel * v_exp * v_exp
   | VF_imply of v_formula * v_formula
   | VF_iff of v_formula * v_formula
 
 and v_uni_rel =
   | VF_is_true  | VF_is_none  | VF_is_left  | VF_is_cons
+
+and v_bin_rel =
+  | VF_eq       | VF_neq      | VF_lt       | VF_le
+  | VF_gt       | VF_ge
 
 and v_exp =
   | VE_int of Z.t
@@ -81,6 +85,12 @@ and v_operation =
 let create_exp_var : var -> typ -> v_exp
 =fun v t -> VE_var (v, t)
 
+let create_formula_true : v_formula
+=VF_true
+
+let create_formula_false : v_formula
+=VF_false
+
 let create_formula_not : v_formula -> v_formula
 =fun f -> VF_not f
 
@@ -105,8 +115,26 @@ let create_formula_is_left : v_exp -> v_formula
 let create_formula_is_cons : v_exp -> v_formula
 =fun e -> create_formula_uni_rel VF_is_cons e
 
+let create_formula_bin_rel : v_bin_rel -> v_exp -> v_exp -> v_formula
+=fun r e1 e2 -> VF_bin_rel (r, e1, e2)
+
 let create_formula_eq : v_exp -> v_exp -> v_formula
-=fun e1 e2 -> VF_eq (e1, e2)
+=fun e1 e2 -> create_formula_bin_rel VF_eq e1 e2
+
+let create_formula_neq : v_exp -> v_exp -> v_formula
+=fun e1 e2 -> create_formula_bin_rel VF_neq e1 e2
+
+let create_formula_lt : v_exp -> v_exp -> v_formula
+=fun e1 e2 -> create_formula_bin_rel VF_lt e1 e2
+
+let create_formula_le : v_exp -> v_exp -> v_formula
+=fun e1 e2 -> create_formula_bin_rel VF_le e1 e2
+
+let create_formula_gt : v_exp -> v_exp -> v_formula
+=fun e1 e2 -> create_formula_bin_rel VF_gt e1 e2
+
+let create_formula_ge : v_exp -> v_exp -> v_formula
+=fun e1 e2 -> create_formula_bin_rel VF_ge e1 e2
 
 let create_formula_imply : v_formula -> v_formula -> v_formula
 =fun f1 f2 -> VF_imply (f1, f2)

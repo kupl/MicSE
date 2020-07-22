@@ -142,6 +142,8 @@ and inv_map = (vertex, formula) Core.Hashtbl.t
 
 val create_dummy_inv : vertex -> inv
 
+val create_inv : vertex -> formula -> inv
+
 val string_of_inv : inv -> string
 
 
