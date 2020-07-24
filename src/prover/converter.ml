@@ -196,6 +196,7 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_chain_id -> VE_nul_op (VE_chain_id, t)
   | E_create_account_address _ -> VE_operation (VE_origination, t)
   | E_lambda (_, _, _) -> VE_lambda t
+  | E_lambda_id id -> VE_int (Z.of_int id)
   | E_exec (v1, v2) -> VE_bin_op (VE_exec, (create_var v1), (create_var v2), t)
   | E_dup v -> (create_var v)
   | E_nil _ -> VE_list ([], t)
