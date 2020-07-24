@@ -61,17 +61,25 @@ type stmt = TezlaCfg.Node.stmt
 (*****************************************************************************)
 (*****************************************************************************)
 
+type lambda_ident   = Core.Int.t (* identifier for internal functions *)
+type lambda_summary = (vertex * vertex * typ * typ) (* (entry-vertex, exit-vertex, param-type, output-type) *)
+
 module CPMap : module type of Core.Map.Poly
 
 type t = {
-  flow : G.t;
-  vertex_info : (int, stmt) CPMap.t;  (* vertex-number -> stmt *)
-  type_info : (string, typ) CPMap.t;  (* variable-name -> typ *)  
-  main_entry : vertex;
-  main_exit : vertex;
+  flow          : G.t;
+  vertex_info   : (int, stmt) CPMap.t;          (* vertex-number -> stmt *)
+  type_info     : (string, typ) CPMap.t;        (* variable-name -> typ *)  
+  main_entry    : vertex;
+  main_exit     : vertex;
+  adt           : Adt.t;                        (* original Michelson code (in adt type) *)
+  lambda_id_map : (lambda_ident, lambda_summary) CPMap.t;  (* function id -> function summary *)
+  fail_vertices : vertex Core.Set.Poly.t;        (* vertex set which has Cfg_failwith instruction *)
 }
 
 val param_storage_name : string
+
+val gen_param_name : int -> string
 
 val read_stmt_from_vtx : t -> vertex -> stmt
 
@@ -92,11 +100,13 @@ val string_of_ident : ident -> string
 
 type cfgcon_ctr = { (* counter for cfg construction *)
   vertex_counter : vertex ref;
-  var_counter : vertex ref;
+  var_counter : int ref;
+  lambda_counter : int ref;
 }
 
 val new_vtx : cfgcon_ctr -> Core.Int.t
 val new_var : cfgcon_ctr -> Core.String.t
+val new_lambda_ident : cfgcon_ctr -> Core.Int.t
 
 val t_map_add : ?errtrace:string -> ('k, 'v) CPMap.t -> 'k -> 'v -> ('k, 'v) CPMap.t
 val t_map_find : ?errtrace:string -> ('k, 'v) CPMap.t -> 'k -> 'v
@@ -140,6 +150,9 @@ val t_con_vtx_front_f  : vertex -> (t * vertex) -> (t * vertex)  (* If_false edg
 val t_con_vtx_back_f   : vertex -> (t * vertex) -> (t * vertex)
 val t_con_vtx_frontr_f : vertex -> (t * vertex) -> (t * vertex)
 val t_con_vtx_backr_f  : vertex -> (t * vertex) -> (t * vertex)
+
+(* add new id->lambda mapping info in cfg *)
+val t_add_lmbdim  : ?errtrace:string -> (lambda_ident * lambda_summary) -> (t * 'a) -> (t * lambda_ident)
 
 
 (* simple optimization - remove meaningless skip node *)

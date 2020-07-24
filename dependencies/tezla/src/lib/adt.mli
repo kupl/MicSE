@@ -75,7 +75,8 @@ and expr =
   | E_int_of_nat of string
   | E_chain_id
   | E_create_account_address of operation
-  | E_lambda of typ * typ * func
+  | E_lambda of typ * typ * func  (* DEPRECATED. reserved for backward compatibility *)
+  | E_lambda_id of int
   | E_exec of string * string
   | E_dup of string
   | E_nil of typ

@@ -80,6 +80,7 @@ and expr ppf = function
   | E_int_of_nat e -> fprintf ppf "INT %s" e
   | E_chain_id -> fprintf ppf "CHAIN_ID"
   | E_lambda (t_1, t_2, _) -> fprintf ppf "LAMBDA %a %a {...}" typ t_1 typ t_2
+  | E_lambda_id i -> fprintf ppf "LAMBDA_ID %d" i
   | E_exec (e_1, e_2) -> fprintf ppf "EXEC %s %s" e_1 e_2
   | E_create_contract_address _ -> (* TODO: *) fprintf ppf ""
   | E_create_account_address _ -> (* TODO: *) fprintf ppf ""

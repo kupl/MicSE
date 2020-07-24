@@ -52,19 +52,32 @@ type typ = Tezla.Adt.typ
 type expr = Tezla.Adt.expr
 type stmt = TezlaCfg.Node.stmt
 
-(*module IntMap = Core.Map.Make (Core.Int)
-module StringMap = Core.Map.Make (Core.String)*)
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Context Flow Graph                                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type lambda_ident   = int (* identifier for internal functions *)
+type lambda_summary = (vertex * vertex * typ * typ) (* (entry-vertex, exit-vertex, param-type, output-type) *)
+
 module CPMap = Core.Map.Poly
 
 type t = {
-  flow : G.t;
-  vertex_info : (int, stmt) CPMap.t;  (* vertex-number -> stmt *)
-  type_info : (string, typ) CPMap.t;  (* variable-name -> typ *)
-  main_entry : vertex;
-  main_exit : vertex;
+  flow          : G.t;
+  vertex_info   : (int, stmt) CPMap.t;          (* vertex-number -> stmt *)
+  type_info     : (string, typ) CPMap.t;        (* variable-name -> typ *)  
+  main_entry    : vertex;
+  main_exit     : vertex;
+  adt           : Adt.t;                        (* original Michelson code (in adt type) *)
+  lambda_id_map : (lambda_ident, lambda_summary) CPMap.t;  (* function id -> function summary *)
+  fail_vertices : vertex Core.Set.Poly.t;        (* vertex set which has Cfg_failwith instruction *)
 }
 
 let param_storage_name = "param_storage"
+
+let gen_param_name i = "param_" ^ (string_of_int i)
 
 let read_stmt_from_vtx : t -> vertex -> stmt
 =fun cfg vtx -> begin
@@ -103,11 +116,13 @@ let string_of_ident : ident -> string
 
 type cfgcon_ctr = { (* counter for cfg construction *)
   vertex_counter : vertex ref;
-  var_counter : vertex ref;
+  var_counter : int ref;
+  lambda_counter : int ref;
 }
 
 let new_vtx : cfgcon_ctr -> Core.Int.t = fun c -> (incr c.vertex_counter; !(c.vertex_counter))
 let new_var : cfgcon_ctr -> Core.String.t = fun c -> (incr c.var_counter; "v" ^ (string_of_int (!(c.var_counter))))
+let new_lambda_ident : cfgcon_ctr -> Core.Int.t = fun c -> (incr c.lambda_counter; !(c.lambda_counter))
 
 let vtx_add : vertex -> t -> t = begin fun v cfg -> {cfg with flow=(G.add_vertex cfg.flow v);} end
 let edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> {cfg with flow=(G.add_edge cfg.flow v1 v2);} end
@@ -201,6 +216,10 @@ let t_con_vtx_back_f    v2 (cfg, v1) = (fedg_add (v1, v2) cfg, v2)
 let t_con_vtx_front_f   v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v2)
 let t_con_vtx_backr_f   v2 (cfg, v1) = (fedg_add (v1, v2) cfg, v1)
 let t_con_vtx_frontr_f  v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v1)
+
+let t_add_lmbdim ?(errtrace = "") (ident, summ) (cfg, _) = begin
+  ({cfg with lambda_id_map=(t_map_add ~errtrace:(errtrace ^ " : t_add_lmbdim") cfg.lambda_id_map ident summ);}, ident)
+end
 
 
 let remove_meaningless_skip_vertices =

@@ -76,6 +76,7 @@ and expr =
   | E_chain_id
   | E_create_account_address of operation
   | E_lambda of typ * typ * func
+  | E_lambda_id of int
   | E_exec of string * string
   | E_dup of string
   | E_nil of typ
