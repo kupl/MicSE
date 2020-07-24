@@ -17,8 +17,21 @@ and v_exp = Vlang.v_exp
 
 type z_symbol = Z3.Symbol.symbol
 
+val dummy_tmp : int ref
 val create_dummy_symbol : unit -> z_symbol
+
 val create_symbol : string -> z_symbol
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Constructors                                                              *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type z_const = Z3.Datatype.Constructor.constructor
+
+val list_nil_const : z_const
 
 
 (*****************************************************************************)
@@ -29,6 +42,18 @@ val create_symbol : string -> z_symbol
 
 type z_sort = Z3.Sort.sort
 
+
+val string_of_sort : z_sort -> string
+
+val create_option_symbol : z_sort -> z_symbol
+
+val create_pair_symbol : z_sort -> z_sort -> z_symbol
+
+val create_or_symbol : z_sort -> z_sort -> z_symbol
+
+val create_list_symbol : z_sort -> z_symbol
+
+
 val create_unit_sort : z_sort
 
 val create_operation_sort : z_sort
@@ -37,27 +62,31 @@ val create_contract_sort : z_sort
 
 val create_lambda_sort : z_sort
 
+
 val create_bool_sort : z_sort
 
 val create_int_sort : z_sort
 
 val create_string_sort : z_sort
 
+
 val create_option_enum_sort : z_sort
 
 val create_option_sort : z_sort -> z_sort
 
+
 val create_pair_sort : z_sort -> z_sort -> z_sort
+
 
 val create_or_enum_sort : z_sort
 
 val create_or_sort : z_sort -> z_sort -> z_sort
 
+
 val create_list_sort : z_sort -> z_sort
 
-val create_map_sort : z_sort -> z_sort -> z_sort
 
-val string_of_sort : z_sort -> string
+val create_map_sort : z_sort -> z_sort -> z_sort
 
 
 (*****************************************************************************)
@@ -69,6 +98,12 @@ val string_of_sort : z_sort -> string
 type ('a, 'b) or_type = | Left of 'a | Right of 'b
 
 type z_expr = Z3.Expr.expr
+and z_func = Z3.FuncDecl.func_decl
+
+val string_of_expr : z_expr -> string
+
+val string_of_func : z_func -> string
+
 
 val create_dummy_expr : z_sort -> z_expr
 
@@ -198,9 +233,6 @@ val read_map : z_expr -> z_expr -> z_expr
 val read_default_term : z_expr -> z_expr
 
 val update_map : z_expr -> z_expr -> z_expr -> z_expr
-
-
-val string_of_expr : z_expr -> string
 
 
 (*****************************************************************************)

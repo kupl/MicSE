@@ -9,16 +9,21 @@ type var = Cfg.ident
   (*
     type indent = string
   *)
-  
-type cond = Vlang.v_formula
 
-val create_cond_is_true : var -> typ -> cond
+type cond = 
+  | BC_is_true of var
+  | BC_is_none of var
+  | BC_is_left of var
+  | BC_is_cons of var
+  | BC_not of cond
 
-val create_cond_is_none : var -> typ -> cond
+val create_cond_is_true : var -> cond
 
-val create_cond_is_left : var -> typ -> cond
+val create_cond_is_none : var -> cond
 
-val create_cond_is_cons : var -> typ -> cond
+val create_cond_is_left : var -> cond
+
+val create_cond_is_cons : var -> cond
 
 val create_cond_not : cond -> cond
 
@@ -112,12 +117,12 @@ type exp = Cfg.expr
   *)
 type inst =
   | BI_assume of cond
-  | BI_assign of var * exp * typ
+  | BI_assign of var * exp
   | BI_skip
 
 val create_inst_assume : cond -> inst
 
-val create_inst_assign : (var * exp * typ) -> inst
+val create_inst_assign : (var * exp) -> inst
 
 val create_inst_skip : unit -> inst
 

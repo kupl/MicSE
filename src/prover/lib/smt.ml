@@ -35,11 +35,40 @@ let create_symbol : string -> z_symbol
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Constructors                                                              *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type z_const = Z3.Datatype.Constructor.constructor
+
+let list_nil_const : z_const
+= Z3.Datatype.mk_constructor !ctx (create_symbol "Nil") (create_symbol "is_nil") [] [] []
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Sorts                                                                     *)
 (*****************************************************************************)
 (*****************************************************************************)
 
 type z_sort = Z3.Sort.sort
+
+
+let string_of_sort : z_sort -> string
+=fun sort -> Z3.Sort.to_string sort
+
+let create_option_symbol : z_sort -> z_symbol
+=fun content_sort -> create_symbol ("Option_(" ^ (string_of_sort content_sort) ^ ")")
+
+let create_pair_symbol : z_sort -> z_sort -> z_symbol
+=fun fst_sort snd_sort -> create_symbol ("Pair_(" ^ (string_of_sort fst_sort) ^ ")_(" ^ (string_of_sort snd_sort) ^ ")")
+
+let create_or_symbol : z_sort -> z_sort -> z_symbol
+=fun left_sort right_sort -> create_symbol ("Or_(" ^ (string_of_sort left_sort) ^ ")_(" ^ (string_of_sort right_sort) ^ ")")
+
+let create_list_symbol : z_sort -> z_symbol
+=fun content_sort -> create_symbol ("List_(" ^ (string_of_sort content_sort) ^ ")")
+
 
 (* UNINTERPRETED SORTS *)
 let create_unit_sort : z_sort
@@ -69,30 +98,32 @@ let create_option_enum_sort : z_sort
 =Z3.Enumeration.mk_sort !ctx (create_symbol "Option_Enum") [(create_symbol "None"); (create_symbol "Some")]
 
 let create_option_sort : z_sort -> z_sort
-=fun content_sort -> Z3.Tuple.mk_sort !ctx (create_symbol "Option") [(create_symbol "exist"); (create_symbol "value")] [create_option_enum_sort; content_sort]
+=fun content_sort -> Z3.Tuple.mk_sort !ctx (create_option_symbol content_sort) [(create_symbol "exist"); (create_symbol "value")] [create_option_enum_sort; content_sort]
 
 
 let create_pair_sort : z_sort -> z_sort -> z_sort
-=fun fst_sort snd_sort -> Z3.Tuple.mk_sort !ctx (create_symbol "Pair") [(create_symbol "fst"); (create_symbol "snd")] [fst_sort; snd_sort]
+=fun fst_sort snd_sort -> begin
+  let pair_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Pair") (create_symbol "is_pair") [(create_symbol "fst"); (create_symbol "snd")] [(Some fst_sort); (Some snd_sort)] [1; 2] in
+  Z3.Datatype.mk_sort !ctx (create_pair_symbol fst_sort snd_sort) [pair_const]
+end
 
 
 let create_or_enum_sort : z_sort
 =Z3.Enumeration.mk_sort !ctx (create_symbol "Or_Enum") [(create_symbol "Left"); (create_symbol "Right")]
 
 let create_or_sort : z_sort -> z_sort -> z_sort
-=fun left_sort right_sort -> Z3.Tuple.mk_sort !ctx (create_symbol "Or") [(create_symbol "loc"); (create_symbol "left"); (create_symbol "right")] [create_or_enum_sort; left_sort; right_sort]
+=fun left_sort right_sort -> Z3.Tuple.mk_sort !ctx (create_or_symbol left_sort right_sort) [(create_symbol "loc"); (create_symbol "left"); (create_symbol "right")] [create_or_enum_sort; left_sort; right_sort]
 
 
 let create_list_sort : z_sort -> z_sort
-=fun content_sort -> Z3.Z3List.mk_sort !ctx (create_symbol "List") content_sort
+=fun content_sort -> begin
+  let list_cons_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Cons") (create_symbol "is_cons") [(create_symbol "head"); (create_symbol "tail")] [(Some content_sort); None] [1; 0] in
+  Z3.Datatype.mk_sort !ctx (create_list_symbol content_sort) [list_nil_const; list_cons_const]
+end
 
 
 let create_map_sort : z_sort -> z_sort -> z_sort
 =fun key_sort value_sort -> Z3.Z3Array.mk_sort !ctx key_sort value_sort
-
-
-let string_of_sort : z_sort -> string
-=fun sort -> Z3.Sort.to_string sort
 
 
 (*****************************************************************************)
@@ -104,6 +135,14 @@ let string_of_sort : z_sort -> string
 type ('a, 'b) or_type = | Left of 'a | Right of 'b
 
 type z_expr = Z3.Expr.expr
+and z_func = Z3.FuncDecl.func_decl
+
+let string_of_expr : z_expr -> string
+=fun e -> Z3.Expr.to_string e
+
+let string_of_func : z_func -> string
+=fun f -> Z3.FuncDecl.to_string f
+
 
 let create_dummy_expr : z_sort -> z_expr
 =fun sort -> Z3.Expr.mk_const !ctx (create_dummy_symbol ()) sort
@@ -168,10 +207,10 @@ let create_bool_iff : z_expr -> z_expr -> z_expr
 =fun e1 e2 -> Z3.Boolean.mk_iff !ctx e1 e2
 
 let create_bool_list_is_nil : z_expr -> z_expr
-=fun e -> Z3.FuncDecl.apply (Z3.Z3List.get_is_nil_decl (read_sort_of_expr e)) [e]
+=fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 0) [e]
 
 let create_bool_list_is_cons : z_expr -> z_expr
-=fun e -> Z3.FuncDecl.apply (Z3.Z3List.get_is_cons_decl (read_sort_of_expr e)) [e]
+=fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 1) [e]
 
 let create_bool_int_lt : z_expr -> z_expr -> z_expr
 =fun e1 e2 -> Z3.Arithmetic.mk_lt !ctx e1 e2
@@ -245,13 +284,13 @@ let read_option_content : z_expr -> z_expr
 
 
 let create_pair : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> create_tuple (create_pair_sort (read_sort_of_expr e1) (read_sort_of_expr e2)) [e1; e2]
+=fun e1 e2 -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (create_pair_sort (read_sort_of_expr e1) (read_sort_of_expr e2))) 0) [e1; e2]
 
 let read_pair_fst : z_expr -> z_expr
-=fun e -> read_tuple_content e 0
+=fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 0) 0) [e]
 
 let read_pair_snd : z_expr -> z_expr
-=fun e -> read_tuple_content e 1
+=fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 0) 1) [e]
 
 
 let create_or_enum_left : z_expr
@@ -282,16 +321,16 @@ let read_or_content : z_expr -> z_expr
 
 
 let create_list : z_sort -> z_expr
-=fun sort -> Z3.Z3List.nil sort
+=fun item_sort -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (create_list_sort item_sort)) 0) []
 
 let read_list_head : z_expr -> z_expr
-=fun e -> Z3.FuncDecl.apply (Z3.Z3List.get_head_decl (read_sort_of_expr e)) [e]
+=fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 1) 0) [e]
 
 let read_list_tail : z_expr -> z_expr
-=fun e -> Z3.FuncDecl.apply (Z3.Z3List.get_tail_decl (read_sort_of_expr e)) [e]
+=fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 1) 1) [e]
 
 let update_list_cons : z_expr -> z_expr -> z_expr
-=fun item e -> Z3.FuncDecl.apply (Z3.Z3List.get_cons_decl (read_sort_of_expr e)) [item; e]
+=fun item e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (read_sort_of_expr e)) 0) [item; e]
 
 
 let create_map : z_sort -> z_expr
@@ -308,10 +347,6 @@ let read_default_term : z_expr -> z_expr
 
 let update_map : z_expr -> z_expr -> z_expr -> z_expr
 =fun map key value -> Z3.Z3Array.mk_store !ctx map key value
-
-
-let string_of_expr : z_expr -> string
-=fun e -> Z3.Expr.to_string e
 
 
 (*****************************************************************************)

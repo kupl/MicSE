@@ -32,11 +32,11 @@ let main : unit -> unit
 
   (* Construct basic path *)
   let raw_bp_list = Prover.Extractor.extract cfg in
-  let bp_list = Prover.Generator.generate raw_bp_list in
+  let bp_list = Prover.Generator.generate raw_bp_list cfg in
 
   (* Verify each basic path *)
   let _ = Core.List.iter bp_list ~f:(fun bp -> (
-    let vlang_vc = Prover.Converter.convert bp in
+    let vlang_vc = Prover.Converter.convert bp cfg in
     let verify_result = Prover.Verifier.verify vlang_vc in
     print_endline (string_of_bool verify_result)
   )) in

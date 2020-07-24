@@ -5,7 +5,7 @@ open ProverLib
 
 let rec verify : Vlang.t -> bool
 =fun vc -> begin
-  let zexp_of_vc = create_convert_vformula vc in
+  let zexp_of_vc = create_convert_vformula (Vlang.create_formula_not vc) in
   let solver = Smt.create_solver () in
   let _ = Smt.update_solver_add solver [zexp_of_vc] in
   let result, _ = Smt.create_check solver in
@@ -118,7 +118,7 @@ and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
         end
     end
   | VE_list (vel, t) -> begin
-      let nil = Smt.create_list (sort_of_typt t) in
+      let nil = Smt.create_list (get_nth (sort_of_inner_type t) 0) in
       Core.List.fold_right vel ~f:(fun e l -> Smt.update_list_cons (create_convert_vexp e) l) ~init:nil
     end
   | VE_var (v, t) -> Smt.read_var (Smt.create_symbol v) (sort_of_typt t)
