@@ -31,6 +31,8 @@ val create_symbol : string -> z_symbol
 
 type z_const = Z3.Datatype.Constructor.constructor
 
+val option_none_const : z_const
+
 val list_nil_const : z_const
 
 
@@ -70,15 +72,11 @@ val create_int_sort : z_sort
 val create_string_sort : z_sort
 
 
-val create_option_enum_sort : z_sort
-
 val create_option_sort : z_sort -> z_sort
 
 
 val create_pair_sort : z_sort -> z_sort -> z_sort
 
-
-val create_or_enum_sort : z_sort
 
 val create_or_sort : z_sort -> z_sort -> z_sort
 
@@ -117,13 +115,6 @@ val create_ite : z_expr -> z_expr -> z_expr -> z_expr
 val create_cmp : z_expr -> z_expr -> z_expr
 
 
-val create_tuple : z_sort -> z_expr list -> z_expr
-
-val create_tuple_enum : z_sort -> int -> z_expr
-
-val read_tuple_content : z_expr -> int -> z_expr
-
-
 val create_unit : z_expr
 
 
@@ -157,6 +148,14 @@ val create_bool_int_gt : z_expr -> z_expr -> z_expr
 
 val create_bool_int_ge : z_expr -> z_expr -> z_expr
 
+val create_bool_option_is_none : z_expr -> z_expr
+
+val create_bool_option_is_some : z_expr -> z_expr
+
+val create_bool_option_is_left : z_expr -> z_expr
+
+val create_bool_option_is_right : z_expr -> z_expr
+
 
 val create_int_from_zarith : Z.t -> z_expr
 
@@ -184,13 +183,7 @@ val create_string_concat : z_expr list -> z_expr
 val create_string_slice : z_expr -> z_expr -> z_expr -> z_expr
 
 
-val create_option_enum_none : z_expr
-
-val create_option_enum_some : z_expr
-
 val create_option : z_sort -> z_expr option -> z_expr
-
-val read_option_exist : z_expr -> z_expr
 
 val read_option_content : z_expr -> z_expr
 
@@ -202,13 +195,7 @@ val read_pair_fst : z_expr -> z_expr
 val read_pair_snd : z_expr -> z_expr
 
 
-val create_or_enum_left : z_expr
-
-val create_or_enum_right : z_expr
-
 val create_or : z_sort -> (z_expr, z_expr) or_type -> z_expr
-
-val read_or_location : z_expr -> z_expr
 
 val read_or_left_content : z_expr -> z_expr
 

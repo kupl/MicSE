@@ -41,6 +41,9 @@ let create_symbol : string -> z_symbol
 
 type z_const = Z3.Datatype.Constructor.constructor
 
+let option_none_const : z_const
+= Z3.Datatype.mk_constructor !ctx (create_symbol "None") (create_symbol "is_none") [] [] []
+
 let list_nil_const : z_const
 = Z3.Datatype.mk_constructor !ctx (create_symbol "Nil") (create_symbol "is_nil") [] [] []
 
@@ -94,11 +97,11 @@ let create_string_sort : z_sort
 =Z3.Seq.mk_string_sort !ctx
 
 
-let create_option_enum_sort : z_sort
-=Z3.Enumeration.mk_sort !ctx (create_symbol "Option_Enum") [(create_symbol "None"); (create_symbol "Some")]
-
 let create_option_sort : z_sort -> z_sort
-=fun content_sort -> Z3.Tuple.mk_sort !ctx (create_option_symbol content_sort) [(create_symbol "exist"); (create_symbol "value")] [create_option_enum_sort; content_sort]
+=fun content_sort -> begin
+  let option_some_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Some") (create_symbol "is_some") [(create_symbol "content")] [(Some content_sort)] [1] in
+  Z3.Datatype.mk_sort !ctx (create_option_symbol content_sort) [option_none_const; option_some_const]
+end
 
 
 let create_pair_sort : z_sort -> z_sort -> z_sort
@@ -108,11 +111,12 @@ let create_pair_sort : z_sort -> z_sort -> z_sort
 end
 
 
-let create_or_enum_sort : z_sort
-=Z3.Enumeration.mk_sort !ctx (create_symbol "Or_Enum") [(create_symbol "Left"); (create_symbol "Right")]
-
 let create_or_sort : z_sort -> z_sort -> z_sort
-=fun left_sort right_sort -> Z3.Tuple.mk_sort !ctx (create_or_symbol left_sort right_sort) [(create_symbol "loc"); (create_symbol "left"); (create_symbol "right")] [create_or_enum_sort; left_sort; right_sort]
+=fun left_sort right_sort -> begin
+  let or_left_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Left") (create_symbol "is_left") [(create_symbol "content")] [(Some left_sort)] [1] in
+  let or_right_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Right") (create_symbol "is_right") [(create_symbol "content")] [(Some right_sort)] [1] in
+  Z3.Datatype.mk_sort !ctx (create_or_symbol left_sort right_sort) [or_left_const; or_right_const]
+end
 
 
 let create_list_sort : z_sort -> z_sort
@@ -159,20 +163,6 @@ let create_ite : z_expr -> z_expr -> z_expr -> z_expr
 
 let create_cmp : z_expr -> z_expr -> z_expr
 =fun e1 e2 -> Z3.Arithmetic.Integer.mk_numeral_i !ctx (Z3.Expr.compare e1 e2)
-
-
-let create_tuple : z_sort -> z_expr list -> z_expr
-=fun sort contents -> Z3.FuncDecl.apply (Z3.Tuple.get_mk_decl sort) contents
-
-let create_tuple_enum : z_sort -> int -> z_expr
-=fun sort n -> Z3.Enumeration.get_const sort n
-
-let read_tuple_content : z_expr -> int -> z_expr
-=fun e n -> begin
-  let sort_of_e = read_sort_of_expr e in
-  let access_func = get_field (Z3.Tuple.get_field_decls sort_of_e) n in
-  Z3.FuncDecl.apply access_func [e]
-end
 
 
 let create_unit : z_expr
@@ -224,6 +214,18 @@ let create_bool_int_gt : z_expr -> z_expr -> z_expr
 let create_bool_int_ge : z_expr -> z_expr -> z_expr
 =fun e1 e2 -> Z3.Arithmetic.mk_ge !ctx e1 e2
 
+let create_bool_option_is_none : z_expr -> z_expr
+=fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 0) [e]
+
+let create_bool_option_is_some : z_expr -> z_expr
+=fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 1) [e]
+
+let create_bool_option_is_left : z_expr -> z_expr
+=fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 0) [e]
+
+let create_bool_option_is_right : z_expr -> z_expr
+=fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 1) [e]
+
 
 let create_int_from_zarith : Z.t -> z_expr
 =fun n -> Z3.Arithmetic.Integer.mk_numeral_s !ctx (Z.to_string n)
@@ -263,24 +265,15 @@ let create_string_slice : z_expr -> z_expr -> z_expr -> z_expr
 =fun s lo hi -> Z3.Seq.mk_seq_extract !ctx s lo hi
 
 
-let create_option_enum_none : z_expr
-=create_tuple_enum create_option_enum_sort 0
-
-let create_option_enum_some : z_expr
-=create_tuple_enum create_option_enum_sort 1
-
 let create_option : z_sort -> z_expr option -> z_expr
 =fun sort_of_e opt_e -> begin
   match opt_e with
-  | None -> create_tuple (create_option_sort sort_of_e) [create_option_enum_none; (create_dummy_expr sort_of_e)]
-  | Some e -> create_tuple (create_option_sort sort_of_e) [create_option_enum_some; e]
+  | None -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (create_option_sort sort_of_e)) 0) []
+  | Some e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (create_option_sort sort_of_e)) 1) [e]
 end
 
-let read_option_exist : z_expr -> z_expr
-=fun e -> read_tuple_content e 0
-
 let read_option_content : z_expr -> z_expr
-=fun e -> read_tuple_content e 1
+=fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 1) 0) [e]
 
 
 let create_pair : z_expr -> z_expr -> z_expr
@@ -293,31 +286,21 @@ let read_pair_snd : z_expr -> z_expr
 =fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 0) 1) [e]
 
 
-let create_or_enum_left : z_expr
-=create_tuple_enum create_or_enum_sort 0
-
-let create_or_enum_right : z_expr
-=create_tuple_enum create_or_enum_sort 1
-
 let create_or : z_sort -> (z_expr, z_expr) or_type -> z_expr
 =fun sort_of_dummy or_e -> begin
-  let dummy_e = create_dummy_expr sort_of_dummy in
   match or_e with
-  | Left e -> create_tuple (create_or_sort (read_sort_of_expr e) sort_of_dummy) [create_or_enum_left; e; dummy_e]
-  | Right e -> create_tuple (create_or_sort sort_of_dummy (read_sort_of_expr e)) [create_or_enum_right; dummy_e; e]
+  | Left e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (create_or_sort (read_sort_of_expr e) sort_of_dummy)) 0) [e]
+  | Right e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (create_or_sort sort_of_dummy (read_sort_of_expr e))) 1) [e]
 end
 
-let read_or_location : z_expr -> z_expr
-=fun e -> read_tuple_content e 0
-
 let read_or_left_content : z_expr -> z_expr
-=fun e -> read_tuple_content e 1
+=fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 0) 0) [e]
 
 let read_or_right_content : z_expr -> z_expr
-=fun e -> read_tuple_content e 2
+=fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 1) 0) [e]
 
 let read_or_content : z_expr -> z_expr
-=fun e -> create_ite (create_bool_eq (read_or_location e) create_or_enum_left) (read_or_left_content e) (read_or_right_content e)
+=fun e -> create_ite (create_bool_option_is_left e) (read_or_left_content e) (read_or_right_content e)
 
 
 let create_list : z_sort -> z_expr

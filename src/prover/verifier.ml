@@ -66,8 +66,8 @@ and create_convert_vformula : Vlang.v_formula -> Smt.z_expr
       let e' = create_convert_vexp e in
       match vur with
       | VF_is_true -> Smt.create_bool_eq e' (Smt.create_bool_true)
-      | VF_is_none -> Smt.create_bool_eq (Smt.read_option_exist e') (Smt.create_option_enum_none)
-      | VF_is_left -> Smt.create_bool_eq (Smt.read_or_location e') (Smt.create_or_enum_left)
+      | VF_is_none -> Smt.create_bool_option_is_none e'
+      | VF_is_left -> Smt.create_bool_option_is_left e'
       | VF_is_cons -> Smt.create_bool_list_is_cons e'
     end
   | VF_bin_rel (vbr, e1, e2) -> begin
