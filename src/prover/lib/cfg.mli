@@ -117,6 +117,7 @@ val vtx_add : vertex -> t-> t
 val edg_add : (vertex * vertex) -> t-> t
 val tedg_add : (vertex * vertex) -> t -> t
 val fedg_add : (vertex * vertex) -> t -> t
+val fail_edg_add : (vertex * vertex) -> t -> t
 
 val t_add_vtx   : cfgcon_ctr -> (t * 'a) -> (t * vertex)                                        (* t_add_vtx counter (cfg, _) = (cfg-flow-updated, created-vertex) *)
 val t_add_vtx_2 : cfgcon_ctr -> (t * 'a) -> (t * (vertex * vertex))                             (* t_add_vtx_2 (cfg, _) = (cfg-flow-updated, created-vertices) *)
@@ -128,6 +129,7 @@ val t_add_edg   : (vertex * vertex)       -> (t * 'a) -> (t * vertex)           
 val t_add_edgs  : (vertex * vertex) list  -> (t * 'a) -> (t * (vertex list))                    (* t_add_edg (v1, v2)-list (cfg, _) = (cfg-(edges)-updated, v2-list) *)
 val t_add_tedg  : (vertex * vertex)       -> (t * 'a) -> (t * vertex)
 val t_add_fedg  : (vertex * vertex)       -> (t * 'a) -> (t * vertex)
+val t_add_fail_edg : (vertex * vertex)    -> (t * 'a) -> (t * vertex)
 
 val t_add_vinfo   : ?errtrace:string  -> (vertex * stmt)      -> (t * 'a) -> (t * vertex)
 val t_add_vinfos  : ?errtrace:string -> (vertex * stmt) list  -> (t * 'a) -> (t * (vertex list))
@@ -155,6 +157,9 @@ val t_con_vtx_backr_f  : vertex -> (t * vertex) -> (t * vertex)
 
 (* add new id->lambda mapping info in cfg *)
 val t_add_lmbdim  : ?errtrace:string -> (lambda_ident * lambda_summary) -> (t * 'a) -> (t * lambda_ident)
+
+(* add new fail vertex information in cfg *)
+val t_add_failvtx : vertex -> (t * 'a) -> (t * vertex)
 
 
 (* simple optimization - remove meaningless skip node *)

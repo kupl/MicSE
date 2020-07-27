@@ -131,6 +131,7 @@ let vtx_add : vertex -> t -> t = begin fun v cfg -> {cfg with flow=(G.add_vertex
 let edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> {cfg with flow=(G.add_edge cfg.flow v1 v2);} end
 let tedg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 If_true v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
 let fedg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 If_false v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
+let fail_edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 Failed v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
 
 let t_map_add ?(errtrace = "") m k v = begin
   match Core.Map.Poly.add m ~key:k ~data:v with
@@ -179,6 +180,7 @@ let t_add_edgs vvlist (cfg, _) = begin
 end
 let t_add_tedg (v1, v2) (cfg, _) = (tedg_add (v1, v2) cfg, v2)
 let t_add_fedg (v1, v2) (cfg, _) = (fedg_add (v1, v2) cfg, v2)
+let t_add_fail_edg (v1, v2) (cfg, _) = (fail_edg_add (v1, v2) cfg, v2)
 
 let t_add_vinfo ?(errtrace = "") (v, s) (cfg, _) = begin
   ({cfg with vertex_info=(t_map_add ~errtrace:(errtrace ^ " : t_add_vinfo") cfg.vertex_info v s);}, v)
@@ -222,6 +224,10 @@ let t_con_vtx_frontr_f  v1 (cfg, v2) = (fedg_add (v1, v2) cfg, v1)
 
 let t_add_lmbdim ?(errtrace = "") (ident, summ) (cfg, _) = begin
   ({cfg with lambda_id_map=(t_map_add ~errtrace:(errtrace ^ " : t_add_lmbdim") cfg.lambda_id_map ident summ);}, ident)
+end
+
+let t_add_failvtx fv (cfg, _) = begin
+  ({cfg with fail_vertices=(Core.Set.Poly.add cfg.fail_vertices fv);}, fv)
 end
 
 
@@ -285,7 +291,7 @@ let cfg_to_dotformat : t -> string
   let flow_fold_func : G.E.t -> string list -> string list
   =fun (in_v, e_label, out_v) acc -> begin
     let body_s = (string_of_int in_v) ^ " -> " ^ (string_of_int out_v) in
-    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" in
+    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" | Failed -> "[label=\"Failed\", style=dotted]" in
     (body_s ^ " " ^ edge_s ^ ";") :: acc
   end in
   let flow_s = begin
@@ -319,6 +325,8 @@ let cfg_to_dotformat : t -> string
         -> (vs ^ " [shape=diamond, " ^ (only_label_str lb_str) ^ "];") :: acc
       | Cfg_assign _
         -> (vs ^ " [shape=box, " ^ (only_label_str lb_str) ^ "];") :: acc
+      | Cfg_failwith _
+        -> (vs ^ " [shape=cds, " ^ (only_label_str lb_str) ^ "];") :: acc
       | _ -> (vs ^ " [" ^ (only_label_str lb_str) ^ "];") :: acc
     )
   end in

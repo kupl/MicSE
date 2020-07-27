@@ -43,6 +43,9 @@ val ns_unlift   : stack_info_t -> string list
 val ns_split_n  : stack_info_t -> int -> (stack_info_t * stack_info_t)
 val ns_rev_append : stack_info_t -> stack_info_t -> stack_info_t
 
+val is_es       : stack_info_t -> bool
+val get_es_str  : stack_info_t -> string
+
 
 (*****************************************************************************)
 (*****************************************************************************)
