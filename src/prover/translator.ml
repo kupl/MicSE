@@ -85,6 +85,29 @@ let of_tezlaCfg tcfg =
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Stack information (internal datatype)                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type stack_info_t =
+| NS of string list (* Normal Stack info *)
+| ES of string      (* Error  Stack info *)
+
+let ns_hd = begin function | NS sl -> Core.List.hd_exn sl       | ES _ -> fail "ns_hd : error-stack-info comes in argument" end
+let ns_tl = begin function | NS sl -> NS (Core.List.tl_exn sl)  | ES _ -> fail "ns_tl : error-stack-info comes in argument" end
+let ns_nth s n = begin match s with | NS sl -> Core.List.nth_exn sl n | ES _ -> fail "ns_nth : error-stack-info comes in argument" end
+let ns_rev = begin function | NS sl -> NS (Core.List.rev sl)    | ES _ ->  fail "ns_rev : error-stack-info comes in argument" end
+
+let ns_cons s = begin function | NS sl -> NS (s :: sl) | ES _ -> fail "ns_cons : error-stack-info comes in argument" end
+let ns_append = fun s1 s2 -> begin match s1, s2 with | NS sl1, NS sl2 -> NS (sl1 @ sl2) | _ -> fail "ns_append : error-stack-info comes in one of the arguments" end
+let ns_unlift = begin function | NS sl -> sl | ES _ -> fail "ns_unlift : error-stack-info comes in argument" end
+let ns_split_n sl n = begin match sl with | NS s -> let (h, t) = Core.List.split_n s n in (NS h, NS t) | _ -> fail "ns_split_n : error-stack-info comes in argument" end
+
+let ns_rev_append s1 s2 = begin match s1, s2 with | NS sl1, NS sl2 -> NS (Core.List.rev_append sl1 sl2) | _ -> fail "ns_rev_append : error-stack-info comes in one of the arguments" end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Adt to Cfg                                                                *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -139,7 +162,7 @@ end
 
 (* Merge two stacks (variable-renaming process). It reconstructs flow, type-info too. *)
 (* Precondition : two stacks have same length and type scheme. *)
-let merge_two_stack_infos : cfgcon_ctr -> string -> Cfg.t -> (string list * string list) -> (Cfg.vertex * Cfg.vertex * Cfg.vertex * Cfg.vertex) -> (Cfg.t * string list)
+let merge_two_stack_infos : cfgcon_ctr -> string -> Cfg.t -> (stack_info_t * stack_info_t) -> (Cfg.vertex * Cfg.vertex * Cfg.vertex * Cfg.vertex) -> (Cfg.t * stack_info_t)
 = let open Cfg in
   (* sugar functions *)
   let addvtx vtx flw : G.t = G.add_vertex flw vtx in
@@ -147,49 +170,56 @@ let merge_two_stack_infos : cfgcon_ctr -> string -> Cfg.t -> (string list * stri
   (* FUNCTION BEGIN *)
   fun counter errmsg_trace cfg (stack_info_1, stack_info_2) (in_1_v, in_2_v, out_1_v, out_2_v) -> begin
   let errmsg_gen s : string = (errmsg_trace ^ " : merge_two_stack_infos : " ^ s) in
-  (* before folding, we need to update vertex_info of in_1_v and in_2_v. Their stmt will become Cfg_skip. *)
-  let vertex_info_1 = map_add (errmsg_gen "vertex_info_1") cfg.vertex_info in_1_v Cfg_skip in
-  let vertex_info_2 = if (in_1_v = in_2_v) then (vertex_info_1) else (map_add (errmsg_gen "vertex_info_2") vertex_info_1 in_2_v Cfg_skip) in
-  let cfg_1 = {cfg with vertex_info=vertex_info_2;} in
-  let fold_func : (Cfg.t * string list * Cfg.vertex * Cfg.vertex) -> string -> string -> (Cfg.t * string list * Cfg.vertex * Cfg.vertex)
-  =fun (acc_cfg, acc_stack_info, acc_in_1_v, acc_in_2_v) var_1 var_2 -> begin
-    if (var_1 = var_2)
-    then (acc_cfg, (var_1 :: acc_stack_info), acc_in_1_v, acc_in_2_v)
-    else begin
-      (*  flow        : add two new vertices, fold_vtx_1 and fold_vtx_2
-                        acc_in_1_v -> fold_vtx_1
-                        acc_in_2_v -> fold_vtx_2
-          vertex_info : fold_vtx_1 -> (Cfg_assgin (fold_newvar, E_itself var_1))
-                        fold_vtx_2 -> (Cfg_assign (fold_newvar, E_itself var_2))
-          type_info   : fold_newvar -> (typ of var_1)  (* We consider that the type of var_1 and var_2 are same. *)
-          acc_stack_info  : fold_newvar :: acc_stack_info  (* It'll be appended as reverse-order by fold2 function. *)
-      *)
-      let fold_newvar         = new_var counter in
-      let fold_vartyp         = map_find (errmsg_gen "fold_vartyp") acc_cfg.type_info var_1 in
-      let fold_vartyp_2       = map_find (errmsg_gen "fold_vartyp_2") acc_cfg.type_info var_2 in
-      (* check if two types are equal *)
-      let _ : unit = if (Adt.is_typ_equal fold_vartyp fold_vartyp_2) then () else fail (errmsg_gen "is_typ_equal : not-equal") in
-      (* if two types are equal, continue *)
-      let fold_type_info_1    = map_add (errmsg_gen "fold_type_info_1") acc_cfg.type_info fold_newvar fold_vartyp in
-      let (fold_vtx_1, fold_vtx_2) = (new_vtx counter, new_vtx counter) in
-      let fold_flow_1         = begin acc_cfg.flow |> addvtx fold_vtx_1 |> addvtx fold_vtx_2 end in
-      let fold_flow_2         = begin fold_flow_1 |> addedg acc_in_1_v fold_vtx_1 |> addedg acc_in_2_v fold_vtx_2 end in
-      let fold_vertex_info_1  = map_add (errmsg_gen "fold_vertex_info_1") acc_cfg.vertex_info fold_vtx_1 (Cfg_assign (fold_newvar, E_itself var_1)) in
-      let fold_vertex_info_2  = map_add (errmsg_gen "fold_vertex_info_2") fold_vertex_info_1 fold_vtx_2 (Cfg_assign (fold_newvar, E_itself var_2)) in
-      let fold_cfg            = {acc_cfg with flow=fold_flow_2; vertex_info=fold_vertex_info_2; type_info=fold_type_info_1;} in
-      (fold_cfg, (fold_newvar :: acc_stack_info), fold_vtx_1, fold_vtx_2)
-    end
-  end in
-  let fold_result = Core.List.fold2 stack_info_1 stack_info_2 ~init:(cfg_1, [], in_1_v, in_2_v) ~f:fold_func in
-  let (cfg_3, stack_info_3_rev, last_in_1_v, last_in_2_v) = 
-  begin
-    match fold_result with
-    | Core.List.Or_unequal_lengths.Ok a -> a
-    | _ -> fail (errmsg_trace ^ "merge_two_stack_infos : Core.List.Or_unequal_lengths : case unequal_lengths")
-  end in
-  (* connect in and out vertices *)
-  let flow_4 = begin cfg_3.flow |> addedg last_in_1_v out_1_v |> addedg last_in_2_v out_2_v end in
-  ({cfg_3 with flow=flow_4;}, Core.List.rev stack_info_3_rev)
+  begin (* check whether two stack_infos has error state *)
+    match (stack_info_1, stack_info_2) with
+    | ES _, ES _
+    | ES _, NS _
+    | NS _, ES _ -> fail (errmsg_gen "match-stack-infos : Not implemented.") (* TODO *)
+    | NS stack_info_1, NS stack_info_2 -> (* rename two stack_info_t values *)
+      (* before folding, we need to update vertex_info of in_1_v and in_2_v. Their stmt will become Cfg_skip. *)
+      let vertex_info_1 = map_add (errmsg_gen "vertex_info_1") cfg.vertex_info in_1_v Cfg_skip in
+      let vertex_info_2 = if (in_1_v = in_2_v) then (vertex_info_1) else (map_add (errmsg_gen "vertex_info_2") vertex_info_1 in_2_v Cfg_skip) in
+      let cfg_1 = {cfg with vertex_info=vertex_info_2;} in
+      let fold_func : (Cfg.t * string list * Cfg.vertex * Cfg.vertex) -> string -> string -> (Cfg.t * string list * Cfg.vertex * Cfg.vertex)
+      =fun (acc_cfg, acc_stack_info, acc_in_1_v, acc_in_2_v) var_1 var_2 -> begin
+        if (var_1 = var_2)
+        then (acc_cfg, (var_1 :: acc_stack_info), acc_in_1_v, acc_in_2_v)
+        else begin
+          (*  flow        : add two new vertices, fold_vtx_1 and fold_vtx_2
+                            acc_in_1_v -> fold_vtx_1
+                            acc_in_2_v -> fold_vtx_2
+              vertex_info : fold_vtx_1 -> (Cfg_assgin (fold_newvar, E_itself var_1))
+                            fold_vtx_2 -> (Cfg_assign (fold_newvar, E_itself var_2))
+              type_info   : fold_newvar -> (typ of var_1)  (* We consider that the type of var_1 and var_2 are same. *)
+              acc_stack_info  : fold_newvar :: acc_stack_info  (* It'll be appended as reverse-order by fold2 function. *)
+          *)
+          let fold_newvar         = new_var counter in
+          let fold_vartyp         = map_find (errmsg_gen "fold_vartyp") acc_cfg.type_info var_1 in
+          let fold_vartyp_2       = map_find (errmsg_gen "fold_vartyp_2") acc_cfg.type_info var_2 in
+          (* check if two types are equal *)
+          let _ : unit = if (Adt.is_typ_equal fold_vartyp fold_vartyp_2) then () else fail (errmsg_gen "is_typ_equal : not-equal") in
+          (* if two types are equal, continue *)
+          let fold_type_info_1    = map_add (errmsg_gen "fold_type_info_1") acc_cfg.type_info fold_newvar fold_vartyp in
+          let (fold_vtx_1, fold_vtx_2) = (new_vtx counter, new_vtx counter) in
+          let fold_flow_1         = begin acc_cfg.flow |> addvtx fold_vtx_1 |> addvtx fold_vtx_2 end in
+          let fold_flow_2         = begin fold_flow_1 |> addedg acc_in_1_v fold_vtx_1 |> addedg acc_in_2_v fold_vtx_2 end in
+          let fold_vertex_info_1  = map_add (errmsg_gen "fold_vertex_info_1") acc_cfg.vertex_info fold_vtx_1 (Cfg_assign (fold_newvar, E_itself var_1)) in
+          let fold_vertex_info_2  = map_add (errmsg_gen "fold_vertex_info_2") fold_vertex_info_1 fold_vtx_2 (Cfg_assign (fold_newvar, E_itself var_2)) in
+          let fold_cfg            = {acc_cfg with flow=fold_flow_2; vertex_info=fold_vertex_info_2; type_info=fold_type_info_1;} in
+          (fold_cfg, (fold_newvar :: acc_stack_info), fold_vtx_1, fold_vtx_2)
+        end
+      end in
+      let fold_result = Core.List.fold2 stack_info_1 stack_info_2 ~init:(cfg_1, [], in_1_v, in_2_v) ~f:fold_func in
+      let (cfg_3, stack_info_3_rev, last_in_1_v, last_in_2_v) = 
+      begin
+        match fold_result with
+        | Core.List.Or_unequal_lengths.Ok a -> a
+        | _ -> fail (errmsg_trace ^ "merge_two_stack_infos : Core.List.Or_unequal_lengths : case unequal_lengths")
+      end in
+      (* connect in and out vertices *)
+      let flow_4 = begin cfg_3.flow |> addedg last_in_1_v out_1_v |> addedg last_in_2_v out_2_v end in
+      ({cfg_3 with flow=flow_4;}, NS (Core.List.rev stack_info_3_rev))
+  end
 end
 
 
@@ -204,7 +234,7 @@ end
   cfg         : control-flow-graph which this function should complete to write
   stack_info  : current stack status to trace which variable located in stack
 *)
-let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cfg.t * string list) -> (Cfg.t * string list)
+let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cfg.t * stack_info_t) -> (Cfg.t * stack_info_t)
 = let open Cfg in
 
   (* sugar functions *)
@@ -212,7 +242,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
   =fun errmsg_trace vinfo in_v -> begin 
     map_add ("inst_to_cfg : " ^ errmsg_trace) vinfo in_v Cfg_skip
   end in
-  let template_of_push_value : string -> cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Tezla.Adt.expr * Michelson.Adt.typ) -> (Cfg.t * string list) -> (Cfg.t * string list)
+  let template_of_push_value : string -> cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Tezla.Adt.expr * Michelson.Adt.typ) -> (Cfg.t * stack_info_t) -> (Cfg.t * stack_info_t)
   =fun errmsg_trace counter (in_v, out_v) (expr, typ) (cfg, stack_info) -> begin
     (*  flow        : add new vertex between in-and-out
         vertex_info : Cfg_assign (new-var, <Expression>)
@@ -222,9 +252,13 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let gen_emsg s : string = ("inst_to_cfg : " ^ errmsg_trace ^ " : template_of_push_value : " ^ s) in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter (gen_t typ) (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, expr)) cfg_vr_added in
-    (cfg_ended, v_r :: stack_info)
+    (cfg_ended, ns_cons v_r stack_info)
   end in
-  let stack_hdtl : 'a list -> ('a * 'a list) = fun li -> (Core.List.hd_exn li, Core.List.tl_exn li) in
+  (*let stack_hdtl : 'a list -> ('a * 'a list) = fun li -> (Core.List.hd_exn li, Core.List.tl_exn li) in*)
+  let stack_hdtl : stack_info_t -> (string * stack_info_t) = begin function
+    | NS li -> (Core.List.hd_exn li, NS (Core.List.tl_exn li))
+    | ES _ -> fail "inst_to_cfg : stack_hdtl : ES"
+  end in
 
   (* FUNCTION BEGIN *)
   (* COMMENT TEMPLATE *)
@@ -260,8 +294,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let vertex_info_1 = add_skip_vinfo "I_drop : vertex_info_1" cfg.vertex_info in_v in
-    let vertex_info_2 = map_add "inst_to_cfg : I_drop : vertex_info_2" vertex_info_1 mid_v (Cfg_drop [Core.List.hd_exn stack_info]) in
-    let stack_info_1 = Core.List.tl_exn stack_info in
+    let vertex_info_2 = map_add "inst_to_cfg : I_drop : vertex_info_2" vertex_info_1 mid_v (Cfg_drop [ns_hd stack_info]) in
+    let stack_info_1 = ns_tl stack_info in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2;}, stack_info_1)
 
   | I_drop_n zn ->
@@ -272,9 +306,9 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let nn = Z.to_int zn in
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
-    let (slist, stack_info_1) = Core.List.split_n stack_info nn in
+    let (slist, stack_info_1) = ns_split_n stack_info nn in
     let vertex_info_1 = add_skip_vinfo "I_drop_n : vertex_info_1" cfg.vertex_info in_v in
-    let vertex_info_2 = map_add "inst_to_cfg : I_drop_n : vertex_info_2" vertex_info_1 mid_v (Cfg_drop slist) in
+    let vertex_info_2 = map_add "inst_to_cfg : I_drop_n : vertex_info_2" vertex_info_1 mid_v (Cfg_drop (ns_unlift slist)) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2;}, stack_info_1)
 
   | I_dup ->
@@ -285,12 +319,12 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
-    let topvar_name : string = Core.List.hd_exn stack_info in
+    let topvar_name : string = ns_hd stack_info in
     let topvar_typ    = map_find "inst_to_cfg : I_dup : topvar_typ" cfg.type_info topvar_name in
     let vertex_info_1 = add_skip_vinfo "I_dup : vertex_info_1" cfg.vertex_info in_v in
-    let vertex_info_2 = map_add "inst_to_cfg : I_dup : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_dup (Core.List.hd_exn stack_info))) in
+    let vertex_info_2 = map_add "inst_to_cfg : I_dup : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_dup (topvar_name))) in
     let type_info_1   = map_add "inst_to_cfg : I_dup : type_info_1" cfg.type_info nv_name topvar_typ in
-    let stack_info_1  = (Core.List.hd_exn stack_info) :: stack_info in
+    let stack_info_1  = ns_cons (ns_hd stack_info) stack_info in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
 
   | I_swap ->
@@ -302,7 +336,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let vertex_info_1 = add_skip_vinfo "I_swap : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_swap : vertex_info_2" vertex_info_1 mid_v Cfg_swap in
-    let stack_info_1 = let (h, t) = Core.List.split_n stack_info 2 in Core.List.rev_append h t in
+    let stack_info_1 = let (h, t) = ns_split_n stack_info 2 in ns_rev_append h t in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2;}, stack_info_1)
 
   | I_dig zn ->
@@ -315,7 +349,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let vertex_info_1 = add_skip_vinfo "I_dig : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_dig : vertex_info_2" vertex_info_1 mid_v Cfg_dig in
-    let stack_info_1 = let (h, t) = Core.List.split_n stack_info nn in ((Core.List.hd_exn t) :: h) @ (Core.List.tl_exn t) in
+    let stack_info_1 = let (h, t) = ns_split_n stack_info nn in (ns_append (ns_cons (ns_hd t) h) (ns_tl t)) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2;}, stack_info_1)
 
   | I_dug zn ->
@@ -328,7 +362,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let vertex_info_1 = add_skip_vinfo "I_dug : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_dug : vertex_info_2" vertex_info_1 mid_v Cfg_dug in
-    let stack_info_1 = let (th, tt) = Core.List.split_n (Core.List.tl_exn stack_info) nn in th @ (Core.List.hd_exn stack_info :: tt) in
+    let stack_info_1 = let (th, tt) = ns_split_n (ns_tl stack_info) nn in ns_append th (ns_cons (ns_hd stack_info) tt) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2;}, stack_info_1)
 
   | I_push (ty, d) ->
@@ -342,7 +376,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vertex_info_1 = add_skip_vinfo "I_push : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_push : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_push (d ,ty))) in
     let type_info_1 = map_add "inst_to_cfg : I_push : type_info_1" cfg.type_info nv_name ty in
-    let stack_info_1 = nv_name :: stack_info in
+    let stack_info_1 = ns_cons nv_name stack_info in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
 
   | I_some ->
@@ -353,13 +387,12 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
-    let v_name = Core.List.hd_exn stack_info in
-    let si_tail = Core.List.tl_exn stack_info in
+    let (v_name, si_tail) = stack_hdtl stack_info in
     let vertex_info_1 = add_skip_vinfo "I_some : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_some : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_some v_name)) in
     let v_type = map_find "inst_to_cfg : I_some : v_type" cfg.type_info v_name in
     let type_info_1 = map_add "inst_to_cfg : I_some : type_info_1" cfg.type_info nv_name (gen_t (Michelson.Adt.T_option v_type)) in
-    let stack_info_1 = nv_name :: si_tail in
+    let stack_info_1 = ns_cons nv_name si_tail in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
 
   | I_none ty ->
@@ -373,7 +406,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vertex_info_1 = add_skip_vinfo "I_none : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_none : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, (Tezla.Adt.E_none ty))) in
     let type_info_1 = map_add "inst_to_cfg : I_none : type_info_1" cfg.type_info nv_name (gen_t (Michelson.Adt.T_option ty)) in
-    let stack_info_1 = nv_name :: stack_info in
+    let stack_info_1 = ns_cons nv_name stack_info in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
 
   | I_unit ->
@@ -387,7 +420,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vertex_info_1 = add_skip_vinfo "I_unit : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_unit : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, Tezla.Adt.E_unit)) in
     let type_info_1 = map_add "inst_to_cfg : I_unit : type_info_1" cfg.type_info nv_name (gen_t (Michelson.Adt.T_unit)) in
-    let stack_info_1 = nv_name :: stack_info in
+    let stack_info_1 = ns_cons nv_name stack_info in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
 
   | I_if_none (i1, i2) ->
@@ -415,7 +448,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       flow_vtx_added |> addedg_e true_edg |> addedg_e false_edg
     end in
     (* set vertex infos of in_v, i1_end, i2_end *)
-    let topvar_name : string = Core.List.hd_exn stack_info in
+    let topvar_name : string = ns_hd stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_none : vertex_info_1" cfg.vertex_info in_v (Cfg_if_none topvar_name) in
     (*
     let vertex_info_2 = add_skip_vinfo "I_if_none : vertex_info_2" vertex_info_1 i1_end in
@@ -446,7 +479,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       match topvar_typ with | {pos = _; d = Michelson.Adt.T_option tt} -> tt | _ -> fail "inst_to_cfg : I_if_none : topvar_unwrap_typ"
     end in
     let type_info_1   = map_add "inst_to_cfg : I_if_none : type_info_1" cfg_2.type_info i2_unwrap_var topvar_unwrap_typ in
-    let stack_info_2  = i2_unwrap_var :: (Core.List.tl_exn stack_info) in
+    let stack_info_2  = ns_cons i2_unwrap_var (ns_tl stack_info) in
     let cfg_3 = {cfg_2 with flow=flow_i2_ready; vertex_info=vertex_info_4; type_info=type_info_1;} in
     let (cfg_4, stack_info_3) = inst_to_cfg counter (i2_ready, i2_end) (func_in_v, func_out_v) i2 (cfg_3, stack_info_2) in
     (* Renaming variables to merge names from stack_info_1 and stack_info_3 *)
@@ -487,7 +520,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       flow_vtx_added |> addedg_e true_edg |> addedg_e false_edg
     end in
     (* set vertex infos of in_v, i1_end, i2_end *)
-    let topvar_name : string = Core.List.hd_exn stack_info in
+    let topvar_name : string = ns_hd stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_some : vertex_info_1" cfg.vertex_info in_v (Cfg_if_none topvar_name) in
     (*
     let vertex_info_2 = add_skip_vinfo "I_if_some : vertex_info_2" vertex_info_1 i1_end in
@@ -517,7 +550,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       match topvar_typ with | {pos = _; d = Michelson.Adt.T_option tt} -> tt | _ -> fail "inst_to_cfg : I_if_some : topvar_unwrap_typ"
     end in
     let type_info_1   = map_add "inst_to_cfg : I_if_some : type_info_1" cfg_2.type_info i2_unwrap_var topvar_unwrap_typ in
-    let stack_info_2  = i2_unwrap_var :: (Core.List.tl_exn stack_info) in
+    let stack_info_2  = ns_cons i2_unwrap_var (ns_tl stack_info) in
     let cfg_3 = {cfg_2 with flow=flow_i2_ready; vertex_info=vertex_info_4; type_info=type_info_1;} in
     let (cfg_4, stack_info_3) = inst_to_cfg counter (func_in_v, func_out_v) (i2_ready, i2_end) i2 (cfg_3, stack_info_2) in
     (* Renaming variables to merge names from stack_info_1 and stack_info_3 *)
@@ -539,14 +572,14 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
-    let var_1   = Core.List.hd_exn stack_info in
-    let var_2   = begin Core.List.tl_exn stack_info |> Core.List.hd_exn end in
+    let var_1   = ns_hd stack_info in
+    let var_2   = begin ns_tl stack_info |> ns_hd end in
     let typ_1   = map_find "inst_to_cfg : I_pair : typ_1" cfg.type_info var_1 in
     let typ_2   = map_find "inst_to_cfg : I_pair : typ_2" cfg.type_info var_2 in
     let vertex_info_1 = add_skip_vinfo "I_pair : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_pair : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_pair (var_1, var_2))) in
     let type_info_1 = map_add "inst_to_cfg : I_pair : type_info_1" cfg.type_info nv_name (gen_t (Michelson.Adt.T_pair (typ_1, typ_2))) in
-    let stack_info_1 = nv_name :: (Core.List.split_n stack_info 2 |> Stdlib.snd) in
+    let stack_info_1 = ns_cons nv_name (ns_split_n stack_info 2 |> Stdlib.snd) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
 
   | I_car ->
@@ -557,7 +590,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
-    let var_1   = Core.List.hd_exn stack_info in
+    let var_1   = ns_hd stack_info in
     let typ_1   = map_find "inst_to_cfg : I_car : typ_1" cfg.type_info var_1 in
     let vertex_info_1 = add_skip_vinfo "I_car : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_car : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_car var_1)) in
@@ -566,7 +599,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       | T_pair (t1, _) -> map_add "inst_to_cfg : I_car : type_info_1" cfg.type_info nv_name t1
       | _ -> fail "inst_to_cfg : I_car : type_info_1 : match failed"
     end in
-    let stack_info_1 = nv_name :: (Core.List.tl_exn stack_info) in
+    let stack_info_1 = ns_cons nv_name (ns_tl stack_info) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1}, stack_info_1)
 
   | I_cdr ->
@@ -577,7 +610,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
-    let var_1   = Core.List.hd_exn stack_info in
+    let var_1   = ns_hd stack_info in
     let typ_1   = map_find "inst_to_cfg : I_cdr : typ_1" cfg.type_info var_1 in
     let vertex_info_1 = add_skip_vinfo "I_cdr : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_cdr : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_cdr var_1)) in
@@ -586,7 +619,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       | T_pair (_, t2) -> map_add "inst_to_cfg : I_cdr : type_info_1" cfg.type_info nv_name t2
       | _ -> fail "inst_to_cfg : I_cdr : type_info_1 : match failed"
     end in
-    let stack_info_1 = nv_name :: (Core.List.tl_exn stack_info) in
+    let stack_info_1 = ns_cons nv_name (ns_tl stack_info) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1}, stack_info_1)
 
   | I_left ty ->
@@ -597,13 +630,13 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
-    let var_1   = Core.List.hd_exn stack_info in
+    let var_1   = ns_hd stack_info in
     let typ_1   = map_find "inst_to_cfg : I_left : typ_1" cfg.type_info var_1 in
     let typ_2   = gen_t (Michelson.Adt.T_or (typ_1, ty)) in
     let vertex_info_1 = add_skip_vinfo "I_left : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_left : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_left (var_1, typ_2))) in
     let type_info_1 = map_add "inst_to_cfg : I_left : type_info_1" cfg.type_info nv_name typ_2 in
-    let stack_info_1 = nv_name :: (Core.List.tl_exn stack_info) in
+    let stack_info_1 = ns_cons nv_name (ns_tl stack_info) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1}, stack_info_1)
 
   | I_right ty ->
@@ -614,13 +647,13 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
-    let var_1   = Core.List.hd_exn stack_info in
+    let var_1   = ns_hd stack_info in
     let typ_1   = map_find "inst_to_cfg : I_right : typ_1" cfg.type_info var_1 in
     let typ_2   = gen_t (Michelson.Adt.T_or (ty, typ_1)) in
     let vertex_info_1 = add_skip_vinfo "I_right : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_right : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_right (var_1, typ_2))) in
     let type_info_1 = map_add "inst_to_cfg : I_right : type_info_1" cfg.type_info nv_name typ_2 in
-    let stack_info_1 = nv_name :: (Core.List.tl_exn stack_info) in
+    let stack_info_1 = ns_cons nv_name (ns_tl stack_info) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1}, stack_info_1)
 
   | I_if_left (i1, i2) ->
@@ -648,7 +681,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       flow_vtx_added |> addedg_e true_edg |> addedg_e false_edg
     end in
     (* set vertex infos of in_v, i1_end, i2_end *)
-    let topvar_name : string = Core.List.hd_exn stack_info in
+    let topvar_name : string = ns_hd stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_left : vertex_info_1" cfg.vertex_info in_v (Cfg_if_left topvar_name) in
     let vertex_info_2 = add_skip_vinfo "I_if_left : vertex_info_2" vertex_info_1 i1_end in
     let vertex_info_3 = add_skip_vinfo "I_if_left : vertex_info_3" vertex_info_2 i2_end in
@@ -669,7 +702,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       match topvar_typ with | {pos = _; d = Michelson.Adt.T_or (tl, tr)} -> (tl, tr) | _ -> fail "inst_to_cfg : I_if_left : topvar_unwrap_typ_leftright"
     end in
     let type_info_tb_1 = map_add "inst_to_cfg : I_if_left : type_info_tb_1" cfg_1.type_info i1_unwrap_var topvar_unwrap_typ_left in
-    let stack_info_tb_1 = i1_unwrap_var :: (Core.List.tl_exn stack_info) in
+    let stack_info_tb_1 = ns_cons i1_unwrap_var (ns_tl stack_info) in
     let cfg_tb = {cfg_1 with flow=flow_i1_ready; vertex_info=vertex_info_tb_1; type_info=type_info_tb_1;} in
     let (cfg_tb_fin, stack_info_tb_fin) = inst_to_cfg counter (i1_ready, i1_end) (func_in_v, func_out_v) i1 (cfg_tb, stack_info_tb_1) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
@@ -688,7 +721,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let i2_unwrap_var = new_var counter in
     let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_left : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_assign (i2_unwrap_var, Tezla.Adt.E_unlift_or topvar_name)) in
     let type_info_eb_1   = map_add "inst_to_cfg : I_if_left : type_info_eb_1" cfg_tb_fin.type_info i2_unwrap_var topvar_unwrap_typ_right in
-    let stack_info_eb_1  = i2_unwrap_var :: (Core.List.tl_exn stack_info) in
+    let stack_info_eb_1  = ns_cons i2_unwrap_var (ns_tl stack_info) in
     let cfg_eb = {cfg_tb_fin with flow=flow_i2_ready; vertex_info=vertex_info_eb_1; type_info=type_info_eb_1;} in
     let (cfg_eb_fin, stack_info_eb_fin) = inst_to_cfg counter (i2_ready, i2_end) (func_in_v, func_out_v) i2 (cfg_eb, stack_info_eb_1) in
     (* Renaming variables to merge names from stack_info_tb_fin and stack_info_eb_fin *)
@@ -729,7 +762,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       flow_vtx_added |> addedg_e true_edg |> addedg_e false_edg
     end in
     (* set vertex infos of in_v, i1_end, i2_end *)
-    let topvar_name : string = Core.List.hd_exn stack_info in
+    let topvar_name : string = ns_hd stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_right : vertex_info_1" cfg.vertex_info in_v (Cfg_if_left topvar_name) in
     (*
     let vertex_info_2 = add_skip_vinfo "I_if_right : vertex_info_2" vertex_info_1 i1_end in
@@ -753,7 +786,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       match topvar_typ with | {pos = _; d = Michelson.Adt.T_or (tl, tr)} -> (tl, tr) | _ -> fail "inst_to_cfg : I_if_right : topvar_unwrap_typ_leftright"
     end in
     let type_info_tb_1 = map_add "inst_to_cfg : I_if_right : type_info_tb_1" cfg_1.type_info i1_unwrap_var topvar_unwrap_typ_left in
-    let stack_info_tb_1 = i1_unwrap_var :: (Core.List.tl_exn stack_info) in
+    let stack_info_tb_1 = ns_cons i1_unwrap_var (ns_tl stack_info) in
     let cfg_tb = {cfg_1 with flow=flow_i1_ready; vertex_info=vertex_info_tb_1; type_info=type_info_tb_1;} in
     let (cfg_tb_fin, stack_info_tb_fin) = inst_to_cfg counter (i1_ready, i1_end) (func_in_v, func_out_v) i1 (cfg_tb, stack_info_tb_1) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
@@ -772,7 +805,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let i2_unwrap_var = new_var counter in
     let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_right : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_assign (i2_unwrap_var, Tezla.Adt.E_unlift_or topvar_name)) in
     let type_info_eb_1   = map_add "inst_to_cfg : I_if_right : type_info_eb_1" cfg_tb_fin.type_info i2_unwrap_var topvar_unwrap_typ_right in
-    let stack_info_eb_1  = i2_unwrap_var :: (Core.List.tl_exn stack_info) in
+    let stack_info_eb_1  = ns_cons i2_unwrap_var (ns_tl stack_info) in
     let cfg_eb = {cfg_tb_fin with flow=flow_i2_ready; vertex_info=vertex_info_eb_1; type_info=type_info_eb_1;} in
     let (cfg_eb_fin, stack_info_eb_fin) = inst_to_cfg counter (i2_ready, i2_end) (func_in_v, func_out_v) i2 (cfg_eb, stack_info_eb_1) in
     (* Renaming variables to merge names from stack_info_tb_fin and stack_info_eb_fin *)
@@ -797,7 +830,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vertex_info_1 = add_skip_vinfo "I_nil : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_nil : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_nil ty)) in
     let type_info_1   = map_add "inst_to_cfg : I_nil : type_info_1" cfg.type_info nv_name (gen_t (Michelson.Adt.T_list ty)) in
-    let stack_info_1  = nv_name :: stack_info in
+    let stack_info_1  = ns_cons nv_name stack_info in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
     
   | I_cons ->
@@ -809,15 +842,15 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
-    let var_1   = Core.List.hd_exn stack_info in
-    let var_2   = begin Core.List.tl_exn stack_info |> Core.List.hd_exn end in
+    let var_1   = ns_hd stack_info in
+    let var_2   = begin ns_tl stack_info |> ns_hd end in
     let typ_1   = map_find "inst_to_cfg : I_cons : typ_1" cfg.type_info var_1 in
     let typ_2   = map_find "inst_to_cfg : I_cons : typ_2" cfg.type_info var_2 in
     let _ : unit = if (Adt.is_typ_equal (gen_t (Michelson.Adt.T_list typ_1)) typ_2) then () else fail "inst_to_cfg : I_cons : is_typ_equal : not-equal" in
     let vertex_info_1 = add_skip_vinfo "I_cons : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_cons : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_cons (var_1, var_2))) in
     let type_info_1 = map_add "inst_to_cfg : I_cons : type_info_1" cfg.type_info nv_name (typ_2) in
-    let stack_info_1 = nv_name :: (Core.List.split_n stack_info 2 |> Stdlib.snd) in
+    let stack_info_1 = ns_cons nv_name (ns_split_n stack_info 2 |> Stdlib.snd) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1}, stack_info_1)
 
   | I_if_cons (i1, i2) ->
@@ -845,7 +878,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       flow_vtx_added |> addedg_e true_edg |> addedg_e false_edg
     end in
     (* set vertex infos of in_v, i1_end, i2_end *)
-    let topvar_name : string = Core.List.hd_exn stack_info in
+    let topvar_name : string = ns_hd stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_cons : vertex_info_1" cfg.vertex_info in_v (Cfg_if_cons topvar_name) in
     (*
     let vertex_info_2 = add_skip_vinfo "I_if_cons : vertex_info_2" vertex_info_1 i1_end in
@@ -875,7 +908,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     end in
     let type_info_tb_1 = map_add "inst_to_cfg : I_if_cons : type_info_tb_1" cfg_1.type_info i1_newvar_hd topvar_elem_typ in
     let type_info_tb_2 = map_add "inst_to_cfg : I_if_cons : type_info_tb_2" type_info_tb_1 i1_newvar_tl topvar_typ in
-    let stack_info_tb_1 = i1_newvar_hd :: i1_newvar_tl :: (Core.List.tl_exn stack_info) in
+    let stack_info_tb_1 = (ns_cons i1_newvar_hd (ns_cons i1_newvar_tl (ns_tl stack_info))) in
     let cfg_tb = {cfg_1 with flow=flow_i1_ready; vertex_info=vertex_info_tb_2; type_info=type_info_tb_2;} in
     let (cfg_tb_fin, stack_info_tb_fin) = inst_to_cfg counter (i1_ready, i1_end) (func_in_v, func_out_v) i1 (cfg_tb, stack_info_tb_1) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
@@ -889,7 +922,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
           but stack_info does not use stack_info_tb_fin.
       *)
     let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_cons : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_skip) in
-    let stack_info_eb_1  = Core.List.tl_exn stack_info in
+    let stack_info_eb_1  = ns_tl stack_info in
     let cfg_eb = {cfg_tb with vertex_info=vertex_info_eb_1;} in
     let (cfg_eb_fin, stack_info_eb_fin) = inst_to_cfg counter (i2_begin, i2_end) (func_in_v, func_out_v) i2 (cfg_eb, stack_info_eb_1) in
     (* Renaming variables to merge names from stack_info_tb_fin and stack_info_eb_fin *)
@@ -917,7 +950,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let nv_name = new_var counter in
-    let var_1   = Core.List.hd_exn stack_info in
+    let var_1   = ns_hd stack_info in
     let typ_1   = map_find "inst_to_cfg : I_size : typ_1" cfg.type_info var_1 in
     let _ : unit = begin
       let open Michelson.Adt in
@@ -928,7 +961,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vertex_info_1 = add_skip_vinfo "I_size : vertex_info_1" cfg.vertex_info in_v in
     let vertex_info_2 = map_add "inst_to_cfg : I_size : vertex_info_2" vertex_info_1 mid_v (Cfg_assign (nv_name, E_size var_1)) in
     let type_info_1 = map_add "inst_to_cfg : I_size : type_info_1" cfg.type_info nv_name (gen_t Michelson.Adt.T_nat) in
-    let stack_info_1 = nv_name :: (Core.List.tl_exn stack_info) in
+    let stack_info_1 = ns_cons nv_name (ns_tl stack_info) in
     ({cfg with flow=flow_2; vertex_info=vertex_info_2; type_info=type_info_1;}, stack_info_1)
 
   | I_empty_set ty -> template_of_push_value "I_empty_set" counter (in_v, out_v) (E_empty_set ty, Michelson.Adt.T_set ty) (cfg, stack_info)
@@ -982,7 +1015,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let addedg v1 v2 flw : G.t = G.add_edge flw v1 v2 in
     let addedg_e e flw : G.t = G.add_edge_e flw e in
     (* gather infos *)
-    let topvar_name = Core.List.hd_exn stack_info in
+    let topvar_name = ns_hd stack_info in
     let (newvar_name, newvar_result_name) = (new_var counter, new_var counter) in
     let container_typ = map_find "inst_to_cfg : I_map : container_typ" cfg.type_info topvar_name in
     let elem_typ = begin
@@ -1011,13 +1044,13 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vertex_info_5 = add_skip_vinfo "I_map : vertex_info_5" vertex_info_4 map_body_end in
     let type_info_1   = map_add "inst_to_cfg : I_map : type_info_1"   cfg.type_info newvar_name elem_typ in
     let cfg_to_map_body_begin = {cfg with flow=flow_edg_added_to_map_body_begin; vertex_info=vertex_info_5; type_info=type_info_1;} in
-    let stack_info_to_map_body_begin = newvar_name :: (Core.List.tl_exn stack_info) in
+    let stack_info_to_map_body_begin = ns_cons newvar_name (ns_tl stack_info) in
     let (cfg_to_map_body_end, stack_info_to_map_body_end) = inst_to_cfg counter (map_body_begin, map_body_end) (func_in_v, func_out_v) i (cfg_to_map_body_begin, stack_info_to_map_body_begin) in
     (* construct cfg - after map_body_end *)
     (* the variable "newvar_result_name" and the vertex "result_init" will be dealed here. *)
     let cfg_mbe = cfg_to_map_body_end in
     let stack_info_mbe = stack_info_to_map_body_end in
-    let apply_r = Core.List.hd_exn stack_info_mbe in
+    let apply_r = ns_hd stack_info_mbe in
     let result_typ = map_find "inst_to_cfg : I_map : result_typ" cfg_mbe.type_info apply_r in
     let (result_container_typ, result_container_init_expr) = begin
       match get_d container_typ with
@@ -1040,7 +1073,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         end in
         let vertex_info_mbe_2 = map_add (gen_errmsg "vertex_info_mbe_2") vertex_info_mbe_1 map_update_result (Cfg_assign (newvar_result_name, (E_cons (apply_r, newvar_result_name)))) in
         let vertex_info_mbe_3 = add_skip_vinfo (gen_errmsg "vertex_info_mbe_3") vertex_info_mbe_2 map_sync_begin in
-        ({cfg_mbe with flow=flow_mbe_edg_added; vertex_info=vertex_info_mbe_3; type_info=type_info_mbe_1;}, (Core.List.tl_exn stack_info_mbe), map_sync_begin)
+        ({cfg_mbe with flow=flow_mbe_edg_added; vertex_info=vertex_info_mbe_3; type_info=type_info_mbe_1;}, (ns_unlift (ns_tl stack_info_mbe)), map_sync_begin)
       | Michelson.Adt.T_map (kt, _) ->
         let gen_errmsg s : string = "inst_to_cfg : I_map : T_map : " ^ s in
         let (map_get_key, map_update_somev, map_update_result, map_sync_begin) = (nvtx (), nvtx (), nvtx (), nvtx ()) in
@@ -1057,7 +1090,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         let vertex_info_mbe_5 = add_skip_vinfo (gen_errmsg "vertex_info_mbe_5") vertex_info_mbe_4 map_sync_begin in
         let type_info_mbe_2   = map_add (gen_errmsg "type_info_mbe_2")   type_info_mbe_1   apply_sr (gen_t (Michelson.Adt.T_option result_typ)) in
         let type_info_mbe_3   = map_add (gen_errmsg "type_info_mbe_3")   type_info_mbe_2   keyvar   kt                    in
-        ({cfg_mbe with flow=flow_mbe_edg_added; vertex_info=vertex_info_mbe_5; type_info=type_info_mbe_3;}, (Core.List.tl_exn stack_info_mbe), map_sync_begin)
+        ({cfg_mbe with flow=flow_mbe_edg_added; vertex_info=vertex_info_mbe_5; type_info=type_info_mbe_3;}, (ns_unlift (ns_tl stack_info_mbe)), map_sync_begin)
       | _ -> fail "inst_to_cfg : I_map : cfg_to_map_update_result : match-fail"
     end in
     (* Synchronize stack variables *)
@@ -1073,14 +1106,14 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       end
     end in
     let cfg_final = begin 
-      match Core.List.fold2 (Core.List.tl_exn stack_info) (stack_info_to_map_update_result) ~init:(cfg_to_map_update_result, map_sync_begin) ~f:fold2_func with
+      match Core.List.fold2 (ns_unlift (ns_tl stack_info)) (stack_info_to_map_update_result) ~init:(cfg_to_map_update_result, map_sync_begin) ~f:fold2_func with
       | Core.List.Or_unequal_lengths.Ok (cfg_r, last_in_v) -> begin
           let flow_update = cfg_r.flow |> addedg last_in_v map_v in
           {cfg_r with flow=flow_update;}
         end
       | Core.List.Or_unequal_lengths.Unequal_lengths -> fail "inst_to_cfg : I_map : cfg_final : unequal_lengths"
     end in
-    (cfg_final, (newvar_result_name :: stack_info))
+    (cfg_final, (ns_cons newvar_result_name stack_info))
     
   | I_iter i ->
     (*  flow        : (in_v -> iter_v) & (iter_v [If_false]-> out_v)
@@ -1108,9 +1141,9 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let gen_errmsg s : string = ("inst_to_cfg : I_iter : " ^ s) in
     (* construct cfg - except "i" and "assigns" *)
     let (iter_v, iter_setup_1, iter_setup_2, iter_body_begin, iter_body_end) = (nvtx (), nvtx (), nvtx (), nvtx (), nvtx ()) in
-    let var_1 = Core.List.hd_exn stack_info in
+    let var_1 = ns_hd stack_info in
     let elem  = new_var counter in
-    let tl_stack_info = Core.List.tl_exn stack_info in
+    let tl_stack_info = ns_tl stack_info in
     let (_, elemtyp) = begin
       let open Michelson.Adt in
       let t = map_find (gen_errmsg "vartyp-elemtyp : t") cfg.type_info var_1 in
@@ -1135,7 +1168,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vertex_info_ol_4 = map_add (gen_errmsg "vertex_info_ol_4") vertex_info_ol_3 iter_setup_2 (Cfg_assign (var_1, E_tl var_1)) in
     let vertex_info_ol_5 = add_skip_vinfo (gen_errmsg "vertex_info_ol_5") vertex_info_ol_4 iter_body_end in
     let type_info_ol_1   = map_add (gen_errmsg "type_info_ol_1") cfg.type_info elem elemtyp in
-    let stack_info_ol_1  = elem :: tl_stack_info in
+    let stack_info_ol_1  = ns_cons elem tl_stack_info in
     let cfg_outline      = {cfg with flow=flow_edg_added_outline; vertex_info=vertex_info_ol_5; type_info=type_info_ol_1;} in
     (* construct cfg - add about "i" *)
     let (cfg_ol_end, stack_info_ol_end) = inst_to_cfg counter (iter_body_begin, iter_body_end) (func_in_v, func_out_v) i (cfg_outline, stack_info_ol_1) in
@@ -1152,7 +1185,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       end
     end in
     let cfg_final = begin 
-      match Core.List.fold2 tl_stack_info stack_info_ol_end ~init:(cfg_ol_end, iter_body_end) ~f:fold2_func with
+      match Core.List.fold2 (ns_unlift tl_stack_info) (ns_unlift stack_info_ol_end) ~init:(cfg_ol_end, iter_body_end) ~f:fold2_func with
       | Core.List.Or_unequal_lengths.Ok (cfg_r, last_in_v) -> begin
           let flow_update = cfg_r.flow |> addedg last_in_v iter_v in
           {cfg_r with flow=flow_update;}
@@ -1176,7 +1209,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let result_var = new_var counter in 
     let (var_1, var_2, tltl_stack_info) = begin 
-      let (hdl, tltl) = Core.List.split_n stack_info 2 in (Core.List.hd_exn hdl, Core.List.nth_exn hdl 1, tltl) 
+      let (hdl, tltl) = ns_split_n stack_info 2 in (ns_hd hdl, ns_nth hdl 1, tltl)
     end in
     (* type constraint check *)
     let _ : unit = begin
@@ -1198,7 +1231,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vinfo_0 = map_add (emsg_gen "vinfo_0") cfg.vertex_info  in_v  Cfg_skip in
     let vinfo_1 = map_add (emsg_gen "vinfo_1") vinfo_0          mid_v (Cfg_assign (result_var, E_mem (var_1, var_2))) in
     let tinfo_1 = map_add (emsg_gen "tinfo_1") cfg.type_info result_var (gen_t Michelson.Adt.T_bool) in
-    ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (result_var :: tltl_stack_info))
+    ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (ns_cons result_var tltl_stack_info))
 
   | I_get ->
     (*  flow        : add new vertex between in-and-out
@@ -1215,7 +1248,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let result_var = new_var counter in
     let (var_1, var_2, tltl_stack_info) = begin
-      let (hdl, tltl) = Core.List.split_n stack_info 2 in (Core.List.hd_exn hdl, Core.List.nth_exn hdl 1, tltl) 
+      let (hdl, tltl) = ns_split_n stack_info 2 in (ns_hd hdl, ns_nth hdl 1, tltl) 
     end in
     (* type constraint check *)
     let tc_errmsg_gen s : string = "inst_to_cfg : I_get : type constraint check : " ^ s in
@@ -1233,7 +1266,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vinfo_0 = map_add (emsg_gen "vinfo_0") cfg.vertex_info in_v Cfg_skip in
     let vinfo_1 = map_add (emsg_gen "vinfo_1") vinfo_0 mid_v (Cfg_assign (result_var, E_get (var_1, var_2))) in
     let tinfo_1 = map_add (emsg_gen "tinfo_1") cfg.type_info result_var (gen_t (Michelson.Adt.T_option tv)) in
-    ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (result_var :: tltl_stack_info))
+    ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (ns_cons result_var tltl_stack_info))
     
   | I_update ->
     (*  flow        : add new vertex between in-and-out
@@ -1252,7 +1285,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (flow_2, mid_v) = add_typical_vertex counter (in_v, out_v) cfg in
     let result_var = new_var counter in
     let (var_1, var_2, var_3, tl3_stack_info) = begin
-      let (hdl, tl3) = Core.List.split_n stack_info 3 in (Core.List.hd_exn hdl, Core.List.nth_exn hdl 1, Core.List.nth_exn hdl 2, tl3)
+      let (hdl, tl3) = ns_split_n stack_info 3 in (ns_hd hdl, ns_nth hdl 1, ns_nth hdl 2, tl3)
     end in
     (* type constraint check & make rty *)
     let rty = begin
@@ -1271,7 +1304,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vinfo_0 = map_add (emsg_gen "vinfo_0") cfg.vertex_info in_v Cfg_skip in
     let vinfo_1 = map_add (emsg_gen "vinfo_1") vinfo_0 mid_v (Cfg_assign (result_var, E_update (var_1, var_2, var_3))) in
     let tinfo_1 = map_add (emsg_gen "tinfo_1") cfg.type_info result_var (gen_t rty) in
-    ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (result_var :: tl3_stack_info))
+    ({cfg with flow=flow_2; vertex_info=vinfo_1; type_info=tinfo_1;}, (ns_cons result_var tl3_stack_info))
 
   | I_if (i1, i2) ->
     (*  flow        : (in_v [If_true]-> i1_begin) & (in_v [If_false]-> i2_begin)
@@ -1300,7 +1333,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       flow_vtx_added |> addedg_e true_edg |> addedg_e false_edg
     end in
     (* set vertex infos of in_v, i1_end, i2_end *)
-    let var_1 : string = Core.List.hd_exn stack_info in
+    let var_1 : string = ns_hd stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if : vertex_info_1" cfg.vertex_info in_v (Cfg_if var_1) in
     (*  (* I don't remember why I add such vertex-infos for -end vertices *)
     let vertex_info_2 = add_skip_vinfo "I_if : vertex_info_2" vertex_info_1 i1_end in
@@ -1308,7 +1341,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let cfg_tb = {cfg with flow=flow_edg_added; vertex_info=vertex_info_3;} in
     *)
     let cfg_tb = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1} in
-    let tl_stack_info = Core.List.tl_exn stack_info in
+    let tl_stack_info = ns_tl stack_info in
     let (cfg_tb_fin, stack_info_tb_fin) = inst_to_cfg counter (i1_begin, i1_end) (func_in_v, func_out_v) i1 (cfg_tb, tl_stack_info) in
     let (cfg_eb_fin, stack_info_eb_fin) = inst_to_cfg counter (i2_begin, i2_end) (func_in_v, func_out_v) i2 (cfg_tb_fin, tl_stack_info) in
     (* merge two stack-infos *)
@@ -1340,8 +1373,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let addedg_e e flw : G.t = G.add_edge_e flw e in
     (* construct cfg *)
     let (body_begin, body_end) = (nvtx (), nvtx ()) in
-    let var_1 = Core.List.hd_exn stack_info in
-    let tl_stack_info = Core.List.tl_exn stack_info in
+    let var_1 = ns_hd stack_info in
+    let tl_stack_info = ns_tl stack_info in
     let flow_vtx_added = begin
       cfg.flow |> addvtx body_begin |> addvtx body_end
     end in
@@ -1369,7 +1402,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       end
     end in
     let cfg_final = begin 
-      match Core.List.fold2 stack_info stack_info_body_end ~init:(cfg_body_end, body_end) ~f:fold2_func with
+      match Core.List.fold2 (ns_unlift stack_info) (ns_unlift stack_info_body_end) ~init:(cfg_body_end, body_end) ~f:fold2_func with
       | Core.List.Or_unequal_lengths.Ok (cfg_r, last_in_v) -> begin
           let flow_update = cfg_r.flow |> addedg last_in_v in_v in
           {cfg_r with flow=flow_update;}
@@ -1404,8 +1437,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_add_edgs [(unwrap_r, out_v); (unwrap_l, body_begin)]
     end in
     (* put variables & update type_info *)
-    let var_1 = Core.List.hd_exn stack_info in
-    let tl_stack_info = Core.List.tl_exn stack_info in
+    let var_1 = ns_hd stack_info in
+    let tl_stack_info = ns_tl stack_info in
     let (t1_l, t1_r) = begin
       let t1 = t_map_find ~errtrace:(errmsg_gen "t1_lr : t1") cfg.type_info var_1 in
       match get_d t1 with
@@ -1423,7 +1456,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     ] in
     let (cfg_vi_updated, _) = t_add_vinfos ~errtrace:(errmsg_gen "cfg_p_vi_updated") vs_pairs (cfg_updated_vur, ()) in
     (* update stack_info *)
-    let stack_info_before_body = var_ul :: tl_stack_info in
+    let stack_info_before_body = ns_cons var_ul tl_stack_info in
     (* fill in the body *)
     let (cfg_body_updated, stack_info_body_updated) = inst_to_cfg counter (body_begin, body_end) (func_in_v, func_out_v) i (cfg_vi_updated, stack_info_before_body) in
     (* insert Cfg_assigns to sync variable names *)
@@ -1438,11 +1471,11 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       end
     end in
     let (cfg_final, _) = begin 
-      match Core.List.fold2 stack_info stack_info_body_updated ~init:(cfg_body_updated, body_end) ~f:fold2_func with
+      match Core.List.fold2 (ns_unlift stack_info) (ns_unlift stack_info_body_updated) ~init:(cfg_body_updated, body_end) ~f:fold2_func with
       | Core.List.Or_unequal_lengths.Ok (cfg_r, last_in_v) -> t_add_edg (last_in_v, in_v) (cfg_r, ())
       | Core.List.Or_unequal_lengths.Unequal_lengths -> fail "inst_to_cfg : I_loop : cfg_final : unequal_lengths"
     end in
-    (cfg_final, var_ur :: tl_stack_info)
+    (cfg_final, ns_cons var_ur tl_stack_info)
 
   | I_lambda (ty1, ty2, i) ->
     (*  CURRENT FLOW
@@ -1471,8 +1504,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_add_tinfo ~errtrace:(gen_emsg "param_i") (param_i, ty1)
       |> t_add_lmbdim ~errtrace:(gen_emsg "cfg_lmbdim_updated") (lambda_id, (lmbd_in, lmbd_out, ty1, ty2))
     end in
-    let (cfg_lmbd, stack_info_lmbd) = inst_to_cfg counter (lmbd_in, lmbd_out) (lmbd_in, lmbd_out) i (cfg_ready, [param_i]) in
-    let lmbd_ret_val = Core.List.hd_exn stack_info_lmbd in
+    let (cfg_lmbd, stack_info_lmbd) = inst_to_cfg counter (lmbd_in, lmbd_out) (lmbd_in, lmbd_out) i (cfg_ready, NS [param_i]) in
+    let lmbd_ret_val = ns_hd stack_info_lmbd in
     let (cfg_ended, _) = t_add_vinfo ~errtrace:(gen_emsg "add lambda_result") (lmbd_out, Cfg_assign (lmbd_ret_val, E_itself lmbd_ret_val)) (cfg_lmbd, ()) in
     template_of_push_value "I_lambda" counter (in_v, out_v) (E_lambda_id lambda_id, Michelson.Adt.T_lambda (ty1, ty2)) (cfg_ended, stack_info)
 
@@ -1518,9 +1551,9 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let gen_errmsg s : string = ("inst_to_cfg : I_exec : " ^ s) in
     let (v_1, v_2, tltl_stack_info) = begin
-      (Core.List.hd_exn stack_info,
-        Core.List.hd_exn (Core.List.tl_exn stack_info),
-        Core.List.tl_exn (Core.List.tl_exn stack_info))
+      (ns_hd stack_info,
+        ns_hd (ns_tl stack_info),
+        ns_tl (ns_tl stack_info))
     end in
     let t_r = begin
       (* no type constract check here. We assume that the input program has valid types. *)
@@ -1537,7 +1570,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_con_vtx_backr out_v
       |> t_add_vinfo_now ~errtrace:(gen_errmsg "mid_v vinfo") (Cfg_assign (v_r, E_exec (v_1, v_2)))
     end in
-    (c, v_r :: tltl_stack_info)
+    (c, ns_cons v_r tltl_stack_info)
 
   | I_dip i ->
     (*  flow        : add new vertex between in-and-out
@@ -1553,8 +1586,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_add_edgs [(in_v, v_begin); (v_end, out_v);] 
       |> t_add_vinfos ~errtrace:(gen_errmsg "add vinfos") [(in_v, Cfg_skip); (v_end, Cfg_skip); ]
     end in
-    let (cfg_i_added, stack_info_i_added) = inst_to_cfg counter (v_begin, v_end) (func_in_v, func_out_v) i (cfg_v_linked, Core.List.tl_exn stack_info) in
-    (cfg_i_added, (Core.List.hd_exn stack_info) :: stack_info_i_added)
+    let (cfg_i_added, stack_info_i_added) = inst_to_cfg counter (v_begin, v_end) (func_in_v, func_out_v) i (cfg_v_linked, ns_tl stack_info) in
+    (cfg_i_added, ns_cons (ns_hd stack_info) stack_info_i_added)
 
   | I_dip_n (zn, i) ->
     (*  flow        : add new vertex between in-and-out
@@ -1565,7 +1598,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let nn : int = Z.to_int zn in
     let gen_errmsg s : string = ("inst_to_cfg : I_dip_n : " ^ s) in
-    let (hdn_stack_info, tln_stack_info) = Core.List.split_n stack_info nn in
+    let (hdn_stack_info, tln_stack_info) = ns_split_n stack_info nn in
     let (cfg_vv_added, (v_begin, v_end)) = t_add_vtx_2 counter (cfg, ()) in
     let (cfg_v_linked, _) = begin
       (cfg_vv_added, ())
@@ -1573,7 +1606,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_add_vinfos ~errtrace:(gen_errmsg "add vinfos") [(in_v, Cfg_skip); (v_end, Cfg_skip); ]
     end in
     let (cfg_i_added, stack_info_i_added) = inst_to_cfg counter (v_begin, v_end) (func_in_v, func_out_v) i (cfg_v_linked, tln_stack_info) in
-    (cfg_i_added, hdn_stack_info @ stack_info_i_added)
+    (cfg_i_added, ns_append hdn_stack_info stack_info_i_added)
 
   | I_failwith ->
     (*  flow        : (in_v -> failwith_vtx)
@@ -1587,10 +1620,10 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       (cfg, ())
       |> t_add_vinfo ~errtrace:(gen_errmsg "in_v vinfo") (in_v, Cfg_skip)
       |> t_add_vtx counter
-      |> t_add_vinfo_now ~errtrace:(gen_errmsg "add_vinfo_now") (Cfg_failwith (Core.List.hd_exn stack_info))
+      |> t_add_vinfo_now ~errtrace:(gen_errmsg "add_vinfo_now") (Cfg_failwith (ns_hd stack_info))
       |> t_con_vtx_front in_v
     end in
-    (cfg_vtx_added, Core.List.tl_exn stack_info)
+    (cfg_vtx_added, ns_tl stack_info)
 
   | I_cast ty ->
     (*  flow        : add new vertex between in-and-out
@@ -1602,7 +1635,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         stack_info  : pop top element and push "v_r"
     *)
     let gen_errmsg s : string = ("inst_to_cfg : I_cast : " ^ s) in
-    let (var_1, tl_stack_info) = (Core.List.hd_exn stack_info, Core.List.tl_exn stack_info) in
+    let (var_1, tl_stack_info) = (ns_hd stack_info, ns_tl stack_info) in
     let (cfg_var_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_errmsg "cfg_var_added") counter ty (cfg, ()) in
     let (cfg_end, _) = begin
       (cfg_var_added, ())
@@ -1612,7 +1645,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_con_vtx_front in_v
       |> t_con_vtx_back out_v
     end in
-    (cfg_end, v_r :: tl_stack_info)
+    (cfg_end, ns_cons v_r tl_stack_info)
 
   | I_rename ->
     (* Cfg_skip for now. Current Cfg.t does not supports any annotation. *)
@@ -1646,14 +1679,14 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         stack_info  : pop one or two elements and push "v_r"
     *)
     let gen_emsg s : string = ("inst_to_cfg : I_concat : " ^ s) in
-    let (v_1, tl_stack_info) = (Core.List.hd_exn stack_info, Core.List.tl_exn stack_info) in
+    let (v_1, tl_stack_info) = stack_hdtl stack_info in
     let (t_1) = t_map_find ~errtrace:(gen_emsg "t_1") cfg.type_info v_1 in
     let (cfg_in_v_checked, _) = t_add_vinfo ~errtrace:(gen_emsg "") (in_v, Cfg_skip) (cfg, ()) in
     let (cfg_end, stack_info_end) = begin
       match get_d t_1 with
       | T_string -> begin
           let gen_emsg s : string = (gen_emsg ("T_string matched : " ^ s)) in
-          let (v_2, tltl_stack_info) = (Core.List.hd_exn tl_stack_info, Core.List.tl_exn tl_stack_info) in
+          let (v_2, tltl_stack_info) = stack_hdtl tl_stack_info in
           let (cfg_nv_added, v_r) = begin (cfg_in_v_checked, ()) |> t_add_nv_tinfo ~errtrace:(gen_emsg "cfg_nv_added") counter t_1 end in
           let (cfg_end, _) = begin 
             (cfg_nv_added, ())
@@ -1662,11 +1695,11 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
             |> t_con_vtx_front in_v
             |> t_con_vtx_back out_v
           end in
-          (cfg_end, v_r :: tltl_stack_info)
+          (cfg_end, ns_cons v_r tltl_stack_info)
         end
       | T_bytes -> begin
           let gen_emsg s : string = (gen_emsg ("T_bytes matched : " ^ s)) in
-          let (v_2, tltl_stack_info) = (Core.List.hd_exn tl_stack_info, Core.List.tl_exn tl_stack_info) in
+          let (v_2, tltl_stack_info) = stack_hdtl tl_stack_info in
           let (cfg_nv_added, v_r) = begin (cfg_in_v_checked, ()) |> t_add_nv_tinfo ~errtrace:(gen_emsg "cfg_nv_added") counter t_1 end in
           let (cfg_end, _) = begin 
             (cfg_nv_added, ())
@@ -1675,7 +1708,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
             |> t_con_vtx_front in_v
             |> t_con_vtx_back out_v
           end in
-          (cfg_end, v_r :: tltl_stack_info)
+          (cfg_end, ns_cons v_r tltl_stack_info)
         end
       | T_list t_i -> begin
           let gen_emsg s : string = (gen_emsg ("T_list t_i matched : " ^ s)) in
@@ -1687,7 +1720,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
             |> t_con_vtx_front in_v
             |> t_con_vtx_back out_v
           end in
-          (cfg_end, v_r :: tl_stack_info)
+          (cfg_end, ns_cons v_r tl_stack_info)
         end
       | _ -> fail (gen_emsg "t_1 : match failed")
     end in
@@ -1708,10 +1741,9 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         stack_info  : pop three elements and push "v_r"
     *)
     let gen_emsg s : string = ("inst_to_cfg : I_slice : " ^ s) in
-    let (clh, clt) = (Core.List.hd_exn, Core.List.tl_exn) in
-    let (v_1, tl_si) = (clh stack_info, clt stack_info) in
-    let (v_2, ttl_si) = (clh tl_si, clt tl_si) in
-    let (v_3, tttl_si) = (clh ttl_si, clt ttl_si) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let (v_2, ttl_si) = stack_hdtl tl_si in
+    let (v_3, tttl_si) = stack_hdtl ttl_si in
     let t_3 = t_map_find ~errtrace:(gen_emsg "t_3") cfg.type_info v_3 in
     let (cfg_v_r_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "gen v_r") counter (gen_t (Michelson.Adt.T_option t_3)) (cfg, ()) in
     let (cfg_end, _) = begin
@@ -1722,7 +1754,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_con_vtx_front in_v
       |> t_con_vtx_back out_v
     end in
-    (cfg_end, v_r :: tttl_si)
+    (cfg_end, ns_cons v_r tttl_si)
 
   | I_pack ->
     (*  flow        : add new vertex between in-and-out
@@ -1744,7 +1776,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_con_vtx_front in_v
       |> t_con_vtx_back out_v
     end in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_unpack ty -> 
     (*  flow        : add new vertex between in-and-out
@@ -1766,7 +1798,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_con_vtx_front in_v
       |> t_con_vtx_back out_v
     end in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_add ->
     (*  flow        : add new vertex between in-and-out
@@ -1810,7 +1842,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_add (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
 
   | I_sub ->
     (*  flow        : add new vertex between in-and-out
@@ -1854,7 +1886,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_sub (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
     
   | I_mul ->
     (*  flow        : add new vertex between in-and-out
@@ -1896,7 +1928,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_mul (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
 
   | I_ediv ->
     (*  flow        : add new vertex between in-and-out
@@ -1942,7 +1974,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_ediv (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
 
   | I_abs ->
     (*  flow        : add new vertex between in-and-out
@@ -1958,7 +1990,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_nat in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_abs v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_isnat ->
     (*  flow        : add new vertex between in-and-out
@@ -1974,7 +2006,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t (Michelson.Adt.T_option (gen_t Michelson.Adt.T_nat)) in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_isnat v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_int ->
     (*  flow        : add new vertex between in-and-out
@@ -1990,7 +2022,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_nat in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_int_of_nat v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_neg ->
     (*  flow        : add new vertex between in-and-out
@@ -2006,7 +2038,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_int in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_neg v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_lsl ->
     (*  flow        : add new vertex between in-and-out
@@ -2024,7 +2056,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_nat in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_shiftL (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
 
   | I_lsr ->
     (*  flow        : add new vertex between in-and-out
@@ -2042,7 +2074,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_nat in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_shiftR (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
 
   | I_or ->
     (*  flow        : add new vertex between in-and-out
@@ -2076,7 +2108,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_or (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
 
   | I_and ->
     (*  flow        : add new vertex between in-and-out
@@ -2112,7 +2144,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_and (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
 
   | I_xor ->
     (*  flow        : add new vertex between in-and-out
@@ -2146,7 +2178,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_xor (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
 
   | I_not ->
     (*  flow        : add new vertex between in-and-out
@@ -2177,7 +2209,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_not v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_compare ->
     (*  flow        : add new vertex between in-and-out
@@ -2195,7 +2227,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t (Michelson.Adt.T_int) in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_compare (v_1, v_2))) cfg_vr_added in
-    (cfg_ended, v_r :: ttl_si)
+    (cfg_ended, ns_cons v_r ttl_si)
 
   | I_eq ->
     (*  flow        : add new vertex between in-and-out
@@ -2211,7 +2243,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bool in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_eq v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_neq ->
     (*  flow        : add new vertex between in-and-out
@@ -2227,7 +2259,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bool in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_neq v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_lt ->
     (*  flow        : add new vertex between in-and-out
@@ -2243,7 +2275,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bool in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_lt v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_gt ->
     (*  flow        : add new vertex between in-and-out
@@ -2259,7 +2291,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bool in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_gt v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_le ->
     (*  flow        : add new vertex between in-and-out
@@ -2275,7 +2307,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bool in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_leq v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_ge ->
     (*  flow        : add new vertex between in-and-out
@@ -2291,7 +2323,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bool in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_geq v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_self ->
     let paramtyp = let get_paramtyp = (fun {Michelson.Adt.param=pty; _} -> pty) in get_paramtyp cfg.adt in
@@ -2311,7 +2343,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t (Michelson.Adt.T_option (gen_t (Michelson.Adt.T_contract ty))) in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_contract_of_address v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
 
   | I_transfer_tokens ->
@@ -2332,7 +2364,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_operation in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_operation (O_transfer_tokens (v_1, v_2, v_3)))) cfg_vr_added in
-    (cfg_ended, v_r :: tttl_si)
+    (cfg_ended, ns_cons v_r tttl_si)
 
   | I_set_delegate ->
     (*  flow        : add new vertex between in-and-out
@@ -2348,7 +2380,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_operation in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_operation (O_set_delegate v_1))) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
   
   | I_create_account -> fail "inst_to_cfg : I_create_account : UNDEFINED"
 
@@ -2370,7 +2402,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_operation in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_operation (O_create_contract (pgm, v_1, v_2, v_3)))) cfg_vr_added in
-    (cfg_ended, v_r :: tttl_si)
+    (cfg_ended, ns_cons v_r tttl_si)
 
   | I_implicit_account ->
     (*  flow        : add new vertex between in-and-out
@@ -2386,7 +2418,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t (Michelson.Adt.T_contract (gen_t Michelson.Adt.T_unit))  in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_implicit_account v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_now -> template_of_push_value "I_now" counter (in_v, out_v) (E_now, Michelson.Adt.T_timestamp) (cfg, stack_info)
 
@@ -2412,7 +2444,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bool in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_check_signature (v_1, v_2, v_3))) cfg_vr_added in
-    (cfg_ended, v_r :: tttl_si)
+    (cfg_ended, ns_cons v_r tttl_si)
   
   | I_blake2b ->
     (*  flow        : add new vertex between in-and-out
@@ -2428,7 +2460,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bytes  in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_blake2b v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_sha256 ->
     (*  flow        : add new vertex between in-and-out
@@ -2444,7 +2476,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bytes  in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_sha256 v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_sha512 ->
     (*  flow        : add new vertex between in-and-out
@@ -2460,7 +2492,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_bytes  in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_sha512 v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_hash_key ->
     (*  flow        : add new vertex between in-and-out
@@ -2476,7 +2508,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let t_r = gen_t Michelson.Adt.T_key_hash  in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_hash_key v_1)) cfg_vr_added in
-    (cfg_ended, v_r :: tl_si)
+    (cfg_ended, ns_cons v_r tl_si)
 
   | I_steps_to_quota -> template_of_push_value "I_steps_to_quota" counter (in_v, out_v) (E_steps_to_quota, Michelson.Adt.T_nat) (cfg, stack_info)
 
@@ -2513,9 +2545,6 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
 
   (* val t_add_typical_vertex : string -> cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Cfg.stmt -> Cfg.t -> (Cfg.t * Cfg.vertex) *)
 
-  (* val inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> Adt.inst -> (Cfg.t * string list) -> (Cfg.t * string list) *)
-
-  (* val template_of_push_value : string -> cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Tezla.Adt.expr * Michelson.Adt.typ) -> (Cfg.t * string list) -> (Cfg.t * string list) *)
 end
   
 
@@ -2543,7 +2572,7 @@ let adt_to_cfg : Adt.t -> Cfg.t
   (*let vertex_info_1 = imap_add (imap_add CPMap.empty entry_v Tezla_cfg.Cfg_node.Cfg_skip) exit_v Tezla_cfg.Cfg_node.Cfg_skip in*)
   (*let vertex_info_1 = imap_add CPMap.empty exit_v Tezla_cfg.Cfg_node.Cfg_skip in*)
   let type_info_1 = smap_add CPMap.empty param_storage_name param_storage_type in
-  let stack_info_1 : string list = [Cfg.param_storage_name] in
+  let stack_info_1 : stack_info_t = NS [Cfg.param_storage_name] in
   let cfg_init = {
     flow          = flow_1;
     vertex_info   = CPMap.empty;
@@ -2554,7 +2583,7 @@ let adt_to_cfg : Adt.t -> Cfg.t
     lambda_id_map = CPMap.empty;
     fail_vertices = Core.Set.Poly.empty; } in
   let (cfg_last, stack_info) = inst_to_cfg counter (cfg_init.main_entry, cfg_init.main_exit) (cfg_init.main_entry, cfg_init.main_exit) adt.code (cfg_init, stack_info_1) in
-  let hd_stack_info = Core.List.hd_exn stack_info in
+  let hd_stack_info = ns_hd stack_info in
   let vertex_info_last = imap_add cfg_last.vertex_info exit_v (Tezla_cfg.Cfg_node.Cfg_assign (hd_stack_info, E_itself hd_stack_info)) in
   {cfg_last with vertex_info=vertex_info_last;}
   (* TODO : if necessary, update exit node's stack info. *)

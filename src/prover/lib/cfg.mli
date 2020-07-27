@@ -8,7 +8,7 @@
 (*****************************************************************************)
 
 type vertex = int
-type edge_label = | Normal | If_true | If_false
+type edge_label = | Normal | If_true | If_false | Failed
 
 module V : Graph.Sig.COMPARABLE with type t = vertex         (* VERTEX *)
 module E : Graph.Sig.ORDERED_TYPE_DFT with type t = edge_label   (* EDGE LABLE *)
@@ -19,6 +19,8 @@ val is_edge_normal : E.t -> bool
 val is_edge_true : E.t -> bool
 
 val is_edge_false : E.t -> bool
+
+val is_edge_failed : E.t -> bool
 
 val string_of_vertex : vertex -> string
 

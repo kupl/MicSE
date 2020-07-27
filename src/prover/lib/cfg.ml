@@ -9,7 +9,7 @@ let fail s = raise (Exn_Cfg s)
 (*****************************************************************************)
 
 type vertex = int
-type edge_label = | Normal | If_true | If_false
+type edge_label = | Normal | If_true | If_false | Failed
 
 module V = struct
   type t = int
@@ -34,6 +34,9 @@ let is_edge_true : E.t -> bool
 
 let is_edge_false : E.t -> bool
 =fun edge -> (edge = If_false)
+
+let is_edge_failed : E.t -> bool
+=fun edge -> (edge = Failed)
 
 let string_of_vertex : vertex -> string
 =fun vtx -> (string_of_int vtx)
