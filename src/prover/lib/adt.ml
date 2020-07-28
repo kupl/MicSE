@@ -53,6 +53,7 @@ end
 let rec is_typ_equal
 = let open Michelson.Adt in
   fun t1 t2 -> begin
+  (*("DEBUG: " ^ (string_of_typt t1) ^ ", " ^ (string_of_typt t2)) |> print_endline |> Stdlib.ignore;*)
   match t1.d, t2.d with
   (* typ with one arg-typ *)
   | T_option tt1, T_option tt2

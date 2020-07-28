@@ -491,7 +491,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1;} in
     
     (* complete THEN branch (i1_begin ~ i1_end) *)
-    let (cfg_2, stack_info_1) = inst_to_cfg_handle_es counter (i1_begin, i1_end) (func_in_v, func_out_v) i1 (cfg_1, stack_info) in
+    let (cfg_2, stack_info_1) = inst_to_cfg_handle_es counter (i1_begin, i1_end) (func_in_v, func_out_v) i1 (cfg_1, ns_tl stack_info) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
       (*  flow        : (i2_begin -> i2_ready) & (i2_ready -> (i2 ...) -> i2_end)
           vertex_info : i2_begin : Cfg_assgin (new-var, (E_unlift_option top-var))
