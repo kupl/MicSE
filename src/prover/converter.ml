@@ -46,7 +46,8 @@ and create_var : Vlang.var -> Vlang.v_exp
 
 and create_rename_var : Vlang.var -> Vlang.var
 =fun v -> begin
-  let v' = "#" ^ v in
+  let rec rename_label l = if Cfg.CPMap.mem !type_map (l ^ v) then rename_label ("#" ^ l) else l
+  let v' = (rename_label "#") ^ v in
   let _ = update_type v' (read_type v) in
   v'
 end
