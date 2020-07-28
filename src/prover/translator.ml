@@ -519,7 +519,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_5, stack_info_4) = begin
       merge_two_stack_infos 
         counter 
-        "inst_to-cfg : I_if_none" 
+        "inst_to_cfg : I_if_none" 
         cfg_4 
         (stack_info_1, stack_info_3)
         (i1_end, i2_end, out_v, out_v)
@@ -590,7 +590,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_5, stack_info_4) = begin
       merge_two_stack_infos 
         counter 
-        "inst_to-cfg : I_if_some" 
+        "inst_to_cfg : I_if_some" 
         cfg_4 
         (stack_info_1, stack_info_3)
         (i1_end, i2_end, out_v, out_v)
@@ -716,9 +716,12 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     (* set vertex infos of in_v, i1_end, i2_end *)
     let topvar_name : string = ns_hd stack_info in
     let vertex_info_1 = map_add "inst_to_cfg : I_if_left : vertex_info_1" cfg.vertex_info in_v (Cfg_if_left topvar_name) in
+    (*
     let vertex_info_2 = add_skip_vinfo "I_if_left : vertex_info_2" vertex_info_1 i1_end in
     let vertex_info_3 = add_skip_vinfo "I_if_left : vertex_info_3" vertex_info_2 i2_end in
     let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_3;} in
+    *)
+    let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1;} in
     (* complete THEN branch (i1_begin ~ i1_end) *)
       (*  flow        : (i1_begin -> i1_ready) & (i1_ready -> (i1 ...) -> i1_end)
           vertex_info : i1_begin : Cfg_assign (new-var-left, (E_unlift_or top-var))
@@ -761,7 +764,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_collect, stack_info_collect) = begin
       merge_two_stack_infos 
         counter 
-        "inst_to-cfg : I_if_left" 
+        "inst_to_cfg : I_if_left" 
         cfg_eb_fin 
         (stack_info_tb_fin, stack_info_eb_fin)
         (i1_end, i2_end, out_v, out_v)
@@ -845,7 +848,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_collect, stack_info_collect) = begin
       merge_two_stack_infos 
         counter 
-        "inst_to-cfg : I_if_right" 
+        "inst_to_cfg : I_if_right" 
         cfg_eb_fin 
         (stack_info_tb_fin, stack_info_eb_fin)
         (i1_end, i2_end, out_v, out_v)
@@ -962,7 +965,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_collect, stack_info_collect) = begin
       merge_two_stack_infos 
         counter 
-        "inst_to-cfg : I_if_cons" 
+        "inst_to_cfg : I_if_cons" 
         cfg_eb_fin 
         (stack_info_tb_fin, stack_info_eb_fin)
         (i1_end, i2_end, out_v, out_v)
@@ -1770,7 +1773,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_end, _) = begin
       (cfg, ())
       |> t_add_edg (in_v, out_v)
-      |> t_add_vinfo ~errtrace:("inst_to-cfg : I_rename : in_v vinfo") (in_v, Cfg_skip)
+      |> t_add_vinfo ~errtrace:("inst_to_cfg : I_rename : in_v vinfo") (in_v, Cfg_skip)
     end in
     (cfg_end, stack_info)
   
@@ -2494,7 +2497,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_operation (O_set_delegate v_1))) cfg_vr_added in
     (cfg_ended, ns_cons v_r tl_si)
   
-  | I_create_account -> fail "inst_to_cfg : I_create_account : UNDEFINED"
+  | I_create_account -> fail "inst_to_cfg : I_create_account : UNDEFINED" (* TODO : complete this if available *)
 
   | I_create_contract pgm ->
     (*  flow        : add new vertex between in-and-out
@@ -2628,6 +2631,22 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
 
   | I_sender -> template_of_push_value "I_sender" counter (in_v, out_v) (E_sender, Michelson.Adt.T_address) (cfg, stack_info)
 
+  | I_address -> 
+    (*  flow        : add new vertex between in-and-out
+        variables   : v_1   : top element of the stack.
+                      v_r   : new variable
+        vertex_info : in_v       -> Cfg_skip
+                      new vertex -> Cfg_assign (v_r, E_address_of_contract v_1)
+        type_info   : v_r   -> T_address
+        stack_info  : pop a element and push "v_r"
+    *)
+    let gen_emsg s : string = ("inst_to_cfg : I_address : " ^ s) in
+    let (v_1, tl_si) = stack_hdtl stack_info in
+    let t_r = gen_t Michelson.Adt.T_address  in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_address_of_contract v_1)) cfg_vr_added in
+    (cfg_ended, ns_cons v_r tl_si)
+
   | I_chain_id -> template_of_push_value "I_chain_id" counter (in_v, out_v) (E_chain_id, Michelson.Adt.T_chain_id) (cfg, stack_info)
 
   | I_noop -> 
@@ -2638,7 +2657,6 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       |> t_add_edg (in_v, out_v) |> Stdlib.fst
     end in
     (cfg_end, stack_info)
-    
 
   | I_unpair ->
     (* UNPAIR = {DUP; CAR; DIP CDR} *)
@@ -2650,7 +2668,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let idip x = gen_t (I_dip x) in
     inst_to_cfg_handle_es counter (in_v, out_v) (func_in_v, func_out_v) (iseq idup (iseq icar (idip icdr))) (cfg, stack_info)
 
-  | _ -> fail "inst_to_cfg : not implemented."
+  (*| _ -> fail "inst_to_cfg : not implemented."*)
 end
 
 
