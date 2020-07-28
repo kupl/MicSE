@@ -5,6 +5,7 @@ let flag_adt_print = ref false
 
 (* FLAGS - Control Flow Graph *)
 let flag_cfgopt_rsv = ref false (* remove-skip-vertices *)
+let flag_cfgopt_rfv = ref false (* remove-fail-vertices *)
 let flag_cfg_print_dot = ref false
 
 let options =
@@ -12,6 +13,7 @@ let options =
     ("-input", (Arg.String (fun s -> input_file := s)), "File path for input michelson program.");
     ("-adt_print", (Arg.Set flag_adt_print), "Print parsed Michelson file.");
     ("-cfgopt_rsv", (Arg.Set flag_cfgopt_rsv), "Remove all trivial skip vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
+    ("-cfgopt_rfv", (Arg.Set flag_cfgopt_rfv), "Remove all trivial fail vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
     ("-cfg_print_dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
   ]
 
@@ -25,7 +27,9 @@ let main : unit -> unit
 
   (* Construct control flow graph *)
   let cfg_first = Prover.Translator.adt_to_cfg adt in
-  let cfg_optimized = (if (!flag_cfgopt_rsv) then (ProverLib.Cfg.remove_meaningless_skip_vertices_fixpoint cfg_first) else (cfg_first)) in
+  let cfg_rsv_optimized = (if (!flag_cfgopt_rsv) then (ProverLib.Cfg.remove_meaningless_skip_vertices_fixpoint cfg_first) else (cfg_first)) in
+  let cfg_rfv_optimized = (if (!flag_cfgopt_rfv) then (ProverLib.Cfg.remove_meaningless_fail_vertices_fixpoint cfg_rsv_optimized) else (cfg_rsv_optimized)) in
+  let cfg_optimized = cfg_rfv_optimized in
 
   let cfg = cfg_optimized in
   let _ : unit = (if (!flag_cfg_print_dot) then print_endline (ProverLib.Cfg.cfg_to_dotformat cfg) else ()) in

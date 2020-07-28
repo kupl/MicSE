@@ -231,6 +231,12 @@ let t_add_failvtx fv (cfg, _) = begin
 end
 
 
+(*****************************************************************************)
+(*****************************************************************************)
+(* Optimization                                                              *)
+(*****************************************************************************)
+(*****************************************************************************)
+
 let remove_meaningless_skip_vertices =
   let gen_emsg s : string = ("remove_meaningless_skip_vertices : " ^ s) in
   let is_skip : stmt option -> bool = (function | Some (Tezla_cfg.Cfg_node.Cfg_skip) -> true | _ -> false) in
@@ -248,7 +254,7 @@ let remove_meaningless_skip_vertices =
               && (out_label = Normal)
               && (Core.Set.Poly.for_all vset (fun x -> x <> in_v))
               && (Core.Set.Poly.for_all vset (fun x -> x <> mid_v))
-              && ((Core.Set.Poly.for_all vset (fun x -> x <> out_v)))
+              && (Core.Set.Poly.for_all vset (fun x -> x <> out_v))
           )
         then ( (in_v, mid_v, out_v) :: vvvlist, Core.Set.add vset v )
         else ( vvvlist, vset )
@@ -271,6 +277,48 @@ let rec remove_meaningless_skip_vertices_fixpoint cfg =
   let cfg' = remove_meaningless_skip_vertices cfg in
   let sz'  = G.nb_vertex cfg'.flow in
   if sz <> sz' then remove_meaningless_skip_vertices_fixpoint cfg' else cfg'
+
+let rec remove_meaningless_fail_vertices =
+  let gen_emsg s : string = ("remove_meaningless_fail_vertices : " ^ s) in
+  let is_fail : stmt option -> bool = (function | Some (Tezla_cfg.Cfg_node.Cfg_failwith _) -> true | _ -> false) in
+  (* FUNCTION BEGIN *)
+  fun cfg -> begin
+    let fold_func : G.V.t -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t)) -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t))
+    =fun v (vvvlist, vset) -> begin
+      if ((Core.Map.Poly.find cfg.vertex_info v |> is_fail) && (G.out_degree cfg.flow v = 1) && (G.in_degree cfg.flow v = 1))
+      then (
+        (* Because of if-condition, pred will return singleton list. *)
+        let (in_v, in_label, mid_v) = G.pred_e cfg.flow v |> Core.List.hd_exn in
+        let (mid_v_2, out_label, out_v) = G.succ_e cfg.flow v |> Core.List.hd_exn in
+        if (  (mid_v = mid_v_2)
+              && (in_label = Failed)
+              && (out_label = Failed)
+              && (Core.Set.Poly.for_all vset (fun x -> x <> in_v))
+              && (Core.Set.Poly.for_all vset (fun x -> x <> mid_v))
+              && (Core.Set.Poly.for_all vset (fun x -> x <> out_v))
+        )
+        then ( (in_v, mid_v, out_v) :: vvvlist, Core.Set.add vset v)
+        else ( vvvlist, vset )
+      )
+      else ( vvvlist, vset )
+    end in
+    let (vvvl, _) = G.fold_vertex fold_func cfg.flow ([], Core.Set.Poly.empty) in
+    let optfunc fl (in_v, mid_v, out_v) = begin
+      let fl_1 = G.remove_edge fl in_v mid_v in
+      let fl_2 = G.remove_edge fl_1 mid_v out_v in
+      let fl_3 = G.remove_vertex fl_2 mid_v in
+      let failedge = G.E.create in_v Failed out_v in
+      (G.add_edge_e fl_3 failedge)
+    end in
+    let newflow = Core.List.fold vvvl ~init:(cfg.flow) ~f:optfunc in
+    {cfg with flow=newflow;}
+  end
+
+let rec remove_meaningless_fail_vertices_fixpoint cfg = 
+  let sz    = G.nb_vertex cfg.flow in
+  let cfg'  = remove_meaningless_fail_vertices cfg in
+  let sz'   = G.nb_vertex cfg'.flow in
+  if sz <> sz' then remove_meaningless_fail_vertices_fixpoint cfg' else cfg'
 
 
 (*****************************************************************************)

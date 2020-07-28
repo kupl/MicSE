@@ -162,11 +162,22 @@ val t_add_lmbdim  : ?errtrace:string -> (lambda_ident * lambda_summary) -> (t * 
 val t_add_failvtx : vertex -> (t * 'a) -> (t * vertex)
 
 
+(*****************************************************************************)
+(*****************************************************************************)
+(* Optimization                                                              *)
+(*****************************************************************************)
+(*****************************************************************************)
+
 (* simple optimization - remove meaningless skip node *)
 (* meaningless skip node has only one in-degree and one out-degree and both edges are "Normal" *)
 (* WARNING : this does not remove any vertex-information in Cfg.t *)
 val remove_meaningless_skip_vertices : t -> t
 val remove_meaningless_skip_vertices_fixpoint : t -> t
+
+(* simple optimization - remove meaningless fail nodes *)
+(* meaningless fail node has one predecessor and one successor, where the predecessor is fail node too. *)
+val remove_meaningless_fail_vertices : t -> t
+val remove_meaningless_fail_vertices_fixpoint : t -> t
 
 
 (*****************************************************************************)
