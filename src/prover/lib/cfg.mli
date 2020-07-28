@@ -93,6 +93,9 @@ val is_main_exit : t -> vertex -> bool
 
 val string_of_ident : ident -> string
 
+(* for given cfg, construct two maps, (entry-vertex -> (l-ident * l-summary)) * (exit-vertex -> (l-ident * l-summary)) *)
+val lmbd_map_to_two_sets : t -> (((vertex, (lambda_ident * lambda_summary)) CPMap.t) * ((vertex, (lambda_ident * lambda_summary)) CPMap.t))
+
 
 (*****************************************************************************)
 (*****************************************************************************)

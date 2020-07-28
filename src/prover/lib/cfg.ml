@@ -110,6 +110,19 @@ let is_main_exit : t -> vertex -> bool
 let string_of_ident : ident -> string
 =fun id -> id
 
+type lmbd_invmap = (vertex, (lambda_ident * lambda_summary)) CPMap.t
+let lmbd_map_to_two_sets : t -> (lmbd_invmap * lmbd_invmap)
+=fun cfg -> begin
+  let fold_func ~key ~data : (lmbd_invmap * lmbd_invmap) -> (lmbd_invmap * lmbd_invmap)
+  =fun (m1, m2) -> begin
+    let (entry_v, exit_v, _, _) = data in
+    match (CPMap.add m1 ~key:entry_v ~data:(key, data), CPMap.add m2 ~key:exit_v ~data:(key, data)) with
+    | `Ok mm1, `Ok mm2 -> (mm1, mm2)
+    | _ -> fail ("lmbd_map_to_two_sets : match error : entry_v=" ^ (string_of_int entry_v) ^ ", exit_v=" ^ (string_of_int exit_v))
+  end in
+  CPMap.fold cfg.lambda_id_map ~init:(CPMap.empty, CPMap.empty) ~f:fold_func
+end
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -339,6 +352,7 @@ let cfg_to_dotformat : t -> string
   let flow_fold_func : G.E.t -> string list -> string list
   =fun (in_v, e_label, out_v) acc -> begin
     let body_s = (string_of_int in_v) ^ " -> " ^ (string_of_int out_v) in
+    (* edge label and style *)
     let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" | Failed -> "[label=\"Failed\", style=dotted]" in
     (body_s ^ " " ^ edge_s ^ ";") :: acc
   end in
@@ -347,6 +361,8 @@ let cfg_to_dotformat : t -> string
     |> List.map (fun x -> "    " ^ x)
     |> String.concat "\n"
   end in
+  (* before enter "each vertex", convert lambda_id_map into two maps to search easily *)
+  let (lmbd_entry_map, lmbd_exit_map) = lmbd_map_to_two_sets cfg in
   (* each vertex *)
   let vi_fold_func : G.V.t -> string list -> string list
   =fun v acc -> begin
@@ -354,28 +370,45 @@ let cfg_to_dotformat : t -> string
     let is_main_entry = v = cfg.main_entry in
     let is_main_exit  = v = cfg.main_exit  in
     let vi : stmt = t_map_find ~errtrace:"cfg_to_dotformat : vi_fold_func : vi" cfg.vertex_info v in
+    (* vertex label-string *)
     let lb_str : string = 
-      if is_main_entry then (vs ^ " : MAIN-ENTRY")
+      if is_main_entry then (vs ^ " : MAIN-ENTRY")  (* The contents of the MAIN_ENTRY are expected to be Cfg_skip *)
       else ( 
-        if is_main_exit then (let vn = get_lhs_varname vi in (vs ^ " : " ^ vn ^ " : MAIN-EXIT"))
+        if is_main_exit then (let vn = get_lhs_varname vi in (vs ^ " : MAIN-EXIT : " ^ vn))  (* The contents of the MAIN_EXIT are expected to be Cfg_assign (v_i, (E_itself v_i)) *)
         else (
-          let vi_wrapped : TezlaCfg.Node.t = TezlaCfg.Node.create_node ~id:(-1) vi in
-          let vis : string = TezlaCfg.Node.to_string vi_wrapped in
-          (vs ^ " : " ^ vis)
+          match (CPMap.find lmbd_entry_map v, CPMap.find lmbd_exit_map v) with
+          | Some _, Some _ -> fail "cfg_to_dotformat : vi_fold_func : lb_str : cpmap.find : both found : cannot be reached in normal situation."
+          (* lambda entry/exit vertices *)
+          | Some (id, _), None -> (vs ^ " : LAMBDA-" ^ (string_of_int id) ^ "-ENTRY")   (* The contents of the MAIN_ENTRY are expected to be Cfg_skip *)
+          | None, Some (id, _) -> let vn = get_lhs_varname vi in (vs ^ " : LAMBDA-" ^ (string_of_int id) ^ "-EXIT : " ^ vn) (* The contents of the MAIN_EXIT are expected to be Cfg_assign (v_i, (E_itself v_i)) *)
+          (* otherwise - default vertex label *)
+          | None, None ->
+            let vi_wrapped : TezlaCfg.Node.t = TezlaCfg.Node.create_node ~id:(-1) vi in
+            let vis : string = TezlaCfg.Node.to_string vi_wrapped in
+            (vs ^ " : " ^ vis)
         )
       )
     in
+    (* vertex shape *)
     if (is_main_entry || is_main_exit) then (vs ^ " [shape=doubleoctagon, " ^ (only_label_str lb_str) ^ "];") :: acc
     else (
-      match vi with
-      | Cfg_if _ | Cfg_if_none _ | Cfg_if_left _ | Cfg_if_cons _
-      | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _
-        -> (vs ^ " [shape=diamond, " ^ (only_label_str lb_str) ^ "];") :: acc
-      | Cfg_assign _
-        -> (vs ^ " [shape=box, " ^ (only_label_str lb_str) ^ "];") :: acc
-      | Cfg_failwith _
-        -> (vs ^ " [shape=cds, " ^ (only_label_str lb_str) ^ "];") :: acc
-      | _ -> (vs ^ " [" ^ (only_label_str lb_str) ^ "];") :: acc
+      match (CPMap.find lmbd_entry_map v, CPMap.find lmbd_exit_map v) with
+      | Some _, Some _ -> fail "cfg_to_dotformat : vi_fold_func : cpmap.find : both found : cannot be reached in normal situation."
+      (* lambda entry/exit vertices *)
+      | Some _, None
+      | None, Some _ -> (vs ^ " [shape=octagon, " ^ (only_label_str lb_str) ^ "];") :: acc
+      (* otherwise - default vertex shape *)
+      | None, None -> (
+          match vi with
+          | Cfg_if _ | Cfg_if_none _ | Cfg_if_left _ | Cfg_if_cons _
+          | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _
+            -> (vs ^ " [shape=diamond, " ^ (only_label_str lb_str) ^ "];") :: acc
+          | Cfg_assign _
+            -> (vs ^ " [shape=box, " ^ (only_label_str lb_str) ^ "];") :: acc
+          | Cfg_failwith _
+            -> (vs ^ " [shape=cds, " ^ (only_label_str lb_str) ^ "];") :: acc
+          | _ -> (vs ^ " [" ^ (only_label_str lb_str) ^ "];") :: acc
+        )
     )
   end in
   let vi_s = begin
