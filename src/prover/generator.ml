@@ -22,7 +22,7 @@ let generate : Bp.raw_t_list -> Cfg.t -> Bp.t list
     let inv = Core.List.fold_left qs ~init:Vlang.create_formula_true ~f:(fun inv (v, t) -> (
       let ub : Vlang.v_exp = VE_int upper_bound in
       let var : Vlang.v_exp = VE_var (v, t) in
-      Vlang.create_formula_and inv (Vlang.create_formula_le var ub)
+      Vlang.create_formula_and [inv; (Vlang.create_formula_le var ub)]
     )) in
     let pre_inv = Bp.create_inv bp.post.id inv in
     let post_inv = Bp.create_inv bp.post.id inv in

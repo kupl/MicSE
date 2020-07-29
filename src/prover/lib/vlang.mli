@@ -148,8 +148,8 @@ type t = v_formula
 and v_formula =
   | VF_true  | VF_false
   | VF_not of v_formula
-  | VF_and of v_formula * v_formula
-  | VF_or of v_formula * v_formula
+  | VF_and of v_formula list
+  | VF_or of v_formula list
   | VF_uni_rel of v_uni_rel * v_exp
   | VF_bin_rel of v_bin_rel * v_exp * v_exp
   | VF_imply of v_formula * v_formula
@@ -177,7 +177,7 @@ and v_exp =
   | VE_nul_op of v_nul_op * typ
   | VE_uni_op of v_uni_op * v_exp * typ
   | VE_bin_op of v_bin_op * v_exp * v_exp * typ
-  | VE_ter_op of v_tri_op * v_exp * v_exp * v_exp * typ
+  | VE_ter_op of v_ter_op * v_exp * v_exp * v_exp * typ
   | VE_lambda of typ
   | VE_operation of v_operation * typ
 
@@ -205,13 +205,20 @@ and v_bin_op =
   | VE_xor      | VE_cmp      | VE_cons     | VE_concat   | VE_exec
   | VE_append
 
-and v_tri_op =
+and v_ter_op =
   | VE_slice    | VE_check_signature
 
 and v_operation =
   | VE_transaction
   | VE_origination
   | VE_delegation
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Verification Formula                                                      *)
+(*****************************************************************************)
+(*****************************************************************************)
 
 val create_exp_var : var -> typ -> v_exp
 
@@ -221,9 +228,9 @@ val create_formula_false : v_formula
 
 val create_formula_not : v_formula -> v_formula
 
-val create_formula_and : v_formula -> v_formula -> v_formula
+val create_formula_and : v_formula list -> v_formula
 
-val create_formula_or : v_formula -> v_formula -> v_formula
+val create_formula_or : v_formula list -> v_formula
 
 val create_formula_uni_rel : v_uni_rel -> v_exp -> v_formula
 
@@ -231,9 +238,15 @@ val create_formula_is_true : v_exp -> v_formula
 
 val create_formula_is_none : v_exp -> v_formula
 
+val create_formula_is_some : v_exp -> v_formula
+
 val create_formula_is_left : v_exp -> v_formula
 
+val create_formula_is_right : v_exp -> v_formula
+
 val create_formula_is_cons : v_exp -> v_formula
+
+val create_formula_is_nil : v_exp -> v_formula
 
 val create_formula_bin_rel : v_bin_rel -> v_exp -> v_exp -> v_formula
 
@@ -254,3 +267,178 @@ val create_formula_imply : v_formula -> v_formula -> v_formula
 val create_formula_iff : v_formula -> v_formula -> v_formula
 
 val string_of_formula : v_formula -> string
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Verification Expression                                                   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val create_exp_int : Z.t -> v_exp
+
+val create_exp_int_of_small_int : int -> v_exp
+
+val create_exp_int_of_string : string -> v_exp
+
+val create_exp_string : string -> v_exp
+
+val create_exp_bool : v_formula -> v_exp
+
+val create_exp_bool_true : v_exp
+
+val create_exp_bool_false : v_exp
+
+val create_exp_unit : v_exp
+
+val create_exp_none : typ -> v_exp
+
+val create_exp_uni_cont : v_uni_cont -> v_exp -> typ -> v_exp
+
+val create_exp_uni_cont_left : v_exp -> typ -> v_exp
+
+val create_exp_uni_cont_right : v_exp -> typ -> v_exp
+
+val create_exp_uni_cont_some : v_exp -> typ -> v_exp
+
+val create_exp_bin_cont : v_bin_cont -> v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_cont_pair : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_cont_elt : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_list : v_exp list -> typ -> v_exp
+
+val create_exp_var : var -> typ -> v_exp
+
+val create_exp_read : v_exp -> v_exp -> v_exp
+
+val create_exp_write : v_exp -> v_exp -> v_exp -> v_exp
+
+val create_exp_nul_op : v_nul_op -> typ -> v_exp
+
+val create_exp_nul_op_self : typ -> v_exp
+
+val create_exp_nul_op_now : typ -> v_exp
+
+val create_exp_nul_op_amount : typ -> v_exp
+
+val create_exp_nul_op_balance : typ -> v_exp
+
+val create_exp_nul_op_steps_to_quota : typ -> v_exp
+
+val create_exp_nul_op_source : typ -> v_exp
+
+val create_exp_nul_op_sender : typ -> v_exp
+
+val create_exp_nul_op_chain_id : typ -> v_exp
+
+val create_exp_uni_op : v_uni_op -> v_exp -> typ -> v_exp
+
+val create_exp_uni_op_car : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_cdr : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_abs : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_neg : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_not : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_eq : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_neq : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_lt : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_gt : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_leq : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_geq : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_cast : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_concat : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_pack : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_unpack : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_contract : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_account : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_blake2b : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_sha256 : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_sha512 : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_hash_key : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_address : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_un_opt : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_un_or : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_hd : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_tl : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_size : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_isnat : v_exp -> typ -> v_exp
+
+val create_exp_uni_op_int : v_exp -> typ -> v_exp
+
+val create_exp_bin_op : v_bin_op -> v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_add : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_sub : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_mul : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_ediv : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_div : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_mod : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_lsl : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_lsr : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_and : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_or : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_xor : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_cmp : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_cons : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_concat : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_exec : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_append : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_ter_op : v_ter_op -> v_exp -> v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_ter_op_slice : v_exp -> v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_ter_op_check_signature : v_exp -> v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_lambda : typ -> v_exp
+
+val create_exp_operation : v_operation -> typ -> v_exp
+
+val create_exp_operation_transaction : typ -> v_exp
+
+val create_exp_operation_origination : typ -> v_exp
+
+val create_exp_operation_delegation : typ -> v_exp

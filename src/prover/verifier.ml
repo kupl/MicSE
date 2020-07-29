@@ -60,8 +60,14 @@ and create_convert_vformula : Vlang.v_formula -> Smt.z_expr
   | VF_true -> Smt.create_bool_true
   | VF_false -> Smt.create_bool_false
   | VF_not f -> Smt.create_bool_not (create_convert_vformula f)
-  | VF_and (f1, f2) -> Smt.create_bool_and [(create_convert_vformula f1); (create_convert_vformula f2)]
-  | VF_or (f1, f2) -> Smt.create_bool_or [(create_convert_vformula f1); (create_convert_vformula f2)]
+  | VF_and fl -> begin
+      let formulas = Core.List.map fl ~f:create_convert_vformula in
+      Smt.create_bool_and formulas
+    end
+  | VF_or fl -> begin
+      let formulas = Core.List.map fl ~f:create_convert_vformula in
+      Smt.create_bool_or formulas
+    end
   | VF_uni_rel (vur, e) -> begin
       let e' = create_convert_vexp e in
       match vur with
