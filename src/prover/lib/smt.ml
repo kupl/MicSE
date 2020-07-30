@@ -161,9 +161,6 @@ let read_var : z_symbol -> z_sort -> z_expr
 let create_ite : z_expr -> z_expr -> z_expr -> z_expr
 =fun cond true_expr false_expr -> Z3.Boolean.mk_ite !ctx cond true_expr false_expr
 
-let create_cmp : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Arithmetic.Integer.mk_numeral_i !ctx (Z3.Expr.compare e1 e2)
-
 
 let create_unit : z_expr
 =Z3.Expr.mk_const !ctx (create_symbol "UNIT") create_unit_sort
@@ -330,6 +327,10 @@ let read_default_term : z_expr -> z_expr
 
 let update_map : z_expr -> z_expr -> z_expr -> z_expr
 =fun map key value -> Z3.Z3Array.mk_store !ctx map key value
+
+
+let create_cmp : z_expr -> z_expr -> z_expr
+=fun e1 e2 -> create_ite (create_bool_int_lt e1 e2) (create_int (-1)) (create_ite (create_bool_int_gt e1 e2) (create_int 1) (create_int 0))
 
 
 (*****************************************************************************)

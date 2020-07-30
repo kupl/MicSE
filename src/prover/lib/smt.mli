@@ -112,8 +112,6 @@ val read_var : z_symbol -> z_sort -> z_expr
 
 val create_ite : z_expr -> z_expr -> z_expr -> z_expr
 
-val create_cmp : z_expr -> z_expr -> z_expr
-
 
 val create_unit : z_expr
 
@@ -220,6 +218,9 @@ val read_map : z_expr -> z_expr -> z_expr
 val read_default_term : z_expr -> z_expr
 
 val update_map : z_expr -> z_expr -> z_expr -> z_expr
+
+
+val create_cmp : z_expr -> z_expr -> z_expr
 
 
 (*****************************************************************************)

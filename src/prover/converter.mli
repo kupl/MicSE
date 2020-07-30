@@ -1,12 +1,7 @@
 open ProverLib
 
-type cont =
-  | Left_or of cont
-  | Right_or of cont
-  | Some_opt of cont
-  | Fst_pair of cont
-  | Snd_pair of cont
-  | Mutez of Vlang.v_exp
+type object_typ =
+  | Mutez
 
 (************************************************)
 (************************************************)

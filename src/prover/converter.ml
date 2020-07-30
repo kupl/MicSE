@@ -1,5 +1,8 @@
 open ProverLib
 
+type object_typ =
+  | Mutez
+
 (************************************************)
 (************************************************)
 
@@ -9,7 +12,8 @@ let type_map = ref Cfg.CPMap.empty
 let rec convert : Bp.t -> Cfg.t -> Vlang.t
 =fun bp cfg -> begin
   let _ = type_map := cfg.type_info in
-  let f, g = ((Option.get bp.pre.formula), (Option.get bp.post.formula)) in
+  let precond = create_precond_from_param_storage () in
+  let f, g = ((Vlang.create_formula_and ((Option.get bp.pre.formula)::precond)), (Option.get bp.post.formula)) in
   let f', g' = Core.List.fold_left bp.body ~init:(f, g) ~f:sp in
   let vc = Vlang.create_formula_imply f' g' in
   vc
@@ -30,6 +34,7 @@ and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
       (f'', g)
     end
   | BI_skip -> (f, g)
+  | _ -> (f, g)
 end
 
 and read_type : Vlang.var -> Vlang.typ
@@ -154,12 +159,12 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
       | O_set_delegate _ -> Vlang.create_exp_operation_delegation t
       | O_create_account (_, _, _, _) -> Vlang.create_exp_operation_origination t
     end
-  | E_unit -> VE_unit
+  | E_unit -> Vlang.create_exp_unit
   | E_pair (v1, v2) -> Vlang.create_exp_bin_cont_pair (create_var v1) (create_var v2) t
   | E_left (v, t') -> Vlang.create_exp_uni_cont_left (create_var v) t'
   | E_right (v, t') -> Vlang.create_exp_uni_cont_right (create_var v) t'
   | E_some v -> Vlang.create_exp_uni_cont_some (create_var v) t
-  | E_none t' -> VE_none t'
+  | E_none t' -> Vlang.create_exp_none t'
   | E_mem (v1, v2) -> Vlang.create_exp_bool (Vlang.create_formula_not (Vlang.create_formula_is_none (Vlang.create_exp_read (create_var v1) (create_var v2))))
   | E_get (v1, v2) -> Vlang.create_exp_read (create_var v1) (create_var v2)
   | E_update (v1, v2, v3) -> Vlang.create_exp_write (create_var v1) (create_var v2) (create_var v3)
@@ -205,4 +210,56 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_append (v1, v2) -> Vlang.create_exp_bin_op_append (create_var v1) (create_var v2) t
   | E_special_nil_list -> Vlang.create_exp_list [] t
   | E_phi (_, _) -> raise (Failure "Phi Function")
+end
+
+and create_precond_from_param_storage : unit -> Vlang.v_formula list
+=fun () -> begin
+  let param_storage_var = "param_storage" in
+  let param_storage = create_var param_storage_var in
+  let param_storage_typ = read_type param_storage_var in
+  let mutez_formula e = begin
+    let mutez_upper_bound = Vlang.create_exp_int_of_string "9223372036854775808" in
+    let mutez_lower_bound = Vlang.create_exp_int_of_string "0" in
+    let lower_formula = Vlang.create_formula_le mutez_lower_bound e in
+    let upper_formula = Vlang.create_formula_lt e mutez_upper_bound in
+    Vlang.create_formula_and [lower_formula; upper_formula]
+  end in
+  let rec read_nested_param_storage : Vlang.typ -> Vlang.v_exp -> (object_typ * (Vlang.v_formula -> Vlang.v_formula) list * Vlang.v_exp) list
+  =fun ty e -> begin
+    match ty.d with
+    | T_option ty' -> begin
+        let e' = Vlang.create_exp_uni_op_un_opt e ty in
+        Core.List.map (read_nested_param_storage ty' e') ~f:(fun (obj, fl, exp) -> (
+          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_some e))::fl, exp)
+        ))
+      end
+    | T_pair (ty1', ty2') -> begin
+        let e1' = Vlang.create_exp_uni_op_car e ty in
+        let fst = Core.List.map (read_nested_param_storage ty1' e1') ~f:(fun (obj, fl, exp) -> (
+          (obj, fl, exp)
+        )) in
+        let e2' = Vlang.create_exp_uni_op_cdr e ty in
+        let snd = Core.List.map (read_nested_param_storage ty2' e2') ~f:(fun (obj, fl, exp) -> (
+          (obj, fl, exp)
+        )) in
+        fst @ snd
+      end
+    | T_or (ty1', ty2') -> begin
+        let e' = Vlang.create_exp_uni_op_un_or e ty in
+        let left = Core.List.map (read_nested_param_storage ty1' e') ~f:(fun (obj, fl, exp) -> (
+          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_left e))::fl, exp)
+        )) in
+        let right = Core.List.map (read_nested_param_storage ty2' e') ~f:(fun (obj, fl, exp) -> (
+          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_right e))::fl, exp)
+        )) in
+        left @ right
+      end
+    | T_mutez -> [(Mutez, [], e)]
+    | _ -> []
+  end in
+  let create_formula_from_param_storage (obj, fl, exp) = begin
+    match obj with
+    | Mutez -> Core.List.fold_right fl ~f:(fun func formula -> func formula) ~init:(mutez_formula exp)
+  end in
+  Core.List.map (read_nested_param_storage param_storage_typ param_storage) ~f:create_formula_from_param_storage
 end
