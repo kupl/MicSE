@@ -55,7 +55,7 @@ let main : unit -> unit
   let _ = Core.List.iter bp_list ~f:(fun bp -> (
     let vlang_vc = Prover.Converter.convert bp cfg in
     let verify_result = Prover.Verifier.verify vlang_vc in
-    print_endline (string_of_bool verify_result)
+    print_endline (if verify_result then "valid" else "invalid")
   )) in
 
   (* Get *)
