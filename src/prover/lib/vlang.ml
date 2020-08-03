@@ -154,11 +154,6 @@ let create_formula_imply : v_formula -> v_formula -> v_formula
 let create_formula_iff : v_formula -> v_formula -> v_formula
 =fun f1 f2 -> VF_iff (f1, f2)
 
-let string_of_formula : v_formula -> string
-=fun f -> begin
-  ""
-end
-
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -417,3 +412,137 @@ let create_exp_operation_origination : typ -> v_exp
 
 let create_exp_operation_delegation : typ -> v_exp
 =fun t -> create_exp_operation VE_delegation t
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Stringify Modules                                                         *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let rec string_of_formula : v_formula -> string
+=fun f -> begin
+  match f with
+  | VF_true -> "True"
+  | VF_false -> "False"
+  | VF_not f' -> "!(" ^ (string_of_formula f') ^ ")"
+  | VF_and fl' -> Core.String.concat ~sep:" && " (Core.List.map fl' ~f:(fun f' -> "(" ^ (string_of_formula f') ^ ")"))
+  | VF_or fl' -> Core.String.concat ~sep:" || " (Core.List.map fl' ~f:(fun f' -> "(" ^ (string_of_formula f') ^ ")"))
+  | VF_uni_rel (vur, e1') -> begin
+      match vur with
+      | VF_is_true -> (string_of_formula VF_true) ^ " == (" ^ (string_of_exp e1') ^ ")"
+      | VF_is_none -> "None == (" ^ (string_of_exp e1') ^ ")"
+      | VF_is_left -> "Left x == (" ^ (string_of_exp e1') ^ ")"
+      | VF_is_cons -> "Cons x == (" ^ (string_of_exp e1') ^ ")"
+    end
+  | VF_bin_rel (vbr, e1', e2') -> begin
+      match vbr with
+      | VF_eq -> "(" ^ (string_of_exp e1') ^ ") == (" ^ (string_of_exp e2') ^ ")"
+      | VF_neq -> "(" ^ (string_of_exp e1') ^ ") != (" ^ (string_of_exp e2') ^ ")"
+      | VF_lt -> "(" ^ (string_of_exp e1') ^ ") < (" ^ (string_of_exp e2') ^ ")"
+      | VF_le -> "(" ^ (string_of_exp e1') ^ ") <= (" ^ (string_of_exp e2') ^ ")"
+      | VF_gt -> "(" ^ (string_of_exp e1') ^ ") > (" ^ (string_of_exp e2') ^ ")"
+      | VF_ge -> "(" ^ (string_of_exp e1') ^ ") >= (" ^ (string_of_exp e2') ^ ")"
+    end
+  | VF_imply (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") -> (" ^ (string_of_formula f2') ^ ")"
+  | VF_iff (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") <-> (" ^ (string_of_formula f2') ^ ")"
+end
+
+and string_of_exp : v_exp -> string
+=fun e -> begin
+  match e with
+  | VE_int n -> Z.to_string n
+  | VE_string s -> "\"" ^ s ^ "\""
+  | VE_bool f -> string_of_formula f
+  | VE_unit -> "Unit"
+  | VE_none _ -> "None"
+  | VE_uni_cont (vuc, e1', _) -> begin
+      match vuc with
+      | VE_left -> "Left (" ^ (string_of_exp e1') ^ ")"
+      | VE_right -> "Right (" ^ (string_of_exp e1') ^ ")"
+      | VE_some -> "Some (" ^ (string_of_exp e1') ^ ")"
+    end
+  | VE_bin_cont (vbc, e1', e2', _) -> begin
+      match vbc with
+      | VE_pair -> "Pair (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")"
+      | VE_elt -> "Elt (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")"
+    end
+  | VE_list (el', _) -> begin
+      "List [" ^ (Core.String.concat ~sep:"; " (Core.List.map el' ~f:(fun e' -> "(" ^ (string_of_exp e') ^ ")"))) ^ "]"
+    end
+  | VE_var (v, _) -> v
+  | VE_read (ie', ae') -> (string_of_exp ae') ^ "[" ^ (string_of_exp ie') ^ "]"
+  | VE_write  (ie', ve', ae') -> (string_of_exp ae') ^ "[" ^ (string_of_exp ie') ^ "] = (" ^ (string_of_exp ve') ^ ")"
+  | VE_nul_op (vno, _) -> begin
+      match vno with
+      | VE_self -> "SELF"
+      | VE_now -> "NOW"
+      | VE_amount -> "AMOUNT"
+      | VE_balance -> "BALANCE"
+      | VE_steps_to_quota -> "STEPS_TO_QUOTA"
+      | VE_source -> "SOURCE"
+      | VE_sender -> "SENDER"
+      | VE_chain_id -> "CHAIN_ID"
+    end
+  | VE_uni_op (vuo, e1', _) -> begin
+      match vuo with
+      | VE_car -> "CAR (" ^ (string_of_exp e1') ^ ")"
+      | VE_cdr -> "CDR (" ^ (string_of_exp e1') ^ ")"
+      | VE_abs -> "ABS (" ^ (string_of_exp e1') ^ ")"
+      | VE_neg -> "NEG (" ^ (string_of_exp e1') ^ ")"
+      | VE_not -> "NOT (" ^ (string_of_exp e1') ^ ")"
+      | VE_eq -> "EQ (" ^ (string_of_exp e1') ^ ")"
+      | VE_neq -> "NEQ (" ^ (string_of_exp e1') ^ ")"
+      | VE_lt -> "LT (" ^ (string_of_exp e1') ^ ")"
+      | VE_gt -> "GE (" ^ (string_of_exp e1') ^ ")"
+      | VE_leq -> "LEQ (" ^ (string_of_exp e1') ^ ")"
+      | VE_geq -> "GEQ (" ^ (string_of_exp e1') ^ ")"
+      | VE_cast -> "CAST (" ^ (string_of_exp e1') ^ ")"
+      | VE_concat -> "CONCAT (" ^ (string_of_exp e1') ^ ")"
+      | VE_pack -> "PACK (" ^ (string_of_exp e1') ^ ")"
+      | VE_unpack -> "UNPACK (" ^ (string_of_exp e1') ^ ")"
+      | VE_contract -> "CONTRACT (" ^ (string_of_exp e1') ^ ")"
+      | VE_account -> "ACCOUNT (" ^ (string_of_exp e1') ^ ")"
+      | VE_blake2b -> "BLAKE2B (" ^ (string_of_exp e1') ^ ")"
+      | VE_sha256 -> "SHA256 (" ^ (string_of_exp e1') ^ ")"
+      | VE_sha512 -> "SHA512 (" ^ (string_of_exp e1') ^ ")"
+      | VE_hash_key -> "HASH_KEY (" ^ (string_of_exp e1') ^ ")"
+      | VE_address -> "ADDRESS (" ^ (string_of_exp e1') ^ ")"
+      | VE_un_opt -> "UN_OPT (" ^ (string_of_exp e1') ^ ")"
+      | VE_un_or -> "UN_OR (" ^ (string_of_exp e1') ^ ")"
+      | VE_hd -> "HD (" ^ (string_of_exp e1') ^ ")"
+      | VE_tl -> "TL (" ^ (string_of_exp e1') ^ ")"
+      | VE_size -> "SIZE (" ^ (string_of_exp e1') ^ ")"
+      | VE_isnat -> "ISNAT (" ^ (string_of_exp e1') ^ ")"
+      | VE_int -> "INT (" ^ (string_of_exp e1') ^ ")"
+    end
+  | VE_bin_op (vbo, e1', e2', _) -> begin
+      match vbo with
+      | VE_add -> "ADD (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_sub -> "SUB (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_mul -> "MUL (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_ediv -> "EDIV (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_div -> "DIV (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_mod -> "MOD (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_lsl -> "LSL (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_lsr -> "LSR (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_and -> "AND (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_or -> "OR (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_xor -> "XOR (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_cmp -> "COMPARE (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_cons -> "CONS (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_concat -> "CONCAT (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_exec -> "EXEC (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_append -> "APPEND (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+    end
+  | VE_ter_op (vto, e1', e2', e3', _) -> begin
+      match vto with
+      | VE_slice -> "SLICE (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ") (" ^ (string_of_exp e3') ^ ")"
+      | VE_check_signature -> "CHECK_SIGNATURE (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ") (" ^ (string_of_exp e3') ^ ")"
+    end
+  | VE_lambda _ -> "LAMBDA"
+  | VE_operation (_, _) -> "OPERATION"
+end
+
+let string_of_vlang : t -> string
+=fun f -> string_of_formula f
