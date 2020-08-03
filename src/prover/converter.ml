@@ -34,7 +34,7 @@ and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
       (f'', g)
     end
   | BI_skip -> (f, g)
-  | _ -> (f, g)
+  (*| _ -> (f, g)*)
 end
 
 and read_type : Vlang.var -> Vlang.typ
