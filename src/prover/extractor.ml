@@ -31,16 +31,12 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
   end in
   let normal_search new_bp (edge, vtx) result = begin
     if Cfg.is_edge_normal edge then result@(translate new_bp vtx cfg)
-    else result (*raise (Failure "Extractor.translate: Wrong edge label")*)
+    else raise (Failure "Extractor.translate: Wrong edge label")
   end in
   let branch_search (new_bp_if, new_bp_else) (edge, vtx) result = begin
     if Cfg.is_edge_true edge then result@(translate new_bp_if vtx cfg)
     else if Cfg.is_edge_false edge then result@(translate new_bp_else vtx cfg)
-    else begin
-      let result_set = Core.Set.Poly.of_list (result@(translate new_bp_if vtx cfg)@(translate new_bp_else vtx cfg)) in
-      let result = Core.Set.Poly.to_list result_set in
-      result
-    end (*raise (Failure "Extractor.translate: Wrong edge label")*)
+    else raise (Failure "Extractor.translate: Wrong edge label")
   end in
   if Cfg.is_main_exit cfg cur_vtx then [cur_bp]
   else begin
