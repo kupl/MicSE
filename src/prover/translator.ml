@@ -2668,6 +2668,79 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let idip x = gen_t (I_dip x) in
     inst_to_cfg_handle_es counter (in_v, out_v) (func_in_v, func_out_v) (iseq idup (iseq icar (idip icdr))) (cfg, stack_info)
 
+  | I_micse_check i ->
+    (*  flow        : (in_v -> check_entry) & (check_entry [Check_skip]-> out_v)
+                      (check_entry -> (duplications ...) -> dup_end -> (i ...) -> check_value -> out_v)
+        variables   : cv_n (check-variable-n : they are all duplicated values)
+        vertex_info : in_v        -> Cfg_skip
+                      duplication -> Cfg_assign (cv_n, (E_itself v_x))
+                      check_entry -> Cfg_micse_check_entry
+                      dup_end     -> Cfg_skip
+                      check_value -> Cfg_micse_check_value check_var_top
+        type_info   : no change
+        stack_info  : no change
+    *)
+    let errmsg_gen s = ("inst_to_cfg : I_micse_check : " ^ s) in
+    let fold_func : (Cfg.t * Cfg.vertex * string list) -> string -> (Cfg.t * Cfg.vertex * string list)
+    =fun (cfgacc, f_in_v, strl) str -> begin
+      let errmsg_gen s = (errmsg_gen ("fold_func : " ^ s)) in
+      let ty = t_map_find ~errtrace:(errmsg_gen "t") cfgacc.type_info str in
+      let (cfgacc', cv) = t_add_nv_tinfo ~errtrace:(errmsg_gen "cfgacc'") counter ty (cfgacc, ()) in
+      let (cfgacc'', vtx) = begin
+        (cfgacc', ())
+        |> t_add_vtx counter
+        |> t_con_vtx_front f_in_v
+        |> t_add_vinfo_now ~errtrace:(errmsg_gen "cfgacc''") (Cfg_assign (cv, E_itself str))
+      end in
+      (cfgacc'', vtx, cv :: strl)
+    end in
+    let (cfg_vtx_added, (check_entry, dup_end, check_value)) = t_add_vtx_3 counter (cfg, ()) in
+    let (cfg_before_dup, _) = begin
+      (cfg_vtx_added, ())
+      |> t_add_edgs [(in_v, check_entry); (check_value, out_v)]
+      |> t_add_cskip_edg (check_entry, out_v)
+      |> t_add_vinfos ~errtrace:(errmsg_gen "cfg_before_dup") [(in_v, Cfg_skip); (check_entry, Cfg_micse_check_entry);]
+    end in
+    let (cfg_after_dup, last_vtx, rev_dup_stack_info) = Core.List.fold (ns_unlift stack_info) ~init:(cfg_before_dup, check_entry, []) ~f:fold_func in
+    let (cfg_before_inst, _) = t_add_edg (last_vtx, dup_end) (cfg_after_dup, ()) in
+    let (cfg_after_inst, after_inst_stack_info) = inst_to_cfg_handle_es counter (dup_end, check_value) (func_in_v, func_out_v) i (cfg_before_inst, NS (Core.List.rev rev_dup_stack_info)) in
+    let check_hd_v = ns_hd after_inst_stack_info in
+    let (cfg_end, _) = t_add_vinfo ~errtrace:(errmsg_gen "cfg_end") (check_value, Cfg_micse_check_value check_hd_v) (cfg_after_inst, ()) in
+    (cfg_end, stack_info)
+
+
+    (*  flow        : (in_v [If_true]-> body_begin) & (in_v [If_false] -> out_v)
+                      & (body_begin -> (i ...) -> body_end) & (body_end -> (assigns ...) -> in_v)
+        variables   : var-1 : condition boolean variable located at the top of the stack
+        vertex_info : in_v        ->  Cfg_loop (var-1)
+                      body_begin  ->  decided by "i"
+                      body_end    ->  Cfg_skip
+        type_info   : no change
+        stack_info  : top element will be removed.
+        others      : be aware of stack_info scheme when enter "body_begin" and get out of "out_v"
+    *)
+    (*
+    let gen_errmsg s : string = ("inst_to_cfg : I_dip : " ^ s) in
+    let (cfg_vv_added, (v_begin, v_end)) = t_add_vtx_2 counter (cfg, ()) in
+    let (cfg_v_linked, _) = begin
+      (cfg_vv_added, ())
+      (*|> t_add_edgs [(in_v, v_begin); (v_end, out_v);] *)
+      |> t_add_edg (in_v, v_begin)
+      |> t_add_vinfos ~errtrace:(gen_errmsg "add vinfos") [(in_v, Cfg_skip); (v_end, Cfg_skip); ]
+    end in
+    let (cfg_i_added, stack_info_i_added) = inst_to_cfg_handle_es counter (v_begin, v_end) (func_in_v, func_out_v) i (cfg_v_linked, ns_tl stack_info) in
+    if (is_es stack_info_i_added)
+    then (
+      let cfg_vend_linked = fail_edg_add (v_end, out_v) cfg_i_added in
+      (cfg_vend_linked, stack_info_i_added)
+    )
+    else (
+      let cfg_vend_linked = edg_add (v_end, out_v) cfg_i_added in
+      (cfg_vend_linked, ns_cons (ns_hd stack_info) stack_info_i_added)
+    )
+    *)
+    (* TODO : complete this *)
+
   (*| _ -> fail "inst_to_cfg : not implemented."*)
 end
 

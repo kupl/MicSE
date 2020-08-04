@@ -53,7 +53,10 @@ let ident = letter (letter | digit | '_')*
 let hex = "0x" ['0'-'9' 'a'-'f' 'A'-'F']+
 let comment = '#' [^ '\n']* new_line
 
+let micse_check = "#__MICSE_CHECK"
+
 rule next_token = parse
+  | micse_check   { I_MICSE_CHECK }
   | comment       { new_line lexbuf; next_token lexbuf }
   | new_line      { new_line lexbuf; next_token lexbuf }
   | space+        { next_token lexbuf }

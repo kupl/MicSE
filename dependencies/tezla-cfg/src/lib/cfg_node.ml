@@ -26,6 +26,8 @@ type stmt =
   | Cfg_map of string
   | Cfg_iter of string
   | Cfg_failwith of string
+  | Cfg_micse_check_entry
+  | Cfg_micse_check_value of string
   
 
 type t = { id : int; stmt : stmt }
@@ -56,6 +58,8 @@ let to_string n =
     | Cfg_map s -> fprintf str_formatter "MAP %s" s
     | Cfg_iter s -> fprintf str_formatter "ITER %s" s
     | Cfg_failwith s -> fprintf str_formatter "FAILWITH %s" s
+    | Cfg_micse_check_entry -> fprintf str_formatter "CHECK_ENTRY"
+    | Cfg_micse_check_value s -> fprintf str_formatter "CHECK_VALUE %s" s
   in
   flush_str_formatter ()
 

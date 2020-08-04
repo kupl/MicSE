@@ -9,7 +9,7 @@ let fail s = raise (Exn_Cfg s)
 (*****************************************************************************)
 
 type vertex = int
-type edge_label = | Normal | If_true | If_false | Failed
+type edge_label = | Normal | If_true | If_false | Failed | Check_skip
 
 module V = struct
   type t = int
@@ -145,6 +145,7 @@ let edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> {cfg with 
 let tedg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 If_true v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
 let fedg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 If_false v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
 let fail_edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 Failed v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
+let cskip_edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 Check_skip v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
 
 let t_map_add ?(errtrace = "") m k v = begin
   match Core.Map.Poly.add m ~key:k ~data:v with
@@ -194,6 +195,7 @@ end
 let t_add_tedg (v1, v2) (cfg, _) = (tedg_add (v1, v2) cfg, v2)
 let t_add_fedg (v1, v2) (cfg, _) = (fedg_add (v1, v2) cfg, v2)
 let t_add_fail_edg (v1, v2) (cfg, _) = (fail_edg_add (v1, v2) cfg, v2)
+let t_add_cskip_edg (v1, v2) (cfg, _) = (cskip_edg_add (v1, v2) cfg, v2)
 
 let t_add_vinfo ?(errtrace = "") (v, s) (cfg, _) = begin
   ({cfg with vertex_info=(t_map_add ~errtrace:(errtrace ^ " : t_add_vinfo") cfg.vertex_info v s);}, v)
@@ -353,7 +355,7 @@ let cfg_to_dotformat : t -> string
   =fun (in_v, e_label, out_v) acc -> begin
     let body_s = (string_of_int in_v) ^ " -> " ^ (string_of_int out_v) in
     (* edge label and style *)
-    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" | Failed -> "[label=\"Failed\", style=dotted]" in
+    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" | Failed -> "[label=\"Failed\", style=dotted]" | Check_skip -> "[label=\"Check_skip\", style=dotted]" in
     (body_s ^ " " ^ edge_s ^ ";") :: acc
   end in
   let flow_s = begin

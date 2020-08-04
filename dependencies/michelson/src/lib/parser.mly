@@ -53,6 +53,8 @@
 %token T_MUTEZ T_BOOL T_KEY_HASH T_TIMESTAMP T_ADDRESS I_IF_SOME I_IF_RIGHT
 %token EOF
 
+%token I_MICSE_CHECK
+
 %start <Adt.program> start
 
 %%
@@ -117,6 +119,7 @@ instruction_d:
 
 instruction_d_t:
     { I_noop }
+  | I_MICSE_CHECK i=instruction_block { I_micse_check i }
   | I_DROP  { I_drop }
   | I_DROP n=NUM { I_drop_n n }
   | I_DUP { I_dup }

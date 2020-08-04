@@ -148,6 +148,7 @@ let rec inst fmt i =
   | I_unpack t -> fprintf fmt "UNPACK %a" typ t
   | I_contract t -> fprintf fmt "CONTRACT %a" typ t
   | I_create_contract p -> fprintf fmt "CREATE_CONTRACT { %a }" program p
+  | I_micse_check i -> fprintf fmt "CHECK { %a }" inst i
 
 and program fmt { code; param; storage } =
   let () = fprintf fmt "parameter %a;\n" typ param in

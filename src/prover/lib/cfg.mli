@@ -8,7 +8,7 @@
 (*****************************************************************************)
 
 type vertex = int
-type edge_label = | Normal | If_true | If_false | Failed
+type edge_label = | Normal | If_true | If_false | Failed | Check_skip
 
 module V : Graph.Sig.COMPARABLE with type t = vertex         (* VERTEX *)
 module E : Graph.Sig.ORDERED_TYPE_DFT with type t = edge_label   (* EDGE LABLE *)
@@ -121,6 +121,7 @@ val edg_add : (vertex * vertex) -> t-> t
 val tedg_add : (vertex * vertex) -> t -> t
 val fedg_add : (vertex * vertex) -> t -> t
 val fail_edg_add : (vertex * vertex) -> t -> t
+val cskip_edg_add : (vertex * vertex) -> t -> t
 
 val t_add_vtx   : cfgcon_ctr -> (t * 'a) -> (t * vertex)                                        (* t_add_vtx counter (cfg, _) = (cfg-flow-updated, created-vertex) *)
 val t_add_vtx_2 : cfgcon_ctr -> (t * 'a) -> (t * (vertex * vertex))                             (* t_add_vtx_2 (cfg, _) = (cfg-flow-updated, created-vertices) *)
@@ -133,6 +134,7 @@ val t_add_edgs  : (vertex * vertex) list  -> (t * 'a) -> (t * (vertex list))    
 val t_add_tedg  : (vertex * vertex)       -> (t * 'a) -> (t * vertex)
 val t_add_fedg  : (vertex * vertex)       -> (t * 'a) -> (t * vertex)
 val t_add_fail_edg : (vertex * vertex)    -> (t * 'a) -> (t * vertex)
+val t_add_cskip_edg : (vertex * vertex)    -> (t * 'a) -> (t * vertex)
 
 val t_add_vinfo   : ?errtrace:string  -> (vertex * stmt)      -> (t * 'a) -> (t * vertex)
 val t_add_vinfos  : ?errtrace:string -> (vertex * stmt) list  -> (t * 'a) -> (t * (vertex list))

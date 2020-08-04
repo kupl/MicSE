@@ -101,5 +101,6 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
         let new_bp = Bp.update_body cur_bp inst in
         [new_bp]
       end
+    | _ -> raise (Failure "Extractor.translate: Not Implemented.")
   end
 end

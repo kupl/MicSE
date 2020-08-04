@@ -24,6 +24,7 @@ type typ =
   | T_address
 
 and inst =
+  | I_micse_check of inst t   (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
   | I_seq of inst t * inst t
   | I_drop
   | I_drop_n of Z.t

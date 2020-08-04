@@ -681,6 +681,7 @@ let rec inst_to_stmt contract_t counter env =
           let t_1, t_2 = (car_t t, cdr_t t) in
           ( create_stmt (S_seq (assign_1, assign_2)),
             push (v_1, t_1) (push (v_2, t_2) env') )
+      | I_micse_check _ -> (create_stmt S_skip, env)
     with exn -> (
       match i.pos with
       | Michelson.Location.Pos (s, e) ->
