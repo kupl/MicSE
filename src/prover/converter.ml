@@ -26,6 +26,10 @@ and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
       let f' = Vlang.create_formula_and [(create_convert_cond c); f] in
       (f', g)
     end
+  | BI_assert c -> begin
+      let g' = Vlang.create_formula_imply f (create_convert_cond c) in
+      (f, g')
+    end
   | BI_assign (v, e) -> begin
       let v' = create_rename_var v in
       let f' = create_rewrite_formula v v' f in
@@ -34,7 +38,6 @@ and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
       (f'', g)
     end
   | BI_skip -> (f, g)
-  (*| _ -> (f, g)*)
 end
 
 and read_type : Vlang.var -> Vlang.typ
@@ -110,7 +113,7 @@ and create_convert_data : Vlang.data -> Vlang.typ -> Vlang.v_exp
   | D_none, T_option t' -> Vlang.create_exp_none t'
   | D_elt (c1, c2), T_map (t1, t2) -> Vlang.create_exp_bin_cont_elt (create_convert_data c1 t1) (create_convert_data c2 t2) t
   | D_list cl, T_list t' -> Vlang.create_exp_list (Core.List.map cl ~f:(fun c -> (create_convert_data c t'))) t
-  | _ -> raise (Failure "Wrong data and type")
+  | _ -> raise (Failure "Converter.create_convert_data: Wrong data and type")
 end
 
 and create_convert_cond : Bp.cond -> Vlang.v_formula
@@ -209,7 +212,7 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_empty_big_map _ -> Vlang.create_exp_list [] t
   | E_append (v1, v2) -> Vlang.create_exp_bin_op_append (create_var v1) (create_var v2) t
   | E_special_nil_list -> Vlang.create_exp_list [] t
-  | E_phi (_, _) -> raise (Failure "Phi Function")
+  | E_phi (_, _) -> raise (Failure "Converter.create_convert_exp: Phi Function")
 end
 
 and create_precond_from_param_storage : unit -> Vlang.v_formula list

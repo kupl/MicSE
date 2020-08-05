@@ -5,38 +5,13 @@
 (*****************************************************************************)
 
 type typ = Adt.typ
+
 type var = Cfg.ident
   (*
     type indent = string
   *)
 
-type cond = 
-  | BC_is_true of var
-  | BC_is_none of var
-  | BC_is_left of var
-  | BC_is_cons of var
-  | BC_not of cond
-
-val create_cond_is_true : var -> cond
-
-val create_cond_is_none : var -> cond
-
-val create_cond_is_left : var -> cond
-
-val create_cond_is_cons : var -> cond
-
-val create_cond_not : cond -> cond
-
-val string_of_cond : cond -> string
-
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Instruction                                                               *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-type exp = Cfg.expr
+and exp = Cfg.expr
   (*
     type expr =
     | E_push of data * typ
@@ -48,6 +23,7 @@ type exp = Cfg.expr
     | E_add of string * string
     | E_sub of string * string
     | E_mul of string * string
+    | E_ediv of string * string
     | E_div of string * string
     | E_mod of string * string
     | E_shiftL of string * string
@@ -105,6 +81,7 @@ type exp = Cfg.expr
     | E_chain_id
     | E_create_account_address of operation
     | E_lambda of typ * typ * func
+    | E_lambda_id of int
     | E_exec of string * string
     | E_dup of string
     | E_nil of typ
@@ -114,13 +91,17 @@ type exp = Cfg.expr
     | E_append of string * string
     | E_special_nil_list
     | E_phi of string * string
+    | E_itself of string
   *)
 type inst =
   | BI_assume of cond
+  | BI_assert of cond
   | BI_assign of var * exp
   | BI_skip
 
 val create_inst_assume : cond -> inst
+
+val create_inst_assert : cond -> inst
 
 val create_inst_assign : (var * exp) -> inst
 

@@ -5,7 +5,10 @@
 (*****************************************************************************)
 
 type typ = Adt.typ
+
 type var = Cfg.ident
+and exp = Cfg.expr
+
 type cond =
   | BC_is_true of var
   | BC_is_none of var
@@ -45,14 +48,17 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-type exp = Cfg.expr
 type inst =
   | BI_assume of cond
+  | BI_assert of cond
   | BI_assign of var * exp
   | BI_skip
 
 let create_inst_assume : cond -> inst
 =fun f -> BI_assume f
+
+let create_inst_assert : cond -> inst
+=fun f -> BI_assert f
 
 let create_inst_assign : (var * exp) -> inst
 =fun (id, e) -> BI_assign (id, e)
@@ -64,6 +70,7 @@ let string_of_inst : inst -> string
 =fun inst -> begin
   match inst with
   | BI_assume f -> "Assume " ^ (string_of_cond f) ^ ";"
+  | BI_assert f -> "Assert " ^ (string_of_cond f) ^ ";"
   | BI_assign (id, e) -> (Cfg.string_of_ident id) ^ " := " ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ";"
   | BI_skip -> "Skip;"
 end
