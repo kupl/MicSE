@@ -20,8 +20,8 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
     let f_else = Bp.create_cond_not f_if in
     let inst_if = Bp.create_inst_assume f_if in
     let inst_else = Bp.create_inst_assume f_else in
-    let new_bp_if = Bp.update_body cur_bp inst_if in
-    let new_bp_else = Bp.update_body cur_bp inst_else in
+    let new_bp_if = update_current_bp cur_bp (Some inst_if) in
+    let new_bp_else = update_current_bp cur_bp (Some inst_else) in
     (new_bp_if, new_bp_else)
   end in
   let make_loop_bp loop = begin
@@ -42,15 +42,17 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
   else begin
     match stmt with
     | Cfg_assign (id, e) -> begin
+        let assert_inst = create_basic_safety_property e (Cfg.CPMap.find_exn cfg.type_info id) in
+        let new_bp = update_current_bp cur_bp assert_inst in
         let inst = Bp.create_inst_assign (id, e) in
-        let new_bp = Bp.update_body cur_bp inst in
-        let search = normal_search new_bp in
+        let new_bp' = update_current_bp new_bp (Some inst) in
+        let search = normal_search new_bp' in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_skip | Cfg_drop _ | Cfg_swap | Cfg_dig | Cfg_dug -> begin
         let inst = Bp.create_inst_skip () in
-        let new_bp = Bp.update_body cur_bp inst in
+        let new_bp = update_current_bp cur_bp (Some inst) in
         let search = normal_search new_bp in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
@@ -94,9 +96,25 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
       end
     | Cfg_failwith _ -> begin
         let inst = Bp.create_inst_skip () in
-        let new_bp = Bp.update_body cur_bp inst in
+        let new_bp = update_current_bp cur_bp (Some inst) in
         [new_bp]
       end
     | _ -> raise (Failure "Extractor.translate: Not Implemented.")
   end
+end
+
+and create_basic_safety_property : Bp.exp -> Bp.typ -> Bp.inst option
+=fun e t -> begin
+  match e with
+  | E_add _ -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t))
+  | E_sub _ -> Some (Bp.create_inst_assert (Bp.create_cond_no_underflow e t))
+  | E_mul _ -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t))
+  | _ -> None
+end
+
+and update_current_bp : Bp.t -> Bp.inst option -> Bp.t
+=fun cur_bp inst_opt -> begin
+  match inst_opt with
+  | None -> cur_bp
+  | Some inst -> Bp.update_body cur_bp inst
 end

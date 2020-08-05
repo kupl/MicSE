@@ -123,6 +123,16 @@ and create_convert_cond : Bp.cond -> Vlang.v_formula
   | BC_is_none v -> Vlang.create_formula_is_none (create_var v) 
   | BC_is_left v -> Vlang.create_formula_is_left (create_var v)
   | BC_is_cons v -> Vlang.create_formula_is_cons (create_var v)
+  | BC_no_overflow (e, t) -> begin
+      match t.d with
+      | T_mutez -> Vlang.create_formula_lt (create_convert_exp e t) Vlang.mutez_upper_bound
+      | _ -> raise (Failure "Converter.create_convert_cond: Wrong type expression on no overflow condition")
+    end
+  | BC_no_underflow (e, t) -> begin
+      match t.d with
+      | T_mutez -> Vlang.create_formula_le Vlang.mutez_lower_bound (create_convert_exp e t)
+      | _ -> raise (Failure "Converter.create_convert_cond: Wrong type expression on no underflow condition")
+    end
   | BC_not c -> Vlang.create_formula_not (create_convert_cond c)
 end
 
@@ -221,10 +231,8 @@ and create_precond_from_param_storage : unit -> Vlang.v_formula list
   let param_storage = create_var param_storage_var in
   let param_storage_typ = read_type param_storage_var in
   let mutez_formula e = begin
-    let mutez_upper_bound = Vlang.create_exp_int_of_string "9223372036854775808" in
-    let mutez_lower_bound = Vlang.create_exp_int_of_string "0" in
-    let lower_formula = Vlang.create_formula_le mutez_lower_bound e in
-    let upper_formula = Vlang.create_formula_lt e mutez_upper_bound in
+    let lower_formula = Vlang.create_formula_le Vlang.mutez_lower_bound e in
+    let upper_formula = Vlang.create_formula_lt e Vlang.mutez_upper_bound in
     Vlang.create_formula_and [lower_formula; upper_formula]
   end in
   let rec read_nested_param_storage : Vlang.typ -> Vlang.v_exp -> (object_typ * (Vlang.v_formula -> Vlang.v_formula) list * Vlang.v_exp) list

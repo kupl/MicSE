@@ -93,6 +93,39 @@ and exp = Cfg.expr
     | E_phi of string * string
     | E_itself of string
   *)
+
+type cond =
+  | BC_is_true of var
+  | BC_is_none of var
+  | BC_is_left of var
+  | BC_is_cons of var
+  | BC_no_overflow of exp * typ
+  | BC_no_underflow of exp * typ
+  | BC_not of cond
+
+val create_cond_is_true : var -> cond
+
+val create_cond_is_none : var -> cond
+
+val create_cond_is_left : var -> cond
+
+val create_cond_is_cons : var -> cond
+
+val create_cond_no_overflow : exp -> typ -> cond
+
+val create_cond_no_underflow : exp -> typ -> cond
+
+val create_cond_not : cond -> cond
+
+val string_of_cond : cond -> string
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Instruction                                                               *)
+(*****************************************************************************)
+(*****************************************************************************)
+
 type inst =
   | BI_assume of cond
   | BI_assert of cond

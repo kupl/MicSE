@@ -413,6 +413,12 @@ let create_exp_operation_origination : typ -> v_exp
 let create_exp_operation_delegation : typ -> v_exp
 =fun t -> create_exp_operation VE_delegation t
 
+let mutez_upper_bound : v_exp
+=create_exp_int_of_string "9223372036854775808"
+
+let mutez_lower_bound : v_exp
+=create_exp_int_of_string "0"
+
 
 (*****************************************************************************)
 (*****************************************************************************)

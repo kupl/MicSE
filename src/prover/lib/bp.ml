@@ -14,6 +14,8 @@ type cond =
   | BC_is_none of var
   | BC_is_left of var
   | BC_is_cons of var
+  | BC_no_overflow of exp * typ
+  | BC_no_underflow of exp * typ
   | BC_not of cond
 
 let create_cond_is_true : var -> cond
@@ -28,6 +30,12 @@ let create_cond_is_left : var -> cond
 let create_cond_is_cons : var -> cond
 =fun v -> BC_is_cons v
 
+let create_cond_no_overflow : exp -> typ -> cond
+=fun e t -> BC_no_overflow (e, t)
+
+let create_cond_no_underflow : exp -> typ -> cond
+=fun e t -> BC_no_underflow (e, t)
+
 let create_cond_not : cond -> cond
 =fun c -> BC_not c
 
@@ -38,6 +46,8 @@ let rec string_of_cond : cond -> string
   | BC_is_none v -> v ^ "= None"
   | BC_is_left v -> v ^ "= Left x"
   | BC_is_cons v -> v ^ "= Cons (hd tl)"
+  | BC_no_overflow (e, _) -> "(" ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ")_no_overflow"
+  | BC_no_underflow (e, _) -> "(" ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ")_no_underflow"
   | BC_not c -> "!(" ^ (string_of_cond c) ^ ")"
 end
 

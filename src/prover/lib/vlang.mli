@@ -441,6 +441,10 @@ val create_exp_operation_origination : typ -> v_exp
 
 val create_exp_operation_delegation : typ -> v_exp
 
+val mutez_upper_bound : v_exp
+
+val mutez_lower_bound : v_exp
+
 
 (*****************************************************************************)
 (*****************************************************************************)
