@@ -30,7 +30,8 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
     (terminated_bp, loop_bp, new_bp)
   end in
   let normal_search new_bp (edge, vtx) result = begin
-    if Cfg.is_edge_normal edge then result@(translate new_bp vtx cfg)
+    if (Cfg.is_edge_normal edge) then result@(translate new_bp vtx cfg)
+    else if (Cfg.is_edge_check_skip edge) then result
     else raise (Failure "Extractor.translate: Wrong edge label")
   end in
   let branch_search (new_bp_if, new_bp_else) (edge, vtx) result = begin
@@ -51,7 +52,7 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
         result
       end
     | Cfg_skip | Cfg_drop _ | Cfg_swap | Cfg_dig | Cfg_dug -> begin
-        let inst = Bp.create_inst_skip () in
+        let inst = Bp.create_inst_skip in
         let new_bp = update_current_bp cur_bp (Some inst) in
         let search = normal_search new_bp in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
@@ -95,11 +96,26 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
         result
       end
     | Cfg_failwith _ -> begin
-        let inst = Bp.create_inst_skip () in
+        let inst = Bp.create_inst_skip in
         let new_bp = update_current_bp cur_bp (Some inst) in
         [new_bp]
       end
-    | _ -> raise (Failure "Extractor.translate: Not Implemented.")
+    | Cfg_micse_check_entry -> begin
+        let inst = Bp.create_inst_skip in
+        let new_bp = update_current_bp cur_bp (Some inst) in
+        let search = normal_search new_bp in
+        let result = Core.List.fold_right succ ~f:search ~init:[] in
+        result
+      end
+    | Cfg_micse_check_value id -> begin
+        let f_assert = Bp.create_cond_is_true id in
+        let inst = Bp.create_inst_assert f_assert in
+        let new_bp = update_current_bp cur_bp (Some inst) in
+        let search = normal_search new_bp in
+        let result = Core.List.fold_right succ ~f:search ~init:[] in
+        result
+      end
+    (*| _ -> raise (Failure "Extractor.translate: Not Implemented.")*)
   end
 end
 

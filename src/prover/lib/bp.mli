@@ -138,7 +138,7 @@ val create_inst_assert : cond -> inst
 
 val create_inst_assign : (var * exp) -> inst
 
-val create_inst_skip : unit -> inst
+val create_inst_skip : inst
 
 val string_of_inst : inst -> string
 

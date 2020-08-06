@@ -73,8 +73,8 @@ let create_inst_assert : cond -> inst
 let create_inst_assign : (var * exp) -> inst
 =fun (id, e) -> BI_assign (id, e)
 
-let create_inst_skip : unit -> inst
-=fun () -> BI_skip
+let create_inst_skip : inst
+=BI_skip
 
 let string_of_inst : inst -> string
 =fun inst -> begin

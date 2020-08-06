@@ -22,6 +22,8 @@ val is_edge_false : E.t -> bool
 
 val is_edge_failed : E.t -> bool
 
+val is_edge_check_skip : E.t -> bool
+
 val string_of_vertex : vertex -> string
 
 (*****************************************************************************)

@@ -38,6 +38,9 @@ let is_edge_false : E.t -> bool
 let is_edge_failed : E.t -> bool
 =fun edge -> (edge = Failed)
 
+let is_edge_check_skip : E.t -> bool
+=fun edge -> (edge = Check_skip)
+
 let string_of_vertex : vertex -> string
 =fun vtx -> (string_of_int vtx)
 
