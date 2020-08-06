@@ -105,11 +105,11 @@ end
 
 and create_basic_safety_property : Bp.exp -> Bp.typ -> Bp.inst option
 =fun e t -> begin
-  match e with
-  | E_add _ -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t))
-  | E_sub _ -> Some (Bp.create_inst_assert (Bp.create_cond_no_underflow e t))
-  | E_mul _ -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t))
-  | _ -> None
+  match (e, t.d) with
+  | E_add _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t))
+  | E_sub _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_underflow e t))
+  | E_mul _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t))
+  | _, _ -> None
 end
 
 and update_current_bp : Bp.t -> Bp.inst option -> Bp.t
