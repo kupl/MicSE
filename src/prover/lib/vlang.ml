@@ -500,7 +500,7 @@ and string_of_exp : v_exp -> string
       | VE_eq -> "EQ (" ^ (string_of_exp e1') ^ ")"
       | VE_neq -> "NEQ (" ^ (string_of_exp e1') ^ ")"
       | VE_lt -> "LT (" ^ (string_of_exp e1') ^ ")"
-      | VE_gt -> "GE (" ^ (string_of_exp e1') ^ ")"
+      | VE_gt -> "GT (" ^ (string_of_exp e1') ^ ")"
       | VE_leq -> "LEQ (" ^ (string_of_exp e1') ^ ")"
       | VE_geq -> "GEQ (" ^ (string_of_exp e1') ^ ")"
       | VE_cast -> "CAST (" ^ (string_of_exp e1') ^ ")"
