@@ -166,6 +166,10 @@ let create_unit : z_expr
 =Z3.Expr.mk_const !ctx (create_symbol "UNIT") create_unit_sort
 
 
+let create_forall : z_expr list -> z_expr -> z_expr
+=fun vl f -> Z3.Quantifier.expr_of_quantifier (Z3.Quantifier.mk_forall_const !ctx vl f None [] [] None None)
+
+
 let create_bool_true : z_expr
 =Z3.Boolean.mk_true !ctx
 

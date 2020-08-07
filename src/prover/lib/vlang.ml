@@ -22,6 +22,7 @@ and v_formula =
   | VF_bin_rel of v_bin_rel * v_exp * v_exp
   | VF_imply of v_formula * v_formula
   | VF_iff of v_formula * v_formula
+  | VF_forall of (var * typ) list * v_formula
 
 and v_uni_rel =
   | VF_is_true  | VF_is_none  | VF_is_left  | VF_is_cons
@@ -153,6 +154,9 @@ let create_formula_imply : v_formula -> v_formula -> v_formula
 
 let create_formula_iff : v_formula -> v_formula -> v_formula
 =fun f1 f2 -> VF_iff (f1, f2)
+
+let create_formula_forall : (var * typ) list -> v_formula -> v_formula
+=fun vl f -> VF_forall (vl, f)
 
 
 (*****************************************************************************)
@@ -452,6 +456,7 @@ let rec string_of_formula : v_formula -> string
     end
   | VF_imply (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") -> (" ^ (string_of_formula f2') ^ ")"
   | VF_iff (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") <-> (" ^ (string_of_formula f2') ^ ")"
+  | VF_forall (vl', f') -> "ForAll " ^ (Core.String.concat ~sep:", " (Core.List.map vl' ~f:(fun (v', t') -> v'))) ^ ". " ^ (string_of_formula f')
 end
 
 and string_of_exp : v_exp -> string

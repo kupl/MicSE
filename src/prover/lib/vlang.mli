@@ -154,6 +154,7 @@ and v_formula =
   | VF_bin_rel of v_bin_rel * v_exp * v_exp
   | VF_imply of v_formula * v_formula
   | VF_iff of v_formula * v_formula
+  | VF_forall of (var * typ) list * v_formula
 
 and v_uni_rel =
   | VF_is_true  | VF_is_none  | VF_is_left  | VF_is_cons
@@ -265,6 +266,8 @@ val create_formula_ge : v_exp -> v_exp -> v_formula
 val create_formula_imply : v_formula -> v_formula -> v_formula
 
 val create_formula_iff : v_formula -> v_formula -> v_formula
+
+val create_formula_forall : (var * typ) list -> v_formula -> v_formula
 
 
 (*****************************************************************************)

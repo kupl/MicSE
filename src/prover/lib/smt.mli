@@ -116,6 +116,9 @@ val create_ite : z_expr -> z_expr -> z_expr -> z_expr
 val create_unit : z_expr
 
 
+val create_forall : z_expr list -> z_expr -> z_expr
+
+
 val create_bool_true : z_expr
 
 val create_bool_false : z_expr

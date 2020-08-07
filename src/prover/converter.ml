@@ -73,6 +73,11 @@ and create_rewrite_formula : Vlang.var -> Vlang.var -> Vlang.v_formula -> Vlang.
   | VF_bin_rel (vr, e1, e2) -> Vlang.create_formula_bin_rel vr (exp_rewrite e1) (exp_rewrite e2)
   | VF_imply (vf1, vf2) -> Vlang.create_formula_imply (nested_rewrite vf1) (nested_rewrite vf2)
   | VF_iff (vf1, vf2) -> Vlang.create_formula_iff (nested_rewrite vf1) (nested_rewrite vf2)
+  | VF_forall (vvl, vf) -> begin
+      let vvl' = Core.List.map vvl ~f:(fun (vv, vt) -> (if vv = v then (v', vt) else (vv, vt))) in
+      let vf' = nested_rewrite vf in
+      Vlang.create_formula_forall vvl' vf'
+    end
 end
 
 and create_rewrite_exp : Vlang.var -> Vlang.var -> Vlang.v_exp -> Vlang.v_exp

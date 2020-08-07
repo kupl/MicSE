@@ -88,6 +88,11 @@ and create_convert_vformula : Vlang.v_formula -> Smt.z_expr
     end
   | VF_imply (f1, f2) -> Smt.create_bool_imply (create_convert_vformula f1) (create_convert_vformula f2)
   | VF_iff (f1, f2) -> Smt.create_bool_iff (create_convert_vformula f1) (create_convert_vformula f2)
+  | VF_forall (vl, f) -> begin
+      let vl' = Core.List.map vl ~f:(fun (v, t) -> Smt.read_var (Smt.create_symbol v) (sort_of_typt t)) in
+      let f' = create_convert_vformula f in
+      Smt.create_forall vl' f'
+    end
 end
 
 and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
