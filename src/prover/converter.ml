@@ -1,12 +1,17 @@
 open ProverLib
 
 type object_typ =
+  | Mutez_Map
   | Mutez
 
 (************************************************)
 (************************************************)
 
 let type_map = ref Cfg.CPMap.empty
+
+let bound_count = ref 0
+let create_new_bound : unit -> Vlang.var
+=fun () -> bound_count := !bound_count + 1; "bnd_" ^ (string_of_int !bound_count)
 
 
 let rec convert : Bp.t -> Cfg.t -> Vlang.t
@@ -240,41 +245,51 @@ and create_precond_from_param_storage : unit -> Vlang.v_formula list
     let upper_formula = Vlang.create_formula_lt e Vlang.mutez_upper_bound in
     Vlang.create_formula_and [lower_formula; upper_formula]
   end in
-  let rec read_nested_param_storage : Vlang.typ -> Vlang.v_exp -> (object_typ * (Vlang.v_formula -> Vlang.v_formula) list * Vlang.v_exp) list
+  let rec read_nested_param_storage : Vlang.typ -> Vlang.v_exp -> (object_typ * (Vlang.v_formula -> Vlang.v_formula) list * Vlang.v_exp * (Vlang.var * Vlang.typ) option) list
   =fun ty e -> begin
     match ty.d with
     | T_option ty' -> begin
         let e' = Vlang.create_exp_uni_op_un_opt e ty in
-        Core.List.map (read_nested_param_storage ty' e') ~f:(fun (obj, fl, exp) -> (
-          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_some e))::fl, exp)
+        Core.List.map (read_nested_param_storage ty' e') ~f:(fun (obj, fl, exp, bound) -> (
+          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_some e))::fl, exp, bound)
         ))
       end
     | T_pair (ty1', ty2') -> begin
         let e1' = Vlang.create_exp_uni_op_car e ty in
-        let fst = Core.List.map (read_nested_param_storage ty1' e1') ~f:(fun (obj, fl, exp) -> (
-          (obj, fl, exp)
+        let fst = Core.List.map (read_nested_param_storage ty1' e1') ~f:(fun (obj, fl, exp, bound) -> (
+          (obj, fl, exp, bound)
         )) in
         let e2' = Vlang.create_exp_uni_op_cdr e ty in
-        let snd = Core.List.map (read_nested_param_storage ty2' e2') ~f:(fun (obj, fl, exp) -> (
-          (obj, fl, exp)
+        let snd = Core.List.map (read_nested_param_storage ty2' e2') ~f:(fun (obj, fl, exp, bound) -> (
+          (obj, fl, exp, bound)
         )) in
         fst @ snd
       end
     | T_or (ty1', ty2') -> begin
         let e' = Vlang.create_exp_uni_op_un_or e ty in
-        let left = Core.List.map (read_nested_param_storage ty1' e') ~f:(fun (obj, fl, exp) -> (
-          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_left e))::fl, exp)
+        let left = Core.List.map (read_nested_param_storage ty1' e') ~f:(fun (obj, fl, exp, bound) -> (
+          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_left e))::fl, exp, bound)
         )) in
-        let right = Core.List.map (read_nested_param_storage ty2' e') ~f:(fun (obj, fl, exp) -> (
-          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_right e))::fl, exp)
+        let right = Core.List.map (read_nested_param_storage ty2' e') ~f:(fun (obj, fl, exp, bound) -> (
+          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_right e))::fl, exp, bound)
         )) in
         left @ right
       end
-    | T_mutez -> [(Mutez, [], e)]
+    | T_map (ty1', ty2') -> begin
+        match ty2'.d with
+        | T_mutez -> begin
+            let bound = create_new_bound () in
+            let map_entry = Vlang.create_exp_read (Vlang.create_exp_var bound ty1') e in
+            [(Mutez_Map, [], map_entry, Some (bound, ty1'))]
+          end
+        | _ -> []
+      end
+    | T_mutez -> [(Mutez, [], e, None)]
     | _ -> []
   end in
-  let create_formula_from_param_storage (obj, fl, exp) = begin
+  let create_formula_from_param_storage (obj, fl, exp, bound) = begin
     match obj with
+    | Mutez_Map -> Vlang.create_formula_forall [(Option.get bound)] (Core.List.fold_right fl ~f:(fun func formula -> func formula) ~init:(mutez_formula exp))
     | Mutez -> Core.List.fold_right fl ~f:(fun func formula -> func formula) ~init:(mutez_formula exp)
   end in
   Core.List.map (read_nested_param_storage param_storage_typ param_storage) ~f:create_formula_from_param_storage
