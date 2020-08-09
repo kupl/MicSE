@@ -133,13 +133,7 @@ and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
       Core.List.fold_right vel ~f:(fun e l -> Smt.update_list_cons (create_convert_vexp e) l) ~init:nil
     end
   | VE_var (v, t) -> Smt.read_var (Smt.create_symbol v) (sort_of_typt t)
-  | VE_read (e1, e2) -> begin
-      let key, map = ((create_convert_vexp e1), (create_convert_vexp e2)) in
-      let item = Smt.read_map map key in
-      let sort_of_item = Smt.read_sort_of_expr item in
-      let default_item = Smt.read_default_term map in
-      Smt.create_ite (Smt.create_bool_eq item default_item) (Smt.create_option sort_of_item None) (Smt.create_option sort_of_item (Some item))
-    end
+  | VE_read (e1, e2) -> Smt.read_map (create_convert_vexp e2) (create_convert_vexp e1)
   | VE_write (e1, e2, e3) -> Smt.update_map (create_convert_vexp e3) (create_convert_vexp e1) (create_convert_vexp e2)
   | VE_nul_op (vno, t) -> begin
       match vno with
@@ -219,6 +213,19 @@ and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
       | VE_concat -> Smt.create_string_concat [(create_convert_vexp e1); (create_convert_vexp e2)]
       | VE_exec -> Smt.create_dummy_expr (sort_of_typt t)
       | VE_append -> Smt.create_dummy_expr (sort_of_typt t)
+      | VE_get -> begin
+          let key, map = ((create_convert_vexp e1), (create_convert_vexp e2)) in
+          let item = Smt.read_map map key in
+          let sort_of_item = Smt.read_sort_of_expr item in
+          let default_item = Smt.read_default_term map in
+          Smt.create_ite (Smt.create_bool_eq item default_item) (Smt.create_option sort_of_item None) (Smt.create_option sort_of_item (Some item))
+        end
+      | VE_mem -> begin
+          let key, map = ((create_convert_vexp e1), (create_convert_vexp e2)) in
+          let item = Smt.read_map map key in
+          let default_item = Smt.read_default_term map in
+          Smt.create_bool_eq item default_item
+        end
     end
   | VE_ter_op (vto, e1, e2, e3, t) -> begin
       match vto with
@@ -227,6 +234,11 @@ and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
           Smt.create_string_slice s offset (Smt.create_int_add [offset; length])
         end
       | VE_check_signature -> Smt.create_dummy_expr (sort_of_typt t)
+      | VE_update -> begin
+          let key, value, map = ((create_convert_vexp e1), (create_convert_vexp e2), (create_convert_vexp e3)) in
+          let default_item = Smt.read_default_term map in
+          Smt.create_ite (Smt.create_bool_option_is_none value) (Smt.update_map map key default_item) (Smt.update_map map key (Smt.read_option_content value))
+        end
     end
   | VE_lambda t -> Smt.create_dummy_expr (sort_of_typt t)
   | VE_operation (_, t) -> Smt.create_dummy_expr (sort_of_typt t)

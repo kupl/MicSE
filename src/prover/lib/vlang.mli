@@ -204,10 +204,10 @@ and v_bin_op =
   | VE_add      | VE_sub      | VE_mul      | VE_ediv     | VE_div
   | VE_mod      | VE_lsl      | VE_lsr      | VE_and      | VE_or
   | VE_xor      | VE_cmp      | VE_cons     | VE_concat   | VE_exec
-  | VE_append
+  | VE_append   | VE_get      | VE_mem
 
 and v_ter_op =
-  | VE_slice    | VE_check_signature
+  | VE_slice    | VE_check_signature        | VE_update
 
 and v_operation =
   | VE_transaction
@@ -428,11 +428,17 @@ val create_exp_bin_op_exec : v_exp -> v_exp -> typ -> v_exp
 
 val create_exp_bin_op_append : v_exp -> v_exp -> typ -> v_exp
 
+val create_exp_bin_op_get : v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_bin_op_mem : v_exp -> v_exp -> typ -> v_exp
+
 val create_exp_ter_op : v_ter_op -> v_exp -> v_exp -> v_exp -> typ -> v_exp
 
 val create_exp_ter_op_slice : v_exp -> v_exp -> v_exp -> typ -> v_exp
 
 val create_exp_ter_op_check_signature : v_exp -> v_exp -> v_exp -> typ -> v_exp
+
+val create_exp_ter_op_update : v_exp -> v_exp -> v_exp -> typ -> v_exp
 
 val create_exp_lambda : typ -> v_exp
 

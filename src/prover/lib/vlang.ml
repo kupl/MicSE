@@ -72,10 +72,10 @@ and v_bin_op =
   | VE_add      | VE_sub      | VE_mul      | VE_ediv     | VE_div
   | VE_mod      | VE_lsl      | VE_lsr      | VE_and      | VE_or
   | VE_xor      | VE_cmp      | VE_cons     | VE_concat   | VE_exec
-  | VE_append
+  | VE_append   | VE_get      | VE_mem
 
 and v_ter_op =
-  | VE_slice    | VE_check_signature
+  | VE_slice    | VE_check_signature        | VE_update
 
 and v_operation =
   | VE_transaction
@@ -393,6 +393,12 @@ let create_exp_bin_op_exec : v_exp -> v_exp -> typ -> v_exp
 let create_exp_bin_op_append : v_exp -> v_exp -> typ -> v_exp
 =fun e1 e2 t -> create_exp_bin_op VE_append e1 e2 t
 
+let create_exp_bin_op_get : v_exp -> v_exp -> typ -> v_exp
+=fun e1 e2 t -> create_exp_bin_op VE_get e1 e2 t
+
+let create_exp_bin_op_mem : v_exp -> v_exp -> typ -> v_exp
+=fun e1 e2 t -> create_exp_bin_op VE_mem e1 e2 t
+
 let create_exp_ter_op : v_ter_op -> v_exp -> v_exp -> v_exp -> typ -> v_exp
 =fun vto e1 e2 e3 t -> VE_ter_op (vto, e1, e2, e3, t)
 
@@ -401,6 +407,9 @@ let create_exp_ter_op_slice : v_exp -> v_exp -> v_exp -> typ -> v_exp
 
 let create_exp_ter_op_check_signature : v_exp -> v_exp -> v_exp -> typ -> v_exp
 =fun e1 e2 e3 t -> create_exp_ter_op VE_check_signature e1 e2 e3 t
+
+let create_exp_ter_op_update : v_exp -> v_exp -> v_exp -> typ -> v_exp
+=fun e1 e2 e3 t -> create_exp_ter_op VE_update e1 e2 e3 t
 
 let create_exp_lambda : typ -> v_exp
 =fun t -> VE_lambda t
@@ -482,8 +491,8 @@ and string_of_exp : v_exp -> string
       "List [" ^ (Core.String.concat ~sep:"; " (Core.List.map el' ~f:(fun e' -> "(" ^ (string_of_exp e') ^ ")"))) ^ "]"
     end
   | VE_var (v, _) -> v
-  | VE_read (ie', ae') -> (string_of_exp ae') ^ "[" ^ (string_of_exp ie') ^ "]"
-  | VE_write  (ie', ve', ae') -> (string_of_exp ae') ^ "[" ^ (string_of_exp ie') ^ "] = (" ^ (string_of_exp ve') ^ ")"
+  | VE_read (ie', ae') -> "(" ^ (string_of_exp ae') ^ ")[" ^ (string_of_exp ie') ^ "]"
+  | VE_write  (ie', ve', ae') -> "(" ^ (string_of_exp ae') ^ ")[" ^ (string_of_exp ie') ^ "] = (" ^ (string_of_exp ve') ^ ")"
   | VE_nul_op (vno, _) -> begin
       match vno with
       | VE_self -> "SELF"
@@ -544,12 +553,15 @@ and string_of_exp : v_exp -> string
       | VE_cons -> "CONS (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
       | VE_concat -> "CONCAT (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
       | VE_exec -> "EXEC (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
-      | VE_append -> "APPEND (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")" 
+      | VE_append -> "APPEND (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")"
+      | VE_get -> "GET (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")"
+      | VE_mem -> "MEM (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ")"
     end
   | VE_ter_op (vto, e1', e2', e3', _) -> begin
       match vto with
       | VE_slice -> "SLICE (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ") (" ^ (string_of_exp e3') ^ ")"
       | VE_check_signature -> "CHECK_SIGNATURE (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ") (" ^ (string_of_exp e3') ^ ")"
+      | VE_update -> "UPDATE (" ^ (string_of_exp e1') ^ ") (" ^ (string_of_exp e2') ^ ") (" ^ (string_of_exp e3') ^ ")"
     end
   | VE_lambda _ -> "LAMBDA"
   | VE_operation (_, _) -> "OPERATION"

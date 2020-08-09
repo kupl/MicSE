@@ -188,9 +188,9 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_right (v, t') -> Vlang.create_exp_uni_cont_right (create_var v) t'
   | E_some v -> Vlang.create_exp_uni_cont_some (create_var v) t
   | E_none t' -> Vlang.create_exp_none t'
-  | E_mem (v1, v2) -> Vlang.create_exp_bool (Vlang.create_formula_not (Vlang.create_formula_is_none (Vlang.create_exp_read (create_var v1) (create_var v2))))
-  | E_get (v1, v2) -> Vlang.create_exp_read (create_var v1) (create_var v2)
-  | E_update (v1, v2, v3) -> Vlang.create_exp_write (create_var v1) (create_var v2) (create_var v3)
+  | E_mem (v1, v2) -> Vlang.create_exp_bin_op_mem (create_var v1) (create_var v2) t
+  | E_get (v1, v2) -> Vlang.create_exp_bin_op_get (create_var v1) (create_var v2) t
+  | E_update (v1, v2, v3) -> Vlang.create_exp_ter_op_update (create_var v1) (create_var v2) (create_var v3) t
   | E_cast v -> Vlang.create_exp_uni_op_cast (create_var v) t
   | E_concat (v1, v2) -> Vlang.create_exp_bin_op_concat (create_var v1) (create_var v2) t
   | E_concat_list v -> Vlang.create_exp_uni_op_concat (create_var v) t
