@@ -8,6 +8,8 @@ and exp = Cfg.expr
 type v_formula = Vlang.v_formula
 and v_exp = Vlang.v_exp
 
+exception Z3Error of string
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -201,8 +203,6 @@ val create_or : z_sort -> (z_expr, z_expr) or_type -> z_expr
 val read_or_left_content : z_expr -> z_expr
 
 val read_or_right_content : z_expr -> z_expr
-
-val read_or_content : z_expr -> z_expr
 
 
 val create_list : z_sort -> z_expr

@@ -8,6 +8,8 @@ and exp = Cfg.expr
 type v_formula = Vlang.v_formula
 and v_exp = Vlang.v_exp
 
+exception Z3Error = Z3.Error
+
 let get_field : 'a list -> int -> 'a
 =fun l n -> Core.List.nth_exn l n
 
@@ -299,9 +301,6 @@ let read_or_left_content : z_expr -> z_expr
 
 let read_or_right_content : z_expr -> z_expr
 =fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 1) 0) [e]
-
-let read_or_content : z_expr -> z_expr
-=fun e -> create_ite (create_bool_option_is_left e) (read_or_left_content e) (read_or_right_content e)
 
 
 let create_list : z_sort -> z_expr

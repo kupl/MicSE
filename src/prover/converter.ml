@@ -214,7 +214,8 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_address_of_contract v -> Vlang.create_exp_uni_op_address (create_var v) t
   | E_create_contract_address _ -> Vlang.create_exp_operation_origination t
   | E_unlift_option v -> Vlang.create_exp_uni_op_un_opt (create_var v) t
-  | E_unlift_or v -> Vlang.create_exp_uni_op_un_or (create_var v) t
+  | E_unlift_left v -> Vlang.create_exp_uni_op_un_left (create_var v) t
+  | E_unlift_right v -> Vlang.create_exp_uni_op_un_right (create_var v) t
   | E_hd v -> Vlang.create_exp_uni_op_hd (create_var v) t
   | E_tl v -> Vlang.create_exp_uni_op_tl (create_var v) t
   | E_size v -> Vlang.create_exp_uni_op_size (create_var v) t
@@ -232,7 +233,8 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_empty_big_map _ -> Vlang.create_exp_list [] t
   | E_append (v1, v2) -> Vlang.create_exp_bin_op_append (create_var v1) (create_var v2) t
   | E_special_nil_list -> Vlang.create_exp_list [] t
-  | E_phi (_, _) -> raise (Failure "Converter.create_convert_exp: Phi Function")
+  | E_phi (_, _) -> raise (Failure "Converter.create_convert_exp: Deprecated Phi Function")
+  | E_unlift_or _ -> raise (Failure "Converter.create_convert_exp: Deprecated Unlift or")
 end
 
 and create_precond_from_param_storage : unit -> Vlang.v_formula list
@@ -266,11 +268,12 @@ and create_precond_from_param_storage : unit -> Vlang.v_formula list
         fst @ snd
       end
     | T_or (ty1', ty2') -> begin
-        let e' = Vlang.create_exp_uni_op_un_or e ty in
-        let left = Core.List.map (read_nested_param_storage ty1' e') ~f:(fun (obj, fl, exp, bound) -> (
+        let e1' = Vlang.create_exp_uni_op_un_left e ty in
+        let left = Core.List.map (read_nested_param_storage ty1' e1') ~f:(fun (obj, fl, exp, bound) -> (
           (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_left e))::fl, exp, bound)
         )) in
-        let right = Core.List.map (read_nested_param_storage ty2' e') ~f:(fun (obj, fl, exp, bound) -> (
+        let e2' = Vlang.create_exp_uni_op_un_right e ty in
+        let right = Core.List.map (read_nested_param_storage ty2' e2') ~f:(fun (obj, fl, exp, bound) -> (
           (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_right e))::fl, exp, bound)
         )) in
         left @ right

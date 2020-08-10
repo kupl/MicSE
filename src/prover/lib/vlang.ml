@@ -65,8 +65,8 @@ and v_uni_op =
   | VE_eq       | VE_neq      | VE_lt       | VE_gt       | VE_leq
   | VE_geq      | VE_cast     | VE_concat   | VE_pack     | VE_unpack
   | VE_contract | VE_account  | VE_blake2b  | VE_sha256   | VE_sha512
-  | VE_hash_key | VE_address  | VE_un_opt   | VE_un_or    | VE_hd
-  | VE_tl       | VE_size     | VE_isnat    | VE_int
+  | VE_hash_key | VE_address  | VE_un_opt   | VE_un_left  | VE_un_right
+  | VE_hd       | VE_tl       | VE_size     | VE_isnat    | VE_int
   
 and v_bin_op =
   | VE_add      | VE_sub      | VE_mul      | VE_ediv     | VE_div
@@ -324,8 +324,11 @@ let create_exp_uni_op_address : v_exp -> typ -> v_exp
 let create_exp_uni_op_un_opt : v_exp -> typ -> v_exp
 =fun e1 t -> create_exp_uni_op VE_un_opt e1 t
 
-let create_exp_uni_op_un_or : v_exp -> typ -> v_exp
-=fun e1 t -> create_exp_uni_op VE_un_or e1 t
+let create_exp_uni_op_un_left : v_exp -> typ -> v_exp
+=fun e1 t -> create_exp_uni_op VE_un_left e1 t
+
+let create_exp_uni_op_un_right : v_exp -> typ -> v_exp
+=fun e1 t -> create_exp_uni_op VE_un_right e1 t
 
 let create_exp_uni_op_hd : v_exp -> typ -> v_exp
 =fun e1 t -> create_exp_uni_op VE_hd e1 t
@@ -529,7 +532,8 @@ and string_of_exp : v_exp -> string
       | VE_hash_key -> "HASH_KEY (" ^ (string_of_exp e1') ^ ")"
       | VE_address -> "ADDRESS (" ^ (string_of_exp e1') ^ ")"
       | VE_un_opt -> "UN_OPT (" ^ (string_of_exp e1') ^ ")"
-      | VE_un_or -> "UN_OR (" ^ (string_of_exp e1') ^ ")"
+      | VE_un_left -> "UN_LEFT (" ^ (string_of_exp e1') ^ ")"
+      | VE_un_right -> "UN_RIGHT (" ^ (string_of_exp e1') ^ ")"
       | VE_hd -> "HD (" ^ (string_of_exp e1') ^ ")"
       | VE_tl -> "TL (" ^ (string_of_exp e1') ^ ")"
       | VE_size -> "SIZE (" ^ (string_of_exp e1') ^ ")"
