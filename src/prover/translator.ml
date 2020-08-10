@@ -562,7 +562,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     *)
     let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1;} in
     (* complete THEN branch (i1_begin ~ i1_end) *)
-    let (cfg_2, stack_info_1) = inst_to_cfg_handle_es counter (i1_begin, i1_end) (func_in_v, func_out_v) i1 (cfg_1, stack_info) in
+    let (cfg_2, stack_info_1) = inst_to_cfg_handle_es counter (i1_begin, i1_end) (func_in_v, func_out_v) i1 (cfg_1, ns_tl stack_info) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
       (*  flow        : (i2_begin -> i2_ready) & (i2_ready -> (i2 ...) -> i2_end)
           vertex_info : i2_begin : Cfg_assgin (new-var, (E_unlift_option top-var))
@@ -585,7 +585,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let type_info_1   = map_add "inst_to_cfg : I_if_some : type_info_1" cfg_2.type_info i2_unwrap_var topvar_unwrap_typ in
     let stack_info_2  = ns_cons i2_unwrap_var (ns_tl stack_info) in
     let cfg_3 = {cfg_2 with flow=flow_i2_ready; vertex_info=vertex_info_4; type_info=type_info_1;} in
-    let (cfg_4, stack_info_3) = inst_to_cfg_handle_es counter (func_in_v, func_out_v) (i2_ready, i2_end) i2 (cfg_3, stack_info_2) in
+    let (cfg_4, stack_info_3) = inst_to_cfg_handle_es counter (i2_ready, i2_end) (func_in_v, func_out_v) i2 (cfg_3, stack_info_2) in
     (* Renaming variables to merge names from stack_info_1 and stack_info_3 *)
     let (cfg_5, stack_info_4) = begin
       merge_two_stack_infos 
@@ -2650,11 +2650,15 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
   | I_chain_id -> template_of_push_value "I_chain_id" counter (in_v, out_v) (E_chain_id, Michelson.Adt.T_chain_id) (cfg, stack_info)
 
   | I_noop -> 
+    (*{Tezla_cfg.Cfg_node.id=0; Tezla_cfg.Cfg_node.stmt=t_map_find ~errtrace:("I_noop_debug") cfg.vertex_info in_v} |> Tezla_cfg.Cfg_node.to_string |> print_endline;*)
     (* update in_v and just connect in_v and out_v *)
     let cfg_end = begin
-      (cfg, ())
-      |> t_add_vinfo ~errtrace:("inst_to_cfg : I_noop : in_v") (in_v, Cfg_skip)
-      |> t_add_edg (in_v, out_v) |> Stdlib.fst
+      if in_v = out_v then cfg
+      else (
+        (cfg, ())
+        |> t_add_vinfo ~errtrace:("inst_to_cfg : I_noop : in_v") (in_v, Cfg_skip)
+        |> t_add_edg (in_v, out_v) |> Stdlib.fst
+      )
     end in
     (cfg_end, stack_info)
 
@@ -2709,39 +2713,6 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     (cfg_end, stack_info)
 
 
-    (*  flow        : (in_v [If_true]-> body_begin) & (in_v [If_false] -> out_v)
-                      & (body_begin -> (i ...) -> body_end) & (body_end -> (assigns ...) -> in_v)
-        variables   : var-1 : condition boolean variable located at the top of the stack
-        vertex_info : in_v        ->  Cfg_loop (var-1)
-                      body_begin  ->  decided by "i"
-                      body_end    ->  Cfg_skip
-        type_info   : no change
-        stack_info  : top element will be removed.
-        others      : be aware of stack_info scheme when enter "body_begin" and get out of "out_v"
-    *)
-    (*
-    let gen_errmsg s : string = ("inst_to_cfg : I_dip : " ^ s) in
-    let (cfg_vv_added, (v_begin, v_end)) = t_add_vtx_2 counter (cfg, ()) in
-    let (cfg_v_linked, _) = begin
-      (cfg_vv_added, ())
-      (*|> t_add_edgs [(in_v, v_begin); (v_end, out_v);] *)
-      |> t_add_edg (in_v, v_begin)
-      |> t_add_vinfos ~errtrace:(gen_errmsg "add vinfos") [(in_v, Cfg_skip); (v_end, Cfg_skip); ]
-    end in
-    let (cfg_i_added, stack_info_i_added) = inst_to_cfg_handle_es counter (v_begin, v_end) (func_in_v, func_out_v) i (cfg_v_linked, ns_tl stack_info) in
-    if (is_es stack_info_i_added)
-    then (
-      let cfg_vend_linked = fail_edg_add (v_end, out_v) cfg_i_added in
-      (cfg_vend_linked, stack_info_i_added)
-    )
-    else (
-      let cfg_vend_linked = edg_add (v_end, out_v) cfg_i_added in
-      (cfg_vend_linked, ns_cons (ns_hd stack_info) stack_info_i_added)
-    )
-    *)
-    (* TODO : complete this *)
-
-  (*| _ -> fail "inst_to_cfg : not implemented."*)
 end
 
 
