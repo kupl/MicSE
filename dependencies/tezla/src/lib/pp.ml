@@ -74,6 +74,8 @@ and expr ppf = function
   | E_size e -> fprintf ppf "SIZE %s" e
   | E_unlift_option e -> fprintf ppf "unlift_option %s" e
   | E_unlift_or e -> fprintf ppf "unlift_or %s" e
+  | E_unlift_left e -> fprintf ppf "unlift_left %s" e
+  | E_unlift_right e -> fprintf ppf "unlift_right %s" e
   | E_hd e -> fprintf ppf "hd %s" e
   | E_tl e -> fprintf ppf "tl %s" e
   | E_isnat e -> fprintf ppf "ISNAT %s" e

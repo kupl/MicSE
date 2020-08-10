@@ -724,7 +724,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1;} in
     (* complete THEN branch (i1_begin ~ i1_end) *)
       (*  flow        : (i1_begin -> i1_ready) & (i1_ready -> (i1 ...) -> i1_end)
-          vertex_info : i1_begin : Cfg_assign (new-var-left, (E_unlift_or top-var))
+          vertex_info : i1_begin : Cfg_assign (new-var-left, (E_unlift_left top-var))
                         i1_ready : decided by i1
           type_info   : new-var-left -> (match t1 with | T_or (tt, _) -> tt | _ -> error case)
           stack_info  : top-var is replaced with new-var-left.
@@ -732,7 +732,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let i1_ready = nvtx () in
     let flow_i1_ready = begin cfg_1.flow |> addvtx i1_ready |> addedg i1_begin i1_ready end in
     let i1_unwrap_var = new_var counter in
-    let vertex_info_tb_1 = map_add "inst_to_cfg : I_if_left : vertex_info_tb_1" cfg_1.vertex_info i1_begin (Cfg_assign (i1_unwrap_var, (Tezla.Adt.E_unlift_or topvar_name))) in
+    let vertex_info_tb_1 = map_add "inst_to_cfg : I_if_left : vertex_info_tb_1" cfg_1.vertex_info i1_begin (Cfg_assign (i1_unwrap_var, (Tezla.Adt.E_unlift_left topvar_name))) in
     let topvar_typ = map_find "inst_to_cfg : I_if_left : topvar_typ" cfg_1.type_info topvar_name in
     let (topvar_unwrap_typ_left, topvar_unwrap_typ_right) = begin
       match topvar_typ with | {pos = _; d = Michelson.Adt.T_or (tl, tr)} -> (tl, tr) | _ -> fail "inst_to_cfg : I_if_left : topvar_unwrap_typ_leftright"
@@ -743,7 +743,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_tb_fin, stack_info_tb_fin) = inst_to_cfg_handle_es counter (i1_ready, i1_end) (func_in_v, func_out_v) i1 (cfg_tb, stack_info_tb_1) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
       (*  flow        : (i2_begin -> i2_ready) & (i2_ready -> (i2 ...) -> i2_end)
-          vertex_info : i2_begin : Cfg_assgin (new-var-right, (E_unlift_or top-var))
+          vertex_info : i2_begin : Cfg_assgin (new-var-right, (E_unlift_right top-var))
                         i2_ready : decided by i2
           type_info   : new-var-right -> (match t1 with | T_or (_, tt) -> tt | _ -> error case)
           stack_info  : top-var is replaced with new-var-right.
@@ -755,7 +755,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let i2_ready = nvtx () in
     let flow_i2_ready = begin cfg_tb_fin.flow |> addvtx i2_ready |> addedg i2_begin i2_ready end in
     let i2_unwrap_var = new_var counter in
-    let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_left : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_assign (i2_unwrap_var, Tezla.Adt.E_unlift_or topvar_name)) in
+    let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_left : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_assign (i2_unwrap_var, Tezla.Adt.E_unlift_right topvar_name)) in
     let type_info_eb_1   = map_add "inst_to_cfg : I_if_left : type_info_eb_1" cfg_tb_fin.type_info i2_unwrap_var topvar_unwrap_typ_right in
     let stack_info_eb_1  = ns_cons i2_unwrap_var (ns_tl stack_info) in
     let cfg_eb = {cfg_tb_fin with flow=flow_i2_ready; vertex_info=vertex_info_eb_1; type_info=type_info_eb_1;} in
@@ -808,7 +808,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let cfg_1 = {cfg with flow=flow_edg_added; vertex_info=vertex_info_1;} in
     (* complete THEN branch (i1_begin ~ i1_end) *)
       (*  flow        : (i1_begin -> i1_ready) & (i1_ready -> (i1 ...) -> i1_end)
-          vertex_info : i1_begin : Cfg_assign (new-var-left, (E_unlift_or top-var))
+          vertex_info : i1_begin : Cfg_assign (new-var-left, (E_unlift_left top-var))
                         i1_ready : decided by i1
           type_info   : new-var-left -> (match t1 with | T_or (tt, _) -> tt | _ -> error case)
           stack_info  : top-var is replaced with new-var-left.
@@ -816,7 +816,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let i1_ready = nvtx () in
     let flow_i1_ready = begin cfg_1.flow |> addvtx i1_ready |> addedg i1_begin i1_ready end in
     let i1_unwrap_var = new_var counter in
-    let vertex_info_tb_1 = map_add "inst_to_cfg : I_if_right : vertex_info_tb_1" cfg_1.vertex_info i1_begin (Cfg_assign (i1_unwrap_var, (Tezla.Adt.E_unlift_or topvar_name))) in
+    let vertex_info_tb_1 = map_add "inst_to_cfg : I_if_right : vertex_info_tb_1" cfg_1.vertex_info i1_begin (Cfg_assign (i1_unwrap_var, (Tezla.Adt.E_unlift_left topvar_name))) in
     let topvar_typ = map_find "inst_to_cfg : I_if_right : topvar_typ" cfg_1.type_info topvar_name in
     let (topvar_unwrap_typ_left, topvar_unwrap_typ_right) = begin
       match topvar_typ with | {pos = _; d = Michelson.Adt.T_or (tl, tr)} -> (tl, tr) | _ -> fail "inst_to_cfg : I_if_right : topvar_unwrap_typ_leftright"
@@ -827,7 +827,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_tb_fin, stack_info_tb_fin) = inst_to_cfg_handle_es counter (i1_ready, i1_end) (func_in_v, func_out_v) i1 (cfg_tb, stack_info_tb_1) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
       (*  flow        : (i2_begin -> i2_ready) & (i2_ready -> (i2 ...) -> i2_end)
-          vertex_info : i2_begin : Cfg_assgin (new-var-right, (E_unlift_or top-var))
+          vertex_info : i2_begin : Cfg_assgin (new-var-right, (E_unlift_right top-var))
                         i2_ready : decided by i2
           type_info   : new-var-right -> (match t1 with | T_or (_, tt) -> tt | _ -> error case)
           stack_info  : top-var is replaced with new-var-right.
@@ -839,7 +839,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let i2_ready = nvtx () in
     let flow_i2_ready = begin cfg_tb_fin.flow |> addvtx i2_ready |> addedg i2_begin i2_ready end in
     let i2_unwrap_var = new_var counter in
-    let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_right : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_assign (i2_unwrap_var, Tezla.Adt.E_unlift_or topvar_name)) in
+    let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_right : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_assign (i2_unwrap_var, Tezla.Adt.E_unlift_right topvar_name)) in
     let type_info_eb_1   = map_add "inst_to_cfg : I_if_right : type_info_eb_1" cfg_tb_fin.type_info i2_unwrap_var topvar_unwrap_typ_right in
     let stack_info_eb_1  = ns_cons i2_unwrap_var (ns_tl stack_info) in
     let cfg_eb = {cfg_tb_fin with flow=flow_i2_ready; vertex_info=vertex_info_eb_1; type_info=type_info_eb_1;} in
@@ -1493,8 +1493,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
                       var-ul  : unwrapped left value.
                       var-ur  : unwrapped right value.
         vertex_info : in_v        ->  Cfg_loop_left (var-1)
-                      unwrap_l    ->  Cfg_assign (var-ul, E_unlift_or var-1)
-                      unwrap_r    ->  Cfg_assign (var-ur, E_unlift_or var-1)
+                      unwrap_l    ->  Cfg_assign (var-ul, E_unlift_left var-1)
+                      unwrap_r    ->  Cfg_assign (var-ur, E_unlift_right var-1)
                       body_begin  ->  decided by "i"
                       body_end    ->  Cfg_skip
         type_info   : var-1   -> or (t1_l, t1_r)
@@ -1525,8 +1525,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     (* update vertex_info *)
     let vs_pairs = [
       (in_v,     Tezla_cfg.Cfg_node.Cfg_loop_left (var_1));
-      (unwrap_l, Cfg_assign (var_ul, E_unlift_or var_1));
-      (unwrap_r, Cfg_assign (var_ur, E_unlift_or var_1));
+      (unwrap_l, Cfg_assign (var_ul, E_unlift_left var_1));
+      (unwrap_r, Cfg_assign (var_ur, E_unlift_right var_1));
       (*(body_end, Cfg_skip);*)
     ] in
     let (cfg_vi_updated, _) = t_add_vinfos ~errtrace:(errmsg_gen "cfg_p_vi_updated") vs_pairs (cfg_updated_vur, ()) in

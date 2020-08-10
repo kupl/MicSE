@@ -67,7 +67,9 @@ and expr =
   | E_address_of_contract of string
   | E_create_contract_address of operation
   | E_unlift_option of string
-  | E_unlift_or of string
+  | E_unlift_or of string     (* DEPRECATED. reserved for backward compatibility *)
+  | E_unlift_left of string   (* Newly proposed to specify E_unlift_or expression *)
+  | E_unlift_right of string  (* Newly proposed to specify E_unlift_or expression *)
   | E_hd of string
   | E_tl of string
   | E_size of string
