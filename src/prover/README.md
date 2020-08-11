@@ -1,12 +1,12 @@
 # Prover
 
-# Code Layout
+## Code Layout
+
 The list is roughly sorted by its module dependency.
 
-| Module, Type, or Value Name   | Description |
-| -------------------------     | ------------|
-| `Translator`                  | Translate Michelson program to control-flow-graph. |
-| `Analyzer`                    | Generate call-graph from control-flow-graph. |
-| `Extractor`                   | |
-| `Verifier`                    | |
-| `Generator`                   | |
+| Module, Type, or Value Name | Description                                                           |
+| --------------------------- | --------------------------------------------------------------------- |
+| `Extractor`                 | Extract basic path from CFG                                           |
+| `Converter`                 | Convert basic path to verification condition by verification language |
+| `Verifier`                  | Solve verification condition by SMT solver                            |
+| `Generator`                 | Generate proper invariant to verify correctly                         |

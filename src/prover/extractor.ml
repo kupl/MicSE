@@ -5,17 +5,17 @@ open ProverLib
 
 let loop_inv_vtx = ref []
 
-let rec extract : Cfg.t -> Bp.raw_t_list
+let rec extract : Pre.Lib.Cfg.t -> Bp.raw_t_list
 =fun cfg -> begin
   let entry_bp = Bp.create_new_bp cfg.main_entry cfg.main_exit in
   let result = translate entry_bp cfg.main_entry cfg in
   { bps=result; trx_inv_vtx=[cfg.main_entry; cfg.main_exit]; loop_inv_vtx=(!loop_inv_vtx) }
 end
 
-and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
+and translate : Bp.t -> Pre.Lib.Cfg.vertex -> Pre.Lib.Cfg.t -> Bp.t list
 =fun cur_bp cur_vtx cfg -> begin
-  let stmt = Cfg.read_stmt_from_vtx cfg cur_vtx in
-  let succ = Cfg.read_succ_from_vtx cfg cur_vtx in
+  let stmt = Pre.Lib.Cfg.read_stmt_from_vtx cfg cur_vtx in
+  let succ = Pre.Lib.Cfg.read_succ_from_vtx cfg cur_vtx in
   let make_branch_bp f_if = begin
     let f_else = Bp.create_cond_not f_if in
     let inst_if = Bp.create_inst_assume f_if in
@@ -30,20 +30,20 @@ and translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
     (terminated_bp, loop_bp, new_bp)
   end in
   let normal_search new_bp (edge, vtx) result = begin
-    if (Cfg.is_edge_normal edge) then result@(translate new_bp vtx cfg)
-    else if (Cfg.is_edge_check_skip edge) then result
+    if (Pre.Lib.Cfg.is_edge_normal edge) then result@(translate new_bp vtx cfg)
+    else if (Pre.Lib.Cfg.is_edge_check_skip edge) then result
     else raise (Failure "Extractor.translate: Wrong edge label")
   end in
   let branch_search (new_bp_if, new_bp_else) (edge, vtx) result = begin
-    if Cfg.is_edge_true edge then result@(translate new_bp_if vtx cfg)
-    else if Cfg.is_edge_false edge then result@(translate new_bp_else vtx cfg)
+    if Pre.Lib.Cfg.is_edge_true edge then result@(translate new_bp_if vtx cfg)
+    else if Pre.Lib.Cfg.is_edge_false edge then result@(translate new_bp_else vtx cfg)
     else raise (Failure "Extractor.translate: Wrong edge label")
   end in
-  if Cfg.is_main_exit cfg cur_vtx then [cur_bp]
+  if Pre.Lib.Cfg.is_main_exit cfg cur_vtx then [cur_bp]
   else begin
     match stmt with
     | Cfg_assign (id, e) -> begin
-        let assert_inst = create_basic_safety_property e (Cfg.CPMap.find_exn cfg.type_info id) in
+        let assert_inst = create_basic_safety_property e (Pre.Lib.Cfg.CPMap.find_exn cfg.type_info id) in
         let new_bp = update_current_bp cur_bp assert_inst in
         let inst = Bp.create_inst_assign (id, e) in
         let new_bp' = update_current_bp new_bp (Some inst) in

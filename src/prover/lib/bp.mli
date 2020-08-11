@@ -4,14 +4,14 @@
 (*****************************************************************************)
 (*****************************************************************************)
 
-type typ = Adt.typ
+type typ = Pre.Lib.Adt.typ
 
-type var = Cfg.ident
+type var = Pre.Lib.Cfg.ident
   (*
     type indent = string
   *)
 
-and exp = Cfg.expr
+and exp = Pre.Lib.Cfg.expr
   (*
     type expr =
     | E_push of data * typ
@@ -149,7 +149,7 @@ val string_of_inst : inst -> string
 (*****************************************************************************)
 (*****************************************************************************)
 
-type vertex = Cfg.vertex
+type vertex = Pre.Lib.Cfg.vertex
   (*
     type vertex = int
   *)

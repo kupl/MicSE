@@ -1,9 +1,9 @@
-type typ = Adt.typ
-and data = Adt.data
-and operation = Adt.operation
+type typ = Pre.Lib.Adt.typ
+and data = Pre.Lib.Adt.data
+and operation = Pre.Lib.Adt.operation
 
-type var = Cfg.ident
-and exp = Cfg.expr
+type var = Pre.Lib.Cfg.ident
+and exp = Pre.Lib.Cfg.expr
 
 type v_formula = Vlang.v_formula
 and v_exp = Vlang.v_exp
@@ -366,5 +366,15 @@ end
 let string_of_solver : solver -> string
 =fun solver -> Z3.Solver.to_string solver
 
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Model                                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let create_evaluation : model -> z_expr -> z_expr option
+=fun m e -> Z3.Model.eval m e true
+
 let string_of_model : model -> string
-=fun model -> Z3.Model.to_string model
+=fun m -> Z3.Model.to_string m

@@ -7,14 +7,14 @@ type object_typ =
 (************************************************)
 (************************************************)
 
-let type_map = ref Cfg.CPMap.empty
+let type_map = ref Pre.Lib.Cfg.CPMap.empty
 
 let bound_count = ref 0
 let create_new_bound : unit -> Vlang.var
 =fun () -> bound_count := !bound_count + 1; "bnd_" ^ (string_of_int !bound_count)
 
 
-let rec convert : Bp.t -> Cfg.t -> Vlang.t
+let rec convert : Bp.t -> Pre.Lib.Cfg.t -> Vlang.t
 =fun bp cfg -> begin
   let _ = type_map := cfg.type_info in
   let precond = create_precond_from_param_storage () in
@@ -46,11 +46,11 @@ and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
 end
 
 and read_type : Vlang.var -> Vlang.typ
-=fun v -> Cfg.CPMap.find_exn !type_map v
+=fun v -> Pre.Lib.Cfg.CPMap.find_exn !type_map v
 
 and update_type : Vlang.var -> Vlang.typ -> unit
 =fun v t -> begin
-  let _ = type_map := Cfg.CPMap.add_exn !type_map ~key:v ~data:t in
+  let _ = type_map := Pre.Lib.Cfg.CPMap.add_exn !type_map ~key:v ~data:t in
   ()
 end
 
@@ -59,7 +59,7 @@ and create_var : Vlang.var -> Vlang.v_exp
 
 and create_rename_var : Vlang.var -> Vlang.var
 =fun v -> begin
-  let rec rename_label l = if Cfg.CPMap.mem !type_map (l ^ v) then rename_label ("#" ^ l) else l in
+  let rec rename_label l = if Pre.Lib.Cfg.CPMap.mem !type_map (l ^ v) then rename_label ("#" ^ l) else l in
   let v' = (rename_label "#") ^ v in
   let _ = update_type v' (read_type v) in
   v'

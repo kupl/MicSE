@@ -1,6 +1,5 @@
 module Node = Tezla_cfg.Cfg_node
 
-open Batteries
 type program = Michelson.Adt.program
 type vertex = Node.t
 type expr = Node.expr

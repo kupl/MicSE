@@ -3,12 +3,14 @@ open ProverLib
 (************************************************)
 (************************************************)
 
-let rec verify : Vlang.t -> bool
-=fun vc -> begin
+let rec verify : Vlang.t -> Pre.Lib.Cfg.t -> bool
+=fun vc cfg -> begin
   let zexp_of_vc = create_convert_vformula (Vlang.create_formula_not vc) in
+  (*let _ = print_endline (Vlang.string_of_vlang vc) in*)
   let solver = Smt.create_solver () in
   let _ = Smt.update_solver_add solver [zexp_of_vc] in
-  let result, _ = Smt.create_check solver in
+  let result, model_opt = Smt.create_check solver in
+  let _ = print_endline (match model_opt with None -> "" | Some model -> (create_param_from_model model cfg)) in
   result
 end
 
@@ -169,7 +171,7 @@ and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
         | VE_leq -> Smt.create_bool_int_le (create_convert_vexp e1) zero
         | VE_geq -> Smt.create_bool_int_ge (create_convert_vexp e1) zero
         | VE_cast -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_concat -> Smt.create_string_concat [(create_convert_vexp e1)]
+        | VE_list_concat -> Smt.create_string_concat [(create_convert_vexp e1)]
         | VE_pack -> Smt.create_dummy_expr (sort_of_typt t)
         | VE_unpack -> Smt.create_dummy_expr (sort_of_typt t)
         | VE_contract -> Smt.create_dummy_expr (sort_of_typt t)
@@ -186,7 +188,7 @@ and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
         | VE_tl -> Smt.read_list_tail (create_convert_vexp e1)
         | VE_size -> Smt.create_dummy_expr (sort_of_typt t)
         | VE_isnat -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_int -> Smt.create_dummy_expr (sort_of_typt t)
+        | VE_to_int -> Smt.create_dummy_expr (sort_of_typt t)
       end
     | VE_bin_op (vbo, e1, e2, t) -> begin
         let zero = Smt.create_int 0 in
@@ -251,4 +253,14 @@ and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
   with
   | Smt.Z3Error s -> raise (Failure ("Verifier.create_convert_vexp (" ^ (Vlang.string_of_exp ve) ^ "): " ^ s))
   | err -> print_endline (Vlang.string_of_exp ve); raise err
+end
+
+and create_param_from_model : Smt.model -> Pre.Lib.Cfg.t -> string
+=fun m cfg -> begin
+  let param_storage_var = "param_storage" in
+  let param_storage_sort = sort_of_typt (Pre.Lib.Cfg.CPMap.find_exn cfg.type_info param_storage_var) in
+  let param_storage = Smt.read_var (Smt.create_symbol param_storage_var) param_storage_sort in
+  let param = Smt.read_pair_fst param_storage in
+  let expr_opt = Smt.create_evaluation m param in
+  match expr_opt with None -> "None" | Some expr -> Smt.string_of_expr expr
 end

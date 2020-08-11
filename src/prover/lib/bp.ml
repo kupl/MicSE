@@ -4,10 +4,10 @@
 (*****************************************************************************)
 (*****************************************************************************)
 
-type typ = Adt.typ
+type typ = Pre.Lib.Adt.typ
 
-type var = Cfg.ident
-and exp = Cfg.expr
+type var = Pre.Lib.Cfg.ident
+and exp = Pre.Lib.Cfg.expr
 
 type cond =
   | BC_is_true of var
@@ -81,7 +81,7 @@ let string_of_inst : inst -> string
   match inst with
   | BI_assume f -> "Assume " ^ (string_of_cond f) ^ ";"
   | BI_assert f -> "Assert " ^ (string_of_cond f) ^ ";"
-  | BI_assign (id, e) -> (Cfg.string_of_ident id) ^ " := " ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ";"
+  | BI_assign (id, e) -> (Pre.Lib.Cfg.string_of_ident id) ^ " := " ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ";"
   | BI_skip -> "Skip;"
 end
 
@@ -92,7 +92,7 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-type vertex = Cfg.vertex
+type vertex = Pre.Lib.Cfg.vertex
 type formula = Vlang.t
 
 type inv = { id: vertex; formula: formula option }
@@ -106,8 +106,8 @@ let create_inv : vertex -> formula -> inv
 
 let string_of_inv : inv -> string
 =fun inv -> begin
-  if Option.is_none inv.formula then (Cfg.string_of_vertex inv.id) ^ ": None"
-  else (Cfg.string_of_vertex inv.id) ^ ": " ^ (Vlang.string_of_formula (Option.get inv.formula))
+  if Option.is_none inv.formula then (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": None"
+  else (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": " ^ (Vlang.string_of_formula (Option.get inv.formula))
 end
 
 

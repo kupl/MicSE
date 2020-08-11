@@ -1,0 +1,11 @@
+(library
+  (name preLib)
+  (public_name micse.pre.lib)
+  (libraries
+    batteries
+    michelson
+    tezla
+    tezla-cfg
+    ocamlgraph
+    core
+    ))

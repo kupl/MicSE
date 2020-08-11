@@ -256,7 +256,7 @@ end
 (*****************************************************************************)
 
 let remove_meaningless_skip_vertices =
-  let gen_emsg s : string = ("remove_meaningless_skip_vertices : " ^ s) in
+  (*let gen_emsg s : string = ("remove_meaningless_skip_vertices : " ^ s) in*)
   let is_skip : stmt option -> bool = (function | Some (Tezla_cfg.Cfg_node.Cfg_skip) -> true | _ -> false) in
   (* FUNCTION BEGIN *)
   fun cfg -> begin
@@ -270,9 +270,9 @@ let remove_meaningless_skip_vertices =
         if (  (mid_v = mid_v_2)
               && (in_label = Normal)
               && (out_label = Normal)
-              && (Core.Set.Poly.for_all vset (fun x -> x <> in_v))
-              && (Core.Set.Poly.for_all vset (fun x -> x <> mid_v))
-              && (Core.Set.Poly.for_all vset (fun x -> x <> out_v))
+              && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> in_v))
+              && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> mid_v))
+              && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> out_v))
           )
         then ( (in_v, mid_v, out_v) :: vvvlist, Core.Set.add vset v )
         else ( vvvlist, vset )
@@ -296,8 +296,8 @@ let rec remove_meaningless_skip_vertices_fixpoint cfg =
   let sz'  = G.nb_vertex cfg'.flow in
   if sz <> sz' then remove_meaningless_skip_vertices_fixpoint cfg' else cfg'
 
-let rec remove_meaningless_fail_vertices =
-  let gen_emsg s : string = ("remove_meaningless_fail_vertices : " ^ s) in
+let remove_meaningless_fail_vertices =
+  (*let gen_emsg s : string = ("remove_meaningless_fail_vertices : " ^ s) in*)
   let is_fail : stmt option -> bool = (function | Some (Tezla_cfg.Cfg_node.Cfg_failwith _) -> true | _ -> false) in
   (* FUNCTION BEGIN *)
   fun cfg -> begin
@@ -311,9 +311,9 @@ let rec remove_meaningless_fail_vertices =
         if (  (mid_v = mid_v_2)
               && (in_label = Failed)
               && (out_label = Failed)
-              && (Core.Set.Poly.for_all vset (fun x -> x <> in_v))
-              && (Core.Set.Poly.for_all vset (fun x -> x <> mid_v))
-              && (Core.Set.Poly.for_all vset (fun x -> x <> out_v))
+              && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> in_v))
+              && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> mid_v))
+              && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> out_v))
         )
         then ( (in_v, mid_v, out_v) :: vvvlist, Core.Set.add vset v)
         else ( vvvlist, vset )

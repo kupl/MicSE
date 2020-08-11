@@ -1,9 +1,9 @@
-type typ = Adt.typ
-and data = Adt.data
-and operation = Adt.operation
+type typ = Pre.Lib.Adt.typ
+and data = Pre.Lib.Adt.data
+and operation = Pre.Lib.Adt.operation
 
-type var = Cfg.ident
-and exp = Cfg.expr
+type var = Pre.Lib.Cfg.ident
+and exp = Pre.Lib.Cfg.expr
 
 type v_formula = Vlang.v_formula
 and v_exp = Vlang.v_exp
@@ -242,5 +242,14 @@ val update_solver_add : solver -> z_expr list -> unit
 val create_check : solver -> (bool * model option)
 
 val string_of_solver : solver -> string
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Model                                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val create_evaluation : model -> z_expr -> z_expr option
 
 val string_of_model : model -> string

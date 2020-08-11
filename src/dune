@@ -2,6 +2,8 @@
   (names main)
   (public_names micse)
   (libraries
-    prover
+    micse.lib
+    micse.pre
+    micse.prover
   )
   (package micse))

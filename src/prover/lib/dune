@@ -1,13 +1,8 @@
 (library
   (name proverLib)
-  (public_name micse.proverLib)
+  (public_name micse.prover.lib)
   (libraries
-    batteries
-    michelson
-    tezla
-    tezla-cfg
-    ocamlgraph
     core
     zarith
-    z3)
-  (flags -w -a))
+    z3
+    micse.pre))

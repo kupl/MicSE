@@ -4,12 +4,12 @@
 (*****************************************************************************)
 (*****************************************************************************)
 
-type typ = Adt.typ
-and data = Adt.data
-and operation = Adt.operation
+type typ = Pre.Lib.Adt.typ
+and data = Pre.Lib.Adt.data
+and operation = Pre.Lib.Adt.operation
 
-type var = Cfg.ident
-and exp = Cfg.expr
+type var = Pre.Lib.Cfg.ident
+and exp = Pre.Lib.Cfg.expr
 
 type t = v_formula
 
@@ -63,10 +63,10 @@ and v_nul_op =
 and v_uni_op =
   | VE_car      | VE_cdr      | VE_abs      | VE_neg      | VE_not
   | VE_eq       | VE_neq      | VE_lt       | VE_gt       | VE_leq
-  | VE_geq      | VE_cast     | VE_concat   | VE_pack     | VE_unpack
+  | VE_geq      | VE_cast     | VE_pack     | VE_unpack   | VE_list_concat
   | VE_contract | VE_account  | VE_blake2b  | VE_sha256   | VE_sha512
   | VE_hash_key | VE_address  | VE_un_opt   | VE_un_left  | VE_un_right
-  | VE_hd       | VE_tl       | VE_size     | VE_isnat    | VE_int
+  | VE_hd       | VE_tl       | VE_size     | VE_isnat    | VE_to_int
   
 and v_bin_op =
   | VE_add      | VE_sub      | VE_mul      | VE_ediv     | VE_div
@@ -292,7 +292,7 @@ let create_exp_uni_op_cast : v_exp -> typ -> v_exp
 =fun e1 t -> create_exp_uni_op VE_cast e1 t
 
 let create_exp_uni_op_concat : v_exp -> typ -> v_exp
-=fun e1 t -> create_exp_uni_op VE_concat e1 t
+=fun e1 t -> create_exp_uni_op VE_list_concat e1 t
 
 let create_exp_uni_op_pack : v_exp -> typ -> v_exp
 =fun e1 t -> create_exp_uni_op VE_pack e1 t
@@ -343,7 +343,7 @@ let create_exp_uni_op_isnat : v_exp -> typ -> v_exp
 =fun e1 t -> create_exp_uni_op VE_isnat e1 t
 
 let create_exp_uni_op_int : v_exp -> typ -> v_exp
-=fun e1 t -> create_exp_uni_op VE_int e1 t
+=fun e1 t -> create_exp_uni_op VE_to_int e1 t
 
 let create_exp_bin_op : v_bin_op -> v_exp -> v_exp -> typ -> v_exp
 =fun vbo e1 e2 t -> VE_bin_op (vbo, e1, e2, t)
@@ -468,7 +468,7 @@ let rec string_of_formula : v_formula -> string
     end
   | VF_imply (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") -> (" ^ (string_of_formula f2') ^ ")"
   | VF_iff (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") <-> (" ^ (string_of_formula f2') ^ ")"
-  | VF_forall (vl', f') -> "ForAll " ^ (Core.String.concat ~sep:", " (Core.List.map vl' ~f:(fun (v', t') -> v'))) ^ ". " ^ (string_of_formula f')
+  | VF_forall (vl', f') -> "ForAll " ^ (Core.String.concat ~sep:", " (Core.List.map vl' ~f:(fun (v', _) -> v'))) ^ ". " ^ (string_of_formula f')
 end
 
 and string_of_exp : v_exp -> string
@@ -521,7 +521,7 @@ and string_of_exp : v_exp -> string
       | VE_leq -> "LEQ (" ^ (string_of_exp e1') ^ ")"
       | VE_geq -> "GEQ (" ^ (string_of_exp e1') ^ ")"
       | VE_cast -> "CAST (" ^ (string_of_exp e1') ^ ")"
-      | VE_concat -> "CONCAT (" ^ (string_of_exp e1') ^ ")"
+      | VE_list_concat -> "CONCAT (" ^ (string_of_exp e1') ^ ")"
       | VE_pack -> "PACK (" ^ (string_of_exp e1') ^ ")"
       | VE_unpack -> "UNPACK (" ^ (string_of_exp e1') ^ ")"
       | VE_contract -> "CONTRACT (" ^ (string_of_exp e1') ^ ")"
@@ -538,7 +538,7 @@ and string_of_exp : v_exp -> string
       | VE_tl -> "TL (" ^ (string_of_exp e1') ^ ")"
       | VE_size -> "SIZE (" ^ (string_of_exp e1') ^ ")"
       | VE_isnat -> "ISNAT (" ^ (string_of_exp e1') ^ ")"
-      | VE_int -> "INT (" ^ (string_of_exp e1') ^ ")"
+      | VE_to_int -> "INT (" ^ (string_of_exp e1') ^ ")"
     end
   | VE_bin_op (vbo, e1', e2', _) -> begin
       match vbo with

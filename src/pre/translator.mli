@@ -15,12 +15,12 @@ val fail : string -> 'a
 (*****************************************************************************)
 (*****************************************************************************)
 
-val tcfg_cast_stmt : ProverLib.TezlaCfg.Node.stmt -> ProverLib.Cfg.stmt
-val tcfg_cast_edge_label : ProverLib.TezlaCfg.edge_label -> ProverLib.Cfg.edge_label
-val tcfg_get_id : ProverLib.TezlaCfg.Node.t -> int
-val tcfg_get_stmt : ProverLib.TezlaCfg.Node.t -> ProverLib.TezlaCfg.Node.stmt
+val tcfg_cast_stmt : PreLib.TezlaCfg.Node.stmt -> PreLib.Cfg.stmt
+val tcfg_cast_edge_label : PreLib.TezlaCfg.edge_label -> PreLib.Cfg.edge_label
+val tcfg_get_id : PreLib.TezlaCfg.Node.t -> int
+val tcfg_get_stmt : PreLib.TezlaCfg.Node.t -> PreLib.TezlaCfg.Node.stmt
 
-val of_tezlaCfg : ProverLib.TezlaCfg.t -> ProverLib.Cfg.t
+val of_tezlaCfg : PreLib.TezlaCfg.t -> PreLib.Cfg.t
 
 
 (*****************************************************************************)
@@ -53,4 +53,4 @@ val get_es_str  : stack_info_t -> string
 (*****************************************************************************)
 (*****************************************************************************)
 
-val adt_to_cfg : ProverLib.Adt.t -> ProverLib.Cfg.t
+val adt_to_cfg : PreLib.Adt.t -> PreLib.Cfg.t

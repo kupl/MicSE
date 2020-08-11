@@ -1,5 +1,4 @@
-open ProverLib
-module TezlaCfg = ProverLib.TezlaCfg
+open PreLib
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -72,8 +71,8 @@ let of_tezlaCfg tcfg =
   let gen_t : 'a -> 'a Michelson.Adt.t = fun x -> {pos = Michelson.Location.Unknown; d = x;} in (* sugar function *)
   { flow = flow;
     (*node_info = node_info;*)
-    vertex_info = Core.Hashtbl.fold node_info ~init:ProverLib.Cfg.CPMap.empty ~f:(fun ~key ~data acc -> ProverLib.Cfg.CPMap.add_exn acc ~key:key ~data:data);
-    type_info = ProverLib.Cfg.CPMap.empty;
+    vertex_info = Core.Hashtbl.fold node_info ~init:PreLib.Cfg.CPMap.empty ~f:(fun ~key ~data acc -> PreLib.Cfg.CPMap.add_exn acc ~key:key ~data:data);
+    type_info = PreLib.Cfg.CPMap.empty;
     main_entry = main_entry;
     main_exit = main_exit;
     (* added for forward compatibility. They have no meaning *)

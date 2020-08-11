@@ -32,7 +32,7 @@ type typ = Adt.typ
     | T_address
   *)
 
-and data = Adt.data
+and data = Pre.Lib.Adt.data
   (*
     and data =
     | D_int of Z.t
@@ -49,7 +49,7 @@ and data = Adt.data
     | D_list of data t list
   *)
 
-and operation = Adt.operation
+and operation = Pre.Lib.Adt.operation
   (*
     type operation =
     | O_create_contract of Michelson.Adt.program * string * string * string
@@ -58,12 +58,12 @@ and operation = Adt.operation
     | O_create_account of string * string * string * string
   *)
 
-type var = Cfg.ident
+type var = Pre.Lib.Cfg.ident
   (*
     type indent = string
   *)
 
-and exp = Cfg.expr
+and exp = Pre.Lib.Cfg.expr
   (*
     type expr =
     | E_push of data * typ
@@ -195,10 +195,10 @@ and v_nul_op =
 and v_uni_op =
   | VE_car      | VE_cdr      | VE_abs      | VE_neg      | VE_not
   | VE_eq       | VE_neq      | VE_lt       | VE_gt       | VE_leq
-  | VE_geq      | VE_cast     | VE_concat   | VE_pack     | VE_unpack
+  | VE_geq      | VE_cast     | VE_pack     | VE_unpack   | VE_list_concat
   | VE_contract | VE_account  | VE_blake2b  | VE_sha256   | VE_sha512
   | VE_hash_key | VE_address  | VE_un_opt   | VE_un_left  | VE_un_right
-  | VE_hd       | VE_tl       | VE_size     | VE_isnat    | VE_int
+  | VE_hd       | VE_tl       | VE_size     | VE_isnat    | VE_to_int
   
 and v_bin_op =
   | VE_add      | VE_sub      | VE_mul      | VE_ediv     | VE_div
@@ -220,8 +220,6 @@ and v_operation =
 (* Verification Formula                                                      *)
 (*****************************************************************************)
 (*****************************************************************************)
-
-val create_exp_var : var -> typ -> v_exp
 
 val create_formula_true : v_formula
 

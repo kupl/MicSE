@@ -3,7 +3,7 @@ open ProverLib
 (************************************************)
 (************************************************)
 
-let generate : Bp.raw_t_list -> Cfg.t -> Bp.t list
+let generate : Bp.raw_t_list -> Pre.Lib.Cfg.t -> Bp.t list
 =fun {bps=raw_bps; trx_inv_vtx; loop_inv_vtx} cfg -> begin
   let _ = cfg in
   let _ = (raw_bps, trx_inv_vtx, loop_inv_vtx) in

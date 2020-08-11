@@ -3,9 +3,9 @@ open ProverLib
 (************************************************)
 (************************************************)
 
-val extract : Cfg.t -> Bp.raw_t_list
+val extract : Pre.Lib.Cfg.t -> Bp.raw_t_list
 
-val translate : Bp.t -> Cfg.vertex -> Cfg.t -> Bp.t list
+val translate : Bp.t -> Pre.Lib.Cfg.vertex -> Pre.Lib.Cfg.t -> Bp.t list
 
 val create_basic_safety_property : Bp.exp -> Bp.typ -> Bp.inst option
 

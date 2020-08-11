@@ -7,9 +7,9 @@ type object_typ =
 (************************************************)
 (************************************************)
 
-val type_map : (Cfg.ident, Cfg.typ) Cfg.CPMap.t ref
+val type_map : (Pre.Lib.Cfg.ident, Pre.Lib.Cfg.typ) Pre.Lib.Cfg.CPMap.t ref
 
-val convert : Bp.t -> Cfg.t -> Vlang.t
+val convert : Bp.t -> Pre.Lib.Cfg.t -> Vlang.t
 
 val sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
 
