@@ -1,0 +1,121 @@
+parameter (pair (address %toAddr) (mutez %value));
+storage   (pair (pair (map %balance address mutez) (address %owner)) (mutez %totalSupply));
+code
+  {
+    DUP;        # pair(params, storage).pair(params, storage)
+    CDR;        # storage.pair(params, storage)
+    SWAP;       # pair(params, storage).storage
+    CAR;        # params.storage
+    # Entry point: transfer # params.storage
+    # sp.verify(self.data.balance[sp.sender] >= params.value) # params.storage
+    DUP;        # params.params.storage
+    CDR;        # mutez.params.storage
+    DIG 2;      # storage.mutez.params
+    DUP;        # storage.storage.mutez.params
+    DUG 3;      # storage.mutez.params.storage
+    CAAR;       # map address mutez.mutez.params.storage
+    SENDER;     # address.map address mutez.mutez.params.storage
+    GET;        # option mutez.mutez.params.storage
+    IF_SOME
+      {
+        # of_some: Get-item:-1 # mutez.mutez.params.storage
+      }
+      {
+        PUSH string "Get-item:-1"; # string.mutez.params.storage
+        FAILWITH;   # FAILED
+      }; # mutez.mutez.params.storage
+    COMPARE;    # int.params.storage
+    GE;         # bool.params.storage
+    IF
+      {}
+      {
+        PUSH string "WrongCondition: self.data.balance[sp.sender] >= params.value"; # string.params.storage
+        FAILWITH;   # FAILED
+      }; # params.storage
+    # self.data.balance[sp.sender] -= params.value # params.storage
+    SWAP;       # storage.params
+    DUP;        # storage.storage.params
+    DUG 2;      # storage.params.storage
+    DUP;        # storage.storage.params.storage
+    CDR;        # mutez.storage.params.storage
+    SWAP;       # storage.mutez.params.storage
+    CAR;        # pair (map %balance address mutez) (address %owner).mutez.params.storage
+    DUP;        # pair (map %balance address mutez) (address %owner).pair (map %balance address mutez) (address %owner).mutez.params.storage
+    CDR;        # address.pair (map %balance address mutez) (address %owner).mutez.params.storage
+    SWAP;       # pair (map %balance address mutez) (address %owner).address.mutez.params.storage
+    CAR;        # map address mutez.address.mutez.params.storage
+    DIG 3;      # params.map address mutez.address.mutez.storage
+    DUP;        # params.params.map address mutez.address.mutez.storage
+    DUG 4;      # params.map address mutez.address.mutez.params.storage
+    CDR;        # mutez.map address mutez.address.mutez.params.storage
+    DIG 5;      # storage.mutez.map address mutez.address.mutez.params
+    DUP;        # storage.storage.mutez.map address mutez.address.mutez.params
+    DUG 6;      # storage.mutez.map address mutez.address.mutez.params.storage
+    CAAR;       # map address mutez.mutez.map address mutez.address.mutez.params.storage
+    SENDER;     # address.map address mutez.mutez.map address mutez.address.mutez.params.storage
+    GET;        # option mutez.mutez.map address mutez.address.mutez.params.storage
+    IF_SOME
+      {
+        # of_some: Get-item:-1 # mutez.mutez.map address mutez.address.mutez.params.storage
+      }
+      {
+        PUSH string "Get-item:-1"; # string.mutez.map address mutez.address.mutez.params.storage
+        FAILWITH;   # FAILED
+      }; # mutez.mutez.map address mutez.address.mutez.params.storage
+    SUB;        # mutez.map address mutez.address.mutez.params.storage
+    SOME;       # option mutez.map address mutez.address.mutez.params.storage
+    SENDER;     # address.option mutez.map address mutez.address.mutez.params.storage
+    UPDATE;     # map address mutez.address.mutez.params.storage
+    PAIR;       # pair (map address mutez) address.mutez.params.storage
+    PAIR;       # pair (pair (map address mutez) address) mutez.params.storage
+    DUG 2;      # params.storage.pair (pair (map address mutez) address) mutez
+    SWAP;       # storage.params.pair (pair (map address mutez) address) mutez
+    DROP;       # params.pair (pair (map address mutez) address) mutez
+    # self.data.balance[params.toAddr] += params.value # params.pair (pair (map address mutez) address) mutez
+    SWAP;       # pair (pair (map address mutez) address) mutez.params
+    DUP;        # pair (pair (map address mutez) address) mutez.pair (pair (map address mutez) address) mutez.params
+    DUG 2;      # pair (pair (map address mutez) address) mutez.params.pair (pair (map address mutez) address) mutez
+    DUP;        # pair (pair (map address mutez) address) mutez.pair (pair (map address mutez) address) mutez.params.pair (pair (map address mutez) address) mutez
+    CDR;        # mutez.pair (pair (map address mutez) address) mutez.params.pair (pair (map address mutez) address) mutez
+    SWAP;       # pair (pair (map address mutez) address) mutez.mutez.params.pair (pair (map address mutez) address) mutez
+    CAR;        # pair (map address mutez) address.mutez.params.pair (pair (map address mutez) address) mutez
+    DUP;        # pair (map address mutez) address.pair (map address mutez) address.mutez.params.pair (pair (map address mutez) address) mutez
+    CDR;        # address.pair (map address mutez) address.mutez.params.pair (pair (map address mutez) address) mutez
+    SWAP;       # pair (map address mutez) address.address.mutez.params.pair (pair (map address mutez) address) mutez
+    CAR;        # map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    DIG 3;      # params.map address mutez.address.mutez.pair (pair (map address mutez) address) mutez
+    DUP;        # params.params.map address mutez.address.mutez.pair (pair (map address mutez) address) mutez
+    DUG 4;      # params.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    CDR;        # mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    DIG 5;      # pair (pair (map address mutez) address) mutez.mutez.map address mutez.address.mutez.params
+    DUP;        # pair (pair (map address mutez) address) mutez.pair (pair (map address mutez) address) mutez.mutez.map address mutez.address.mutez.params
+    DUG 6;      # pair (pair (map address mutez) address) mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    CAAR;       # map address mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    DIG 5;      # params.map address mutez.mutez.map address mutez.address.mutez.pair (pair (map address mutez) address) mutez
+    DUP;        # params.params.map address mutez.mutez.map address mutez.address.mutez.pair (pair (map address mutez) address) mutez
+    DUG 6;      # params.map address mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    CAR;        # address.map address mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    GET;        # option mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    IF_SOME
+      {
+        # of_some: Get-item:20 # mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+      }
+      {
+        PUSH string "Get-item:20"; # string.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+        FAILWITH;   # FAILED
+      }; # mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    ADD;        # mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    SOME;       # option mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    DIG 4;      # params.option mutez.map address mutez.address.mutez.pair (pair (map address mutez) address) mutez
+    DUP;        # params.params.option mutez.map address mutez.address.mutez.pair (pair (map address mutez) address) mutez
+    DUG 5;      # params.option mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    CAR;        # address.option mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    UPDATE;     # map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    PAIR;       # pair (map address mutez) address.mutez.params.pair (pair (map address mutez) address) mutez
+    PAIR;       # pair (pair (map address mutez) address) mutez.params.pair (pair (map address mutez) address) mutez
+    DUG 2;      # params.pair (pair (map address mutez) address) mutez.pair (pair (map address mutez) address) mutez
+    DROP;       # pair (pair (map address mutez) address) mutez.pair (pair (map address mutez) address) mutez
+    DROP;       # pair (pair (map address mutez) address) mutez
+    NIL operation; # list operation.pair (pair (map address mutez) address) mutez
+    PAIR;       # pair (list operation) (pair (pair (map address mutez) address) mutez)
+  } # pair (list operation) (pair (pair (map address mutez) address) mutez)
