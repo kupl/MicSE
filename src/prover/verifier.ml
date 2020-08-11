@@ -3,15 +3,15 @@ open ProverLib
 (************************************************)
 (************************************************)
 
-let rec verify : Vlang.t -> Pre.Lib.Cfg.t -> bool
+let rec verify : Vlang.t -> Pre.Lib.Cfg.t -> bool * (Smt.z_expr * Smt.z_expr) option
 =fun vc cfg -> begin
   let zexp_of_vc = create_convert_vformula (Vlang.create_formula_not vc) in
   (*let _ = print_endline (Vlang.string_of_vlang vc) in*)
   let solver = Smt.create_solver () in
   let _ = Smt.update_solver_add solver [zexp_of_vc] in
   let result, model_opt = Smt.create_check solver in
-  let _ = print_endline (match model_opt with None -> "" | Some model -> (create_param_from_model model cfg)) in
-  result
+  let param_storage_opt = match model_opt with None -> None | Some model -> create_param_storage_from_model model cfg in
+  result, param_storage_opt
 end
 
 and sort_of_typt : Smt.typ -> Smt.z_sort
@@ -255,12 +255,14 @@ and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
   | err -> print_endline (Vlang.string_of_exp ve); raise err
 end
 
-and create_param_from_model : Smt.model -> Pre.Lib.Cfg.t -> string
+and create_param_storage_from_model : Smt.model -> Pre.Lib.Cfg.t -> (Smt.z_expr * Smt.z_expr) option
 =fun m cfg -> begin
   let param_storage_var = "param_storage" in
   let param_storage_sort = sort_of_typt (Pre.Lib.Cfg.CPMap.find_exn cfg.type_info param_storage_var) in
   let param_storage = Smt.read_var (Smt.create_symbol param_storage_var) param_storage_sort in
-  let param = Smt.read_pair_fst param_storage in
-  let expr_opt = Smt.create_evaluation m param in
-  match expr_opt with None -> "None" | Some expr -> Smt.string_of_expr expr
+  let param, storage = ((Smt.read_pair_fst param_storage), (Smt.read_pair_snd param_storage)) in
+  let param_expr_opt, storage_expr_opt = ((Smt.create_evaluation m param), (Smt.create_evaluation m storage)) in
+  match (param_expr_opt, storage_expr_opt) with
+  | Some param_expr, Some storage_expr -> Some (param_expr, storage_expr)
+  | _, _ -> None
 end

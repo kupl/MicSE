@@ -2,7 +2,7 @@
   (names main)
   (public_names micse)
   (libraries
-    micse.lib
+    micse.utils
     micse.pre
     micse.prover
   )

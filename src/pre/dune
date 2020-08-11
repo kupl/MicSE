@@ -9,4 +9,5 @@
     ocamlgraph
     core
     micse.pre.lib
+    micse.utils
     ))
