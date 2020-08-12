@@ -89,6 +89,8 @@ val read_stmt_from_vtx : t -> vertex -> stmt
 
 val read_succ_from_vtx : t -> vertex -> (E.t * V.t) list
 
+val read_pred_from_vtx : t -> vertex -> (E.t * V.t) list
+
 val is_main_entry : t -> vertex -> bool
 
 val is_main_exit : t -> vertex -> bool

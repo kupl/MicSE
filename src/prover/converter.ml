@@ -31,7 +31,7 @@ and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
       let f' = Vlang.create_formula_and [(create_convert_cond c); f] in
       (f', g)
     end
-  | BI_assert c -> begin
+  | BI_assert (c, _) -> begin
       let g' = Vlang.create_formula_imply f (create_convert_cond c) in
       (f, g')
     end

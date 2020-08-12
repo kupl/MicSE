@@ -93,6 +93,14 @@ and exp = Pre.Lib.Cfg.expr
     | E_phi of string * string
     | E_itself of string
   *)
+and edge = Pre.Lib.Cfg.edge_label
+  (*
+    type edge_label = | Normal | If_true | If_false | Failed | Check_skip
+  *)
+and vertex = Pre.Lib.Cfg.vertex
+  (*
+    type vertex = int
+  *)
 
 type cond =
   | BC_is_true of var
@@ -128,17 +136,21 @@ val string_of_cond : cond -> string
 
 type inst =
   | BI_assume of cond
-  | BI_assert of cond
+  | BI_assert of cond * loc
   | BI_assign of var * exp
   | BI_skip
 
+and loc = { entry: vertex; exit: vertex; }
+
 val create_inst_assume : cond -> inst
 
-val create_inst_assert : cond -> inst
+val create_inst_assert : cond -> loc -> inst
 
-val create_inst_assign : (var * exp) -> inst
+val create_inst_assign : var -> exp -> inst
 
 val create_inst_skip : inst
+
+val create_loc : vertex -> vertex -> loc
 
 val string_of_inst : inst -> string
 
@@ -148,11 +160,6 @@ val string_of_inst : inst -> string
 (* Invariants                                                                *)
 (*****************************************************************************)
 (*****************************************************************************)
-
-type vertex = Pre.Lib.Cfg.vertex
-  (*
-    type vertex = int
-  *)
 
 type formula = Vlang.t
 

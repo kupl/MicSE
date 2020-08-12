@@ -104,6 +104,16 @@ let read_succ_from_vtx : t -> vertex -> (E.t * V.t) list
   succ
 end
 
+let read_pred_from_vtx : t -> vertex -> (E.t * V.t) list
+=fun cfg vtx -> begin
+  let pred_vtxs = G.pred cfg.flow vtx in
+  let pred = Core.List.map pred_vtxs ~f:(fun pred_vtx -> (
+    let (_, pred_edge, _) = G.find_edge cfg.flow pred_vtx vtx in
+    (pred_edge, pred_vtx)
+  )) in
+  pred
+end
+
 let is_main_entry : t -> vertex -> bool
 =fun cfg vtx -> (vtx = cfg.main_entry)
 
