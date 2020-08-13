@@ -27,4 +27,4 @@ class MyToken(sp.Contract):
     sp.verify(self.data.allowance[params.fromAddr][sp.sender] >= params.value)
     self.data.balance[params.fromAddr] -= params.value
     self.data.balance[params.toAddr] += params.value
-    self.data.allowance[params.fromAddr][sp.sender] += params.value     # bug: '+=' should have been '-='
+    self.data.allowance[params.fromAddr][sp.sender] -= params.value     # fixed

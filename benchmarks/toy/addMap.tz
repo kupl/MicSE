@@ -1,0 +1,49 @@
+parameter (pair mutez address);
+storage   (map address mutez);
+code
+  {
+    DUP;        # pair @parameter @storage : pair @parameter @storage
+    CAR;        # @parameter : pair @parameter @storage
+    SWAP;       # pair @parameter @storage : @parameter
+    CDR;        # @storage : @parameter
+    # == add ==
+    # self.data.balance[params.toAddr] = self.data.balance.get(params.toAddr, default_value = sp.tez(0)) + params.amount # @storage : @parameter
+    DUP;        # @storage : @storage : @parameter
+    DUG 2;      # @storage : @parameter : @storage
+    SWAP;       # @parameter : @storage : @storage
+    DUP;        # @parameter : @parameter : @storage : @storage
+    CDR;        # address : @parameter : @storage : @storage
+    SWAP;       # @parameter : address : @storage : @storage
+    DUP;        # @parameter : @parameter : address : @storage : @storage
+    DUG 3;      # @parameter : address : @storage : @parameter : @storage
+    CAR;        # mutez : address : @storage : @parameter : @storage
+    DIG 2;      # @storage : mutez : address : @parameter : @storage
+    DUP;        # @storage : @storage : mutez : address : @parameter : @storage
+    DUG 3;      # @storage : mutez : address : @storage : @parameter : @storage
+    DIG 4;      # @parameter : @storage : mutez : address : @storage : @storage
+    DUP;        # @parameter : @parameter : @storage : mutez : address : @storage : @storage
+    DUG 5;      # @parameter : @storage : mutez : address : @storage : @parameter : @storage
+    CDR;        # address : @storage : mutez : address : @storage : @parameter : @storage
+    GET;        # option mutez : mutez : address : @storage : @parameter : @storage
+    IF_SOME
+      {
+        DIG 5;      # @storage : @some : mutez : address : @storage : @parameter
+        DROP;       # @some : mutez : address : @storage : @parameter
+        DIG 4;      # @parameter : @some : mutez : address : @storage
+        DROP;       # @some : mutez : address : @storage
+        # of_some: Get-item:12 # @some : mutez : address : @storage
+      }
+      {
+        DIG 4;      # @storage : mutez : address : @storage : @parameter
+        DROP;       # mutez : address : @storage : @parameter
+        DIG 3;      # @parameter : mutez : address : @storage
+        DROP;       # mutez : address : @storage
+        PUSH mutez 0; # mutez : mutez : address : @storage
+      }; # @some : mutez : address : @storage
+    ADD;        # mutez : address : @storage
+    SOME;       # option mutez : address : @storage
+    SWAP;       # address : option mutez : @storage
+    UPDATE;     # map address mutez
+    NIL operation; # list operation : map address mutez
+    PAIR;       # pair (list operation) (map address mutez)
+  };

@@ -1,0 +1,144 @@
+parameter (pair (mutez %amount) (address %participant));
+storage   (pair (pair (map %balance address mutez) (bool %distributionFinished)) (pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply))));
+code
+  {
+    DUP;        # pair @parameter @storage : pair @parameter @storage
+    CDR;        # @storage : pair @parameter @storage
+    SWAP;       # pair @parameter @storage : @storage
+    CAR;        # @parameter : @storage
+    # == doAirdrop ==
+    # sp.verify(self.data.distributionFinished == False) # @parameter : @storage
+    PUSH bool False; # bool : @parameter : @storage
+    DIG 2;      # @storage : bool : @parameter
+    DUP;        # @storage : @storage : bool : @parameter
+    DUG 3;      # @storage : bool : @parameter : @storage
+    CADR;       # bool : bool : @parameter : @storage
+    COMPARE;    # int : @parameter : @storage
+    EQ;         # bool : @parameter : @storage
+    IF
+      {}
+      {
+        PUSH string "WrongCondition: self.data.distributionFinished == False"; # string : @parameter : @storage
+        FAILWITH;   # FAILED
+      }; # @parameter : @storage
+    # sp.verify(self.data.owner == sp.sender) # @parameter : @storage
+    SENDER;     # address : @parameter : @storage
+    DIG 2;      # @storage : address : @parameter
+    DUP;        # @storage : @storage : address : @parameter
+    DUG 3;      # @storage : address : @parameter : @storage
+    CDAR;       # address : address : @parameter : @storage
+    COMPARE;    # int : @parameter : @storage
+    EQ;         # bool : @parameter : @storage
+    IF
+      {}
+      {
+        PUSH string "WrongCondition: self.data.owner == sp.sender"; # string : @parameter : @storage
+        FAILWITH;   # FAILED
+      }; # @parameter : @storage
+    SWAP;       # @storage : @parameter
+    # sp.verify(self.data.totalDistributed < self.data.totalSupply) # @storage : @parameter
+    DUP;        # @storage : @storage : @parameter
+    CDDDR;      # mutez : @storage : @parameter
+    SWAP;       # @storage : mutez : @parameter
+    DUP;        # @storage : @storage : mutez : @parameter
+    DUG 3;      # @storage : mutez : @parameter : @storage
+    CDDAR;      # mutez : mutez : @parameter : @storage
+    COMPARE;    # int : @parameter : @storage
+    LT;         # bool : @parameter : @storage
+    IF
+      {}
+      {
+        PUSH string "WrongCondition: self.data.totalDistributed < self.data.totalSupply"; # string : @parameter : @storage
+        FAILWITH;   # FAILED
+      }; # @parameter : @storage
+    SWAP;       # @storage : @parameter
+    # self.data.balance[params.participant] = self.data.balance.get(params.participant, default_value = sp.tez(0)) + params.amount # @storage : @parameter
+    DUP;        # @storage : @storage : @parameter
+    DUG 2;      # @storage : @parameter : @storage
+    DUP;        # @storage : @storage : @parameter : @storage
+    CDR;        # pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @storage : @parameter : @storage
+    SWAP;       # @storage : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    CAR;        # pair (map %balance address mutez) (bool %distributionFinished) : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    DUP;        # pair (map %balance address mutez) (bool %distributionFinished) : pair (map %balance address mutez) (bool %distributionFinished) : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    CDR;        # bool : pair (map %balance address mutez) (bool %distributionFinished) : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    SWAP;       # pair (map %balance address mutez) (bool %distributionFinished) : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    CAR;        # map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    DIG 3;      # @parameter : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @storage
+    DUP;        # @parameter : @parameter : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @storage
+    CDR;        # address : @parameter : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @storage
+    SWAP;       # @parameter : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @storage
+    DUP;        # @parameter : @parameter : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @storage
+    DUG 5;      # @parameter : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    CAR;        # mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    DIG 6;      # @storage : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+    DUP;        # @storage : @storage : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+    DUG 7;      # @storage : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    CAAR;       # map address mutez : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    DIG 6;      # @parameter : map address mutez : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @storage
+    DUP;        # @parameter : @parameter : map address mutez : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @storage
+    DUG 7;      # @parameter : map address mutez : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    CDR;        # address : map address mutez : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    GET;        # option mutez : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter : @storage
+    IF_SOME
+      {
+        DIG 7;      # @storage : @some : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+        DROP;       # @some : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+        # of_some: Get-item:22 # @some : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+      }
+      {
+        DIG 6;      # @storage : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+        DROP;       # mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+        PUSH mutez 0; # mutez : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+      }; # @some : mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+    ADD;        # mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+    SOME;       # option mutez : address : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+    SWAP;       # address : option mutez : map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+    UPDATE;     # map address mutez : bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+    PAIR;       # pair (map address mutez) bool : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : @parameter
+    PAIR;       # pair (pair (map address mutez) bool) (pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply))) : @parameter
+    # self.data.totalDistributed += params.amount # pair (pair (map address mutez) bool) (pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply))) : @parameter
+    DUP;        # pair (pair (map address mutez) bool) (pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply))) : pair (pair (map address mutez) bool) (pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply))) : @parameter
+    CAR;        # pair (map address mutez) bool : pair (pair (map address mutez) bool) (pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply))) : @parameter
+    SWAP;       # pair (pair (map address mutez) bool) (pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply))) : pair (map address mutez) bool : @parameter
+    CDR;        # pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : pair (map address mutez) bool : @parameter
+    DUP;        # pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : pair (map address mutez) bool : @parameter
+    CAR;        # address : pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : pair (map address mutez) bool : @parameter
+    SWAP;       # pair (address %owner) (pair (mutez %totalDistributed) (mutez %totalSupply)) : address : pair (map address mutez) bool : @parameter
+    CDR;        # pair (mutez %totalDistributed) (mutez %totalSupply) : address : pair (map address mutez) bool : @parameter
+    DUP;        # pair (mutez %totalDistributed) (mutez %totalSupply) : pair (mutez %totalDistributed) (mutez %totalSupply) : address : pair (map address mutez) bool : @parameter
+    CDR;        # mutez : pair (mutez %totalDistributed) (mutez %totalSupply) : address : pair (map address mutez) bool : @parameter
+    SWAP;       # pair (mutez %totalDistributed) (mutez %totalSupply) : mutez : address : pair (map address mutez) bool : @parameter
+    CAR;        # mutez : mutez : address : pair (map address mutez) bool : @parameter
+    DIG 4;      # @parameter : mutez : mutez : address : pair (map address mutez) bool
+    CAR;        # mutez : mutez : mutez : address : pair (map address mutez) bool
+    ADD;        # mutez : mutez : address : pair (map address mutez) bool
+    PAIR;       # pair mutez mutez : address : pair (map address mutez) bool
+    SWAP;       # address : pair mutez mutez : pair (map address mutez) bool
+    PAIR;       # pair address (pair mutez mutez) : pair (map address mutez) bool
+    SWAP;       # pair (map address mutez) bool : pair address (pair mutez mutez)
+    PAIR;       # pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    # if self.data.totalDistributed >= self.data.totalSupply: # pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    DUP;        # pair (pair (map address mutez) bool) (pair address (pair mutez mutez)) : pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    CDDDR;      # mutez : pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    SWAP;       # pair (pair (map address mutez) bool) (pair address (pair mutez mutez)) : mutez
+    DUP;        # pair (pair (map address mutez) bool) (pair address (pair mutez mutez)) : pair (pair (map address mutez) bool) (pair address (pair mutez mutez)) : mutez
+    DUG 2;      # pair (pair (map address mutez) bool) (pair address (pair mutez mutez)) : mutez : pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    CDDAR;      # mutez : mutez : pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    COMPARE;    # int : pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    GE;         # bool : pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    IF
+      {
+        # self.data.distributionFinished = True # pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+        DUP;        # pair (pair (map address mutez) bool) (pair address (pair mutez mutez)) : pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+        CDR;        # pair address (pair mutez mutez) : pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+        SWAP;       # pair (pair (map address mutez) bool) (pair address (pair mutez mutez)) : pair address (pair mutez mutez)
+        CAAR;       # map address mutez : pair address (pair mutez mutez)
+        PUSH bool True; # bool : map address mutez : pair address (pair mutez mutez)
+        SWAP;       # map address mutez : bool : pair address (pair mutez mutez)
+        PAIR;       # pair (map address mutez) bool : pair address (pair mutez mutez)
+        PAIR;       # pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+      }
+      {}; # pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    NIL operation; # list operation : pair (pair (map address mutez) bool) (pair address (pair mutez mutez))
+    PAIR;       # pair (list operation) (pair (pair (map address mutez) bool) (pair address (pair mutez mutez)))
+  };

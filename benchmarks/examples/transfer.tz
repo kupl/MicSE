@@ -1,5 +1,5 @@
-parameter (pair (address %toAddr) (mutez %value));
-storage   (pair (pair (map %balance address mutez) (address %owner)) (mutez %totalSupply));
+parameter (pair address mutez);
+storage   (pair (pair (map address mutez) address) mutez);
 code
   {
     DUP;        # pair(params, storage).pair(params, storage)
@@ -13,7 +13,8 @@ code
     DIG 2;      # storage.mutez.params
     DUP;        # storage.storage.mutez.params
     DUG 3;      # storage.mutez.params.storage
-    CAAR;       # map address mutez.mutez.params.storage
+    CAR;
+    CAR;       # map address mutez.mutez.params.storage
     SENDER;     # address.map address mutez.mutez.params.storage
     GET;        # option mutez.mutez.params.storage
     IF_SOME
@@ -51,7 +52,8 @@ code
     DIG 5;      # storage.mutez.map address mutez.address.mutez.params
     DUP;        # storage.storage.mutez.map address mutez.address.mutez.params
     DUG 6;      # storage.mutez.map address mutez.address.mutez.params.storage
-    CAAR;       # map address mutez.mutez.map address mutez.address.mutez.params.storage
+    CAR;
+    CAR;       # map address mutez.mutez.map address mutez.address.mutez.params.storage
     SENDER;     # address.map address mutez.mutez.map address mutez.address.mutez.params.storage
     GET;        # option mutez.mutez.map address mutez.address.mutez.params.storage
     IF_SOME
@@ -90,7 +92,8 @@ code
     DIG 5;      # pair (pair (map address mutez) address) mutez.mutez.map address mutez.address.mutez.params
     DUP;        # pair (pair (map address mutez) address) mutez.pair (pair (map address mutez) address) mutez.mutez.map address mutez.address.mutez.params
     DUG 6;      # pair (pair (map address mutez) address) mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
-    CAAR;       # map address mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
+    CAR;
+    CAR;       # map address mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
     DIG 5;      # params.map address mutez.mutez.map address mutez.address.mutez.pair (pair (map address mutez) address) mutez
     DUP;        # params.params.map address mutez.mutez.map address mutez.address.mutez.pair (pair (map address mutez) address) mutez
     DUG 6;      # params.map address mutez.mutez.map address mutez.address.mutez.params.pair (pair (map address mutez) address) mutez
