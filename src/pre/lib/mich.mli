@@ -186,6 +186,7 @@ val copy_info_t : 'a t -> 'b t -> 'b t  (* fun x y -> {pos=x.pos; annot=x.annot;
 val get_min_pos : pos -> pos -> pos
 val get_max_pos : pos -> pos -> pos
 val join_pos    : loc -> loc -> loc  (* It assumes that two locations are already sanitized well *)
+val join_pos_lst : loc list -> loc
 
 val join_instt_seq  : annot list -> inst t -> inst t -> inst t    (* i1 i2 -> I_seq (i1, i2) *)
 
@@ -202,7 +203,7 @@ val gen_insttseq : (annot list) -> (inst t) list -> (inst t)   (* [A; B; C] -> I
 (*****************************************************************************)
 
 exception Not_Macro of string
-val nm_fail : string -> 'a
+val nm_fail : string -> 'a    (* fun s -> raise (Not Macro s) *)
 
 val str_fst : string -> int -> string
 val str_lst : string -> int -> string
@@ -279,3 +280,20 @@ val subst_standard_macro : inst t -> inst t
 val subst_standard_macro_all : inst t -> inst t
 
 val subst_standard_macro_all_data : data t -> data t
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Fill Unknown Position Informations                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val fill_position_all : ?update_loc_flag:bool -> (?update_loc:bool -> loc -> 'a -> (loc * 'a)) -> (loc -> ('a t) -> (loc * 'a t))
+
+val fill_position_all_typ  : ?update_loc:bool -> loc -> typ  -> (loc * typ )
+val fill_position_all_data : ?update_loc:bool -> loc -> data -> (loc * data)
+val fill_position_all_inst : ?update_loc:bool -> loc -> inst -> (loc * inst)
+
+val fill_position_all_typt  : ?update_loc:bool -> (loc -> typ t  -> (loc * typ t ))
+val fill_position_all_datat : ?update_loc:bool -> (loc -> data t -> (loc * data t))
+val fill_position_all_instt : ?update_loc:bool -> (loc -> inst t -> (loc * inst t))

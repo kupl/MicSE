@@ -205,6 +205,7 @@ let join_pos : loc -> loc -> loc
   | Unknown, Pos _                  -> loc_2
   | Unknown, Unknown                -> Unknown
 end
+let join_pos_lst : loc list -> loc = fun loclst -> List.fold_left join_pos Unknown loclst
 
 let join_instt_seq : annot list -> inst t -> inst t -> inst t
 =fun ann i1 i2 -> {pos=join_pos i1.pos i2.pos; ann=ann; d=I_seq(i1,i2);}
@@ -571,3 +572,225 @@ and subst_standard_macro_all_data : data t -> data t =
   | D_lambda i -> D_lambda (subst_standard_macro_all i) |> copy_info d
   | _ -> d
   )
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Fill Unknown Position Informations                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let fill_position_all ?(update_loc_flag=false) : (?update_loc:bool -> loc -> 'a -> (loc * 'a)) -> (loc -> ('a t) -> (loc * 'a t))
+=fun f -> fun l t -> begin
+  match l, t.pos with
+  | Unknown, Unknown ->
+    let (rloc, d') = f ~update_loc:update_loc_flag Unknown t.d in
+    (rloc, {t with pos=rloc; d=d';})
+  | Unknown, Pos _ ->
+    let (rloc, d') = f ~update_loc:update_loc_flag t.pos t.d in
+    let cloc = if update_loc_flag then (join_pos t.pos rloc) else t.pos in
+    (cloc, {t with pos=cloc; d=d';})
+  | Pos _, Unknown ->
+    let (rloc, d') = f ~update_loc:update_loc_flag l t.d in
+    let joined_pos = join_pos l rloc in
+    (joined_pos, {t with pos=joined_pos; d=d';})
+  | Pos _, Pos _ ->
+    let (rloc, d') = f ~update_loc:update_loc_flag t.pos t.d in
+    let joined_pos = join_pos l rloc in
+    let cloc = if update_loc_flag then joined_pos else rloc in
+    (joined_pos, {t with pos=cloc; d=d';})
+end
+
+let rec fill_position_all_typ ?(update_loc=false) : loc -> typ -> (loc * typ)
+=fun l t -> begin
+  let fltyt = fill_position_all_typt ~update_loc:update_loc l in
+  match t with
+  | T_option   t1 -> let (loc_t, t1') = fltyt t1 in (loc_t, T_option   t1')
+  | T_list     t1 -> let (loc_t, t1') = fltyt t1 in (loc_t, T_list     t1')
+  | T_set      t1 -> let (loc_t, t1') = fltyt t1 in (loc_t, T_set      t1')
+  | T_contract t1 -> let (loc_t, t1') = fltyt t1 in (loc_t, T_contract t1')
+  | T_pair     (t1, t2) -> let ((loc_t1, t1'), (loc_t2, t2')) = (fltyt t1, fltyt t2) in (join_pos loc_t1 loc_t2, T_pair    (t1', t2'))
+  | T_or       (t1, t2) -> let ((loc_t1, t1'), (loc_t2, t2')) = (fltyt t1, fltyt t2) in (join_pos loc_t1 loc_t2, T_or      (t1', t2'))
+  | T_lambda   (t1, t2) -> let ((loc_t1, t1'), (loc_t2, t2')) = (fltyt t1, fltyt t2) in (join_pos loc_t1 loc_t2, T_lambda  (t1', t2'))
+  | T_map      (t1, t2) -> let ((loc_t1, t1'), (loc_t2, t2')) = (fltyt t1, fltyt t2) in (join_pos loc_t1 loc_t2, T_map     (t1', t2'))
+  | T_big_map  (t1, t2) -> let ((loc_t1, t1'), (loc_t2, t2')) = (fltyt t1, fltyt t2) in (join_pos loc_t1 loc_t2, T_big_map (t1', t2'))
+  | T_key 
+  | T_unit 
+  | T_signature
+  | T_operation
+  | T_chain_id
+  | T_int
+  | T_nat
+  | T_string
+  | T_bytes
+  | T_mutez
+  | T_bool
+  | T_key_hash
+  | T_timestamp
+  | T_address   -> (l, t)
+end
+
+and fill_position_all_data ?(update_loc=false) : loc -> data -> (loc * data)
+=fun l d -> begin
+  let fldtt = fill_position_all_datat ~update_loc:update_loc l in
+  match d with
+  | D_pair    (d1, d2) -> let ((loc_d1, d1'), (loc_d2, d2')) = (fldtt d1, fldtt d2) in (join_pos loc_d1 loc_d2, D_pair (d1', d2'))
+  | D_left    d1 -> let (loc_d1, d1') = fldtt d1 in (loc_d1, D_left d1' )
+  | D_right   d1 -> let (loc_d1, d1') = fldtt d1 in (loc_d1, D_right d1')
+  | D_some    d1 -> let (loc_d1, d1') = fldtt d1 in (loc_d1, D_some d1' )
+  | D_list    dlst -> let (locs, ds) = (dlst |> List.map (fun x -> fldtt x) |> List.split) in (join_pos_lst locs, D_list ds)
+  | D_elt     (d1, d2) -> let ((loc_d1, d1'), (loc_d2, d2')) = (fldtt d1, fldtt d2) in (join_pos loc_d1 loc_d2, D_elt (d1', d2'))
+  | D_lambda  c -> let (loc_c, c') = fill_position_all_instt ~update_loc:update_loc l c in (loc_c, D_lambda c')
+  | D_bool _
+  | D_int _
+  | D_string _  
+  | D_bytes _
+  | D_unit
+  | D_none      -> (l, d)
+end
+
+and fill_position_all_inst ?(update_loc=false): loc -> inst -> (loc * inst)
+=fun l ii -> begin
+  let flitt = fill_position_all_instt ~update_loc:update_loc l in
+  let fldtt = fill_position_all_datat ~update_loc:update_loc l in
+  let fltyt = fill_position_all_typt  ~update_loc:update_loc l in
+    match ii with
+    (* Nested Instruction *)
+    | I_seq (i1, i2) ->
+      let ((loc_1, i1'), (loc_2, i2')) = (flitt i1, flitt i2) in
+      (join_pos loc_1 loc_2, I_seq (i1', i2'))
+
+    | I_push (t, d) ->
+      let ((loc_t, t'), (loc_d, d')) = (fltyt t, fldtt d) in
+      (join_pos loc_t loc_d, I_push (t', d'))
+
+    | I_if_none (i1, i2) -> 
+      let ((loc_1, i1'), (loc_2, i2')) = (flitt i1, flitt i2) in
+      (join_pos loc_1 loc_2, I_if_none (i1', i2'))
+
+    | I_if_left (i1, i2) -> 
+      let ((loc_1, i1'), (loc_2, i2')) = (flitt i1, flitt i2) in
+      (join_pos loc_1 loc_2, I_if_left (i1', i2'))
+
+    | I_if_cons (i1, i2) -> 
+      let ((loc_1, i1'), (loc_2, i2')) = (flitt i1, flitt i2) in
+      (join_pos loc_1 loc_2, I_if_cons (i1', i2'))
+
+    | I_map i ->
+      let (loc_1, i') = flitt i in
+      (loc_1, I_map i')
+
+    | I_iter i ->
+      let (loc_1, i') = flitt i in
+      (loc_1, I_iter i')
+
+    | I_if (i1, i2) -> 
+      let ((loc_1, i1'), (loc_2, i2')) = (flitt i1, flitt i2) in
+      (join_pos loc_1 loc_2, I_if (i1', i2'))
+
+    | I_loop i -> 
+      let (loc_1, i') = flitt i in
+      (loc_1, I_loop i')
+
+    | I_loop_left i ->
+      let (loc_1, i') = flitt i in
+      (loc_1, I_loop_left i')
+
+    | I_lambda (t1, t2, i) ->
+      let ((loc_t1, t1'), (loc_t2, t2'), (loc_i, i')) = (fltyt t1, fltyt t2, flitt i) in
+      (join_pos_lst [loc_t1; loc_t2; loc_i], I_lambda (t1', t2', i'))
+
+    | I_dip i ->
+      let (loc_1, i') = flitt i in
+      (loc_1, I_dip i')
+
+    | I_dip_n (zn, i) ->
+      let (loc_1, i') = flitt i in
+      (loc_1, I_dip_n (zn, i'))
+
+    | I_create_contract {param=t1; storage=t2; code=i;} ->
+      let ((loc_t1, t1'), (loc_t2, t2'), (loc_i, i')) = (fltyt t1, fltyt t2, flitt i) in
+      (join_pos_lst [loc_t1; loc_t2; loc_i], I_create_contract {param=t1'; storage=t2'; code=i';})
+
+    (* Nested Type *)
+    | I_none t ->
+      let (loc_t, t') = fltyt t in
+      (loc_t, I_none t')
+
+    | I_left t ->
+      let (loc_t, t') = fltyt t in
+      (loc_t, I_left t')
+    
+    | I_right t ->
+      let (loc_t, t') = fltyt t in
+      (loc_t, I_right t')
+
+    | I_nil t ->
+      let (loc_t, t') = fltyt t in
+      (loc_t, I_nil t')
+
+    | I_empty_set t ->
+      let (loc_t, t') = fltyt t in
+      (loc_t, I_empty_set t')
+
+    | I_empty_map (t1, t2) ->
+      let ((loc_t1, t1'), (loc_t2, t2')) = (fltyt t1, fltyt t2) in
+      (join_pos loc_t1 loc_t2, I_empty_map (t1', t2'))
+
+    | I_empty_big_map (t1, t2) ->
+      let ((loc_t1, t1'), (loc_t2, t2')) = (fltyt t1, fltyt t2) in
+      (join_pos loc_t1 loc_t2, I_empty_big_map (t1', t2'))
+
+    | I_cast t ->
+      let (loc_t, t') = fltyt t in
+      (loc_t, I_cast t')
+
+    | I_unpack t ->
+      let (loc_t, t') = fltyt t in
+      (loc_t, I_unpack t')
+
+    | I_contract t ->
+      let (loc_t, t') = fltyt t in
+      (loc_t, I_contract t')
+
+    (* plain instructions *)
+    | I_drop | I_drop_n _ | I_dup | I_swap | I_dig _ | I_dug _
+    | I_some | I_unit
+    | I_pair | I_car | I_cdr
+    | I_cons
+    | I_size
+    | I_mem | I_get | I_update
+    | I_exec
+    | I_failwith | I_rename | I_concat | I_slice
+    | I_pack | I_add | I_sub | I_mul
+    | I_ediv | I_abs | I_isnat | I_int | I_neg
+    | I_lsl | I_lsr | I_or | I_and | I_xor
+    | I_not | I_compare | I_eq | I_neq | I_lt
+    | I_gt | I_le | I_ge | I_self
+    | I_transfer_tokens | I_set_delegate | I_create_account
+    | I_implicit_account | I_now | I_amount | I_balance | I_check_signature
+    | I_blake2b | I_sha256 | I_sha512 | I_hash_key | I_steps_to_quota
+    | I_source | I_sender | I_address | I_chain_id | I_unpair                   -> (l, ii)
+    (* Standard Macros *)
+    | M_plain _
+    | M_num   _ -> (l, ii)
+    
+    | M_code  (s, i) ->
+      let (loc_i, i') = flitt i in 
+      (loc_i, M_code (s, i'))
+    
+    | M_code2 (s, i1, i2) ->
+      let ((loc_1, i1'), (loc_2, i2')) = (flitt i1, flitt i2) in
+      (join_pos loc_1 loc_2, M_code2 (s, i1', i2'))
+
+    (* Non-Standard Instruction : Introduced to resolve parsing issue *)
+    | I_noop -> (l, ii)
+    (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
+    | I_micse_check i ->
+      let (loc_1, i') = flitt i in
+      (loc_1, I_micse_check i')
+end
+
+and fill_position_all_typt  ?(update_loc=false) : loc -> (typ t ) -> (loc * typ t ) = fill_position_all ~update_loc_flag:update_loc fill_position_all_typ
+and fill_position_all_datat ?(update_loc=false) : loc -> (data t) -> (loc * data t) = fill_position_all ~update_loc_flag:update_loc fill_position_all_data
+and fill_position_all_instt ?(update_loc=false) : loc -> (inst t) -> (loc * inst t) = fill_position_all ~update_loc_flag:update_loc fill_position_all_inst

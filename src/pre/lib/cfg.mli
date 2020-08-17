@@ -1,4 +1,8 @@
-
+(* Control Flow Graph representation of the Michelson program *)
+(* Original Michelson program is just functional instruction sequences,
+    so in order to make control flow graph, we need to translate the michelson code
+    into imperative code.
+*)
 
 
 (*****************************************************************************)
@@ -61,7 +65,7 @@ type stmt = TezlaCfg.Node.stmt
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Context Flow Graph                                                        *)
+(* Control Flow Graph                                                        *)
 (*****************************************************************************)
 (*****************************************************************************)
 
