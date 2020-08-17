@@ -86,7 +86,7 @@ and translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
       end
     | Cfg_micse_check_value id -> begin
         let f_assert = Bp.create_cond_is_true id in
-        let inst = Bp.create_inst_assert f_assert (read_loc_of_check cfg cur_vtx) in
+        let inst = Bp.create_inst_assert f_assert (read_loc_of_check cfg cur_vtx) (Bp.create_category_assertion) in
         let new_bp = update_current_bp cur_bp (Some inst) in
         let search = translate_search_normal cfg new_bp in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
@@ -131,9 +131,9 @@ and create_basic_safety_property : Bp.vertex -> Bp.exp -> Bp.typ -> Bp.inst opti
 =fun vtx e t -> begin
   let loc = Bp.create_loc vtx vtx in
   match (e, t.d) with
-  | E_add _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t) loc)
-  | E_sub _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_underflow e t) loc)
-  | E_mul _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t) loc)
+  | E_add _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t) loc (Bp.create_category_mutez_overflow))
+  | E_sub _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_underflow e t) loc (Bp.create_category_mutez_overflow))
+  | E_mul _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t) loc (Bp.create_category_mutez_overflow))
   | _, _ -> None
 end
 

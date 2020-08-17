@@ -62,17 +62,22 @@ end
 
 type inst =
   | BI_assume of cond
-  | BI_assert of cond * loc
+  | BI_assert of cond * loc * category
   | BI_assign of var * exp
   | BI_skip
 
 and loc = { entry: vertex; exit: vertex; }
 
+and category = 
+  | Q_mutez_overflow
+  | Q_shift_overflow
+  | Q_assert
+
 let create_inst_assume : cond -> inst
 =fun f -> BI_assume f
 
-let create_inst_assert : cond -> loc -> inst
-=fun f l -> BI_assert (f, l)
+let create_inst_assert : cond -> loc -> category -> inst
+=fun f l c -> BI_assert (f, l, c)
 
 let create_inst_assign : var -> exp -> inst
 =fun id e -> BI_assign (id, e)
@@ -83,13 +88,30 @@ let create_inst_skip : inst
 let create_loc : vertex -> vertex -> loc
 =fun etr ext -> { entry=etr; exit=ext }
 
+let create_category_mutez_overflow : category
+=Q_mutez_overflow
+
+let create_category_shift_overflow : category
+=Q_shift_overflow
+
+let create_category_assertion : category
+=Q_assert
+
 let string_of_inst : inst -> string
 =fun inst -> begin
   match inst with
   | BI_assume f -> "Assume " ^ (string_of_cond f) ^ ";"
-  | BI_assert (f, _) -> "Assert " ^ (string_of_cond f) ^ ";"
+  | BI_assert (f, _, _) -> "Assert " ^ (string_of_cond f) ^ ";"
   | BI_assign (id, e) -> (Pre.Lib.Cfg.string_of_ident id) ^ " := " ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ";"
   | BI_skip -> "Skip;"
+end
+
+let string_of_category : category -> string
+=fun c -> begin
+  match c with
+  | Q_mutez_overflow -> "Mutez overflow and underflow"
+  | Q_shift_overflow -> "Logical shift overflow and underflow"
+  | Q_assert -> "Assertion"
 end
 
 

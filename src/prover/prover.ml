@@ -16,27 +16,21 @@ let prove : Pre.Lib.Cfg.t -> unit
   let raw_bp_list = Extractor.extract cfg in
   let bp_list = Generator.generate raw_bp_list cfg in
 
+  (* Collect all queries from basic path *)
+  let queries = Core.List.fold_right bp_list ~f:(fun bp qs -> (
+    let queries = Converter.convert bp cfg in
+    queries@qs
+  )) ~init:[] in
+
   (* Verify each basic path *)
-  let _ = Core.List.iter bp_list ~f:(fun bp -> (
-    let vlang_vc = Converter.convert bp cfg in
-    let verify_result, param_storage_opt = Verifier.verify vlang_vc cfg in
-    print_endline (
-      if verify_result
-      then "- Safe path"
-      else begin
-        match param_storage_opt with
-        | None -> "Something Wrong"
-        | Some (param, storage) -> begin
-            "- Unsafe path" ^ (
-              if !Utils.Options.flag_param_storage
-              then "\n" ^
-                  "  - Parameter: " ^ (Lib.Smt.string_of_expr param) ^ "\n" ^
-                  "  - Storage:   " ^ (Lib.Smt.string_of_expr storage)
-              else ""
-            )
-          end
-      end
-    )
+  let _ = Core.List.iter queries ~f:(fun q -> (
+    let result, _ = Verifier.verify q.query cfg in
+    if result
+    then begin
+      print_endline ("- proven query   [" ^ (Lib.Bp.string_of_category q.typ) ^ "] \t(" ^ (string_of_int q.loc.entry) ^ ":" ^ (string_of_int q.loc.exit) ^ ")")
+    end else begin
+      print_endline ("- unproven query [" ^ (Lib.Bp.string_of_category q.typ) ^ "] \t(" ^ (string_of_int q.loc.entry) ^ ":" ^ (string_of_int q.loc.exit) ^ ")")
+    end
   )) in
   ()
 end

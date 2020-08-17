@@ -136,15 +136,20 @@ val string_of_cond : cond -> string
 
 type inst =
   | BI_assume of cond
-  | BI_assert of cond * loc
+  | BI_assert of cond * loc * category
   | BI_assign of var * exp
   | BI_skip
 
 and loc = { entry: vertex; exit: vertex; }
 
+and category = 
+  | Q_mutez_overflow
+  | Q_shift_overflow
+  | Q_assert
+
 val create_inst_assume : cond -> inst
 
-val create_inst_assert : cond -> loc -> inst
+val create_inst_assert : cond -> loc -> category -> inst
 
 val create_inst_assign : var -> exp -> inst
 
@@ -152,7 +157,15 @@ val create_inst_skip : inst
 
 val create_loc : vertex -> vertex -> loc
 
+val create_category_mutez_overflow : category
+
+val create_category_shift_overflow : category
+
+val create_category_assertion : category
+
 val string_of_inst : inst -> string
+
+val string_of_category : category -> string
 
 
 (*****************************************************************************)
@@ -171,7 +184,6 @@ val create_dummy_inv : vertex -> inv
 val create_inv : vertex -> formula -> inv
 
 val string_of_inv : inv -> string
-
 
 (*****************************************************************************)
 (*****************************************************************************)

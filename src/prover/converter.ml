@@ -14,35 +14,35 @@ let create_new_bound : unit -> Vlang.var
 =fun () -> bound_count := !bound_count + 1; "bnd_" ^ (string_of_int !bound_count)
 
 
-let rec convert : Bp.t -> Pre.Lib.Cfg.t -> Vlang.t
+let rec convert : Bp.t -> Pre.Lib.Cfg.t -> Query.t list
 =fun bp cfg -> begin
   let _ = type_map := cfg.type_info in
   let precond = create_precond_from_param_storage () in
-  let f, g = ((Vlang.create_formula_and ((Option.get bp.pre.formula)::precond)), (Option.get bp.post.formula)) in
-  let f', g' = Core.List.fold_left bp.body ~init:(f, g) ~f:sp in
-  let vc = Vlang.create_formula_imply f' g' in
-  vc
+  let f = Vlang.create_formula_and ((Option.get bp.pre.formula)::precond) in
+  let _, qs = Core.List.fold_left bp.body ~init:(f, []) ~f:sp in
+  qs
 end
 
-and sp : (Vlang.t * Vlang.t) -> Bp.inst -> (Vlang.t * Vlang.t)
-=fun (f, g) s -> begin
+and sp : (Vlang.t * Query.t list) -> Bp.inst -> (Vlang.t * Query.t list)
+=fun (f, qs) s -> begin
   match s with
   | BI_assume c -> begin
       let f' = Vlang.create_formula_and [(create_convert_cond c); f] in
-      (f', g)
+      (f', qs)
     end
-  | BI_assert (c, _) -> begin
-      let g' = Vlang.create_formula_imply f (create_convert_cond c) in
-      (f, g')
+  | BI_assert (c, loc, ctg) -> begin
+      let formula = Vlang.create_formula_imply f (create_convert_cond c) in
+      let query = Query.create_new_query formula loc ctg in
+      (f, (query::qs))
     end
   | BI_assign (v, e) -> begin
       let v' = create_rename_var v in
       let f' = create_rewrite_formula v v' f in
       let e' = create_rewrite_exp v v' (create_convert_exp e (read_type v)) in
       let f'' = Vlang.create_formula_and [f'; (Vlang.create_formula_eq (create_var v) e')] in
-      (f'', g)
+      (f'', qs)
     end
-  | BI_skip -> (f, g)
+  | BI_skip -> (f, qs)
 end
 
 and read_type : Vlang.var -> Vlang.typ

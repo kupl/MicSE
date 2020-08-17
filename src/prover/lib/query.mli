@@ -4,20 +4,33 @@
 (*****************************************************************************)
 (*****************************************************************************)
 
-(*
-type vertex = Cfg.vertex
+type vertex = Pre.Lib.Cfg.vertex
+and stmt = Pre.Lib.Cfg.stmt
 
-type instruction = Bp.inst
+type cond = Bp.cond
+and loc = Bp.loc
+and category = Bp.category
 
 type formula = Vlang.t
 
 type t = {
-  f: formula;
-  query_entry: vertex;
-  query_exit: vertex;
+  id: int;
+  query: formula;
+  loc: loc;
+  typ: category;
+  status: status;
 }
 
-val create_mutez_overflow_underflow_query : origin -> vertex -> t
+and status = | Q_unproven | Q_proven
 
-val create_divided_by_zero_query : origin -> vertex -> t
-*)
+val compare_query : t -> t -> int
+
+val query_id : int ref
+
+val create_query_id : unit -> int
+
+val create_status_unproven : status
+
+val create_status_proven : status
+
+val create_new_query : formula -> loc -> category -> t
