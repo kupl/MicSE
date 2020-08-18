@@ -480,7 +480,7 @@ let m_assertcmpop : inst -> inst t = fun i -> gen_insttseq [] [m_cmpop i; m_asse
 
 let parse_duup : string -> bool * (inst t option)
 =fun s -> begin
-  if str_fst s 1 = "D" && str_lst s 1 = "P" && (String.length s > 2)
+  if (String.length s > 2) && str_fst s 1 = "D" && str_lst s 1 = "P"
   then (
     let (b, n) : bool * int = 
       Core.String.foldi (str_mid s 1 1) ~init:(true, 0) 
@@ -512,7 +512,7 @@ end
 
 let parse_cadr : string -> bool * (inst t option)
 =fun s -> begin
-  if str_fst s 1 = "C" && str_lst s 1 = "R" && (String.length s > 2)
+  if (String.length s > 2) && str_fst s 1 = "C" && str_lst s 1 = "R"
   then (
     let (b, bl) = parse_ad (str_mid s 1 1) in
     let il : inst list = List.map (fun x -> if x then I_car else I_cdr) bl in
@@ -568,7 +568,7 @@ let rec decode_pair_tree : pair_tree -> inst list = begin function
 end
 let parse_pair : string -> bool * (inst t option)
 =fun s -> begin
-  if (str_lst s 1 = "R" && String.length s > 3)
+  if (String.length s > 3 && str_lst s 1 = "R")
   then ( 
     try
       let itopt : inst t option = 
@@ -591,7 +591,7 @@ let rec decode_unpair_tree : pair_tree -> inst list =
   end
 let parse_unpair : string -> bool * (inst t option)
 =fun s -> begin
-  if (str_fst s 2 = "UN" && str_lst s 1 = "R" && String.length s > 5)
+  if (String.length s > 5 && str_fst s 2 = "UN" && str_lst s 1 = "R")
   then (
     try
       let itopt : inst t option = 
@@ -666,7 +666,7 @@ end
 
 let parse_map_cadr : string -> inst t -> bool * (inst t option)
 =fun s c -> begin
-  if str_fst s 5 = "MAP_C" && str_lst s 1 = "R" && (String.length s > 6)
+  if (String.length s > 6) && str_fst s 5 = "MAP_C" && str_lst s 1 = "R"
   then (
     let (b, bl) = parse_ad (str_mid s 5 1) in
     let rec f : bool list -> inst t
