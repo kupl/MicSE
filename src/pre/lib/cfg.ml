@@ -1,6 +1,253 @@
+(*****************************************************************************)
+(*****************************************************************************)
+(* Imperative-Style Michelson                                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type typ = Mich.typ Mich.t
+type data = Mich.data Mich.t
+type var = string
+type ident = string
+
+type operation = Operation.t
+
+type expr =
+  | E_push of data * typ
+  | E_car of var
+  | E_cdr of var
+  | E_abs of var
+  | E_neg of var
+  | E_not of var
+  | E_add of var * var
+  | E_sub of var * var
+  | E_mul of var * var
+  | E_ediv of var * var
+  | E_shiftL of var * var
+  | E_shiftR of var * var
+  | E_and of var * var
+  | E_or of var * var
+  | E_xor of var * var
+  | E_eq of var
+  | E_neq of var
+  | E_lt of var
+  | E_gt of var
+  | E_leq of var
+  | E_geq of var
+  | E_compare of var * var
+  | E_cons of var * var
+  | E_operation of operation
+  | E_unit
+  | E_pair of var * var
+  | E_left of var * typ
+  | E_right of var * typ
+  | E_some of var
+  | E_none of typ
+  | E_mem of var * var
+  | E_get of var * var
+  | E_update of var * var * var
+  | E_cast of var
+  | E_concat of var * var
+  | E_concat_list of var
+  | E_slice of var * var * var
+  | E_pack of var
+  | E_unpack of typ * var
+  | E_self
+  | E_contract_of_address of var
+  | E_implicit_account of var
+  | E_now
+  | E_amount
+  | E_balance
+  | E_check_signature of var * var * var
+  | E_blake2b of var
+  | E_sha256 of var
+  | E_sha512 of var
+  | E_hash_key of var
+  | E_steps_to_quota
+  | E_source
+  | E_sender
+  | E_address_of_contract of var
+  | E_unlift_option of var
+  | E_unlift_left of var
+  | E_unlift_right of var
+  | E_hd of var
+  | E_tl of var
+  | E_size of var
+  | E_isnat of var
+  | E_int_of_nat of var
+  | E_chain_id
+  | E_lambda_id of int
+  | E_exec of var * var
+  | E_dup of var
+  | E_nil of typ
+  | E_empty_set of typ
+  | E_empty_map of typ * typ
+  | E_empty_big_map of typ * typ
+  | E_append of var * var
+  | E_itself of var
+  (* DEPRECATED & UNUSED EXPRESSIONS. They can be erased anytime. *)
+  | E_div of var * var
+  | E_mod of var * var
+  | E_create_contract_address of operation
+  | E_create_account_address of operation
+  | E_lambda of typ * typ * (stmt * var)
+  | E_special_nil_list
+  | E_phi of var * var
+  | E_unlift_or of var
+
+(* Data constructor Prefix "Cfg" in type stmt is originated from Tezla-Cfg's naming. *)
+and stmt =
+  | Cfg_assign of var * expr
+  | Cfg_skip
+  | Cfg_drop of var list
+  | Cfg_swap
+  | Cfg_dig
+  | Cfg_dug
+  | Cfg_if of var
+  | Cfg_if_none of var
+  | Cfg_if_left of var
+  | Cfg_if_cons of var
+  | Cfg_loop of var
+  | Cfg_loop_left of var
+  | Cfg_map of var
+  | Cfg_iter of var
+  | Cfg_failwith of var
+  | Cfg_micse_check_entry
+  | Cfg_micse_check_value of var
+
+
+(*****************************************************************************)
+(* To String                                                                 *)
+(*****************************************************************************)
+
+let typ_to_str : typ -> string = Mich.string_of_typt
+let data_to_str : data -> string = Mich.string_of_datat_ol
+
+let operation_to_str : operation -> string = begin function
+  | O_create_contract (p, v1, v2, v3) -> String.concat " " ["CREATE_CONTRACT"; (Mich.string_of_pgm_ol p); v1; v2; v3]
+  | O_transfer_tokens (v1, v2, v3) -> String.concat " " ["TRANSFER_TOKENS"; v1; v2; v3]
+  | O_set_delegate v -> String.concat " " ["SET_DELEGATE"; v]
+  | O_create_account (v1, v2, v3, v4) -> String.concat " " ["CREATE_ACCOUNT"; v1; v2; v3; v4]
+end
+
+let expr_to_str : expr -> string 
+=fun e -> begin
+  let str_contents : expr -> string list = function
+    | E_push (d, t) -> ["PUSH"; data_to_str d; typ_to_str t;]
+    | E_car v -> ["CAR"; v] 
+    | E_cdr v -> ["CDR"; v]
+    | E_abs v -> ["ABS"; v]
+    | E_neg v -> ["NEG"; v]
+    | E_not v -> ["NOT"; v]
+    | E_add  (v1, v2) -> ["ADD";  v1; v2]
+    | E_sub  (v1, v2) -> ["SUB";  v1; v2]
+    | E_mul  (v1, v2) -> ["MUL";  v1; v2]
+    | E_ediv (v1, v2) -> ["EDIV"; v1; v2]
+    | E_shiftL (v1, v2) -> ["LSL"; v1; v2]
+    | E_shiftR (v1, v2) -> ["LSR"; v1; v2]
+    | E_and  (v1, v2) -> ["AND";  v1; v2]
+    | E_or   (v1, v2) -> ["OR";   v1; v2]
+    | E_xor  (v1, v2) -> ["XOR";  v1; v2]
+    | E_eq  v -> ["EQ"; v]
+    | E_neq v -> ["NEQ"; v]
+    | E_lt  v -> ["LT"; v]
+    | E_gt  v -> ["GT"; v]
+    | E_leq v -> ["LEQ"; v]
+    | E_geq v -> ["GEQ"; v]
+    | E_compare (v1, v2) -> ["COMPARE";  v1; v2]
+    | E_cons (v1, v2) -> ["CONS";  v1; v2]
+    | E_operation op -> [operation_to_str op]
+    | E_unit -> ["UNIT"]
+    | E_pair (v1, v2) -> ["PAIR";  v1; v2]
+    | E_left (v, t) -> ["LEFT"; v; typ_to_str t]
+    | E_right (v, t) -> ["RIGHT"; v; typ_to_str t]
+    | E_some v -> ["SOME"; v]
+    | E_none t -> ["NONE"; typ_to_str t]
+    | E_mem (v1, v2) -> ["MEM"; v1; v2]
+    | E_get (v1, v2) -> ["GET"; v1; v2]
+    | E_update (v1, v2, v3) -> ["UPDATE"; v1; v2; v3]
+    | E_cast v -> ["CAST"; v]
+    | E_concat (v1, v2) -> ["CONCAT";  v1; v2]
+    | E_concat_list v -> ["CONCAT_LIST"; v]
+    | E_slice (v1, v2, v3) -> ["SLICE"; v1; v2; v3]
+    | E_pack v -> ["PACK"; v]
+    | E_unpack (t, v) -> ["UNPACK"; typ_to_str t; v]
+    | E_self -> ["SELF"]
+    | E_contract_of_address v -> ["CONTRACT"; v]
+    | E_implicit_account v -> ["IMPLICIT_ACCOUNT"; v]
+    | E_now -> ["NOW"]
+    | E_amount -> ["AMOUNT"]
+    | E_balance -> ["BALANCE"]
+    | E_check_signature (v1, v2, v3) -> ["CHECK_SIGNATURE"; v1; v2; v3]
+    | E_blake2b v -> ["BLAKE2B"; v]
+    | E_sha256 v -> ["SHA256"; v]
+    | E_sha512 v -> ["SHA512"; v]
+    | E_hash_key v -> ["HASH_KEY"; v]
+    | E_steps_to_quota -> ["STEPS_TO_QUOTA"]
+    | E_source -> ["SOURCE"]
+    | E_sender -> ["SENDER"]
+    | E_address_of_contract v -> ["ADDRESS"; v]
+    | E_unlift_option v -> ["unlift_option"; v]
+    | E_unlift_left v -> ["unlift_left"; v]
+    | E_unlift_right v -> ["unlift_right"; v]
+    | E_hd v -> ["hd"; v]
+    | E_tl v -> ["tl"; v]
+    | E_size v -> ["SIZE"; v]
+    | E_isnat v -> ["ISNAT"; v]
+    | E_int_of_nat v -> ["INT"; v]
+    | E_chain_id -> ["CHAIN_ID"]
+    | E_lambda_id n -> ["lambda_id"; string_of_int n]
+    | E_exec (v1, v2) -> ["EXEC"; v1; v2]
+    | E_dup v -> ["DUP"; v]
+    | E_nil t -> ["NIL"; typ_to_str t]
+    | E_empty_set t -> ["EMPTY_SET"; typ_to_str t]
+    | E_empty_map (t1, t2) -> ["EMPTY_MAP"; typ_to_str t1; typ_to_str t2]
+    | E_empty_big_map (t1, t2) -> ["EMPTY_BIG_MAP"; typ_to_str t1; typ_to_str t2]
+    | E_append (v1, v2) -> ["APPEND"; v1; v2]
+    | E_itself v -> [v]
+    (* DEPRECATED & UNUSED EXPRESSIONS. They can be erased anytime. *)
+    | E_div (v1, v2) -> ["div"; v1; v2]
+    | E_mod (v1, v2) -> ["mod"; v1; v2]
+    | E_create_contract_address op -> [operation_to_str op]
+    | E_create_account_address op -> [operation_to_str op]
+    | E_lambda _ -> ["LAMBDA (_)"]
+    | E_special_nil_list -> ["nil-list"]
+    | E_phi (v1, v2) -> ["phi"; v1; v2]
+    | E_unlift_or v -> ["unlift_or"; v]
+  in
+  String.concat " " (str_contents e)
+end
+
+let stmt_to_str : stmt -> string = begin function
+  | Cfg_assign (v, e) -> String.concat " " [v; ":="; expr_to_str e]
+  | Cfg_skip -> "skip"
+  | Cfg_drop vlist -> "DROP [" ^ (String.concat ";" vlist) ^ "]"
+  | Cfg_swap -> "SWAP"
+  | Cfg_dig -> "DIG"
+  | Cfg_dug -> "DUG"
+  | Cfg_if v -> String.concat " " ["IF"; v]
+  | Cfg_if_none v -> String.concat " " ["IF_NONE"; v]
+  | Cfg_if_left v -> String.concat " " ["IF_LEFT"; v]
+  | Cfg_if_cons v -> String.concat " " ["IF_CONS"; v]
+  | Cfg_loop v -> String.concat " " ["LOOP"; v]
+  | Cfg_loop_left v -> String.concat " " ["LOOP_LEFT"; v]
+  | Cfg_map v -> String.concat " " ["MAP"; v]
+  | Cfg_iter v -> String.concat " " ["ITER"; v]
+  | Cfg_failwith v -> String.concat " " ["FAILWITH"; v]
+  | Cfg_micse_check_entry -> "#MICSE_check_entry"
+  | Cfg_micse_check_value v -> String.concat " " ["#MICSE_check_value"; v]
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Exception                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
 exception Exn_Cfg of string
 
 let fail s = raise (Exn_Cfg s)
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -43,20 +290,6 @@ let is_edge_check_skip : E.t -> bool
 
 let string_of_vertex : vertex -> string
 =fun vtx -> (string_of_int vtx)
-
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Node Information                                                          *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-type loc = Unknown | Loc of int * int
-type ident = string
-type decl = ident
-type typ = Tezla.Adt.typ
-type expr = Tezla.Adt.expr
-type stmt = TezlaCfg.Node.stmt
 
 
 (*****************************************************************************)
@@ -119,9 +352,6 @@ let is_main_entry : t -> vertex -> bool
 
 let is_main_exit : t -> vertex -> bool
 =fun cfg vtx -> (vtx = cfg.main_exit)
-
-let string_of_ident : ident -> string
-=fun id -> id
 
 type lmbd_invmap = (vertex, (lambda_ident * lambda_summary)) CPMap.t
 let lmbd_map_to_two_sets : t -> (lmbd_invmap * lmbd_invmap)
@@ -267,7 +497,7 @@ end
 
 let remove_meaningless_skip_vertices =
   (*let gen_emsg s : string = ("remove_meaningless_skip_vertices : " ^ s) in*)
-  let is_skip : stmt option -> bool = (function | Some (Tezla_cfg.Cfg_node.Cfg_skip) -> true | _ -> false) in
+  let is_skip : stmt option -> bool = (function | Some Cfg_skip -> true | _ -> false) in
   (* FUNCTION BEGIN *)
   fun cfg -> begin
     let fold_func : G.V.t -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t)) -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t))
@@ -308,7 +538,7 @@ let rec remove_meaningless_skip_vertices_fixpoint cfg =
 
 let remove_meaningless_fail_vertices =
   (*let gen_emsg s : string = ("remove_meaningless_fail_vertices : " ^ s) in*)
-  let is_fail : stmt option -> bool = (function | Some (Tezla_cfg.Cfg_node.Cfg_failwith _) -> true | _ -> false) in
+  let is_fail : stmt option -> bool = (function | Some (Cfg_failwith _) -> true | _ -> false) in
   (* FUNCTION BEGIN *)
   fun cfg -> begin
     let fold_func : G.V.t -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t)) -> ((vertex * vertex * vertex) list * (vertex Core.Set.Poly.t))
@@ -398,8 +628,7 @@ let cfg_to_dotformat : t -> string
           | None, Some (id, _) -> let vn = get_lhs_varname vi in (vs ^ " : LAMBDA-" ^ (string_of_int id) ^ "-EXIT : " ^ vn) (* The contents of the MAIN_EXIT are expected to be Cfg_assign (v_i, (E_itself v_i)) *)
           (* otherwise - default vertex label *)
           | None, None ->
-            let vi_wrapped : TezlaCfg.Node.t = TezlaCfg.Node.create_node ~id:(-1) vi in
-            let vis : string = TezlaCfg.Node.to_string vi_wrapped in
+            let vis : string = stmt_to_str vi in
             (vs ^ " : " ^ vis)
         )
       )

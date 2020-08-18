@@ -1,13 +1,13 @@
-type t = Michelson.Adt.program
+type t = Mich.program
 
-type typ = Michelson.Adt.typ Michelson.Adt.t
-type inst = Michelson.Adt.inst Michelson.Adt.t
-type data = Michelson.Adt.data Michelson.Adt.t
-type operation = Tezla.Adt.operation
+type typ = Mich.typ Mich.t
+type inst = Mich.inst Mich.t
+type data = Mich.data Mich.t
+type operation = Operation.t
 
 val parse : string -> t
 
-val pp : Format.formatter -> t -> unit
+(*val pp : Format.formatter -> t -> unit*)
 
 val string_of_typt : typ -> string
 

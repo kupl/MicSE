@@ -7,5 +7,12 @@
     tezla
     tezla-cfg
     ocamlgraph
-    core
-    ))
+    core)
+  (modules_without_implementation operation)
+)
+
+(menhir
+    (modules parser)
+    (flags --explain))
+    
+(ocamllex lexer)

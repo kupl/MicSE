@@ -4,6 +4,144 @@
     into imperative code.
 *)
 
+(*****************************************************************************)
+(*****************************************************************************)
+(* Imperative-Style Michelson                                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type typ = Mich.typ Mich.t
+type data = Mich.data Mich.t
+type var = string
+type ident = string
+
+type operation = Operation.t
+
+type expr =
+  | E_push of data * typ
+  | E_car of var
+  | E_cdr of var
+  | E_abs of var
+  | E_neg of var
+  | E_not of var
+  | E_add of var * var
+  | E_sub of var * var
+  | E_mul of var * var
+  | E_ediv of var * var
+  | E_shiftL of var * var
+  | E_shiftR of var * var
+  | E_and of var * var
+  | E_or of var * var
+  | E_xor of var * var
+  | E_eq of var
+  | E_neq of var
+  | E_lt of var
+  | E_gt of var
+  | E_leq of var
+  | E_geq of var
+  | E_compare of var * var
+  | E_cons of var * var
+  | E_operation of operation
+  | E_unit
+  | E_pair of var * var
+  | E_left of var * typ
+  | E_right of var * typ
+  | E_some of var
+  | E_none of typ
+  | E_mem of var * var
+  | E_get of var * var
+  | E_update of var * var * var
+  | E_cast of var
+  | E_concat of var * var
+  | E_concat_list of var
+  | E_slice of var * var * var
+  | E_pack of var
+  | E_unpack of typ * var
+  | E_self
+  | E_contract_of_address of var
+  | E_implicit_account of var
+  | E_now
+  | E_amount
+  | E_balance
+  | E_check_signature of var * var * var
+  | E_blake2b of var
+  | E_sha256 of var
+  | E_sha512 of var
+  | E_hash_key of var
+  | E_steps_to_quota
+  | E_source
+  | E_sender
+  | E_address_of_contract of var
+  | E_unlift_option of var
+  | E_unlift_left of var
+  | E_unlift_right of var
+  | E_hd of var
+  | E_tl of var
+  | E_size of var
+  | E_isnat of var
+  | E_int_of_nat of var
+  | E_chain_id
+  | E_lambda_id of int
+  | E_exec of var * var
+  | E_dup of var
+  | E_nil of typ
+  | E_empty_set of typ
+  | E_empty_map of typ * typ
+  | E_empty_big_map of typ * typ
+  | E_append of var * var
+  | E_itself of var
+  (* DEPRECATED & UNUSED EXPRESSIONS. They can be erased anytime. *)
+  | E_div of var * var
+  | E_mod of var * var
+  | E_create_contract_address of operation
+  | E_create_account_address of operation
+  | E_lambda of typ * typ * (stmt * var)
+  | E_special_nil_list
+  | E_phi of var * var
+  | E_unlift_or of var
+
+(* Data constructor Prefix "Cfg" in type stmt is originated from Tezla-Cfg's naming. *)
+and stmt =
+  | Cfg_assign of var * expr
+  | Cfg_skip
+  | Cfg_drop of var list
+  | Cfg_swap
+  | Cfg_dig
+  | Cfg_dug
+  | Cfg_if of var
+  | Cfg_if_none of var
+  | Cfg_if_left of var
+  | Cfg_if_cons of var
+  | Cfg_loop of var
+  | Cfg_loop_left of var
+  | Cfg_map of var
+  | Cfg_iter of var
+  | Cfg_failwith of var
+  | Cfg_micse_check_entry
+  | Cfg_micse_check_value of var
+
+
+(*****************************************************************************)
+(* To String                                                                 *)
+(*****************************************************************************)
+
+val typ_to_str : typ -> string
+val data_to_str : data -> string
+val operation_to_str : operation -> string
+val expr_to_str : expr -> string
+val stmt_to_str : stmt -> string
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Exception                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+exception Exn_Cfg of string
+
+val fail : string -> 'a
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -30,38 +168,6 @@ val is_edge_check_skip : E.t -> bool
 
 val string_of_vertex : vertex -> string
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Node Information                                                          *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-(* loc, ident, decl, typ, expr, stmt will be modified *)
-type loc = Unknown | Loc of int * int
-type ident = string
-type decl = ident
-type typ = Tezla.Adt.typ
-type expr = Tezla.Adt.expr
-type stmt = TezlaCfg.Node.stmt
-  (*
-  type stmt =
-  | Cfg_assign of string * expr
-  | Cfg_skip
-  | Cfg_drop of string list
-  | Cfg_swap
-  | Cfg_dig
-  | Cfg_dug
-  | Cfg_if of string
-  | Cfg_if_none of string
-  | Cfg_if_left of string
-  | Cfg_if_cons of string
-  | Cfg_loop of string
-  | Cfg_loop_left of string
-  | Cfg_map of string
-  | Cfg_iter of string
-  | Cfg_failwith of string
-  *)
-
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -72,7 +178,7 @@ type stmt = TezlaCfg.Node.stmt
 type lambda_ident   = Core.Int.t (* identifier for internal functions *)
 type lambda_summary = (vertex * vertex * typ * typ) (* (entry-vertex, exit-vertex, param-type, output-type) *)
 
-module CPMap : module type of Core.Map.Poly
+module CPMap : module type of Core.Map.Poly     (* module name sugar *)
 
 type t = {
   flow          : G.t;
@@ -98,8 +204,6 @@ val read_pred_from_vtx : t -> vertex -> (E.t * V.t) list
 val is_main_entry : t -> vertex -> bool
 
 val is_main_exit : t -> vertex -> bool
-
-val string_of_ident : ident -> string
 
 (* for given cfg, construct two maps, (entry-vertex -> (l-ident * l-summary)) * (exit-vertex -> (l-ident * l-summary)) *)
 val lmbd_map_to_two_sets : t -> (((vertex, (lambda_ident * lambda_summary)) CPMap.t) * ((vertex, (lambda_ident * lambda_summary)) CPMap.t))

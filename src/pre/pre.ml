@@ -9,10 +9,10 @@ module Translator = Translator
 let pre_process : string -> Lib.Cfg.t
 =fun filepath -> begin
   (* Parse Michelson File *)
-  let adt = Lib.Adt.parse filepath in
+  let adt = Lib.Adt.parse filepath |> Lib.Mich.subst_standard_macro_all_pgm in
 
   (* FLAGS - Parsed Michelson File *)
-  let _ : unit = (if (!Utils.Options.flag_adt_print) then (Lib.Adt.pp Format.std_formatter adt) else ()) in
+  let _ : unit = (if (!Utils.Options.flag_adt_print) then (Lib.Mich.string_of_pgm_ol adt |> Stdlib.print_endline) else ()) in
 
   (* Construct control flow graph *)
   let cfg_first = Translator.adt_to_cfg adt in

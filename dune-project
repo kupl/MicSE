@@ -26,3 +26,4 @@
     (dune :build)
     (michelson :build)
     (tezla :build)))
+(using menhir 2.1)

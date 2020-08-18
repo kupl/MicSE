@@ -169,6 +169,220 @@ and program = { param : typ t; storage : typ t; code : inst t; }
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* To String                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let _soi = Stdlib.string_of_int
+
+let string_of_pos : pos -> string = fun p -> (_soi p.lin) ^ ":" ^ (_soi p.col)
+let string_of_loc : loc -> string = function | Unknown -> "N/A" | Pos (p1, p2) -> (string_of_pos p1) ^ "-" ^ (string_of_pos p2)
+let string_of_annot : annot -> string = function | A_typ s -> ":" ^ s | A_var s -> "@" ^ s | A_fld s -> "%" ^ s
+let string_of_annots : annot list -> string = fun al -> (al |> List.map string_of_annot |> String.concat " ")
+
+let rec string_of_typt_inner : bool -> typ t -> string
+=fun paren_flag tt -> begin
+  let annotsstr = if tt.ann = [] then "" else (" " ^ string_of_annots tt.ann) in
+  let bodystr = 
+    (match tt.d with
+    | T_key        ->       "key" ^ annotsstr
+    | T_unit       ->      "unit" ^ annotsstr
+    | T_signature  -> "signature" ^ annotsstr
+    | T_option t   ->    "option" ^ annotsstr ^ " " ^ (string_of_typt_inner true t)
+    | T_list t     ->      "list" ^ annotsstr ^ " " ^ (string_of_typt_inner true t)
+    | T_set t      ->       "set" ^ annotsstr ^ " " ^ (string_of_typt_inner true t)
+    | T_operation  -> "operation" ^ annotsstr
+    | T_contract t ->  "contract" ^ annotsstr ^ " " ^ (string_of_typt_inner true t)
+    | T_pair      (t1, t2) ->    "pair" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_or        (t1, t2) ->      "or" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_lambda    (t1, t2) ->  "lambda" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_map       (t1, t2) ->     "map" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_big_map   (t1, t2) -> "big_map" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_chain_id  ->   "chain_id" ^ annotsstr
+    | T_int       ->        "int" ^ annotsstr
+    | T_nat       ->        "nat" ^ annotsstr
+    | T_string    ->     "string" ^ annotsstr
+    | T_bytes     ->      "bytes" ^ annotsstr
+    | T_mutez     ->      "mutez" ^ annotsstr
+    | T_bool      ->       "bool" ^ annotsstr
+    | T_key_hash  ->   "key_hash" ^ annotsstr
+    | T_timestamp ->  "timestamp" ^ annotsstr
+    | T_address   ->    "address" ^ annotsstr
+    )
+  in
+  match tt.d with
+  | T_key | T_unit | T_signature | T_operation  
+  | T_chain_id | T_int | T_nat | T_string    
+  | T_bytes | T_mutez | T_bool | T_key_hash  
+  | T_timestamp | T_address
+    -> bodystr
+  | T_option    _ | T_list      _ | T_set       _ | T_contract  _
+  | T_pair      _ | T_or        _ | T_lambda    _ | T_map       _
+  | T_big_map   _
+    -> if paren_flag then ( "(" ^ bodystr ^ ")" ) else bodystr
+end
+
+let string_of_typt : typ t -> string = string_of_typt_inner false
+
+(* 'ol' for one-line, means that there are no newline character. - Except for the string of the "I_micse_check" instruction. *)
+let rec string_of_datat_ol_inner : bool -> data t -> string
+=fun paren_flag dd -> begin
+  let annotstr = if dd.ann = [] then "" else (" " ^ string_of_annots dd.ann) in
+  let bodystr = 
+    (match dd.d with
+    | D_int zn        -> (Z.to_string zn) ^ annotstr
+    | D_string s      -> "\"" ^ s ^ "\""  ^ annotstr
+    | D_bytes s       -> "0x" ^ s         ^ annotstr
+    | D_unit          -> "Unit"           ^ annotstr
+    | D_bool b        -> (if b then "True" else "False") ^ annotstr ^ " " ^ (Stdlib.string_of_bool b)
+    | D_pair (d1, d2) -> "Pair"           ^ annotstr ^ " " ^ (string_of_datat_ol_inner true d1) ^ " " ^ (string_of_datat_ol_inner true d2)
+    | D_left d        -> "Left"           ^ annotstr ^ " " ^ (string_of_datat_ol_inner true d)
+    | D_right d       -> "Right"          ^ annotstr ^ " " ^ (string_of_datat_ol_inner true d)
+    | D_some d        -> "Some"           ^ annotstr ^ " " ^ (string_of_datat_ol_inner true d)
+    | D_none          -> "None"           ^ annotstr
+    | D_list dlst     -> "{" ^ (dlst |> List.map (fun x -> string_of_datat_ol_inner true x) |> String.concat "; ") ^ "}" ^ annotstr
+    | D_elt (d1, d2)  -> "{Elt " ^ (string_of_datat_ol_inner true d1) ^ " " ^ (string_of_datat_ol_inner true d2)  ^ "}" ^ annotstr
+    | D_lambda c      -> "Lambda " ^ annotstr ^ " " ^ (string_of_instt_ol c)
+    )
+  in
+  match dd.d with
+  | D_pair _ 
+  | D_left _
+  | D_right _
+  | D_some _
+    -> if paren_flag then ( "(" ^ bodystr ^ ")" ) else bodystr
+  | _ -> bodystr
+end
+
+and string_of_datat_ol : data t -> string = fun d -> string_of_datat_ol_inner false d
+
+and string_of_seq_ol : inst t -> string
+=fun c -> begin
+  let bodystr =
+    match c.d with
+    | I_seq (c1, c2) -> (string_of_seq_ol c1) ^ "; " ^ (string_of_seq_ol c2)
+    | _ -> string_of_instt_ol c
+  in
+  if c.ann <> [] then ("{" ^ bodystr ^ "} " ^ (string_of_annots c.ann)) else bodystr
+end
+
+and string_of_instt_ol : inst t -> string = 
+  let sos = string_of_seq_ol in
+  let sos_br i = " {" ^ (sos i) ^ "}" in
+  let sos_br2 i1 i2 = (sos_br i1) ^ (sos_br i2) in
+  let sot t = " " ^ (string_of_typt t) in
+  let sod d = " " ^ (string_of_datat_ol d) in
+  (* FUNCTION BEGIN *)
+  fun ii -> begin
+  let annotstr = if ii.ann = [] then "" else (" " ^ string_of_annots ii.ann) in
+  let bodystr = 
+    (match ii.d with
+    | I_seq _         -> sos ii
+    | I_drop          -> "DROP" ^ annotstr
+    | I_drop_n zn     -> "DROP" ^ " " ^ (Z.to_string zn) ^ annotstr
+    | I_dup           -> "DUP" ^ annotstr
+    | I_swap          -> "SWAP" ^ annotstr
+    | I_dig zn        -> "DIG" ^ " " ^ (Z.to_string zn) ^ annotstr
+    | I_dug zn        -> "DUG" ^ " " ^ (Z.to_string zn) ^ annotstr
+    | I_push (t, d)   -> "PUSH" ^ annotstr ^ (sot t) ^ (sod d)
+    | I_some          -> "SOME" ^ annotstr
+    | I_none t        -> "NONE" ^ (sot t) ^ annotstr
+    | I_unit          -> "UNIT" ^ annotstr
+    | I_if_none (i1,i2) -> "IF_NONE" ^ annotstr ^ (sos_br2 i1 i2)
+    | I_pair          -> "PAIR" ^ annotstr
+    | I_car           -> "CAR" ^ annotstr
+    | I_cdr           -> "CDR" ^ annotstr
+    | I_left t        -> "LEFT" ^ annotstr ^ (sot t)
+    | I_right t       -> "RIGHT" ^ annotstr ^ (sot t)
+    | I_if_left (i1,i2) -> "IF_LEFT" ^ annotstr ^ (sos_br2 i1 i2) 
+    | I_nil t         -> "NIL" ^ annotstr ^ (sot t)
+    | I_cons          -> "CONS" ^ annotstr
+    | I_if_cons (i1,i2) -> "IF_CONS" ^ annotstr ^ (sos_br2 i1 i2)
+    | I_size          -> "SIZE" ^ annotstr
+    | I_empty_set t   -> "EMPTY_SET" ^ annotstr ^ (sot t)
+    | I_empty_map (t1,t2) -> "EMPTY_MAP" ^ annotstr ^ (sot t1) ^ (sot t2)
+    | I_empty_big_map (t1,t2) -> "EMPTY_BIG_MAP" ^ annotstr ^ (sot t1) ^ (sot t2)
+    | I_map i         -> "MAP" ^ annotstr ^ (sos_br i)
+    | I_iter i        -> "ITER" ^ annotstr ^ (sos_br i)
+    | I_mem           -> "MEM" ^ annotstr
+    | I_get           -> "GET" ^ annotstr
+    | I_update        -> "UPDATE" ^ annotstr
+    | I_if (i1,i2)    -> "IF" ^ annotstr ^ (sos_br2 i1 i2)
+    | I_loop i        -> "LOOP" ^ annotstr ^ (sos_br i)
+    | I_loop_left i   -> "LOOP_LEFT" ^ annotstr ^ (sos_br i)
+    | I_lambda (t1,t2,i) -> "LAMBDA" ^ annotstr ^ (sot t1) ^ (sot t2) ^ (sos_br i)
+    | I_exec          -> "EXEC" ^ annotstr
+    | I_dip i         -> "DIP" ^ annotstr ^ (sos_br i)
+    | I_dip_n (zn,i)  -> "DIP" ^ " " ^ (Z.to_string zn) ^ (sos_br i)
+    | I_failwith      -> "FAILWITH" ^ annotstr
+    | I_cast t        -> "CAST" ^ annotstr ^ (sot t)
+    | I_rename        -> "RENAME" ^ annotstr
+    | I_concat        -> "CONCAT" ^ annotstr
+    | I_slice         -> "SLICE" ^ annotstr
+    | I_pack          -> "PACK" ^ annotstr
+    | I_unpack t      -> "UNPACK" ^ annotstr ^ (sot t)
+    | I_add           -> "ADD" ^ annotstr
+    | I_sub           -> "SUB" ^ annotstr
+    | I_mul           -> "MUL" ^ annotstr
+    | I_ediv          -> "EDIV" ^ annotstr
+    | I_abs           -> "ABS" ^ annotstr
+    | I_isnat         -> "ISNAT" ^ annotstr
+    | I_int           -> "INT" ^ annotstr
+    | I_neg           -> "NEG" ^ annotstr
+    | I_lsl           -> "LSL" ^ annotstr
+    | I_lsr           -> "LSR" ^ annotstr
+    | I_or            -> "OR" ^ annotstr
+    | I_and           -> "AND" ^ annotstr
+    | I_xor           -> "XOR" ^ annotstr
+    | I_not           -> "NOT" ^ annotstr
+    | I_compare       -> "COMPARE" ^ annotstr
+    | I_eq            -> "EQ" ^ annotstr
+    | I_neq           -> "NEQ" ^ annotstr
+    | I_lt            -> "LT" ^ annotstr
+    | I_gt            -> "GT" ^ annotstr
+    | I_le            -> "LE" ^ annotstr
+    | I_ge            -> "GE" ^ annotstr
+    | I_self          -> "SELF" ^ annotstr
+    | I_contract t    -> "CONTRACT" ^ annotstr ^ (sot t)
+    | I_transfer_tokens -> "TRANSFER_TOKENS" ^ annotstr
+    | I_set_delegate  -> "SET_DELEGATE" ^ annotstr
+    | I_create_account -> "CREATE_ACCOUNT" ^ annotstr
+    | I_create_contract p -> "CREATE_CONTRACT" ^ annotstr ^ (string_of_pgm_ol p)
+    | I_implicit_account -> "IMPLICIT_ACCOUNT" ^ annotstr
+    | I_now           -> "NOW" ^ annotstr
+    | I_amount        -> "AMOUNT" ^ annotstr
+    | I_balance       -> "BALANCE" ^ annotstr
+    | I_check_signature -> "CHECK_SIGNATURE" ^ annotstr
+    | I_blake2b       -> "BLAKE2B" ^ annotstr
+    | I_sha256        -> "SHA256" ^ annotstr
+    | I_sha512        -> "SHA512" ^ annotstr
+    | I_hash_key      -> "HASH_KEY" ^ annotstr
+    | I_steps_to_quota -> "STEPS_TO_QUOTA" ^ annotstr
+    | I_source        -> "SOURCE" ^ annotstr
+    | I_sender        -> "SENDER" ^ annotstr
+    | I_address       -> "ADDRESS" ^ annotstr
+    | I_chain_id      -> "CHAIN_ID" ^ annotstr
+    | I_unpair        -> "UNPAIR" ^ annotstr
+    (* Standard Macros *)
+    | M_plain s       -> s ^ annotstr
+    | M_num (s,zn)    -> s ^ " " ^ (Z.to_string zn) ^ annotstr
+    | M_code (s,i)    -> s ^ annotstr ^ (sos_br i)
+    | M_code2 (s,i1,i2) -> s ^ annotstr ^ (sos_br2 i1 i2)
+    (* Non-Standard Instruction : Introduced to resolve parsing issue *)
+    | I_noop          -> ""
+    (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
+    | I_micse_check i -> "#__MICSE_CHECK" ^ (sos_br i) ^ "\n"
+    )
+  in
+  bodystr
+end
+
+and string_of_pgm_ol : program -> string
+=fun p -> "{ param " ^ (string_of_typt p.param) ^ "; storage " ^ (string_of_typt p.storage) ^ "; code {" ^ (string_of_seq_ol p.code) ^ "} }"
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Utility Functions                                                         *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -401,12 +615,12 @@ let resolve_plain_macro : inst t -> string -> inst t
   | "ASSERT_SOME"  -> gen_t (I_if_none (m_fail, gen_t_a ann I_rename))
   | "ASSERT_LEFT"  -> gen_t (I_if_left (gen_t_a ann I_rename, m_fail))
   | "ASSERT_RIGHT" -> gen_t (I_if_left (m_fail, gen_t_a ann I_rename))
-  | "CMPEQ"  -> m_cmpop I_eq   | "ASSERTEQ"  -> m_assertop I_eq   | "ASSERTCMPEQ"  -> m_assertcmpop I_eq  
-  | "CMPNEQ" -> m_cmpop I_neq  | "ASSERTNEQ" -> m_assertop I_neq  | "ASSERTCMPNEQ" -> m_assertcmpop I_neq
-  | "CMPLT"  -> m_cmpop I_lt   | "ASSERTLT"  -> m_assertop I_lt   | "ASSERTCMPLT"  -> m_assertcmpop I_lt  
-  | "CMPLE"  -> m_cmpop I_le   | "ASSERTLE"  -> m_assertop I_le   | "ASSERTCMPLE"  -> m_assertcmpop I_le  
-  | "CMPGT"  -> m_cmpop I_gt   | "ASSERTGT"  -> m_assertop I_gt   | "ASSERTCMPGT"  -> m_assertcmpop I_gt  
-  | "CMPGE"  -> m_cmpop I_ge   | "ASSERTGE"  -> m_assertop I_ge   | "ASSERTCMPGE"  -> m_assertcmpop I_ge  
+  | "CMPEQ"  -> m_cmpop I_eq   | "ASSERT_EQ"  -> m_assertop I_eq   | "ASSERT_CMPEQ"  -> m_assertcmpop I_eq  
+  | "CMPNEQ" -> m_cmpop I_neq  | "ASSERT_NEQ" -> m_assertop I_neq  | "ASSERT_CMPNEQ" -> m_assertcmpop I_neq
+  | "CMPLT"  -> m_cmpop I_lt   | "ASSERT_LT"  -> m_assertop I_lt   | "ASSERT_CMPLT"  -> m_assertcmpop I_lt  
+  | "CMPLE"  -> m_cmpop I_le   | "ASSERT_LE"  -> m_assertop I_le   | "ASSERT_CMPLE"  -> m_assertcmpop I_le  
+  | "CMPGT"  -> m_cmpop I_gt   | "ASSERT_GT"  -> m_assertop I_gt   | "ASSERT_CMPGT"  -> m_assertcmpop I_gt  
+  | "CMPGE"  -> m_cmpop I_ge   | "ASSERT_GE"  -> m_assertop I_ge   | "ASSERT_CMPGE"  -> m_assertcmpop I_ge  
     (* Other Cases : DUUP, CADR, SET_CADR, PAIR, UNPAIR *)
   | _ -> (
       let (duup_bool, duup_it) = parse_duup s in
@@ -501,6 +715,8 @@ let resolve_code2_macro : string -> inst t -> inst t -> inst t
   | "IFLE"  -> m_ifop I_le  c1 c2  | "IFCMPLE"  -> m_ifcmpop I_le  c1 c2
   | "IFGT"  -> m_ifop I_gt  c1 c2  | "IFCMPGT"  -> m_ifcmpop I_gt  c1 c2
   | "IFGE"  -> m_ifop I_ge  c1 c2  | "IFCMPGE"  -> m_ifcmpop I_ge  c1 c2
+  | "IF_SOME" -> gen_t (I_if_none (c2, c1))
+  | "IF_RIGHT" -> gen_t (I_if_left (c2, c1))
   | _ -> nm_fail "resolve_code2_macro : every match failed"
 end
 
@@ -572,6 +788,9 @@ and subst_standard_macro_all_data : data t -> data t =
   | D_lambda i -> D_lambda (subst_standard_macro_all i) |> copy_info d
   | _ -> d
   )
+
+let subst_standard_macro_all_pgm : program -> program
+=fun pgm -> {pgm with code=(subst_standard_macro_all pgm.code)}
 
 
 (*****************************************************************************)

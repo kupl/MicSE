@@ -169,6 +169,32 @@ and program = { param : typ t; storage : typ t; code : inst t; }
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* To String                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val string_of_pos : pos -> string
+val string_of_loc : loc -> string
+val string_of_annot : annot -> string
+val string_of_annots : annot list -> string
+
+val string_of_typt_inner : bool -> typ t -> string
+val string_of_typt : typ t -> string
+
+(* Suffix "ol" for "one-line", that means the function with "ol" suffix will return 
+    no newline characters. (except comment-related situations)
+*)
+val string_of_datat_ol_inner : bool -> data t -> string
+val string_of_datat_ol : data t -> string
+
+val string_of_seq_ol : inst t -> string
+val string_of_instt_ol : inst t -> string
+
+val string_of_pgm_ol : program -> string
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Utility Functions (to type less)                                          *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -280,6 +306,8 @@ val subst_standard_macro : inst t -> inst t
 val subst_standard_macro_all : inst t -> inst t
 
 val subst_standard_macro_all_data : data t -> data t
+
+val subst_standard_macro_all_pgm : program -> program
 
 
 (*****************************************************************************)

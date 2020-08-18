@@ -1,57 +1,49 @@
-type t = Michelson.Adt.program
+type t = Mich.program
 
-type typ = Michelson.Adt.typ Michelson.Adt.t
-type inst = Michelson.Adt.inst Michelson.Adt.t
-type data = Michelson.Adt.data Michelson.Adt.t
-type operation = Tezla.Adt.operation
+type typ = Mich.typ Mich.t
+type inst = Mich.inst Mich.t
+type data = Mich.data Mich.t
+type operation = Operation.t
+
+let print_position outx lexbuf =
+  let open Lexing in
+  let pos = lexbuf.lex_curr_p in
+  Printf.fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
+    (pos.pos_cnum - pos.pos_bol + 1)
 
 let parse : string -> t
 =fun filename -> begin
-  let ast = Tezla.Parsing_utils.parse_with_error filename in
-  ast
+  let in_c = Stdlib.open_in filename in
+  let lexbuf = Lexing.from_channel in_c in
+  try
+    let res = Parser.start Lexer.next_token lexbuf in
+    let () = close_in in_c in
+    res
+  with
+  | Lexer.Lexing_error msg as e ->
+      Printf.fprintf stderr "%a: %s\n" print_position lexbuf msg;
+      close_in in_c;
+      raise e
+  | Parser.Error as e ->
+      Printf.fprintf stderr "%s%a: syntax error\n" filename print_position lexbuf;
+      close_in in_c;
+      raise e
 end
 
+(*
 let pp : Format.formatter -> t -> unit
 =fun fmt ast -> begin
   let _ = Format.pp_print_string fmt "\n" in
   let _ = Michelson.Pp.program fmt ast in
   ()
 end
+*)
 
 
-let rec string_of_typt
-= let a1 s tt = "(" ^ s ^ " " ^ (string_of_typt tt) ^ ")" in
-  let a2 s tt1 tt2 = "(" ^ s ^ " " ^ (string_of_typt tt1) ^ " " ^ (string_of_typt tt2) ^ ")" in
-  let open Michelson.Adt in
-  fun t -> begin
-  match t.d with
-  | T_key               -> "key"
-  | T_unit              -> "unit"
-  | T_signature         -> "signature"
-  | T_option t          -> a1 "option" t
-  | T_list t            -> a1 "list" t
-  | T_set t             -> a1 "set" t
-  | T_operation         -> "operation"
-  | T_contract t        -> a1 "contract" t
-  | T_pair (t1, t2)     -> a2 "pair" t1 t2
-  | T_or (t1, t2)       -> a2 "or" t1 t2
-  | T_lambda (t1, t2)   -> a2 "lambda" t1 t2
-  | T_map (t1, t2)      -> a2 "map" t1 t2
-  | T_big_map (t1, t2)  -> a2 "big_map" t1 t2
-  | T_chain_id          -> "chain_id"
-  | T_int               -> "int"
-  | T_nat               -> "nat"
-  | T_string            -> "string"
-  | T_bytes             -> "bytes"
-  | T_mutez             -> "mutez"
-  | T_bool              -> "bool"
-  | T_key_hash          -> "key_hash"
-  | T_timestamp         -> "timestamp"
-  | T_address           -> "address"
-end
+let string_of_typt = Mich.string_of_typt
 
 let rec is_typ_equal
-= let open Michelson.Adt in
+= let open Mich in
   fun t1 t2 -> begin
   (*("DEBUG: " ^ (string_of_typt t1) ^ ", " ^ (string_of_typt t2)) |> print_endline |> Stdlib.ignore;*)
   match t1.d, t2.d with
