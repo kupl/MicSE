@@ -18,7 +18,7 @@ let prove : Pre.Lib.Cfg.t -> unit
 
   (* Collect all queries from basic path *)
   let queries = Core.List.fold_right bp_list ~f:(fun bp qs -> (
-    let queries = Converter.convert bp cfg in
+    let _, queries = Converter.convert bp cfg in
     queries@qs
   )) ~init:[] in
 

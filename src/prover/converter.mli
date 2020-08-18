@@ -9,7 +9,7 @@ type object_typ =
 
 val type_map : (Pre.Lib.Cfg.ident, Pre.Lib.Cfg.typ) Pre.Lib.Cfg.CPMap.t ref
 
-val convert : Bp.t -> Pre.Lib.Cfg.t -> Query.t list
+val convert : Bp.t -> Pre.Lib.Cfg.t -> (Vlang.t * Query.t list)
 
 val sp : (Vlang.t * Query.t list) -> Bp.inst -> (Vlang.t * Query.t list)
 
