@@ -7,7 +7,7 @@ let loop_inv_vtx = ref []
 
 let rec extract : Pre.Lib.Cfg.t -> Bp.raw_t_list
 =fun cfg -> begin
-  let entry_bp = Bp.create_new_bp cfg.main_entry cfg.main_exit in
+  let entry_bp = Bp.create_new_bp cfg.main_entry in
   let result = translate entry_bp cfg.main_entry cfg in
   { bps=result; trx_inv_vtx=[cfg.main_entry; cfg.main_exit]; loop_inv_vtx=(!loop_inv_vtx) }
 end
@@ -123,7 +123,7 @@ end
 and create_bp_of_loop : Bp.t -> Bp.vertex -> (Bp.t * Bp.t * Bp.t)
 =fun cur_bp loop -> begin
   let (terminated_bp, new_bp) = Bp.create_cut_bp cur_bp loop in
-  let loop_bp = Bp.create_new_bp loop loop in
+  let loop_bp = Bp.create_new_bp loop in
   (terminated_bp, loop_bp, new_bp)
 end
 

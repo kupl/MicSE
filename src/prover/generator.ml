@@ -8,9 +8,8 @@ let generate : Bp.raw_t_list -> Pre.Lib.Cfg.t -> Bp.t list
   let _ = cfg in
   let _ = (raw_bps, trx_inv_vtx, loop_inv_vtx) in
   Core.List.fold_left raw_bps ~init:[] ~f:(fun bps bp -> (
-    let pre_inv = Bp.create_inv bp.pre.id Vlang.create_formula_true in
-    let post_inv = Bp.create_inv bp.post.id Vlang.create_formula_true in
-    let bp : Bp.t = { pre=pre_inv; body=bp.body; post=post_inv } in
+    let inv = Bp.create_inv bp.inv.id Vlang.create_formula_true in
+    let bp : Bp.t = { inv=inv; body=bp.body } in
     bp::bps
   ))
 end

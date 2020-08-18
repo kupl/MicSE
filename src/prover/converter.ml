@@ -18,7 +18,7 @@ let rec convert : Bp.t -> Pre.Lib.Cfg.t -> Query.t list
 =fun bp cfg -> begin
   let _ = type_map := cfg.type_info in
   let precond = create_precond_from_param_storage () in
-  let f = Vlang.create_formula_and ((Option.get bp.pre.formula)::precond) in
+  let f = Vlang.create_formula_and ((Option.get bp.inv.formula)::precond) in
   let _, qs = Core.List.fold_left bp.body ~init:(f, []) ~f:sp in
   qs
 end
