@@ -467,6 +467,7 @@ let m_if : inst -> inst -> inst = fun i1 i2 -> I_if (gen_t i1, gen_t i2)
     - SET_CADR
     - PAIR
     - UNPAIR
+    - DIIP
 *)
 
 let m_fail : inst t = gen_instseq [] [I_unit; I_failwith;]
@@ -683,12 +684,21 @@ let parse_map_cadr : string -> inst t -> bool * (inst t option)
   else (false, None)
 end
 
+let parse_diip : string -> inst t -> bool * (inst t option)
+=fun s c -> begin
+  if (String.length s > 2 && str_fst s 1 = "D" && str_lst s 1 = "P" && (str_mid s 1 1 = String.make (String.length s - 2) 'I'))
+  then (true, Some (gen_t (I_dip_n (Z.of_int (String.length s - 2), c))))
+  else (false, None)
+end
+
 let resolve_code_macro : string -> inst t -> inst t
 =fun s c -> begin
   match s with
   | _ -> (
     let (map_cadr_bool, map_cadr_it) = parse_map_cadr s c in
-    if map_cadr_bool then Option.get map_cadr_it
+    if map_cadr_bool then Option.get map_cadr_it else
+    let (diip_bool, diip_it) = parse_diip s c in
+    if diip_bool then Option.get diip_it
     else nm_fail "resolve_code_macro : every match failed"
   )
 end

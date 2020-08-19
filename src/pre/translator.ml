@@ -2677,10 +2677,10 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
   (* Macros are uninterpretable in Cfg.expr, Cfg.stmt types.
       Use Mich.subst_standard_macro_all function to change macros to normal instructions.
   *)
-  | M_plain _ -> fail "inst_to_cfg : M_plain : Macro cannot be converted automatically."
-  | M_num _   -> fail "inst_to_cfg : M_num : Macro cannot be converted automatically."
-  | M_code _  -> fail "inst_to_cfg : M_code : Macro cannot be converted automatically."
-  | M_code2 _ -> fail "inst_to_cfg : M_code2 : Macro cannot be converted automatically."
+  | M_plain _ -> fail ("inst_to_cfg : M_plain : Macro cannot be converted automatically." ^ (Mich.string_of_loc ist.pos))
+  | M_num _   -> fail ("inst_to_cfg : M_num : Macro cannot be converted automatically."   ^ (Mich.string_of_loc ist.pos))
+  | M_code _  -> fail ("inst_to_cfg : M_code : Macro cannot be converted automatically."  ^ (Mich.string_of_loc ist.pos))
+  | M_code2 _ -> fail ("inst_to_cfg : M_code2 : Macro cannot be converted automatically." ^ (Mich.string_of_loc ist.pos))
 
 
 end
