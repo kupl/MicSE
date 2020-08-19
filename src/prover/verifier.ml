@@ -6,7 +6,6 @@ open ProverLib
 let rec verify : Vlang.t -> Pre.Lib.Cfg.t -> bool * (Smt.z_expr * Smt.z_expr) option
 =fun vc cfg -> begin
   let zexp_of_vc = create_convert_vformula (Vlang.create_formula_not vc) in
-  (*let _ = print_endline (Vlang.string_of_vlang vc) in*)
   let solver = Smt.create_solver () in
   let _ = Smt.update_solver_add solver [zexp_of_vc] in
   let result, model_opt = Smt.create_check solver in
@@ -144,14 +143,14 @@ and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
     | VE_write (e1, e2, e3) -> Smt.update_map (create_convert_vexp e3) (create_convert_vexp e1) (create_convert_vexp e2)
     | VE_nul_op (vno, t) -> begin
         match vno with
-        | VE_self -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_now -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_amount -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_balance -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_steps_to_quota -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_source -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_sender -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_chain_id -> Smt.create_dummy_expr (sort_of_typt t)
+        | VE_self -> Smt.read_var (Smt.create_symbol "self") (sort_of_typt t)
+        | VE_now -> Smt.read_var (Smt.create_symbol "now") (sort_of_typt t)
+        | VE_amount -> Smt.read_var (Smt.create_symbol "amount") (sort_of_typt t)
+        | VE_balance -> Smt.read_var (Smt.create_symbol "balance") (sort_of_typt t)
+        | VE_steps_to_quota -> Smt.read_var (Smt.create_symbol "steps_to_quota") (sort_of_typt t)
+        | VE_source -> Smt.read_var (Smt.create_symbol "source") (sort_of_typt t)
+        | VE_sender -> Smt.read_var (Smt.create_symbol "sender") (sort_of_typt t)
+        | VE_chain_id -> Smt.read_var (Smt.create_symbol "chain_id") (sort_of_typt t)
       end
     | VE_uni_op (vuo, e1, t) -> begin
         let zero = Smt.create_int 0 in
