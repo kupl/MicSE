@@ -1915,7 +1915,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       gen_t t_r_i
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
-    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_add (v_1, v_2))) cfg_vr_added in
+    let (cfg_vtx_added, v_new) = t_add_typical_vertex (gen_emsg "cfg_vtx_added") counter (in_v, out_v) (Cfg_assign (v_r, E_add (v_1, v_2))) cfg_vr_added in
+    let (cfg_ended, _) = t_add_posinfo ~errtrace:(gen_emsg "cfg_ended") (v_new, ist.pos) (cfg_vtx_added, v_new) in
     (cfg_ended, ns_cons v_r ttl_si)
 
   | I_sub ->
@@ -1959,7 +1960,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       gen_t t_r_i
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
-    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_sub (v_1, v_2))) cfg_vr_added in
+    let (cfg_vtx_added, v_new) = t_add_typical_vertex (gen_emsg "cfg_vtx_added") counter (in_v, out_v) (Cfg_assign (v_r, E_sub (v_1, v_2))) cfg_vr_added in
+    let (cfg_ended, _) = t_add_posinfo ~errtrace:(gen_emsg "cfg_ended") (v_new, ist.pos) (cfg_vtx_added, v_new) in
     (cfg_ended, ns_cons v_r ttl_si)
     
   | I_mul ->
@@ -2001,7 +2003,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       gen_t t_r_i
     end in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
-    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_mul (v_1, v_2))) cfg_vr_added in
+    let (cfg_vtx_added, v_new) = t_add_typical_vertex (gen_emsg "cfg_vtx_added") counter (in_v, out_v) (Cfg_assign (v_r, E_mul (v_1, v_2))) cfg_vr_added in
+    let (cfg_ended, _) = t_add_posinfo ~errtrace:(gen_emsg "cfg_ended") (v_new, ist.pos) (cfg_vtx_added, v_new) in
     (cfg_ended, ns_cons v_r ttl_si)
 
   | I_ediv ->
@@ -2667,7 +2670,11 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_before_inst, _) = t_add_edg (last_vtx, dup_end) (cfg_after_dup, ()) in
     let (cfg_after_inst, after_inst_stack_info) = inst_to_cfg_handle_es counter (dup_end, check_value) (func_in_v, func_out_v) i (cfg_before_inst, NS (Core.List.rev rev_dup_stack_info)) in
     let check_hd_v = ns_hd after_inst_stack_info in
-    let (cfg_end, _) = t_add_vinfo ~errtrace:(errmsg_gen "cfg_end") (check_value, Cfg_micse_check_value check_hd_v) (cfg_after_inst, ()) in
+    let (cfg_end, _) = begin
+      (cfg_after_inst, ())
+      |> t_add_vinfo ~errtrace:(errmsg_gen "cfg_end") (check_value, Cfg_micse_check_value check_hd_v)
+      |> t_add_posinfo ~errtrace:(errmsg_gen "cfg_end") (check_value, ist.pos)
+    end in
     (cfg_end, stack_info)
 
   (*****************************************************************************)
@@ -2720,6 +2727,7 @@ let adt_to_cfg : Adt.t -> Cfg.t
       adt           : input adt itself.
       lambda_id_map : empty map.
       fail_vertices : empty set.
+      pos_info      : empty map.
   *)
   let entry_v = new_vtx counter in
   let exit_v = new_vtx counter in
@@ -2735,7 +2743,8 @@ let adt_to_cfg : Adt.t -> Cfg.t
     main_exit     = exit_v;
     adt           = adt;
     lambda_id_map = CPMap.empty;
-    fail_vertices = Core.Set.Poly.empty; } in
+    fail_vertices = Core.Set.Poly.empty;
+    pos_info      = CPMap.empty; } in
   let (cfg_last, stack_info) = inst_to_cfg_handle_es counter (cfg_init.main_entry, cfg_init.main_exit) (cfg_init.main_entry, cfg_init.main_exit) adt.code (cfg_init, stack_info_1) in
   let hd_stack_info = ns_hd stack_info in
   let vertex_info_last = imap_add cfg_last.vertex_info exit_v (Cfg_assign (hd_stack_info, E_itself hd_stack_info)) in

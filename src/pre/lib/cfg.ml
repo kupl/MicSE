@@ -8,6 +8,7 @@ type typ = Mich.typ Mich.t
 type data = Mich.data Mich.t
 type var = string
 type ident = string
+type loc = Mich.loc
 
 type operation = 
   | O_create_contract of Mich.program * string * string * string
@@ -316,6 +317,7 @@ type t = {
   adt           : Adt.t;                        (* original Michelson code (in adt type) *)
   lambda_id_map : (lambda_ident, lambda_summary) CPMap.t;  (* function id -> function summary *)
   fail_vertices : vertex Core.Set.Poly.t;        (* vertex set which has Cfg_failwith instruction *)
+  pos_info      : (int, loc) CPMap.t;           (* contains the position of "some" vertices (not "all" vertices) *)
 }
 
 let param_storage_name = "param_storage"
@@ -490,6 +492,10 @@ end
 
 let t_add_failvtx fv (cfg, _) = begin
   ({cfg with fail_vertices=(Core.Set.Poly.add cfg.fail_vertices fv);}, fv)
+end
+
+let t_add_posinfo ?(errtrace = "") (vtx, l) (cfg, _) = begin
+  ({cfg with pos_info=(t_map_add ~errtrace:(errtrace ^ " : t_add_posinfo") cfg.pos_info vtx l);}, vtx)
 end
 
 
