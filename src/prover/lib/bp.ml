@@ -145,29 +145,30 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-type t = { inv: inv; body: inst list }
+type t = { pre: inv; body: inst list; post: inv }
 and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
-let create_new_bp : vertex -> t
-=fun inv -> { inv=(create_dummy_inv inv); body=[] }
+let create_new_bp : vertex -> vertex -> t
+=fun pre post -> { pre=(create_dummy_inv pre); body=[]; post=(create_dummy_inv post) }
 
 let create_cut_bp : t -> vertex -> (t * t)
 =fun bp loop -> begin
   let loop_inv = create_dummy_inv loop in
-  let terminated_bp = { inv=bp.inv; body=bp.body } in
-  let new_bp = { inv=loop_inv; body=[] } in
+  let terminated_bp = { pre=bp.pre; body=bp.body; post=loop_inv } in
+  let new_bp = { pre=loop_inv; body=[]; post=bp.post } in
   (terminated_bp, new_bp)
 end
 
 let update_body : t -> inst -> t
-=fun bp inst -> { inv=bp.inv; body=(bp.body@[inst]) }
+=fun bp inst -> { pre=bp.pre; body=(bp.body@[inst]); post=bp.post }
 
 let to_string : t -> string
 =fun bp -> begin
   let str = "" in
-  let str = str ^ (string_of_inv bp.inv) ^ "\n" in
+  let str = str ^ (string_of_inv bp.pre) ^ "\n" in
   let str = Core.List.fold_left bp.body ~init:str ~f:(fun str inst -> (
     str ^ (string_of_inst inst) ^ "\n"
   )) in
+  let str = str ^ (string_of_inv bp.post) ^ "\n" in
   str
 end

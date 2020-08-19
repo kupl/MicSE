@@ -191,10 +191,10 @@ val string_of_inv : inv -> string
 (*****************************************************************************)
 (*****************************************************************************)
 
-type t = { inv: inv; body: inst list }
+type t = { pre: inv; body: inst list; post: inv }
 and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
-val create_new_bp : vertex -> t
+val create_new_bp : vertex -> vertex -> t
 
 val create_cut_bp : t -> vertex -> (t * t)
 
