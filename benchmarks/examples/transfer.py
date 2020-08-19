@@ -8,7 +8,6 @@ class MyToken(sp.Contract):
       totalSupply = sp.mutez(initSupply),
       balance = sp.map(tkey = sp.TAddress, tvalue = sp.TMutez),
     )
-    self.data.balance[owner] = sp.mutez(initSupply)
   
   @sp.entry_point
   def transfer(self, params):

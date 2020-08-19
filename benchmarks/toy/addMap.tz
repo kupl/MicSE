@@ -1,4 +1,4 @@
-parameter (pair mutez address);
+parameter (pair (mutez %amount) (address %toAddr));
 storage   (map address mutez);
 code
   {
