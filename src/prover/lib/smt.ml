@@ -1,6 +1,6 @@
 type typ = Pre.Lib.Adt.typ
 and data = Pre.Lib.Adt.data
-and operation = Pre.Lib.Adt.operation
+and operation = Pre.Lib.Cfg.operation
 
 type var = Pre.Lib.Cfg.ident
 and exp = Pre.Lib.Cfg.expr

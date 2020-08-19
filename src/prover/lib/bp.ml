@@ -48,10 +48,6 @@ let rec string_of_cond : cond -> string
   | BC_is_none v -> v ^ "= None"
   | BC_is_left v -> v ^ "= Left x"
   | BC_is_cons v -> v ^ "= Cons (hd tl)"
-  (*
-  | BC_no_overflow (e, _) -> "(" ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ")_no_overflow"
-  | BC_no_underflow (e, _) -> "(" ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ")_no_underflow"
-  *)
   | BC_no_overflow (e, _) -> "(" ^ (Pre.Lib.Cfg.expr_to_str e) ^ ")_no_overflow"
   | BC_no_underflow (e, _) -> "(" ^ (Pre.Lib.Cfg.expr_to_str e) ^ ")_no_underflow"
   | BC_not c -> "!(" ^ (string_of_cond c) ^ ")"
@@ -106,9 +102,6 @@ let string_of_inst : inst -> string
   match inst with
   | BI_assume f -> "Assume " ^ (string_of_cond f) ^ ";"
   | BI_assert (f, _, _) -> "Assert " ^ (string_of_cond f) ^ ";"
-  (*
-  | BI_assign (id, e) -> (Pre.Lib.Cfg.string_of_ident id) ^ " := " ^ (Format.flush_str_formatter (Tezla.Pp.expr Format.str_formatter e)) ^ ";"
-  *)
   | BI_assign (id, e) -> id ^ " := " ^ (Pre.Lib.Cfg.expr_to_str e) ^ ";"
   | BI_skip -> "Skip;"
 end

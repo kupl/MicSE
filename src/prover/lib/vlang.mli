@@ -49,7 +49,7 @@ and data = Pre.Lib.Adt.data
     | D_list of data t list
   *)
 
-and operation = Pre.Lib.Adt.operation
+and operation = Pre.Lib.Cfg.operation
   (*
     type operation =
     | O_create_contract of Michelson.Adt.program * string * string * string
