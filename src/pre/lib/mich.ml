@@ -773,9 +773,9 @@ let rec subst_standard_macro_all : inst t -> inst t =
   | I_source | I_sender | I_address | I_chain_id | I_unpair                   -> c
   (* Standard Macros *)
   | M_plain _
-  | M_num   _
-  | M_code  _
-  | M_code2 _ -> subst_standard_macro c
+  | M_num   _ -> subst_standard_macro c
+  | M_code  (s, i) -> subst_standard_macro {c with d=(M_code (s, scma i));}
+  | M_code2 (s, i_1, i_2) -> subst_standard_macro {c with d=(M_code2 (s, scma i_1, scma i_2))}
   (* Non-Standard Instruction : Introduced to resolve parsing issue *)
   | I_noop -> c
   (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
@@ -1013,3 +1013,12 @@ end
 and fill_position_all_typt  ?(update_loc=false) : loc -> (typ t ) -> (loc * typ t ) = fill_position_all ~update_loc_flag:update_loc fill_position_all_typ
 and fill_position_all_datat ?(update_loc=false) : loc -> (data t) -> (loc * data t) = fill_position_all ~update_loc_flag:update_loc fill_position_all_data
 and fill_position_all_instt ?(update_loc=false) : loc -> (inst t) -> (loc * inst t) = fill_position_all ~update_loc_flag:update_loc fill_position_all_inst
+
+let fill_position_all_pgm ?(update_loc=false): program -> program
+=fun pgm -> begin
+  {
+    param   = fill_position_all_typt  ~update_loc:update_loc (pgm.param.pos)   pgm.param   |> Stdlib.snd;
+    storage = fill_position_all_typt  ~update_loc:update_loc (pgm.storage.pos) pgm.storage |> Stdlib.snd;
+    code    = fill_position_all_instt ~update_loc:update_loc (pgm.code.pos)    pgm.code    |> Stdlib.snd;
+  }
+end

@@ -3,11 +3,9 @@
   (public_name micse.pre.lib)
   (libraries
     batteries
-    michelson
-    tezla
-    tezla-cfg
+    core
     ocamlgraph
-    core)
+    zarith)
   (modules_without_implementation operation)
 )
 

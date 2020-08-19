@@ -9,7 +9,11 @@ type data = Mich.data Mich.t
 type var = string
 type ident = string
 
-type operation = Operation.t
+type operation = 
+  | O_create_contract of Mich.program * string * string * string
+  | O_transfer_tokens of string * string * string
+  | O_set_delegate of string
+  | O_create_account of string * string * string * string
 
 type expr =
   | E_push of data * typ

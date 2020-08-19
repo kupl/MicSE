@@ -4,7 +4,10 @@
 
   let get_pos (startpos, endpos) =
     let open Lexing in
-    Mich.Pos ({lin=startpos.pos_lnum; col=startpos.pos_cnum}, {lin=endpos.pos_lnum; col=endpos.pos_cnum})
+    Mich.Pos (
+      {lin=startpos.pos_lnum; col=(startpos.pos_cnum - startpos.pos_bol + 1)}, 
+      {lin=endpos.pos_lnum; col=(endpos.pos_cnum - endpos.pos_bol + 1)}
+    )
 
 %}
 
@@ -77,7 +80,7 @@
 (*****************************************************************************)
 
 start:
-  | p=program EOF { p }
+  | LB? p=program RB? EOF { p }
 
 program:
   | CODE code=br_code SEMICOLON STORAGE storage=storage SEMICOLON PARAMETER param=parameter SEMICOLON?
@@ -153,6 +156,7 @@ code:
   | i=inst_t SEMICOLON?    { i }
   | c=br_code             { c }
   | i=inst_t SEMICOLON c=code { gen_insttseq [] [i; c] }
+  | c_1=br_code SEMICOLON c_2=code { gen_insttseq [] [c_1; c_2] }
 
 br_code:
   | LB RB { {pos=get_pos $loc; ann=[]; d=I_noop;} }
@@ -204,6 +208,7 @@ inst_t_i:
 %inline inst_t_i_noreq:
   | I_DROP { I_drop }
   | I_DUP  { I_dup  }
+  | I_DUP n=NUM { M_num ("DUP", n) }
   | I_SWAP { I_swap }
   | I_SOME { I_some }
   | I_UNIT { I_unit }

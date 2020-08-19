@@ -1,6 +1,0 @@
-image: ocaml/opam2
-
-ocaml-latest:
-    stage: build
-    script:
-        - scripts/ci-build.sh

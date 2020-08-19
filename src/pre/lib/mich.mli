@@ -325,3 +325,5 @@ val fill_position_all_inst : ?update_loc:bool -> loc -> inst -> (loc * inst)
 val fill_position_all_typt  : ?update_loc:bool -> (loc -> typ t  -> (loc * typ t ))
 val fill_position_all_datat : ?update_loc:bool -> (loc -> data t -> (loc * data t))
 val fill_position_all_instt : ?update_loc:bool -> (loc -> inst t -> (loc * inst t))
+
+val fill_position_all_pgm : ?update_loc:bool -> program -> program

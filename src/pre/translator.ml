@@ -255,6 +255,13 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         type_info   : no change
         stack_info  : no change
     *)
+    let _ =
+      print_string "DBG : "; 
+      print_string (Mich.string_of_loc i1.pos ^ ", "); print_endline (Mich.string_of_loc i2.pos);
+      print_string "  1.   "; print_endline (Mich.string_of_instt_ol i1); 
+      print_string "  2.   "; print_endline (Mich.string_of_instt_ol i2)
+    in
+
     let (cfg_2v, (mid_v_1, mid_v_2)) = t_add_vtx_2 counter (cfg, ()) in
     let (cfg_b, _) = begin
       (cfg_2v, ())
@@ -899,7 +906,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (cfg_tb_fin, stack_info_tb_fin) = inst_to_cfg_handle_es counter (i1_ready, i1_end) (func_in_v, func_out_v) i1 (cfg_tb, stack_info_tb_1) in
     (* complete ELSE branch (i2_begin ~ i2_end) *)
       (*  flow        : (i2_begin -> (i2 ...) -> i2_end)
-          vertex_info : i2_begin : Cfg_skip
+          vertex_info : no change
           type_info   : no change
           stack_info  : pop the top element of the stack.
       *)
@@ -907,9 +914,9 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
           flow keeps construction from cfg_tb_fin,
           but stack_info does not use stack_info_tb_fin.
       *)
-    let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_cons : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_skip) in
+    (*let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_cons : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_skip) in*)
     let stack_info_eb_1  = ns_tl stack_info in
-    let cfg_eb = {cfg_tb with vertex_info=vertex_info_eb_1;} in
+    let cfg_eb = {cfg_tb with vertex_info=cfg_tb_fin.vertex_info;} in
     let (cfg_eb_fin, stack_info_eb_fin) = inst_to_cfg_handle_es counter (i2_begin, i2_end) (func_in_v, func_out_v) i2 (cfg_eb, stack_info_eb_1) in
     (* Renaming variables to merge names from stack_info_tb_fin and stack_info_eb_fin *)
     let (cfg_collect, stack_info_collect) = begin
