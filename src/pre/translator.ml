@@ -255,12 +255,14 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         type_info   : no change
         stack_info  : no change
     *)
+    (*
     let _ =
       print_string "DBG : "; 
       print_string (Mich.string_of_loc i1.pos ^ ", "); print_endline (Mich.string_of_loc i2.pos);
       print_string "  1.   "; print_endline (Mich.string_of_instt_ol i1); 
       print_string "  2.   "; print_endline (Mich.string_of_instt_ol i2)
     in
+    *)
 
     let (cfg_2v, (mid_v_1, mid_v_2)) = t_add_vtx_2 counter (cfg, ()) in
     let (cfg_b, _) = begin
