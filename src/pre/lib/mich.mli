@@ -327,3 +327,14 @@ val fill_position_all_datat : ?update_loc:bool -> (loc -> data t -> (loc * data 
 val fill_position_all_instt : ?update_loc:bool -> (loc -> inst t -> (loc * inst t))
 
 val fill_position_all_pgm : ?update_loc:bool -> program -> program
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Optimization                                                              *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val optm_remove_noop_in_seq : inst t -> inst t
+
+val optm_all_pgm : program -> program

@@ -193,11 +193,11 @@ let rec string_of_typt_inner : bool -> typ t -> string
     | T_set t      ->       "set" ^ annotsstr ^ " " ^ (string_of_typt_inner true t)
     | T_operation  -> "operation" ^ annotsstr
     | T_contract t ->  "contract" ^ annotsstr ^ " " ^ (string_of_typt_inner true t)
-    | T_pair      (t1, t2) ->    "pair" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
-    | T_or        (t1, t2) ->      "or" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
-    | T_lambda    (t1, t2) ->  "lambda" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
-    | T_map       (t1, t2) ->     "map" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
-    | T_big_map   (t1, t2) -> "big_map" ^ annotsstr ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_pair      (t1, t2) ->    "pair" ^ annotsstr ^ " " ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_or        (t1, t2) ->      "or" ^ annotsstr ^ " " ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_lambda    (t1, t2) ->  "lambda" ^ annotsstr ^ " " ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_map       (t1, t2) ->     "map" ^ annotsstr ^ " " ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
+    | T_big_map   (t1, t2) -> "big_map" ^ annotsstr ^ " " ^ (string_of_typt_inner true t1) ^ " " ^ (string_of_typt_inner true t2)
     | T_chain_id  ->   "chain_id" ^ annotsstr
     | T_int       ->        "int" ^ annotsstr
     | T_nat       ->        "nat" ^ annotsstr
@@ -369,7 +369,7 @@ and string_of_instt_ol : inst t -> string =
     | M_code (s,i)    -> s ^ annotstr ^ (sos_br i)
     | M_code2 (s,i1,i2) -> s ^ annotstr ^ (sos_br2 i1 i2)
     (* Non-Standard Instruction : Introduced to resolve parsing issue *)
-    | I_noop          -> ""
+    | I_noop          -> "noop"
     (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
     | I_micse_check i -> "#__MICSE_CHECK" ^ (sos_br i) ^ "\n"
     )
@@ -378,7 +378,7 @@ and string_of_instt_ol : inst t -> string =
 end
 
 and string_of_pgm_ol : program -> string
-=fun p -> "{ param " ^ (string_of_typt p.param) ^ "; storage " ^ (string_of_typt p.storage) ^ "; code {" ^ (string_of_seq_ol p.code) ^ "} }"
+=fun p -> "{\nparam " ^ (string_of_typt p.param) ^ ";\nstorage " ^ (string_of_typt p.storage) ^ ";\ncode {" ^ (string_of_seq_ol p.code) ^ "} \n}"
 
 
 (*****************************************************************************)
@@ -1022,3 +1022,61 @@ let fill_position_all_pgm ?(update_loc=false): program -> program
     code    = fill_position_all_instt ~update_loc:update_loc (pgm.code.pos)    pgm.code    |> Stdlib.snd;
   }
 end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Optimization                                                              *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let rec optm_remove_noop_in_seq : inst t -> inst t = 
+  let optm = optm_remove_noop_in_seq in
+  fun c -> begin
+    match get_d c with
+    | I_seq (i1, {d=I_noop; _}) -> optm i1
+    | I_seq ({d=I_noop; _}, i2) -> optm i2
+    | I_seq (i1, i2) -> I_seq (optm i1, optm i2) |> copy_info c
+    | I_if_none (i1, i2) -> I_if_none (optm i1, optm i2) |> copy_info c
+    | I_if_left (i1, i2) -> I_if_left (optm i1, optm i2) |> copy_info c
+    | I_if_cons (i1, i2) -> I_if_cons (optm i1, optm i2) |> copy_info c
+    | I_map i -> I_map (optm i) |> copy_info c
+    | I_iter i -> I_iter (optm i) |> copy_info c
+    | I_if (i1, i2) -> I_if (optm i1, optm i2) |> copy_info c
+    | I_loop i -> I_loop (optm i) |> copy_info c
+    | I_loop_left i -> I_loop_left (optm i) |> copy_info c
+    | I_lambda (t1, t2, i) -> I_lambda (t1, t2, optm i) |> copy_info c
+    | I_dip i -> I_dip (optm i) |> copy_info c
+    | I_dip_n (zn, i) -> I_dip_n (zn, optm i) |> copy_info c
+    | I_create_contract {param=t1; storage=t2; code=i;} -> I_create_contract {param=t1; storage=t2; code=(optm i);} |> copy_info c
+    | I_push (t, d) -> I_push (t, subst_standard_macro_all_data d) |> copy_info c
+    | I_drop | I_drop_n _ | I_dup | I_swap | I_dig _ | I_dug _
+    | I_some | I_none _ | I_unit
+    | I_pair | I_car | I_cdr | I_left _ | I_right _
+    | I_nil _ | I_cons
+    | I_size | I_empty_set _ | I_empty_map _ | I_empty_big_map _
+    | I_mem | I_get | I_update
+    | I_exec
+    | I_failwith | I_cast _ | I_rename | I_concat | I_slice
+    | I_pack | I_unpack _ | I_add | I_sub | I_mul
+    | I_ediv | I_abs | I_isnat | I_int | I_neg
+    | I_lsl | I_lsr | I_or | I_and | I_xor
+    | I_not | I_compare | I_eq | I_neq | I_lt
+    | I_gt | I_le | I_ge | I_self | I_contract _
+    | I_transfer_tokens | I_set_delegate | I_create_account
+    | I_implicit_account | I_now | I_amount | I_balance | I_check_signature
+    | I_blake2b | I_sha256 | I_sha512 | I_hash_key | I_steps_to_quota
+    | I_source | I_sender | I_address | I_chain_id | I_unpair                   -> c
+    (* Standard Macros *)
+    | M_plain _
+    | M_num   _ -> c
+    | M_code  (s, i) -> {c with d=(M_code (s, optm i));}
+    | M_code2 (s, i_1, i_2) -> {c with d=(M_code2 (s, optm i_1, optm i_2))}
+    (* Non-Standard Instruction : Introduced to resolve parsing issue *)
+    | I_noop -> c
+    (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
+    | I_micse_check i -> I_micse_check (optm i) |> copy_info c   (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
+  end
+
+let optm_all_pgm : program -> program
+=fun pgm -> {pgm with code=(optm_remove_noop_in_seq pgm.code);}

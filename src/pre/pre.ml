@@ -9,7 +9,7 @@ module Translator = Translator
 let pre_process : string -> Lib.Cfg.t
 =fun filepath -> begin
   (* Parse Michelson File *)
-  let adt = Lib.Adt.parse filepath |> Lib.Mich.subst_standard_macro_all_pgm |> Lib.Mich.fill_position_all_pgm ~update_loc:false in
+  let adt = Lib.Adt.parse filepath |> Lib.Mich.subst_standard_macro_all_pgm |> Lib.Mich.optm_all_pgm |> Lib.Mich.fill_position_all_pgm ~update_loc:false in
 
   (* FLAGS - Parsed Michelson File *)
   let _ : unit = (if (!Utils.Options.flag_adt_print) then (Lib.Mich.string_of_pgm_ol adt |> Stdlib.print_endline) else ()) in
