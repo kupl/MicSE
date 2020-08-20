@@ -109,7 +109,7 @@ end
 let string_of_category : category -> string
 =fun c -> begin
   match c with
-  | Q_mutez_overflow -> "Mutez overflow and underflow"
+  | Q_mutez_overflow -> "Mutez overflow or underflow"
   | Q_shift_overflow -> "Logical shift overflow and underflow"
   | Q_assert -> "Assertion"
 end
