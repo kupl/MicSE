@@ -1,0 +1,10 @@
+(executables
+  (names construct_cfg)
+  (public_names micse.utils.construct_cfg)
+  (libraries
+    micse.utils
+    micse.pre
+    micse.prover
+  )
+  (package micse)
+)
