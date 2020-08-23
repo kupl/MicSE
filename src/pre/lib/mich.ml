@@ -634,7 +634,7 @@ let resolve_plain_macro : inst t -> string -> inst t
       if pair_bool then Option.get pair_it else
       let (unpair_bool, unpair_it) = parse_unpair s in
       if unpair_bool then Option.get unpair_it
-      else nm_fail "resolve_plain_macro : every match failed"
+      else nm_fail ("resolve_plain_macro : every match failed : " ^ s)
     )
 end
 
@@ -653,7 +653,7 @@ let resolve_num_macro : string -> Z.t -> inst t
 =fun s zn -> begin
   match s with
   | "DUP" -> construct_duup (Z.to_int zn) |> parse_duup |> Stdlib.snd |> Option.get
-  | _ -> nm_fail "resolve_num_macro : every match failed"
+  | _ -> nm_fail ("resolve_num_macro : every match failed : " ^ s)
 end
 
 
@@ -699,7 +699,7 @@ let resolve_code_macro : string -> inst t -> inst t
     if map_cadr_bool then Option.get map_cadr_it else
     let (diip_bool, diip_it) = parse_diip s c in
     if diip_bool then Option.get diip_it
-    else nm_fail "resolve_code_macro : every match failed"
+    else nm_fail ("resolve_code_macro : every match failed : " ^ s)
   )
 end
 
@@ -727,7 +727,7 @@ let resolve_code2_macro : string -> inst t -> inst t -> inst t
   | "IFGE"  -> m_ifop I_ge  c1 c2  | "IFCMPGE"  -> m_ifcmpop I_ge  c1 c2
   | "IF_SOME" -> gen_t (I_if_none (c2, c1))
   | "IF_RIGHT" -> gen_t (I_if_left (c2, c1))
-  | _ -> nm_fail "resolve_code2_macro : every match failed"
+  | _ -> nm_fail ("resolve_code2_macro : every match failed : " ^ s)
 end
 
 

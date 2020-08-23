@@ -51,6 +51,7 @@ let string = '"' string_content* '"'
 let new_line = '\n' | "\r\n"
 let ident = letter (letter | digit | '_')*
 let hex = "0x" ['0'-'9' 'a'-'f' 'A'-'F']+
+let annotbody = (letter | digit | '_')+
 
 let commentheader = '#'
 
@@ -70,9 +71,9 @@ rule next_token = parse
   | '('           { LP }
   | ')'           { RP }
   | '-'           { MINUS }
-  | '%'           { PERCENT }
-  | '@'           { AT }
-  | ':'           { COLON }
+  | '%'           { percent_annot lexbuf }
+  | '@'           { at_annot lexbuf }
+  | ':'           { colon_annot lexbuf }
   | eof           { EOF }
   | _ as c        { raise (Lexing_error ("Illegal character: " ^ String.make 1 c)) }
 
@@ -81,3 +82,18 @@ and comment = parse
   | new_line  { new_line lexbuf; next_token lexbuf }
   | eof       { EOF }
   | _         { comment lexbuf }
+
+and colon_annot = parse
+  | annotbody as s { COLON_ANNOT s }
+  | space          { COLON_ANNOT "" }
+  | _ as c         { raise (Lexing_error ("Illegal character in colon_annot: " ^ String.make 1 c)) }
+
+and at_annot = parse
+  | annotbody as s { AT_ANNOT s }
+  | space          { AT_ANNOT "" }
+  | _ as c         { raise (Lexing_error ("Illegal character in at_annot: " ^ String.make 1 c)) }
+
+and percent_annot = parse
+  | annotbody as s { PERCENT_ANNOT s }
+  | space          { PERCENT_ANNOT "" }
+  | _ as c         { raise (Lexing_error ("Illegal character in percent_annot: " ^ String.make 1 c)) }

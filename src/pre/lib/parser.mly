@@ -20,9 +20,13 @@
 %token <string> STRING
 %token <string> IDENT
 
+%token <string> PERCENT_ANNOT
+%token <string> AT_ANNOT
+%token <string> COLON_ANNOT
+
 (* system-and-keyboard-symbols *)
 %token LB RB LP RP
-%token SEMICOLON MINUS PERCENT AT COLON EOF
+%token SEMICOLON MINUS EOF
 
 (* Keywords *)
 %token PARAMETER STORAGE CODE UNIT PAIR LEFT RIGHT SOME NONE ELT 
@@ -97,9 +101,9 @@ parameter:
   | t=typ { t }
 
 %inline annot:
-  | COLON   s=IDENT  { A_typ s }
-  | AT      s=IDENT  { A_var s }
-  | PERCENT s=IDENT  { A_fld s }
+  | s=COLON_ANNOT     { A_typ s }
+  | s=AT_ANNOT        { A_var s }
+  | s=PERCENT_ANNOT   { A_fld s }
 
 annots:
   |  { [] }
@@ -175,6 +179,7 @@ inst_t_i:
   | I_DROP a=annots n=NUM       { gen_t_a a (I_drop_n n) }
   | I_DIG  a=annots n=NUM       { gen_t_a a (I_dig n) }
   | I_DUG  a=annots n=NUM       { gen_t_a a (I_dug n) }
+  | I_DUP  a=annots n=NUM       { gen_t_a a (M_num ("DUP", n)) }
   | I_PUSH a=annots t=typ d=data                  { gen_t_a a (I_push (t, d)) }
   | I_NONE a=annots t=typ       { gen_t_a a (I_none t) }
   | I_IF_NONE a=annots i_1=br_code i_2=br_code    { gen_t_a a (I_if_none (i_1, i_2)) }
@@ -208,7 +213,6 @@ inst_t_i:
 %inline inst_t_i_noreq:
   | I_DROP { I_drop }
   | I_DUP  { I_dup  }
-  | I_DUP n=NUM { M_num ("DUP", n) }
   | I_SWAP { I_swap }
   | I_SOME { I_some }
   | I_UNIT { I_unit }
