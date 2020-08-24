@@ -2746,7 +2746,15 @@ let adt_to_cfg : Adt.t -> Cfg.t
     fail_vertices = Core.Set.Poly.empty;
     pos_info      = CPMap.empty; } in
   let (cfg_last, stack_info) = inst_to_cfg_handle_es counter (cfg_init.main_entry, cfg_init.main_exit) (cfg_init.main_entry, cfg_init.main_exit) adt.code (cfg_init, stack_info_1) in
-  let hd_stack_info = ns_hd stack_info in
-  let vertex_info_last = imap_add cfg_last.vertex_info exit_v (Cfg_assign (hd_stack_info, E_itself hd_stack_info)) in
-  {cfg_last with vertex_info=vertex_info_last;}
+  (* Check if the last stack_info is (normal & size=1) stack. Otherwise, handle them carefully. *)
+  (match stack_info with
+  | NS ns when (List.length ns = 1) ->
+    let hd_stack_info = ns_hd stack_info in
+    let vertex_info_last = imap_add cfg_last.vertex_info exit_v (Cfg_assign (hd_stack_info, E_itself hd_stack_info)) in
+    {cfg_last with vertex_info=vertex_info_last;}
+  | NS ns -> fail ("adt_to_cfg : stack_info check failed : NS stack has non-1 elements : #elem=" ^ (string_of_int (List.length ns)))
+  | ES ev ->
+    let vertex_info_last = imap_add cfg_last.vertex_info exit_v (Cfg_assign (ev, E_itself ev)) in
+    {cfg_last with vertex_info=vertex_info_last;}
+  ) 
   (* TODO : if necessary, update exit node's stack info. *)
