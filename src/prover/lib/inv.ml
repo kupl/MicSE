@@ -112,3 +112,33 @@ module Map = struct
     "}"
   end
 end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Worklist                                                                  *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module WorkList = struct
+  type t = Map.t list
+
+  let empty : t
+  =[]
+
+  let is_empty : t -> bool
+  =fun wl -> Core.List.is_empty wl
+
+  let push : t -> Map.t -> t
+  =fun wl m -> begin
+    m::wl
+  end
+
+  let pop : t -> (Map.t * t)
+  =fun wl -> begin
+    let m_opt, wl'_opt = (Core.List.hd wl), (Core.List.tl wl) in
+    match m_opt, wl'_opt with
+    | Some m, Some wl' -> (m, wl')
+    | _, _ -> raise (Failure "")
+  end
+end

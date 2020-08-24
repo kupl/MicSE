@@ -183,4 +183,6 @@ val create_cut_bp : t -> vertex -> (t * t)
 
 val update_body : t -> inst -> t
 
+val update_inv : t -> pre:Inv.t -> post:Inv.t -> t
+
 val to_string : t -> string

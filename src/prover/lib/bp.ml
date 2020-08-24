@@ -138,6 +138,9 @@ end
 let update_body : t -> inst -> t
 =fun bp inst -> { pre=bp.pre; body=(bp.body@[inst]); post=bp.post }
 
+let update_inv : t -> pre:Inv.t -> post:Inv.t -> t
+=fun bp ~pre ~post -> { pre=pre; body=bp.body; post=post }
+
 let to_string : t -> string
 =fun bp -> begin
   let str = "" in
