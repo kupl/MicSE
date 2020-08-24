@@ -51,7 +51,7 @@ let string = '"' string_content* '"'
 let new_line = '\n' | "\r\n"
 let ident = letter (letter | digit | '_')*
 let hex = "0x" ['0'-'9' 'a'-'f' 'A'-'F']+
-let annotbody = (letter | digit | '_')+
+let annotbody = (letter | digit | '_' | '.' | '%' | '@' | ':')+
 
 let commentheader = '#'
 
