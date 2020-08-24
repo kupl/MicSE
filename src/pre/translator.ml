@@ -918,7 +918,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       *)
     (*let vertex_info_eb_1 = map_add "inst_to_cfg : I_if_cons : vertex_info_eb_1" cfg_tb_fin.vertex_info i2_begin (Cfg_skip) in*)
     let stack_info_eb_1  = ns_tl stack_info in
-    let cfg_eb = {cfg_tb with vertex_info=cfg_tb_fin.vertex_info;} in
+    let cfg_eb = {cfg_tb_fin with vertex_info=cfg_tb_fin.vertex_info;} in
     let (cfg_eb_fin, stack_info_eb_fin) = inst_to_cfg_handle_es counter (i2_begin, i2_end) (func_in_v, func_out_v) i2 (cfg_eb, stack_info_eb_1) in
     (* Renaming variables to merge names from stack_info_tb_fin and stack_info_eb_fin *)
     let (cfg_collect, stack_info_collect) = begin
