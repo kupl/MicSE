@@ -40,7 +40,7 @@ type stack_info_t =
 | ES of string      (* Error  Stack info *)
 
 let ns_hd = begin function | NS sl -> Core.List.hd_exn sl       | ES _ -> fail "ns_hd : error-stack-info comes in argument" end
-let ns_tl = begin function | NS sl -> NS (Core.List.tl_exn sl)  | ES _ -> fail "ns_tl : error-stack-info comes in argument" end
+let ns_tl = begin function | NS sl -> NS (Core.List.tl sl |> (function | None -> [] | Some x -> x))  | ES _ -> fail "ns_tl : error-stack-info comes in argument" end
 let ns_nth s n = begin match s with | NS sl -> Core.List.nth_exn sl n | ES _ -> fail "ns_nth : error-stack-info comes in argument" end
 let ns_rev = begin function | NS sl -> NS (Core.List.rev sl)    | ES _ ->  fail "ns_rev : error-stack-info comes in argument" end
 
@@ -2462,24 +2462,42 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
   | I_create_account -> fail "inst_to_cfg : I_create_account : UNDEFINED" (* TODO : complete this if available *)
 
   | I_create_contract pgm ->
-    (*  flow        : add new vertex between in-and-out
+    (*  flow        : in_v -> nv_1 -> nv_2 -> nv_3 -> out_v
         variables   : v_1   : top element of the stack.
                       v_2   : second top element of the stack.
                       v_3   : third top element of the stack.
-                      v_r   : new variable
-        vertex_info : in_v       -> Cfg_skip
-                      new vertex -> Cfg_assign (v_r, E_operation (O_create_contract (pgm, v_1, v_2, v_3)))
-        type_info   : v_r   -> T_operation
-        stack_info  : pop three elements and push "v_r"
+                      v_r      : new variable (pair <operation, address>)
+                      v_r_op   : new variable (operation)
+                      v_r_ad   : new variable (address)
+        vertex_info : in_v    -> Cfg_skip
+                      nv_1    -> Cfg_assign (v_r, E_operation (O_create_contract (pgm, v_1, v_2, v_3)))
+                      nv_2    -> Cfg_assign (v_r_op, E_car v_r)
+                      nv_3    -> Cfg_assign (v_r_ad, E_cdr v_r)
+        type_info   : v_r     -> T_pair (T_operation, T_address)
+                      v_r_op  -> T_operation
+                      v_r_ad  -> T_address
+        stack_info  : pop three elements and construct (v_r_op :: v_r_ad :: (tttl_si))
     *)
     let gen_emsg s : string = ("inst_to_cfg : I_create_contract : " ^ s) in
     let (v_1, tl_si) = stack_hdtl stack_info in
     let (v_2, ttl_si) = stack_hdtl tl_si in
     let (v_3, tttl_si) = stack_hdtl ttl_si in
-    let t_r = gen_t Mich.T_operation in
-    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
-    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_operation (O_create_contract (pgm, v_1, v_2, v_3)))) cfg_vr_added in
-    (cfg_ended, ns_cons v_r tttl_si)
+    let (t_r, t_r_op, t_r_ad) = let open Mich in (gen_t (T_pair (gen_t T_operation, gen_t T_address)), gen_t T_operation, gen_t T_address) in
+    let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "v_r") counter t_r (cfg, ()) in
+    let (cfg_vr_op_added, v_r_op) = t_add_nv_tinfo ~errtrace:(gen_emsg "v_r_op") counter t_r_op (cfg_vr_added, ()) in
+    let (cfg_vr_ad_added, v_r_ad) = t_add_nv_tinfo ~errtrace:(gen_emsg "v_r_ad") counter t_r_ad (cfg_vr_op_added, ()) in
+    let (cfg_vtx_added, (nv_1, nv_2, nv_3)) = t_add_vtx_3 counter (cfg_vr_ad_added, ()) in
+    let (cfg_ended, _) = begin
+      (cfg_vtx_added, ())
+      |> t_add_vinfos ~errtrace:(gen_emsg "nv vinfos")
+            [
+              (nv_1, Cfg_assign (v_r, E_operation (O_create_contract (pgm, v_1, v_2, v_3))));
+              (nv_2, Cfg_assign (v_r_op, E_car v_r));
+              (nv_3, Cfg_assign (v_r_ad, E_cdr v_r));
+            ]
+      |> t_add_edgs [(in_v, nv_1); (nv_1, nv_2); (nv_2, nv_3); (nv_3, out_v);]
+    end in
+    (cfg_ended, ns_cons v_r_op (ns_cons v_r_ad tttl_si))
 
   | I_implicit_account ->
     (*  flow        : add new vertex between in-and-out
