@@ -170,28 +170,11 @@ val string_of_category : category -> string
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Invariants                                                                *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-type formula = Vlang.t
-
-type inv = { id: vertex; formula: formula option }
-and inv_map = (vertex, formula) Core.Hashtbl.t
-
-val create_dummy_inv : vertex -> inv
-
-val create_inv : vertex -> formula -> inv
-
-val string_of_inv : inv -> string
-
-(*****************************************************************************)
-(*****************************************************************************)
 (* Basic path                                                                *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-type t = { pre: inv; body: inst list; post: inv }
+type t = { pre: Inv.t; body: inst list; post: Inv.t }
 and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
 val create_new_bp : vertex -> vertex -> t
