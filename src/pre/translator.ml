@@ -1120,7 +1120,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
           end
         | Core.List.Or_unequal_lengths.Unequal_lengths -> fail "inst_to_cfg : I_map : cfg_final : unequal_lengths"
       end in
-      (cfg_final, (ns_cons newvar_result_name stack_info))
+      (cfg_final, (ns_cons newvar_result_name (ns_tl stack_info)))
     )
     
   | I_iter i ->
