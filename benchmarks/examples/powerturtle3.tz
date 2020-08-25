@@ -1,0 +1,109 @@
+parameter (or (int %donateFood) (unit %feedTurtle));
+storage   (pair (map %foodMap address nat) (pair (nat %tmpvar) (nat %turtleSize)));
+code
+  {
+    DUP;        # pair @parameter @storage : pair @parameter @storage
+    CDR;        # @storage : pair @parameter @storage
+    SWAP;       # pair @parameter @storage : @storage
+    CAR;        # @parameter : @storage
+    IF_LEFT
+      {
+        SWAP;       # @storage : @parameter%donateFood
+        # == donateFood ==
+        # if params > 100:
+        # if False:
+        # self.data.foodMap[sp.sender] = self.data.foodMap.get(sp.sender, default_value = 0) + 0 # @storage : @parameter%donateFood
+        DUP;        # @storage : @storage : @parameter%donateFood
+        DUG 2;      # @storage : @parameter%donateFood : @storage
+        DUP;        # @storage : @storage : @parameter%donateFood : @storage
+        CDR;        # pair (nat %tmpvar) (nat %turtleSize) : @storage : @parameter%donateFood : @storage
+        SWAP;       # @storage : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood : @storage
+        CAR;        # map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood : @storage
+        SENDER;     # address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood : @storage
+        PUSH nat 0; # nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood : @storage
+        DIG 5;      # @storage : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood
+        DUP;        # @storage : @storage : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood
+        DUG 6;      # @storage : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood : @storage
+        CAR;        # map address nat : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood : @storage
+        SENDER;     # address : map address nat : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood : @storage
+        GET;        # option nat : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood : @storage
+        IF_SOME
+          {
+            DIG 6;      # @storage : @some : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood
+            DROP;       # @some : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood
+            DIG 5;      # @parameter%donateFood : @some : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+            DROP;       # @some : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+            # of_some: Get-item:71 # @some : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+          }
+          {
+            DIG 5;      # @storage : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood
+            DROP;       # nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize) : @parameter%donateFood
+            DIG 4;      # @parameter%donateFood : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+            DROP;       # nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+            PUSH nat 0; # nat : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+          }; # @some : nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+        ADD;        # nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+        SOME;       # option nat : address : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+        SWAP;       # address : option nat : map address nat : pair (nat %tmpvar) (nat %turtleSize)
+        UPDATE;     # map address nat : pair (nat %tmpvar) (nat %turtleSize)
+        PAIR;       # pair (map address nat) (pair (nat %tmpvar) (nat %turtleSize))
+      }
+      {
+        SWAP;       # @storage : @parameter%feedTurtle
+        # == feedTurtle ==
+        # self.data.tmpvar = 0 # @storage : @parameter%feedTurtle
+        DUP;        # @storage : @storage : @parameter%feedTurtle
+        CAR;        # map address nat : @storage : @parameter%feedTurtle
+        SWAP;       # @storage : map address nat : @parameter%feedTurtle
+        CDDR;       # nat : map address nat : @parameter%feedTurtle
+        PUSH nat 0; # nat : nat : map address nat : @parameter%feedTurtle
+        PAIR;       # pair nat nat : map address nat : @parameter%feedTurtle
+        SWAP;       # map address nat : pair nat nat : @parameter%feedTurtle
+        PAIR;       # pair (map address nat) (pair nat nat) : @parameter%feedTurtle
+        # for x in self.data.foodMap.values(): ... # pair (map address nat) (pair nat nat) : @parameter%feedTurtle
+        DUP;        # pair (map address nat) (pair nat nat) : pair (map address nat) (pair nat nat) : @parameter%feedTurtle
+        DUG 2;      # pair (map address nat) (pair nat nat) : @parameter%feedTurtle : pair (map address nat) (pair nat nat)
+        CAR;        # map address nat : @parameter%feedTurtle : pair (map address nat) (pair nat nat)
+        ITER
+          {
+            CDR;        # nat : @parameter%feedTurtle : pair (map address nat) (pair nat nat)
+            # self.data.tmpvar += x # nat : @parameter%feedTurtle : pair (map address nat) (pair nat nat)
+            DIG 2;      # pair (map address nat) (pair nat nat) : nat : @parameter%feedTurtle
+            DUP;        # pair (map address nat) (pair nat nat) : pair (map address nat) (pair nat nat) : nat : @parameter%feedTurtle
+            CAR;        # map address nat : pair (map address nat) (pair nat nat) : nat : @parameter%feedTurtle
+            SWAP;       # pair (map address nat) (pair nat nat) : map address nat : nat : @parameter%feedTurtle
+            CDR;        # pair nat nat : map address nat : nat : @parameter%feedTurtle
+            DUP;        # pair nat nat : pair nat nat : map address nat : nat : @parameter%feedTurtle
+            CDR;        # nat : pair nat nat : map address nat : nat : @parameter%feedTurtle
+            SWAP;       # pair nat nat : nat : map address nat : nat : @parameter%feedTurtle
+            CAR;        # nat : nat : map address nat : nat : @parameter%feedTurtle
+            DIG 3;      # nat : nat : nat : map address nat : @parameter%feedTurtle
+            ADD;        # nat : nat : map address nat : @parameter%feedTurtle
+            PAIR;       # pair nat nat : map address nat : @parameter%feedTurtle
+            SWAP;       # map address nat : pair nat nat : @parameter%feedTurtle
+            PAIR;       # pair (map address nat) (pair nat nat) : @parameter%feedTurtle
+            SWAP;       # @parameter%feedTurtle : pair (map address nat) (pair nat nat)
+          }; # @parameter%feedTurtle : pair (map address nat) (pair nat nat)
+        DROP;       # pair (map address nat) (pair nat nat)
+        # self.data.turtleSize = self.data.turtleSize << self.data.tmpvar # pair (map address nat) (pair nat nat)
+        DUP;        # pair (map address nat) (pair nat nat) : pair (map address nat) (pair nat nat)
+        DUP;        # pair (map address nat) (pair nat nat) : pair (map address nat) (pair nat nat) : pair (map address nat) (pair nat nat)
+        CAR;        # map address nat : pair (map address nat) (pair nat nat) : pair (map address nat) (pair nat nat)
+        SWAP;       # pair (map address nat) (pair nat nat) : map address nat : pair (map address nat) (pair nat nat)
+        CDR;        # pair nat nat : map address nat : pair (map address nat) (pair nat nat)
+        DUP;        # pair nat nat : pair nat nat : map address nat : pair (map address nat) (pair nat nat)
+        CAR;        # nat : pair nat nat : map address nat : pair (map address nat) (pair nat nat)
+        SWAP;       # pair nat nat : nat : map address nat : pair (map address nat) (pair nat nat)
+        CDR;        # nat : nat : map address nat : pair (map address nat) (pair nat nat)
+        DIG 3;      # pair (map address nat) (pair nat nat) : nat : nat : map address nat
+        CDAR;       # nat : nat : nat : map address nat
+        SWAP;       # nat : nat : nat : map address nat
+        LSL;        # nat : nat : map address nat
+        SWAP;       # nat : nat : map address nat
+        PAIR;       # pair nat nat : map address nat
+        SWAP;       # map address nat : pair nat nat
+        PAIR;       # pair (map address nat) (pair nat nat)
+      }; # pair (map address nat) (pair (nat %tmpvar) (nat %turtleSize))
+    NIL operation; # list operation : pair (map address nat) (pair (nat %tmpvar) (nat %turtleSize))
+    PAIR;       # pair (list operation) (pair (map address nat) (pair (nat %tmpvar) (nat %turtleSize)))
+  };

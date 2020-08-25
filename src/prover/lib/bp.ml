@@ -117,43 +117,19 @@ end
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Invariants                                                                *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-type formula = Vlang.t
-
-type inv = { id: vertex; formula: formula option }
-and inv_map = (vertex, formula) Core.Hashtbl.t
-
-let create_dummy_inv : vertex -> inv
-=fun vtx -> { id=vtx; formula=None }
-
-let create_inv : vertex -> formula -> inv
-=fun vtx f -> { id=vtx; formula=Some f }
-
-let string_of_inv : inv -> string
-=fun inv -> begin
-  if Option.is_none inv.formula then (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": None"
-  else (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": " ^ (Vlang.string_of_formula (Option.get inv.formula))
-end
-
-
-(*****************************************************************************)
-(*****************************************************************************)
 (* Basic path                                                                *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-type t = { pre: inv; body: inst list; post: inv }
+type t = { pre: Inv.t; body: inst list; post: Inv.t }
 and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
 let create_new_bp : vertex -> vertex -> t
-=fun pre post -> { pre=(create_dummy_inv pre); body=[]; post=(create_dummy_inv post) }
+=fun pre post -> { pre=(Inv.create_dummy_inv pre); body=[]; post=(Inv.create_dummy_inv post) }
 
 let create_cut_bp : t -> vertex -> (t * t)
 =fun bp loop -> begin
-  let loop_inv = create_dummy_inv loop in
+  let loop_inv = Inv.create_dummy_inv loop in
   let terminated_bp = { pre=bp.pre; body=bp.body; post=loop_inv } in
   let new_bp = { pre=loop_inv; body=[]; post=bp.post } in
   (terminated_bp, new_bp)
@@ -162,13 +138,16 @@ end
 let update_body : t -> inst -> t
 =fun bp inst -> { pre=bp.pre; body=(bp.body@[inst]); post=bp.post }
 
+let update_inv : t -> pre:Inv.t -> post:Inv.t -> t
+=fun bp ~pre ~post -> { pre=pre; body=bp.body; post=post }
+
 let to_string : t -> string
 =fun bp -> begin
   let str = "" in
-  let str = str ^ (string_of_inv bp.pre) ^ "\n" in
+  let str = str ^ (Inv.string_of_inv bp.pre) ^ "\n" in
   let str = Core.List.fold_left bp.body ~init:str ~f:(fun str inst -> (
     str ^ (string_of_inst inst) ^ "\n"
   )) in
-  let str = str ^ (string_of_inv bp.post) ^ "\n" in
+  let str = str ^ (Inv.string_of_inv bp.post) ^ "\n" in
   str
 end
