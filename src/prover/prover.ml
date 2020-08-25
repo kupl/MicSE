@@ -14,38 +14,62 @@ let rec prove : Pre.Lib.Cfg.t -> unit
 =fun cfg -> begin
   (* Construct basic path *)
   let raw_bp_list = Extractor.extract cfg in
-  let bp_list = Generator.generate raw_bp_list cfg in
 
-  (* Collect all queries from basic path *)
-  let queries = Core.List.fold_right bp_list ~f:(fun bp qs -> (
-    let _, queries = Converter.convert bp cfg in
-    queries@qs
-  )) ~init:[] in
+  (* Verify all of basic path *)
+  let initial_worklist = Generator.initial_inv_worklist raw_bp_list.trx_inv_vtx raw_bp_list.loop_inv_vtx in
+  let queries = work initial_worklist raw_bp_list cfg in
 
-  (* Verify each basic path *)
+  (* Print out result *)
   let _ = Core.List.iter queries ~f:(fun q -> (
-    let result, param_storage_opt = Verifier.verify q.query cfg in
     let _ = print_endline ("- Query line " ^ (read_query_location cfg q)) in
-    if result
-    then begin
-      let _ = print_endline ("\t- Status: Proven") in
-      ()
-    end else begin
-      let _ = print_endline ("\t- Status: Unproven") in
-      let _ = print_endline ("\t- Category: " ^ (Lib.Bp.string_of_category q.typ)) in
-      match param_storage_opt with
-      | None -> let _ = print_endline ("\t- Something Wrong") in ()
-      | Some (param, storage) -> begin
-          if !Utils.Options.flag_param_storage
-          then begin
-            let _ = print_endline ("\t- Parameter:\t" ^ (Lib.Smt.string_of_expr param)) in
-            let _ = print_endline ("\t- Storage:\t" ^ (Lib.Smt.string_of_expr storage)) in
-            ()
-          end else ()
-        end
-    end
+    match q.status with
+    | Q_proven -> begin
+        let _ = print_endline ("\t- Status: Proven") in
+        ()
+      end
+    | Q_unproven param_storage_opt -> begin
+        let _ = print_endline ("\t- Status: Unproven") in
+        let _ = print_endline ("\t- Category: " ^ (Lib.Bp.string_of_category q.typ)) in
+        match param_storage_opt with
+        | None -> let _ = print_endline ("\t- Something Wrong") in ()
+        | Some (param, storage) -> begin
+            if !Utils.Options.flag_param_storage
+            then begin
+              let _ = print_endline ("\t- Parameter:\t" ^ (Lib.Smt.string_of_expr param)) in
+              let _ = print_endline ("\t- Storage:\t" ^ (Lib.Smt.string_of_expr storage)) in
+              ()
+            end else ()
+          end
+      end
+    | Q_nonproven -> raise (Failure "Prover.prove: Non-proved query exists")
   )) in
   ()
+end
+
+and work : Lib.Inv.WorkList.t -> Lib.Bp.raw_t_list -> Pre.Lib.Cfg.t -> Lib.Query.t list
+=fun w raw_bps cfg -> begin
+  (* Choose a candidate invariant *)
+  let inv_map, _ = Lib.Inv.WorkList.pop w in
+
+  (* Verify Queries *)
+  let bp_list = Generator.apply inv_map raw_bps.bps in
+  let _, proven, unproven = Core.List.fold_right bp_list ~f:(fun bp (inductive, proven, unproven) -> (
+    let path_vc, queries = Converter.convert bp cfg in
+    let path_inductive, _ = Verifier.verify path_vc cfg in
+    let proven, unproven = Core.List.fold_right queries ~f:(fun q (p, up) -> (
+      let result, param_storage_opt = Verifier.verify q.query cfg in
+      if result
+      then begin
+        let p_q = Lib.Query.update_status q (Lib.Query.create_status_proven) in
+        (p_q::p, up)
+      end else begin
+        let up_q = Lib.Query.update_status q (Lib.Query.create_status_unproven param_storage_opt) in
+        (p, up_q::up)
+      end
+    )) ~init:(proven, unproven) in
+    (inductive&&path_inductive, proven, unproven)
+  )) ~init:(true, [], []) in
+  proven@unproven
 end
 
 and read_query_location : Pre.Lib.Cfg.t -> Lib.Query.t -> string
