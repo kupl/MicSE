@@ -2091,12 +2091,12 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
                       v_r   : new variable
         vertex_info : in_v       -> Cfg_skip
                       new vertex -> Cfg_assign (v_r, E_int_of_nat v_1)
-        type_info   : v_r   -> T_nat
+        type_info   : v_r   -> T_int
         stack_info  : pop a element and push "v_r"
     *)
     let gen_emsg s : string = ("inst_to_cfg : I_int : " ^ s) in
     let (v_1, tl_si) = stack_hdtl stack_info in
-    let t_r = gen_t Mich.T_nat in
+    let t_r = gen_t Mich.T_int in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
     let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_int_of_nat v_1)) cfg_vr_added in
     (cfg_ended, ns_cons v_r tl_si)
