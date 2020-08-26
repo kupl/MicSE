@@ -160,7 +160,7 @@ code:
   | i=inst_t SEMICOLON?    { i }
   | c=br_code             { c }
   | i=inst_t SEMICOLON c=code { gen_insttseq [] [i; c] }
-  | c_1=br_code SEMICOLON c_2=code { gen_insttseq [] [c_1; c_2] }
+  | c_1=br_code SEMICOLON? c_2=code { gen_insttseq [] [c_1; c_2] }
 
 br_code:
   | LB RB { {pos=get_pos $loc; ann=[]; d=I_noop;} }
