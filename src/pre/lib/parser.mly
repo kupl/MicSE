@@ -304,6 +304,7 @@ data_t:
   | SOME a=annots d=data { gen_t_a a (D_some d) }
   | ELT a=annots d_1=data d_2=data { gen_t_a a (D_elt (d_1, d_2)) }
   | d=delimited(LB, separated_nonempty_list(SEMICOLON, data), RB) { gen_t (D_list d) }
+  | LB RB a=annots { gen_t_a a (D_list []) }
   (* | LAMBDA *) (* No lambda can be directly parsed (please use the LAMBDA michelson instruction instead. ) *)
 
 data_t_dt_noreq:
