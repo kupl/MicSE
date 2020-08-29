@@ -1,55 +1,24 @@
-# MicSE
+# MicSE (in development)
 
 ## Table of Contents
 
 - [MicSE](#micse)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
-  - [Development](#development)
-    - [Dependencies](#dependencies)
-      - [Copied Commit Hashes of FRESCO Tools](#copied-commit-hashes-of-fresco-tools)
+  - [Development](#development)]
     - [Prerequisite](#prerequisite)
     - [Git Commit Guidelines](#git-commit-guidelines)
   - [About](#about)
 
 ## Introduction
 
-Michelson Symbolic vErifier, for verifying and testing the integrity of smart contracts in the Tezos blockchain.
+MicSE, Michelson Symbolic vErifier, is the tool for verifying and testing the integrity of smart contracts written in Michelson. Michelson is the smart-contract-programming language used in [Tezos Blockchain](https://tezos.foundation).
+
+MicSE provides two tools, Prover and Tester for Michelson.
+- *Prover* (=verifier)
+- *Refuter* (=tester)
 
 ## Development
-
-### Dependencies
-
-Currently, we're using custom modified [FRESCO](https://gitlab.com/releaselab/fresco)'s Michelson tools. They are in `[project-root]/dependencies` directory, so you need to register that packages into opam using `opam pin` command.
-
-- Michelson: Michelson ADT parser from FRESCO.
-- Tezla: Tezla project from FRESCO.
-- Tezla-cfg: Tezla-cfg project from FRESCO.
-
-``` bash
-$ opam pin add michelson dependencies/michelson
-[michelson.~dev] synchronised from file://...
-michelson is now pinned to file://...
-...
-
-$ opam pin add tezla dependencies/tezla
-[tezla.~dev] synchronised from file://...
-tezla is now pinned to file://...
-...
-
-$ opam pin add tezla-cfg dependencies/tezla-cfg
-[tezla-cfg.~dev] synchronised from file://...
-tezla-cfg is now pinned to file://...
-...
-```
-
-#### Copied Commit Hashes of FRESCO Tools
-
-``` Text
-Michelson: 51cbabede80dcfe77cf960828c9a359e4ae81943
-Tezla: 90b842de39ce18e41e3d1cfde684495d6288286d
-Tezla-cfg: cb75e7bb56ecba46e3007c7937040a605b288b08
-```
 
 ### Prerequisite
 
@@ -64,6 +33,7 @@ Tezla-cfg: cb75e7bb56ecba46e3007c7937040a605b288b08
 - Menhir
 - Ocamlgraph
 - Z3
+- Zarith
 
 ### Git Commit Guidelines
 
