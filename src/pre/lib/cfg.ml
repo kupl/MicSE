@@ -498,3 +498,151 @@ let t_add_posinfo ?(errtrace = "") (vtx, l) (cfg, _) = begin
   ({cfg with pos_info=(t_map_add ~errtrace:(errtrace ^ " : t_add_posinfo") cfg.pos_info vtx l);}, vtx)
 end
 
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Semantics of Cfg Statements                                               *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(*****************************************************************************)
+(* Exceptions in Interpreting                                                *)
+(*****************************************************************************)
+
+type exn_cfg_interpret = 
+  | INTPEXN_EXPR_UNIMPLEMENTED
+  | INTPEXN_DATA_INFO__VAR_NOT_FOUND 
+  | INTPEXN_TYPE_INFO__VAR_NOT_FOUND
+  | INTPEXN_INVALID_ARG_DATA
+  | INTPEXN_INVALID_ARG_TYPE
+  | INTPEXN_MUTEZ_OVERFLOW
+  | INTPEXN_MUTEZ_UNDERFLOW
+
+exception Exn_Cfg_Interpret of (string * exn_cfg_interpret)
+let fail_intp s eci = raise (Exn_Cfg_Interpret (s, eci))
+
+
+(*****************************************************************************)
+(* Data Information                                                          *)
+(*****************************************************************************)
+
+type data_info = (var, data) CPMap.t    (* variable -> data *)
+
+let _di_find ?(trace="") : data_info -> var -> Mich.data
+=fun di v -> begin
+  match CPMap.find di v with
+  | Some q -> q |> Mich.get_d
+  | None -> fail_intp trace INTPEXN_DATA_INFO__VAR_NOT_FOUND
+end
+
+let _ti_find ?(trace="") : (string, typ) CPMap.t -> var -> Mich.typ   (* aware that the type ((string, typ) CPMap.t) is type_information *)
+=fun ti v -> begin
+  match CPMap.find ti v with
+  | Some q -> q |> Mich.get_d
+  | None -> fail_intp trace INTPEXN_TYPE_INFO__VAR_NOT_FOUND
+end
+
+(* TYPE: string -> data_info -> (string, typ) CPMap.t -> var -> (Mich.data, Mich.typ) *)
+let _diti_find ?(trace="") di ti v = (_di_find ~trace:trace di v, _ti_find ~trace:trace ti v)
+
+
+(*****************************************************************************)
+(* Main Interpreting Functions                                               *)
+(*****************************************************************************)
+
+let interpret_expr : t -> expr -> data_info -> data
+=fun cfg e di -> begin
+  let open Mich in
+  let data_value : Mich.data = begin
+    match e with
+    | E_push (d, _) -> get_d d
+    | E_car v1 -> let trace="E_car" in (function | D_pair (d1, _) -> get_d d1 | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_cdr v1 -> let trace="E_cdr" in (function | D_pair (_, d2) -> get_d d2 | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_abs v1 -> let trace="E_abs" in (function | D_int zn -> D_int (Z.abs zn) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_neg v1 -> let trace="E_neg" in (function | D_int zn -> D_int (Z.neg zn) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_not v1 -> (
+        let trace="E_not" in
+        let (v1d, v1t) = _diti_find ~trace:trace di cfg.type_info v1 in
+        let semanticFunc = 
+          match v1t with
+          | T_nat
+          | T_int -> (function | D_int zn -> D_int (Z.lognot zn) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | T_bool -> (function | D_bool b -> D_bool (Stdlib.not b) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | _ -> fail_intp trace INTPEXN_INVALID_ARG_TYPE
+        in semanticFunc v1d
+      )
+    | E_add (v1, v2) -> (
+        let trace="E_add" in
+        let (v1d, v1t) = _diti_find ~trace:(trace^"v1") di cfg.type_info v1 in
+        let (v2d, v2t) = _diti_find ~trace:(trace^"v2") di cfg.type_info v2 in
+        let semanticFunc =
+          match v1t, v2t with
+          | T_nat, T_nat
+          | T_nat, T_int
+          | T_int, T_nat
+          | T_int, T_int 
+          | T_int, T_timestamp
+          | T_timestamp, T_int -> (function | (D_int zn1, D_int zn2) -> D_int (Z.add zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | T_mutez, T_mutez -> (function
+                                  | D_int zn1, D_int zn2 ->
+                                    let addval = Z.add zn1 zn2 in
+                                    if Z.gt addval (Z.of_int64 Int64.max_int) then fail_intp trace INTPEXN_MUTEZ_OVERFLOW else D_int addval
+                                  | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA
+                                )
+          | _ -> fail_intp trace INTPEXN_INVALID_ARG_TYPE
+        in semanticFunc (v1d, v2d)
+      )
+    | E_sub (v1, v2) -> (
+        let trace="E_sub" in
+        let (v1d, v1t) = _diti_find ~trace:(trace^"v1") di cfg.type_info v1 in
+        let (v2d, v2t) = _diti_find ~trace:(trace^"v2") di cfg.type_info v2 in
+        let semanticFunc =
+          match v1t, v2t with
+          | T_nat, T_nat
+          | T_nat, T_int
+          | T_int, T_nat
+          | T_int, T_int
+          | T_timestamp, T_int
+          | T_timestamp, T_timestamp -> (function | (D_int zn1, D_int zn2) -> D_int (Z.sub zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | T_mutez, T_mutez -> (function
+                                  | D_int zn1, D_int zn2 ->
+                                    let subval = Z.sub zn1 zn2 in
+                                    if Z.lt subval (Z.of_int64 Int64.min_int) then (fail_intp trace INTPEXN_MUTEZ_UNDERFLOW) else (D_int subval)
+                                  | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA
+                                )
+          | _ -> fail_intp trace INTPEXN_INVALID_ARG_TYPE
+        in semanticFunc (v1d, v2d)
+      )
+    | E_mul (v1, v2) -> (
+        let trace="E_mul" in
+        let (v1d, v1t) = _diti_find ~trace:(trace^"v1") di cfg.type_info v1 in
+        let (v2d, v2t) = _diti_find ~trace:(trace^"v2") di cfg.type_info v2 in
+        let semanticFunc = 
+          match v1t, v2t with
+          | T_nat, T_nat
+          | T_nat, T_int
+          | T_int, T_nat
+          | T_int, T_int -> (function | (D_int zn1, D_int zn2) -> D_int (Z.mul zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | T_mutez, T_nat
+          | T_nat, T_mutez -> (function
+                                | D_int zn1, D_int zn2 ->
+                                  let mulval = Z.mul zn1 zn2 in
+                                  if Z.gt mulval (Z.of_int64 Int64.max_int) then fail_intp trace INTPEXN_MUTEZ_OVERFLOW else D_int mulval
+                                | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA
+                              )
+          | _ -> fail_intp trace INTPEXN_INVALID_ARG_TYPE
+        in semanticFunc (v1d, v2d)
+      )
+    | _ -> fail_intp "interpret_expr" INTPEXN_EXPR_UNIMPLEMENTED
+  end in
+  Mich.gen_t data_value
+end
+
+(*
+let interpret_stmt : Cfg.t -> stmt -> data_info -> data_info
+=fun cfg s di -> begin
+  match s with
+  | Cfg_assign (v, e) -> CPMap.update di v (fun _ -> interpret_expr cfg e di)
+  | _ -> di
+end
+*)

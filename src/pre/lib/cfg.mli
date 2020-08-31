@@ -294,3 +294,24 @@ val t_add_failvtx : vertex -> (t * 'a) -> (t * vertex)
 val t_add_posinfo : ?errtrace:string -> (vertex * loc) -> (t * 'a) -> (t * vertex)
 
 
+(*****************************************************************************)
+(*****************************************************************************)
+(* Semantics of Cfg Statements                                               *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type exn_cfg_interpret = 
+  | INTPEXN_EXPR_UNIMPLEMENTED
+  | INTPEXN_DATA_INFO__VAR_NOT_FOUND 
+  | INTPEXN_TYPE_INFO__VAR_NOT_FOUND
+  | INTPEXN_INVALID_ARG_DATA
+  | INTPEXN_INVALID_ARG_TYPE
+  | INTPEXN_MUTEZ_OVERFLOW
+  | INTPEXN_MUTEZ_UNDERFLOW
+exception Exn_Cfg_Interpret of (string * exn_cfg_interpret)
+
+type data_info = (var, data) CPMap.t    (* variable -> data, WARNING: No type information included. *)
+
+val interpret_expr : t -> expr -> data_info -> data       (* Cfg.t is needed to find the type information & lambda-id-map if needed. *)
+(*val interpret_stmt : t -> stmt -> data_info -> data_info  (* Return updated data_info by stmt. data_info will be only updated when stmt is (Cfg_assign ...) *)*)
+
