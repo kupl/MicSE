@@ -301,13 +301,18 @@ val t_add_posinfo : ?errtrace:string -> (vertex * loc) -> (t * 'a) -> (t * verte
 (*****************************************************************************)
 
 type exn_cfg_interpret = 
+  (* Indicator for arguments or library-implementation issues. *)
   | INTPEXN_EXPR_UNIMPLEMENTED
   | INTPEXN_DATA_INFO__VAR_NOT_FOUND 
   | INTPEXN_TYPE_INFO__VAR_NOT_FOUND
   | INTPEXN_INVALID_ARG_DATA
   | INTPEXN_INVALID_ARG_TYPE
+  | INTPEXN_UNEXPECTED
+  (* Michelson-Defined Runtime Errors *)
   | INTPEXN_MUTEZ_OVERFLOW
   | INTPEXN_MUTEZ_UNDERFLOW
+  | INTPEXN_LSL_EXCEPTION
+  | INTPEXN_LSR_EXCEPTION
 exception Exn_Cfg_Interpret of (string * exn_cfg_interpret)
 
 type data_info = (var, data) CPMap.t    (* variable -> data, WARNING: No type information included. *)

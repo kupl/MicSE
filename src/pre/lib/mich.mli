@@ -41,8 +41,8 @@ type typ =
   | T_bytes
   | T_mutez       (* D_int in Cfg-notation *)
   | T_bool
-  | T_key_hash
-  | T_timestamp   (* D_int in Cfg-notation *)
+  | T_key_hash    (* D_string in Cfg-notation *)
+  | T_timestamp   (* D_string in Cfg-notation *)
   | T_address
 
 and inst =

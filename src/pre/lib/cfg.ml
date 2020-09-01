@@ -510,13 +510,18 @@ end
 (*****************************************************************************)
 
 type exn_cfg_interpret = 
+  (* Indicator for arguments or library-implementation issues. *)
   | INTPEXN_EXPR_UNIMPLEMENTED
   | INTPEXN_DATA_INFO__VAR_NOT_FOUND 
   | INTPEXN_TYPE_INFO__VAR_NOT_FOUND
   | INTPEXN_INVALID_ARG_DATA
   | INTPEXN_INVALID_ARG_TYPE
+  | INTPEXN_UNEXPECTED
+  (* Michelson-Defined Runtime Errors *)
   | INTPEXN_MUTEZ_OVERFLOW
   | INTPEXN_MUTEZ_UNDERFLOW
+  | INTPEXN_LSL_EXCEPTION
+  | INTPEXN_LSR_EXCEPTION
 
 exception Exn_Cfg_Interpret of (string * exn_cfg_interpret)
 let fail_intp s eci = raise (Exn_Cfg_Interpret (s, eci))
@@ -550,9 +555,37 @@ let _diti_find ?(trace="") di ti v = (_di_find ~trace:trace di v, _ti_find ~trac
 (* Main Interpreting Functions                                               *)
 (*****************************************************************************)
 
+(* Semantic of E_compare expression. *)
+let rec _inst_compare ?(trace="E_compare") : (Mich.data * Mich.typ) -> (Mich.data * Mich.typ) -> Mich.data
+=fun (d1, t1) (d2, t2) -> begin
+  let open Mich in 
+  let semanticFunc : (Mich.data * Mich.data) -> Mich.data = 
+    match t1, t2 with
+    | (T_int, T_int) 
+    | (T_nat, T_nat)
+    | (T_mutez, T_mutez) -> (function | (D_int zn1, D_int zn2) -> D_int (Z.compare zn1 zn2 |> Z.of_int) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA )
+    | (T_string, T_string) 
+    | (T_key_hash, T_key_hash) -> (function | (D_string s1, D_string s2) -> D_int (String.compare s1 s2 |> Z.of_int) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+    | (T_timestamp, T_timestamp) -> fail_intp trace INTPEXN_EXPR_UNIMPLEMENTED
+    | (T_bytes, T_bytes) -> (function | (D_bytes s1, D_bytes s2) -> D_int (String.compare s1 s2 |> Z.of_int) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA )
+    | (T_pair (t11, t12), T_pair (t21, t22)) -> 
+        (function 
+          | (D_pair (d11, d12), D_pair (d21, d22)) ->
+              (match _inst_compare ~trace:(trace^"-p1") (get_d d11, get_d t11) (get_d d21, get_d t21) with
+              | D_int zn when (Z.equal zn (Z.zero)) -> _inst_compare ~trace:(trace^"-p2") (get_d d12, get_d t12) (get_d d22, get_d t22)
+              | D_int zn -> D_int zn
+              | _ -> fail_intp trace INTPEXN_UNEXPECTED
+              ) 
+          | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA
+        )
+    | _ -> fail_intp trace INTPEXN_INVALID_ARG_TYPE
+  in semanticFunc (d1, d2)
+end
+
 let interpret_expr : t -> expr -> data_info -> data
 =fun cfg e di -> begin
   let open Mich in
+  (* Below procedure does not check the type of arguments precisely. *)
   let data_value : Mich.data = begin
     match e with
     | E_push (d, _) -> get_d d
@@ -580,9 +613,9 @@ let interpret_expr : t -> expr -> data_info -> data
           | T_nat, T_nat
           | T_nat, T_int
           | T_int, T_nat
-          | T_int, T_int 
+          | T_int, T_int -> (function | (D_int zn1, D_int zn2) -> D_int (Z.add zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
           | T_int, T_timestamp
-          | T_timestamp, T_int -> (function | (D_int zn1, D_int zn2) -> D_int (Z.add zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | T_timestamp, T_int -> fail_intp trace INTPEXN_EXPR_UNIMPLEMENTED (* TODO *)
           | T_mutez, T_mutez -> (function
                                   | D_int zn1, D_int zn2 ->
                                     let addval = Z.add zn1 zn2 in
@@ -601,9 +634,9 @@ let interpret_expr : t -> expr -> data_info -> data
           | T_nat, T_nat
           | T_nat, T_int
           | T_int, T_nat
-          | T_int, T_int
+          | T_int, T_int -> (function | (D_int zn1, D_int zn2) -> D_int (Z.sub zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
           | T_timestamp, T_int
-          | T_timestamp, T_timestamp -> (function | (D_int zn1, D_int zn2) -> D_int (Z.sub zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | T_timestamp, T_timestamp -> fail_intp trace INTPEXN_EXPR_UNIMPLEMENTED (* TODO *)
           | T_mutez, T_mutez -> (function
                                   | D_int zn1, D_int zn2 ->
                                     let subval = Z.sub zn1 zn2 in
@@ -633,6 +666,88 @@ let interpret_expr : t -> expr -> data_info -> data
           | _ -> fail_intp trace INTPEXN_INVALID_ARG_TYPE
         in semanticFunc (v1d, v2d)
       )
+    | E_ediv (v1, v2) -> (
+        let trace="E_ediv" in
+        let (v1d, _) = _diti_find ~trace:(trace^"v1") di cfg.type_info v1 in
+        let (v2d, _) = _diti_find ~trace:(trace^"v2") di cfg.type_info v2 in
+        let semanticFunc = (function 
+                              | (D_int zn1, D_int zn2) -> 
+                                (try let (q, r) = Z.ediv_rem zn1 zn2 in D_some (gen_t (D_pair (gen_t (D_int q), gen_t (D_int r)))) with | Stdlib.Division_by_zero -> D_none)
+                              | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA
+                            )
+        in semanticFunc (v1d, v2d)
+    )
+    | E_shiftL (v1, v2) -> (
+        let trace="E_shiftL" in 
+        let (v1d, v2d) = (_di_find ~trace:trace di v1, _di_find ~trace:trace di v2) in
+        let semanticFunc = (function 
+                            | (D_int zn1, D_int zn2) -> if (Z.gt zn2 (Z.of_int 256)) then fail_intp trace INTPEXN_LSL_EXCEPTION else D_int (Z.shift_left zn1 (Z.to_int zn2))
+                            | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA
+                           )
+        in semanticFunc (v1d, v2d)
+    )
+    | E_shiftR (v1, v2) -> (
+        let trace="E_shiftR" in
+        let (v1d, v2d) = (_di_find ~trace:trace di v1, _di_find ~trace:trace di v2) in
+        let semanticFunc = (function
+                            (* There are two shift-right operations in Zarith library, "shift_right" and "shift_right_trunc".
+                                I wasn't sure which shift-right operation in Zarith is correct to represent Michelson's LSR semantics before.
+                                Then I found that the explanation for shift-right in tezos ("https://gitlab.com/tezos/tezos/-/blob/88728775922c627bce326a5e8e452bb5aae969f3/src/lib_protocol_environment/sigs/v0/z.mli#L83")
+                                is same as the explanation of "Z.shift_right" function, ("https://github.com/ocaml/Zarith/blob/a9a309d0596d93b6c0c902951e1cae13d661bebd/z.mlip#L237")
+                                so I use "Z.shift_right" instead of "Z.shift_right_trunc".
+                            *)
+                            | (D_int zn1, D_int zn2) -> if (Z.gt zn2 (Z.of_int 256)) then fail_intp trace INTPEXN_LSR_EXCEPTION else D_int (Z.shift_right zn1 (Z.to_int zn2))
+                            | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA
+                            )
+        in semanticFunc (v1d, v2d)
+    )
+    | E_and (v1, v2) -> (
+        let trace="E_and" in
+        let (v1d, v1t) = _diti_find ~trace:(trace^"v1") di cfg.type_info v1 in
+        let (v2d, v2t) = _diti_find ~trace:(trace^"v2") di cfg.type_info v2 in
+        let semanticFunc =
+          match v1t, v2t with
+          | T_bool, T_bool -> (function | (D_bool b1, D_bool b2) -> D_bool (b1 && b2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | T_nat, T_nat
+          | T_int, T_nat -> (function | (D_int zn1, D_int zn2) -> D_int (Z.logand zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | _ -> fail_intp trace INTPEXN_INVALID_ARG_TYPE
+        in semanticFunc (v1d, v2d)
+    )
+    | E_or (v1, v2) -> (
+        let trace="E_or" in
+        let (v1d, v1t) = _diti_find ~trace:(trace^"v1") di cfg.type_info v1 in
+        let (v2d, v2t) = _diti_find ~trace:(trace^"v2") di cfg.type_info v2 in
+        let semanticFunc =
+          match v1t, v2t with
+          | T_bool, T_bool -> (function | (D_bool b1, D_bool b2) -> D_bool (b1 || b2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | T_nat, T_nat -> (function | (D_int zn1, D_int zn2) -> D_int (Z.logor zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | _ -> fail_intp trace INTPEXN_INVALID_ARG_TYPE
+        in semanticFunc (v1d, v2d)
+    )
+    | E_xor (v1, v2) -> (
+        let trace="E_xor" in
+        let (v1d, v1t) = _diti_find ~trace:(trace^"v1") di cfg.type_info v1 in
+        let (v2d, v2t) = _diti_find ~trace:(trace^"v2") di cfg.type_info v2 in
+        let semanticFunc =
+          match v1t, v2t with
+          | T_bool, T_bool -> (function | (D_bool b1, D_bool b2) -> D_bool ((b1 || b2) && (Stdlib.not b1 || Stdlib.not b2)) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | T_nat, T_nat -> (function | (D_int zn1, D_int zn2) -> D_int (Z.logxor zn1 zn2) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA)
+          | _ -> fail_intp trace INTPEXN_INVALID_ARG_TYPE
+        in semanticFunc (v1d, v2d)
+    )
+    | E_eq v1 -> let trace="E_eq" in (function | D_int zn1 -> D_bool (Z.equal zn1 Z.zero) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_neq v1 -> let trace="E_eq" in (function | D_int zn1 -> D_bool (Z.equal zn1 Z.zero |> Stdlib.not) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_lt v1 -> let trace="E_lt" in (function | D_int zn1 -> D_bool (Z.lt zn1 Z.zero) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_gt v1 -> let trace="E_gt" in (function | D_int zn1 -> D_bool (Z.gt zn1 Z.zero) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_leq v1 -> let trace="E_leq" in (function | D_int zn1 -> D_bool (Z.leq zn1 Z.zero) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_geq v1 -> let trace="E_geq" in (function | D_int zn1 -> D_bool (Z.geq zn1 Z.zero) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA) (_di_find ~trace:trace di v1)
+    | E_compare (v1, v2) -> (
+        let trace="E_compare" in
+        let (v1d, v1t) = _diti_find ~trace:(trace^"v1") di cfg.type_info v1 in
+        let (v2d, v2t) = _diti_find ~trace:(trace^"v2") di cfg.type_info v2 in
+        _inst_compare ~trace:trace (v1d, v1t) (v2d, v2t)
+    )
+
     | _ -> fail_intp "interpret_expr" INTPEXN_EXPR_UNIMPLEMENTED
   end in
   Mich.gen_t data_value
