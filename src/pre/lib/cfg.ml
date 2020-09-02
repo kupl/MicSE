@@ -528,6 +528,55 @@ let fail_intp s eci = raise (Exn_Cfg_Interpret (s, eci))
 
 
 (*****************************************************************************)
+(* Data Representation used in interpreting Cfg expr/stmt                    *)
+(*****************************************************************************)
+
+(* Mich.data type does not fully reflects Mich.typ.
+    For example, There are no data constructor in Mich.data to represents the value of type T_operation.
+    Cfg.data_itn (data_internal) will cover every data types.
+*)
+type data_itn = 
+  | DI_key of string
+  | DI_unit
+  | DI_signature of di_sig
+  | DI_none
+  | DI_some of data_itn
+  | DI_list of data_itn list
+  | DI_set of data_itn Core.Set.Poly.t
+  | DI_operation of di_oper
+  | DI_contract of di_contract
+  | DI_pair of data_itn * data_itn
+  | DI_left of data_itn
+  | DI_right of data_itn
+    (* For given function "f : (type-1 * type-2 * ... * type-n) -> return-type",
+        "DI_closure (id-f, [arg-k; ...; arg-2; arg-1])" means f applied with k arguments. (k <= n)
+     *)
+  | DI_closure of lambda_ident * (data_itn list) 
+  | DI_map of (data_itn, data_itn) Core.Map.Poly.t
+  | DI_big_map of (data_itn, data_itn) Core.Map.Poly.t
+  | DI_chain_id of string  (* Precisely, bytes-thing *)
+  | DI_int of Z.t
+  | DI_nat of Z.t
+  | DI_string of string
+  | DI_bytes of string
+  | DI_mutez of Int64.t
+  | DI_bool of bool
+  | DI_key_hash of string   (* In mainnet, code like (PUSH key_hash "tz1RiWcwGxytk3XGntmKpTYyMVMLZva6cBqV"; ) is used *)
+  | DI_timestamp of string  (* In mainnet, code like (PUSH timestamp "1858-11-17T00:00:00Z";) is used *)
+  | DI_address of string    (* In tezos, address = public-key-hash *)
+
+and di_key = string
+and di_hash = | DI_HASH of di_hash_func * data_itn | DI_HASH_bytes of string
+and di_hash_func = | DI_HASHF_BLAKE2B | DI_HASHF_SHA256 | DI_HASH_SHA512
+and di_sig = | DI_SIG of di_key * string | DI_SIG_bytes of string
+and di_oper = | DI_OPER_transfer | DI_OPER_delegate | DI_OPER_contract (* TODO *)
+and di_contract = |  (* TODO *)
+and di_key_hash = | DI_KH of di_hash
+
+type blockchain = (string, di_contract) Core.Map.Poly.t
+
+
+(*****************************************************************************)
 (* Data Information                                                          *)
 (*****************************************************************************)
 
@@ -746,6 +795,11 @@ let interpret_expr : t -> expr -> data_info -> data
         let (v1d, v1t) = _diti_find ~trace:(trace^"v1") di cfg.type_info v1 in
         let (v2d, v2t) = _diti_find ~trace:(trace^"v2") di cfg.type_info v2 in
         _inst_compare ~trace:trace (v1d, v1t) (v2d, v2t)
+    )
+    | E_cons (v1, v2) -> (
+        let trace="E_cons" in
+        let (v1d, v2d) = (_di_find ~trace:(trace^"v1") di v1, _di_find ~trace:(trace^"v2") di v2) in
+        (function | D_list lst -> D_list ((gen_t v1d)::lst) | _ -> fail_intp trace INTPEXN_INVALID_ARG_DATA ) v2d   
     )
 
     | _ -> fail_intp "interpret_expr" INTPEXN_EXPR_UNIMPLEMENTED

@@ -296,8 +296,12 @@ val t_add_posinfo : ?errtrace:string -> (vertex * loc) -> (t * 'a) -> (t * verte
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Semantics of Cfg Statements                                               *)
+(* Semantics of Cfg Statements (Cfg expr/stmt interpreter)                   *)
 (*****************************************************************************)
+(*****************************************************************************)
+
+(*****************************************************************************)
+(* Exceptions in Interpreting                                                *)
 (*****************************************************************************)
 
 type exn_cfg_interpret = 
@@ -315,7 +319,66 @@ type exn_cfg_interpret =
   | INTPEXN_LSR_EXCEPTION
 exception Exn_Cfg_Interpret of (string * exn_cfg_interpret)
 
+
+(*****************************************************************************)
+(* Data Representation used in interpreting Cfg expr/stmt                    *)
+(*****************************************************************************)
+
+(* Mich.data type does not fully reflects Mich.typ.
+    For example, There are no data constructor in Mich.data to represents the value of type T_operation.
+    Cfg.data_itn (data_internal) will cover every data types.
+*)
+type data_itn = 
+  | DI_key of string
+  | DI_unit
+  | DI_signature of di_sig
+  | DI_none
+  | DI_some of data_itn
+  | DI_list of data_itn list
+  | DI_set of data_itn Core.Set.Poly.t
+  | DI_operation of di_oper
+  | DI_contract of di_contract
+  | DI_pair of data_itn * data_itn
+  | DI_left of data_itn
+  | DI_right of data_itn
+    (* For given function "f : (type-1 * type-2 * ... * type-n) -> return-type",
+        "DI_closure (id-f, [arg-k; ...; arg-2; arg-1])" means f applied with k arguments. (k <= n)
+     *)
+  | DI_closure of lambda_ident * (data_itn list) 
+  | DI_map of (data_itn, data_itn) Core.Map.Poly.t
+  | DI_big_map of (data_itn, data_itn) Core.Map.Poly.t
+  | DI_chain_id of string  (* Precisely, bytes-thing *)
+  | DI_int of Z.t
+  | DI_nat of Z.t
+  | DI_string of string
+  | DI_bytes of string
+  | DI_mutez of Int64.t
+  | DI_bool of bool
+  | DI_key_hash of string   (* In mainnet, code like (PUSH key_hash "tz1RiWcwGxytk3XGntmKpTYyMVMLZva6cBqV"; ) is used *)
+  | DI_timestamp of string  (* In mainnet, code like (PUSH timestamp "1858-11-17T00:00:00Z";) is used *)
+  | DI_address of string    (* In tezos, address = public-key-hash *)
+
+and di_key = string
+and di_hash = | DI_HASH of di_hash_func * data_itn | DI_HASH_bytes of string
+and di_hash_func = | DI_HASHF_BLAKE2B | DI_HASHF_SHA256 | DI_HASH_SHA512
+and di_sig = | DI_SIG of di_key * string | DI_SIG_bytes of string
+and di_oper = | DI_OPER_transfer | DI_OPER_delegate | DI_OPER_contract (* TODO *)
+and di_contract = |  (* TODO *)
+and di_key_hash = | DI_KH of di_hash
+
+type blockchain = (string, di_contract) Core.Map.Poly.t
+
+
+(*****************************************************************************)
+(* Data Information                                                          *)
+(*****************************************************************************)
+
 type data_info = (var, data) CPMap.t    (* variable -> data, WARNING: No type information included. *)
+
+
+(*****************************************************************************)
+(* Main Interpreting Functions                                               *)
+(*****************************************************************************)
 
 val interpret_expr : t -> expr -> data_info -> data       (* Cfg.t is needed to find the type information & lambda-id-map if needed. *)
 (*val interpret_stmt : t -> stmt -> data_info -> data_info  (* Return updated data_info by stmt. data_info will be only updated when stmt is (Cfg_assign ...) *)*)
