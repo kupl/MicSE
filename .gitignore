@@ -4,3 +4,4 @@ _build
 
 # Etc
 DS_Store
+.vscode
