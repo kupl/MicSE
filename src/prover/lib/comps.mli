@@ -17,6 +17,6 @@ and approach = (formula -> formula)
 
 val empty : t
 
-val serialize : exp -> typ -> t -> t
+val read_components : exp -> typ -> t -> t
 
-val apply_approach : t -> approach -> t
+val append_approach : t -> approach -> t
