@@ -61,7 +61,7 @@ rule next_token = parse
   | commentheader { comment lexbuf }
   | new_line      { new_line lexbuf; next_token lexbuf }
   | space+        { next_token lexbuf }
-  | string as s   { STRING s }
+  | string as s   { STRING (String.sub s 1 (String.length s - 2)) }
   | ident as s    { id_or_kwd s }
   | hex as s      { HEX s }
   | number as s   { NUM (Z.of_string s) }
