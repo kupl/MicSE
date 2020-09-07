@@ -7,6 +7,10 @@
 let input_file : string ref
 =ref ""
 
+(* STRING - Initial Storage Value *)
+let initial_storage : string ref
+=ref ""
+
 (* FLAGS - Parsed Michelson File *)
 let flag_adt_print : bool ref
 =ref false
@@ -49,6 +53,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-cfgopt_rfv", (Arg.Set flag_cfgopt_rfv), "Remove all trivial fail vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
     ("-cfg_print_dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
     ("-param_storage", (Arg.Set flag_param_storage), "Print counter-example from unsafe-path");
+    ("-initial_storage", (Arg.String (fun s -> input_file := s)), "Initial storage value of this program");
   ]
 
 let create_options : unit -> unit

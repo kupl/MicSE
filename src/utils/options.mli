@@ -6,6 +6,9 @@
 
 val input_file : string ref
 
+(* STRING - Initial Storage Value *)
+val initial_storage : string ref
+
 (* FLAGS - Parsed Michelson File *)
 val flag_adt_print : bool ref
 

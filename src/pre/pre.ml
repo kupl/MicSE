@@ -14,7 +14,11 @@ let pre_process : string -> Lib.Cfg.t
   (* FLAGS - Parsed Michelson File *)
   let _ : unit = (if (!Utils.Options.flag_adt_print) then (Lib.Mich.string_of_pgm_ol adt |> Stdlib.print_endline) else ()) in
 
+  (* Parse Initial Storage *)
+  let initial_storage = (if (!Utils.Options.initial_storage) = "" then None else None (* Parsing function call*)) in
+
   (* Construct control flow graph *)
+  let _ = initial_storage in (* Remove Line After Parsing Function Implemented *)
   let cfg_first = Translator.adt_to_cfg adt in
   let cfg_rsv_optimized = (if (!Utils.Options.flag_cfgopt_rsv) then (Lib.CfgUtil.remove_meaningless_skip_vertices_fixpoint cfg_first) else (cfg_first)) in
   let cfg_rfv_optimized = (if (!Utils.Options.flag_cfgopt_rfv) then (Lib.CfgUtil.remove_meaningless_fail_vertices_fixpoint cfg_rsv_optimized) else (cfg_rsv_optimized)) in
