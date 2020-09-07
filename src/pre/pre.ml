@@ -15,7 +15,7 @@ let pre_process : string -> Lib.Cfg.t
   let _ : unit = (if (!Utils.Options.flag_adt_print) then (Lib.Mich.string_of_pgm_ol adt |> Stdlib.print_endline) else ()) in
 
   (* Parse Initial Storage *)
-  let initial_storage = (if (!Utils.Options.initial_storage) = "" then None else None (* Parsing function call*)) in
+  let initial_storage = (if (!Utils.Options.initial_storage_file) = "" then None else Some (Lib.Adt.parse_data !Utils.Options.initial_storage_file)) in
 
   (* Construct control flow graph *)
   let _ = initial_storage in (* Remove Line After Parsing Function Implemented *)

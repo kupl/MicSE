@@ -30,14 +30,25 @@ let parse : string -> t
       raise e
 end
 
-(*
-let pp : Format.formatter -> t -> unit
-=fun fmt ast -> begin
-  let _ = Format.pp_print_string fmt "\n" in
-  let _ = Michelson.Pp.program fmt ast in
-  ()
+let parse_data : string -> data
+=fun filename -> begin
+  let in_c = Stdlib.open_in filename in
+  let lexbuf = Lexing.from_channel in_c in
+  try
+    let res = Parser.data Lexer.next_token lexbuf in
+    let () = close_in in_c in
+    res
+  with
+  | Lexer.Lexing_error msg as e ->
+      Printf.fprintf stderr "%a: %s\n" print_position lexbuf msg;
+      close_in in_c;
+      raise e
+  | Parser.Error as e ->
+      Printf.fprintf stderr "%s%a: syntax error\n" filename print_position lexbuf;
+      close_in in_c;
+      raise e
 end
-*)
+
 
 
 let string_of_typt = Mich.string_of_typt

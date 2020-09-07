@@ -4,6 +4,7 @@
   (libraries
     batteries
     core
+    micse.utils
     ocamlgraph
     zarith)
   (modules_without_implementation operation)

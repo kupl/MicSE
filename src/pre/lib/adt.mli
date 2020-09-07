@@ -5,9 +5,9 @@ type inst = Mich.inst Mich.t
 type data = Mich.data Mich.t
 type operation = Operation.t
 
-val parse : string -> t
+val parse : string -> t       (* parameter string syntax: filename(filepath) *)
 
-(*val pp : Format.formatter -> t -> unit*)
+val parse_data : string -> data (* parameter string syntax: filename(filepath) *)
 
 val string_of_typt : typ -> string
 

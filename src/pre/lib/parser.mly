@@ -68,7 +68,7 @@
 
 
 %start <Mich.program> start
-
+%start <Mich.data Mich.t> data
 
 
 

@@ -1,9 +1,10 @@
 (executables
-  (names construct_cfg)
-  (public_names micse.utils.construct_cfg)
+  (names construct_cfg test_data_parse)
+  (public_names micse.utils.construct_cfg micse.utils.test_data_parse)
   (libraries
     micse.utils
     micse.pre
+    micse.pre.lib
     micse.prover
   )
   (package micse)
