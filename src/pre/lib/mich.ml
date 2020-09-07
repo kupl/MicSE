@@ -234,7 +234,7 @@ let rec string_of_datat_ol_inner : bool -> data t -> string
     | D_string s      -> "\"" ^ s ^ "\""  ^ annotstr
     | D_bytes s       -> "0x" ^ s         ^ annotstr
     | D_unit          -> "Unit"           ^ annotstr
-    | D_bool b        -> (if b then "True" else "False") ^ annotstr ^ " " ^ (Stdlib.string_of_bool b)
+    | D_bool b        -> (if b then "True" else "False") ^ annotstr
     | D_pair (d1, d2) -> "Pair"           ^ annotstr ^ " " ^ (string_of_datat_ol_inner true d1) ^ " " ^ (string_of_datat_ol_inner true d2)
     | D_left d        -> "Left"           ^ annotstr ^ " " ^ (string_of_datat_ol_inner true d)
     | D_right d       -> "Right"          ^ annotstr ^ " " ^ (string_of_datat_ol_inner true d)
