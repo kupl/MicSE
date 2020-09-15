@@ -9,16 +9,10 @@ type object_typ =
 
 let type_map = ref Pre.Lib.Cfg.CPMap.empty
 
-let bound_count = ref 0
-let create_new_bound : unit -> Vlang.var
-=fun () -> bound_count := !bound_count + 1; "bnd_" ^ (string_of_int !bound_count)
-
-
 let rec convert : Bp.t -> Pre.Lib.Cfg.t -> (Vlang.t * Query.t list)
 =fun bp cfg -> begin
   let _ = type_map := cfg.type_info in
-  let precond = create_precond_from_param_storage () in
-  let (f, g) = ((Vlang.create_formula_and ((Option.get bp.pre.formula)::precond)), Option.get bp.post.formula) in
+  let (f, g) = (Option.get bp.pre.formula, Option.get bp.post.formula) in
   let f', qs = Core.List.fold_left bp.body ~init:(f, []) ~f:sp in
   let inductive = Vlang.create_formula_imply f' g in
   (inductive, qs)
@@ -136,12 +130,12 @@ and create_convert_cond : Bp.cond -> Vlang.v_formula
   | BC_is_cons v -> Vlang.create_formula_is_cons (create_var v)
   | BC_no_overflow (e, t) -> begin
       match t.d with
-      | T_mutez -> Vlang.create_formula_lt (create_convert_exp e t) Vlang.mutez_upper_bound
+      | T_mutez -> Vlang.create_formula_mutez_upperbound (create_convert_exp e t)
       | _ -> raise (Failure "Converter.create_convert_cond: Wrong type expression on no overflow condition")
     end
   | BC_no_underflow (e, t) -> begin
       match t.d with
-      | T_mutez -> Vlang.create_formula_le Vlang.mutez_lower_bound (create_convert_exp e t)
+      | T_mutez -> Vlang.create_formula_mutez_lowerbound (create_convert_exp e t)
       | _ -> raise (Failure "Converter.create_convert_cond: Wrong type expression on no underflow condition")
     end
   | BC_not c -> Vlang.create_formula_not (create_convert_cond c)
@@ -236,65 +230,4 @@ and create_convert_exp : Vlang.exp -> Vlang.typ -> Vlang.v_exp
   | E_special_nil_list -> Vlang.create_exp_list [] t
   | E_phi (_, _) -> raise (Failure "Converter.create_convert_exp: Deprecated Phi Function")
   | E_unlift_or _ -> raise (Failure "Converter.create_convert_exp: Deprecated Unlift or")
-end
-
-and create_precond_from_param_storage : unit -> Vlang.v_formula list
-=fun () -> begin
-  let param_storage_var = "param_storage" in
-  let param_storage = create_var param_storage_var in
-  let param_storage_typ = read_type param_storage_var in
-  let mutez_formula e = begin
-    let lower_formula = Vlang.create_formula_le Vlang.mutez_lower_bound e in
-    let upper_formula = Vlang.create_formula_lt e Vlang.mutez_upper_bound in
-    Vlang.create_formula_and [lower_formula; upper_formula]
-  end in
-  let rec read_nested_param_storage : Vlang.typ -> Vlang.v_exp -> (object_typ * (Vlang.v_formula -> Vlang.v_formula) list * Vlang.v_exp * (Vlang.var * Vlang.typ) option) list
-  =fun ty e -> begin
-    match ty.d with
-    | T_option ty' -> begin
-        let e' = Vlang.create_exp_uni_op_un_opt e ty in
-        Core.List.map (read_nested_param_storage ty' e') ~f:(fun (obj, fl, exp, bound) -> (
-          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_some e))::fl, exp, bound)
-        ))
-      end
-    | T_pair (ty1', ty2') -> begin
-        let e1' = Vlang.create_exp_uni_op_car e ty in
-        let fst = Core.List.map (read_nested_param_storage ty1' e1') ~f:(fun (obj, fl, exp, bound) -> (
-          (obj, fl, exp, bound)
-        )) in
-        let e2' = Vlang.create_exp_uni_op_cdr e ty in
-        let snd = Core.List.map (read_nested_param_storage ty2' e2') ~f:(fun (obj, fl, exp, bound) -> (
-          (obj, fl, exp, bound)
-        )) in
-        fst @ snd
-      end
-    | T_or (ty1', ty2') -> begin
-        let e1' = Vlang.create_exp_uni_op_un_left e ty in
-        let left = Core.List.map (read_nested_param_storage ty1' e1') ~f:(fun (obj, fl, exp, bound) -> (
-          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_left e))::fl, exp, bound)
-        )) in
-        let e2' = Vlang.create_exp_uni_op_un_right e ty in
-        let right = Core.List.map (read_nested_param_storage ty2' e2') ~f:(fun (obj, fl, exp, bound) -> (
-          (obj, (Vlang.create_formula_imply (Vlang.create_formula_is_right e))::fl, exp, bound)
-        )) in
-        left @ right
-      end
-    | T_map (ty1', ty2') -> begin
-        match ty2'.d with
-        | T_mutez -> begin
-            let bound = create_new_bound () in
-            let map_entry = Vlang.create_exp_read (Vlang.create_exp_var bound ty1') e in
-            [(Mutez_Map, [], map_entry, Some (bound, ty1'))]
-          end
-        | _ -> []
-      end
-    | T_mutez -> [(Mutez, [], e, None)]
-    | _ -> []
-  end in
-  let create_formula_from_param_storage (obj, fl, exp, bound) = begin
-    match obj with
-    | Mutez_Map -> Vlang.create_formula_forall [(Option.get bound)] (Core.List.fold_right fl ~f:(fun func formula -> func formula) ~init:(mutez_formula exp))
-    | Mutez -> Core.List.fold_right fl ~f:(fun func formula -> func formula) ~init:(mutez_formula exp)
-  end in
-  Core.List.map (read_nested_param_storage param_storage_typ param_storage) ~f:create_formula_from_param_storage
 end

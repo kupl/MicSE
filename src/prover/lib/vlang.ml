@@ -438,6 +438,26 @@ let mutez_lower_bound : v_exp
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Additional Formula                                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let create_formula_mutez_upperbound : v_exp -> v_formula
+=fun e -> create_formula_lt e mutez_upper_bound
+
+let create_formula_mutez_lowerbound : v_exp -> v_formula
+=fun e -> create_formula_le mutez_lower_bound e
+
+let create_formula_mutez_bound : v_exp -> v_formula
+=fun e -> begin
+  let lower_formula = create_formula_mutez_lowerbound e in
+  let upper_formula = create_formula_mutez_upperbound e in
+  create_formula_and [lower_formula; upper_formula]
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Stringify Modules                                                         *)
 (*****************************************************************************)
 (*****************************************************************************)
