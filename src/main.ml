@@ -1,7 +1,7 @@
 let main : unit -> unit
 =fun () -> begin
-  let cfg = Pre.pre_process (!Utils.Options.input_file) in
-  let _ = Prover.prove cfg in
+  let cfg, init_stg_opt = Pre.pre_process (!Utils.Options.input_file) in
+  let _ = Prover.prove cfg init_stg_opt in
   ()
 end
 

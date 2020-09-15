@@ -1,5 +1,5 @@
 module Lib = ProverLib
-
+open Lib
 
 module Extractor = Extractor
 
@@ -10,14 +10,14 @@ module Generator = Generator
 module Verifier = Verifier
 
 
-let rec prove : Pre.Lib.Cfg.t -> unit
-=fun cfg -> begin
+let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
+=fun cfg init_stg_opt -> begin
   (* Construct basic path *)
   let raw_bp_list = Extractor.extract cfg in
 
   (* Verify all of basic path *)
   let initial_worklist = Generator.initial_inv_worklist raw_bp_list.trx_inv_vtx raw_bp_list.loop_inv_vtx in
-  let queries = work initial_worklist raw_bp_list cfg in
+  let queries = work initial_worklist raw_bp_list cfg init_stg_opt in
 
   (* Print out result *)
   let _ = Core.List.iter queries ~f:(fun q -> (
@@ -46,10 +46,11 @@ let rec prove : Pre.Lib.Cfg.t -> unit
   ()
 end
 
-and work : Lib.Inv.WorkList.t -> Lib.Bp.raw_t_list -> Pre.Lib.Cfg.t -> Lib.Query.t list
-=fun w raw_bps cfg -> begin
+and work : Inv.WorkList.t -> Bp.raw_t_list -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> Query.t list
+=fun w raw_bps cfg init_stg_opt -> begin
+  let _ = init_stg_opt in
   (* Choose a candidate invariant *)
-  let inv_map, _ = Lib.Inv.WorkList.pop w in
+  let inv_map, _ = Inv.WorkList.pop w in
 
   (* Verify Queries *)
   let bp_list = Generator.apply inv_map raw_bps.bps in
@@ -60,10 +61,10 @@ and work : Lib.Inv.WorkList.t -> Lib.Bp.raw_t_list -> Pre.Lib.Cfg.t -> Lib.Query
       let result, param_storage_opt = Verifier.verify q.query cfg in
       if result
       then begin
-        let p_q = Lib.Query.update_status q (Lib.Query.create_status_proven) in
+        let p_q = Query.update_status q (Lib.Query.create_status_proven) in
         (p_q::p, up)
       end else begin
-        let up_q = Lib.Query.update_status q (Lib.Query.create_status_unproven param_storage_opt) in
+        let up_q = Query.update_status q (Lib.Query.create_status_unproven param_storage_opt) in
         (p, up_q::up)
       end
     )) ~init:(proven, unproven) in
@@ -72,7 +73,7 @@ and work : Lib.Inv.WorkList.t -> Lib.Bp.raw_t_list -> Pre.Lib.Cfg.t -> Lib.Query
   proven@unproven
 end
 
-and read_query_location : Pre.Lib.Cfg.t -> Lib.Query.t -> string
+and read_query_location : Pre.Lib.Cfg.t -> Query.t -> string
 =fun cfg q -> begin
   try
     let file = open_in (!Utils.Options.input_file) in
