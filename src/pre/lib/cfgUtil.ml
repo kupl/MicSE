@@ -97,7 +97,7 @@ let rec remove_meaningless_fail_vertices_fixpoint cfg =
 (*****************************************************************************)
 
 let cfg_to_dotformat : t -> string
-= let only_label_str s : string = ( "label=\"" ^ (Core.String.substr_replace_all s ~pattern:"\"\"" ~with_:"\\\"") ^ "\"" ) in
+= let only_label_str s : string = ( "label=\"" ^ (Core.String.substr_replace_all s ~pattern:"\"" ~with_:"\\\"") ^ "\"" ) in
   let get_lhs_varname : stmt -> string = begin function
     | Cfg_assign (x, _) -> x
     | _ -> fail "cfg_to_dotformat : get_lhs_varname : match failed"
