@@ -5,7 +5,7 @@
 - [MicSE](#micse)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
-  - [Development](#development)]
+  - [Development](#development)
     - [Prerequisite](#prerequisite)
     - [Git Commit Guidelines](#git-commit-guidelines)
   - [About](#about)
