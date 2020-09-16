@@ -231,7 +231,7 @@ let rec string_of_datat_ol_inner : bool -> data t -> string
   let bodystr = 
     (match dd.d with
     | D_int zn        -> (Z.to_string zn) ^ annotstr
-    | D_string s      -> "\"" ^ s ^ "\""  ^ annotstr
+    | D_string s      -> "\\\"" ^ s ^ "\\\""  ^ annotstr
     | D_bytes s       -> "0x" ^ s         ^ annotstr
     | D_unit          -> "Unit"           ^ annotstr
     | D_bool b        -> (if b then "True" else "False") ^ annotstr
