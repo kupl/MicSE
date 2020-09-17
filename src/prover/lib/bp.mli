@@ -147,6 +147,8 @@ and category =
   | Q_shift_overflow
   | Q_assert
 
+val compare_loc : loc -> loc -> int
+
 val create_inst_assume : cond -> inst
 
 val create_inst_assert : cond -> loc -> category -> inst

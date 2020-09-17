@@ -73,6 +73,15 @@ and category =
   | Q_shift_overflow
   | Q_assert
 
+let compare_loc : loc -> loc -> int
+=fun l1 l2 -> begin
+  if l1.entry = l2.entry && l1.exit = l2.exit
+  then 0
+  else if l1.entry <= l2.entry
+       then -1
+       else 1
+end
+
 let create_inst_assume : cond -> inst
 =fun f -> BI_assume f
 

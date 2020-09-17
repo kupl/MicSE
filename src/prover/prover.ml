@@ -22,9 +22,14 @@ let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
 
   (* Verify all of basic path *)
   let initial_worklist = Generator.create_initial_worklist cfg raw_bp_list.trx_inv_vtx raw_bp_list.loop_inv_vtx in
-  let queries = work initial_worklist raw_bp_list cfg init_stg_opt in
+  let raw_queries = work initial_worklist raw_bp_list cfg init_stg_opt in
 
   (* Print out result *)
+  let queries = Core.List.sort (Core.List.fold_right raw_queries ~f:(fun raw_q qs -> ( (* only when proven@unproven *)
+    if Core.List.mem qs raw_q ~equal:(fun q raw_q -> (Bp.compare_loc q.loc raw_q.loc) = 0)
+    then qs
+    else raw_q::qs
+  )) ~init:[]) ~compare:(fun q1 q2 -> Bp.compare_loc q1.loc q2.loc) in
   let _ = Core.List.iter queries ~f:(fun q -> (
     let _ = print_endline ("- Query line " ^ (read_query_location cfg q)) in
     match q.status with
