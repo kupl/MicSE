@@ -42,6 +42,8 @@ let flag_cfg_print_dot : bool ref
 =ref false
 let flag_bp_print : bool ref
 =ref false
+let flag_vc_print : bool ref
+=ref false
 
 let activate_detector : string -> unit
 =fun s -> begin
@@ -59,6 +61,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-cfg_print_dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
     ("-bpopt_rsi", (Arg.Set flag_bpopt_rsi), "Remove all trivial skip instructions in bp printing.");
     ("-bp_print", (Arg.Set flag_bp_print), "Print all basic paths.");
+    ("-vc_print", (Arg.Set flag_vc_print), "Print all verification conditions.");
     ("-param_storage", (Arg.Set flag_param_storage), "Print counter-example from unsafe-path");
     ("-initial_storage", (Arg.String (fun s -> initial_storage_file := s)), "File path for initial storage of input michelson program");
   ]

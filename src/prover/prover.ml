@@ -30,21 +30,26 @@ let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
     match q.status with
     | Q_proven -> begin
         let _ = print_endline ("\t- Status: Proven") in
+        let _ = if !Utils.Options.flag_vc_print
+                then print_endline ("\t- VC: " ^ (Vlang.string_of_formula q.query)) in
         ()
       end
     | Q_unproven param_storage_opt -> begin
         let _ = print_endline ("\t- Status: Unproven") in
-        let _ = print_endline ("\t- Category: " ^ (Lib.Bp.string_of_category q.typ)) in
-        match param_storage_opt with
-        | None -> let _ = print_endline ("\t- Something Wrong") in ()
-        | Some (param, storage) -> begin
-            if !Utils.Options.flag_param_storage
-            then begin
-              let _ = print_endline ("\t- Parameter:\t" ^ (Lib.Smt.string_of_expr param)) in
-              let _ = print_endline ("\t- Storage:\t" ^ (Lib.Smt.string_of_expr storage)) in
-              ()
-            end else ()
-          end
+        let _ = print_endline ("\t- Category: " ^ (Bp.string_of_category q.typ)) in
+        let _ = match param_storage_opt with
+                | None -> let _ = print_endline ("\t- Something Wrong") in ()
+                | Some (param, storage) -> begin
+                    if !Utils.Options.flag_param_storage
+                    then begin
+                      let _ = print_endline ("\t- Parameter:\t" ^ (Smt.string_of_expr param)) in
+                      let _ = print_endline ("\t- Storage:\t" ^ (Smt.string_of_expr storage)) in
+                      ()
+                    end else ()
+                  end in
+        let _ = if !Utils.Options.flag_vc_print
+                then print_endline ("\t- VC: " ^ (Vlang.string_of_formula q.query)) in
+        ()
       end
     | Q_nonproven -> raise (Failure "Prover.prove: Non-proved query exists")
   )) in
@@ -66,10 +71,10 @@ and work : Inv.WorkList.t -> Bp.raw_t_list -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data
       let result, param_storage_opt = Verifier.verify q.query cfg in
       if result
       then begin
-        let p_q = Query.update_status q (Lib.Query.create_status_proven) in
+        let p_q = Query.update_status q (Query.create_status_proven) in
         (p_q::p, up)
       end else begin
-        let up_q = Query.update_status q (Lib.Query.create_status_unproven param_storage_opt) in
+        let up_q = Query.update_status q (Query.create_status_unproven param_storage_opt) in
         (p, up_q::up)
       end
     )) ~init:(proven, unproven) in

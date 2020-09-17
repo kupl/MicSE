@@ -26,6 +26,7 @@ val set_all_cfg_opt : unit -> unit
 val flag_adt_print : bool ref
 val flag_cfg_print_dot : bool ref
 val flag_bp_print : bool ref
+val flag_vc_print : bool ref
 
 val activate_detector : string -> unit
 
