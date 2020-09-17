@@ -11,10 +11,6 @@ let input_file : string ref
 let initial_storage_file : string ref
 =ref ""
 
-(* FLAGS - Parsed Michelson File *)
-let flag_adt_print : bool ref
-=ref false
-
 (* FLAGS - Control Flow Graph *)
 let flag_cfgopt_rsv : bool ref
 =ref false (* remove-skip-vertices *)
@@ -22,6 +18,10 @@ let flag_cfgopt_rfv : bool ref
 =ref false (* remove-fail-vertices *)
 let flag_cfgopt_all : bool ref
 =ref false (* it will set all cfg-optimization *)
+
+(* FLAGS - Basic Path *)
+let flag_bpopt_rsi : bool ref
+=ref false (* remove-skip-instructions *)
 
 (* FLAGS - Result of solver *)
 let flag_param_storage : bool ref
@@ -35,7 +35,12 @@ let set_all_cfg_opt : unit -> unit
   )
 end
 
+(* FLAGS - Print components *)
+let flag_adt_print : bool ref
+=ref false
 let flag_cfg_print_dot : bool ref
+=ref false
+let flag_bp_print : bool ref
 =ref false
 
 let activate_detector : string -> unit
@@ -52,6 +57,9 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-cfgopt_rsv", (Arg.Set flag_cfgopt_rsv), "Remove all trivial skip vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
     ("-cfgopt_rfv", (Arg.Set flag_cfgopt_rfv), "Remove all trivial fail vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
     ("-cfg_print_dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
+    ("-bpopt_rsi", (Arg.Set flag_bpopt_rsi), "Remove all trivial skip instructions in bp printing.");
+    ("-bp_print", (Arg.Set flag_bp_print), "Print all basic paths.");
+    ("-vc_print", (Arg.Set flag_vc_print), "Print all verification conditions.");
     ("-param_storage", (Arg.Set flag_param_storage), "Print counter-example from unsafe-path");
     ("-initial_storage", (Arg.String (fun s -> initial_storage_file := s)), "File path for initial storage of input michelson program");
   ]

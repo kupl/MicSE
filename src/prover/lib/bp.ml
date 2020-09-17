@@ -121,7 +121,7 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-type t = { pre: Inv.t; body: inst list; post: Inv.t }
+type t = { pre: Inv.t; body: (vertex * inst) list; post: Inv.t }
 and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
 let create_new_bp : vertex -> vertex -> t
@@ -135,8 +135,8 @@ let create_cut_bp : t -> vertex -> (t * t)
   (terminated_bp, new_bp)
 end
 
-let update_body : t -> inst -> t
-=fun bp inst -> { pre=bp.pre; body=(bp.body@[inst]); post=bp.post }
+let update_body : t -> vertex * inst -> t
+=fun bp vtx_inst -> { pre=bp.pre; body=(bp.body@[vtx_inst]); post=bp.post }
 
 let update_inv : t -> pre:Inv.t -> post:Inv.t -> t
 =fun bp ~pre ~post -> { pre=pre; body=bp.body; post=post }
@@ -144,10 +144,12 @@ let update_inv : t -> pre:Inv.t -> post:Inv.t -> t
 let to_string : t -> string
 =fun bp -> begin
   let str = "" in
-  let str = str ^ (Inv.string_of_inv bp.pre) ^ "\n" in
-  let str = Core.List.fold_left bp.body ~init:str ~f:(fun str inst -> (
-    str ^ (string_of_inst inst) ^ "\n"
+  let str = Core.List.fold_left bp.body ~init:str ~f:(fun str (vtx, inst) -> (
+    str ^
+    if !Utils.Options.flag_bpopt_rsi && (inst = create_inst_skip)
+    then ""
+    else (Printf.sprintf "%3d: %s" vtx (string_of_inst inst)) ^
+    "\n"
   )) in
-  let str = str ^ (Inv.string_of_inv bp.post) ^ "\n" in
   str
 end

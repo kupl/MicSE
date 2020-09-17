@@ -18,8 +18,8 @@ let rec convert : Bp.t -> Pre.Lib.Cfg.t -> (Vlang.t * Query.t list)
   (inductive, qs)
 end
 
-and sp : (Vlang.t * Query.t list) -> Bp.inst -> (Vlang.t * Query.t list)
-=fun (f, qs) s -> begin
+and sp : (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t * Query.t list)
+=fun (f, qs) (_, s) -> begin
   match s with
   | BI_assume c -> begin
       let f' = Vlang.create_formula_and [(create_convert_cond c); f] in

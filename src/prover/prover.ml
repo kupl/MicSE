@@ -14,6 +14,11 @@ let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
 =fun cfg init_stg_opt -> begin
   (* Construct basic path *)
   let raw_bp_list = Extractor.extract cfg in
+  let _ = if !Utils.Options.flag_bp_print
+          then print_endline (":: Basic Paths" ^ 
+                              (Core.List.foldi raw_bp_list.bps ~init:"" ~f:(fun idx str bp -> (
+                                str ^ "\nBasic Path #" ^ (string_of_int idx) ^ "\n" ^ (Bp.to_string bp))
+                              ))) in
 
   (* Verify all of basic path *)
   let initial_worklist = Generator.create_initial_worklist cfg raw_bp_list.trx_inv_vtx raw_bp_list.loop_inv_vtx in

@@ -174,14 +174,14 @@ val string_of_category : category -> string
 (*****************************************************************************)
 (*****************************************************************************)
 
-type t = { pre: Inv.t; body: inst list; post: Inv.t }
+type t = { pre: Inv.t; body: (vertex * inst) list; post: Inv.t }
 and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
 val create_new_bp : vertex -> vertex -> t
 
 val create_cut_bp : t -> vertex -> (t * t)
 
-val update_body : t -> inst -> t
+val update_body : t -> vertex * inst -> t
 
 val update_inv : t -> pre:Inv.t -> post:Inv.t -> t
 

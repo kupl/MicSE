@@ -23,42 +23,42 @@ and translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
         let assert_inst = create_basic_safety_property cur_vtx e (Pre.Lib.Cfg.CPMap.find_exn cfg.type_info id) in
         let new_bp = update_current_bp cur_bp assert_inst in
         let inst = Bp.create_inst_assign id e in
-        let new_bp' = update_current_bp new_bp (Some inst) in
+        let new_bp' = update_current_bp new_bp (Some (cur_vtx, inst)) in
         let search = translate_search_normal cfg new_bp' in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_skip | Cfg_drop _ | Cfg_swap | Cfg_dig | Cfg_dug -> begin
         let inst = Bp.create_inst_skip in
-        let new_bp = update_current_bp cur_bp (Some inst) in
+        let new_bp = update_current_bp cur_bp (Some (cur_vtx, inst)) in
         let search = translate_search_normal cfg new_bp in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if id -> begin
         let f_if = Bp.create_cond_is_true id in
-        let bps = create_bp_of_branch cur_bp f_if in
+        let bps = create_bp_of_branch cur_bp cur_vtx f_if in
         let search = translate_search_branch cfg bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if_none id -> begin
         let f_if = Bp.create_cond_is_none id in
-        let bps = create_bp_of_branch cur_bp f_if in
+        let bps = create_bp_of_branch cur_bp cur_vtx f_if in
         let search = translate_search_branch cfg bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if_left id -> begin
         let f_if = Bp.create_cond_is_left id in
-        let bps = create_bp_of_branch cur_bp f_if in
+        let bps = create_bp_of_branch cur_bp cur_vtx f_if in
         let search = translate_search_branch cfg bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
       end
     | Cfg_if_cons id -> begin
         let f_if = Bp.create_cond_is_cons id in
-        let bps = create_bp_of_branch cur_bp f_if in
+        let bps = create_bp_of_branch cur_bp cur_vtx f_if in
         let search = translate_search_branch cfg bps in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
@@ -74,12 +74,12 @@ and translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
       end
     | Cfg_failwith _ -> begin
         let inst = Bp.create_inst_skip in
-        let new_bp = update_current_bp cur_bp (Some inst) in
+        let new_bp = update_current_bp cur_bp (Some (cur_vtx, inst)) in
         [new_bp]
       end
     | Cfg_micse_check_entry -> begin
         let inst = Bp.create_inst_skip in
-        let new_bp = update_current_bp cur_bp (Some inst) in
+        let new_bp = update_current_bp cur_bp (Some (cur_vtx, inst)) in
         let search = translate_search_normal cfg new_bp in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
@@ -87,7 +87,7 @@ and translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
     | Cfg_micse_check_value id -> begin
         let f_assert = Bp.create_cond_is_true id in
         let inst = Bp.create_inst_assert f_assert (read_loc_of_check cfg cur_vtx) (Bp.create_category_assertion) in
-        let new_bp = update_current_bp cur_bp (Some inst) in
+        let new_bp = update_current_bp cur_bp (Some (cur_vtx, inst)) in
         let search = translate_search_normal cfg new_bp in
         let result = Core.List.fold_right succ ~f:search ~init:[] in
         result
@@ -110,13 +110,13 @@ and translate_search_branch : Pre.Lib.Cfg.t -> (Bp.t * Bp.t) -> (Bp.edge * Bp.ve
   else raise (Failure "Extractor.translate_search_branch: Wrong edge label")
 end
 
-and create_bp_of_branch : Bp.t -> Bp.cond -> (Bp.t * Bp.t)
-=fun cur_bp f_if -> begin
+and create_bp_of_branch : Bp.t -> Bp.vertex -> Bp.cond -> (Bp.t * Bp.t)
+=fun cur_bp cur_vtx f_if -> begin
   let f_else = Bp.create_cond_not f_if in
   let inst_if = Bp.create_inst_assume f_if in
   let inst_else = Bp.create_inst_assume f_else in
-  let new_bp_if = update_current_bp cur_bp (Some inst_if) in
-  let new_bp_else = update_current_bp cur_bp (Some inst_else) in
+  let new_bp_if = update_current_bp cur_bp (Some (cur_vtx, inst_if)) in
+  let new_bp_else = update_current_bp cur_bp (Some (cur_vtx, inst_else)) in
   (new_bp_if, new_bp_else)
 end
 
@@ -127,13 +127,13 @@ and create_bp_of_loop : Bp.t -> Bp.vertex -> (Bp.t * Bp.t * Bp.t)
   (terminated_bp, loop_bp, new_bp)
 end
 
-and create_basic_safety_property : Bp.vertex -> Bp.exp -> Bp.typ -> Bp.inst option
+and create_basic_safety_property : Bp.vertex -> Bp.exp -> Bp.typ -> (Bp.vertex * Bp.inst) option
 =fun vtx e t -> begin
   let loc = Bp.create_loc vtx vtx in
   match (e, t.d) with
-  | E_add _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t) loc (Bp.create_category_mutez_overflow))
-  | E_sub _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_underflow e t) loc (Bp.create_category_mutez_overflow))
-  | E_mul _, T_mutez -> Some (Bp.create_inst_assert (Bp.create_cond_no_overflow e t) loc (Bp.create_category_mutez_overflow))
+  | E_add _, T_mutez -> Some (vtx, (Bp.create_inst_assert (Bp.create_cond_no_overflow e t) loc (Bp.create_category_mutez_overflow)))
+  | E_sub _, T_mutez -> Some (vtx, (Bp.create_inst_assert (Bp.create_cond_no_underflow e t) loc (Bp.create_category_mutez_overflow)))
+  | E_mul _, T_mutez -> Some (vtx, (Bp.create_inst_assert (Bp.create_cond_no_overflow e t) loc (Bp.create_category_mutez_overflow)))
   | _, _ -> None
 end
 
@@ -148,9 +148,9 @@ and read_loc_of_check : Pre.Lib.Cfg.t -> Bp.vertex -> Bp.loc
   end else raise (Failure "Extractor.read_loc_of_check: Cannot find check entry")
 end
 
-and update_current_bp : Bp.t -> Bp.inst option -> Bp.t
-=fun cur_bp inst_opt -> begin
-  match inst_opt with
+and update_current_bp : Bp.t -> (Bp.vertex * Bp.inst) option -> Bp.t
+=fun cur_bp vtx_inst_opt -> begin
+  match vtx_inst_opt with
   | None -> cur_bp
-  | Some inst -> Bp.update_body cur_bp inst
+  | Some vtx_inst -> Bp.update_body cur_bp vtx_inst
 end
