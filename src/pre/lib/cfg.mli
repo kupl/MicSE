@@ -300,86 +300,206 @@ val t_add_posinfo : ?errtrace:string -> (vertex * loc) -> (t * 'a) -> (t * verte
 (*****************************************************************************)
 (*****************************************************************************)
 
-(*****************************************************************************)
-(* Exceptions in Interpreting                                                *)
-(*****************************************************************************)
+module Semantic : sig
 
-type exn_cfg_interpret = 
-  (* Indicator for arguments or library-implementation issues. *)
-  | INTPEXN_EXPR_UNIMPLEMENTED
-  | INTPEXN_DATA_INFO__VAR_NOT_FOUND 
-  | INTPEXN_TYPE_INFO__VAR_NOT_FOUND
-  | INTPEXN_INVALID_ARG_DATA
-  | INTPEXN_INVALID_ARG_TYPE
-  | INTPEXN_UNEXPECTED
-  (* Michelson-Defined Runtime Errors *)
-  | INTPEXN_MUTEZ_OVERFLOW
-  | INTPEXN_MUTEZ_UNDERFLOW
-  | INTPEXN_LSL_EXCEPTION
-  | INTPEXN_LSR_EXCEPTION
-exception Exn_Cfg_Interpret of (string * exn_cfg_interpret)
+  (*****************************************************************************)
+  (* Type Tags for GADT                                                        *)
+  (*****************************************************************************)
 
-
-(*****************************************************************************)
-(* Data Representation used in interpreting Cfg expr/stmt                    *)
-(*****************************************************************************)
-
-(* Mich.data type does not fully reflects Mich.typ.
-    For example, There are no data constructor in Mich.data to represents the value of type T_operation.
-    Cfg.data_itn (data_internal) will cover every data types.
-*)
-type data_itn = 
-  | DI_key of string
-  | DI_unit
-  | DI_signature of di_sig
-  | DI_none
-  | DI_some of data_itn
-  | DI_list of data_itn list
-  | DI_set of data_itn Core.Set.Poly.t
-  | DI_operation of di_oper
-  | DI_contract of di_contract
-  | DI_pair of data_itn * data_itn
-  | DI_left of data_itn
-  | DI_right of data_itn
-    (* For given function "f : (type-1 * type-2 * ... * type-n) -> return-type",
-        "DI_closure (id-f, [arg-k; ...; arg-2; arg-1])" means f applied with k arguments. (k <= n)
-     *)
-  | DI_closure of lambda_ident * (data_itn list) 
-  | DI_map of (data_itn, data_itn) Core.Map.Poly.t
-  | DI_big_map of (data_itn, data_itn) Core.Map.Poly.t
-  | DI_chain_id of string  (* Precisely, bytes-thing *)
-  | DI_int of Z.t
-  | DI_nat of Z.t
-  | DI_string of string
-  | DI_bytes of string
-  | DI_mutez of Int64.t
-  | DI_bool of bool
-  | DI_key_hash of string   (* In mainnet, code like (PUSH key_hash "tz1RiWcwGxytk3XGntmKpTYyMVMLZva6cBqV"; ) is used *)
-  | DI_timestamp of string  (* In mainnet, code like (PUSH timestamp "1858-11-17T00:00:00Z";) is used *)
-  | DI_address of string    (* In tezos, address = public-key-hash *)
-
-and di_key = string
-and di_hash = | DI_HASH of di_hash_func * data_itn | DI_HASH_bytes of string
-and di_hash_func = | DI_HASHF_BLAKE2B | DI_HASHF_SHA256 | DI_HASH_SHA512
-and di_sig = | DI_SIG of di_key * string | DI_SIG_bytes of string
-and di_oper = | DI_OPER_transfer | DI_OPER_delegate | DI_OPER_contract (* TODO *)
-and di_contract = |  (* TODO *)
-and di_key_hash = | DI_KH of di_hash
-
-type blockchain = (string, di_contract) Core.Map.Poly.t
+  type tag_int              = TAG_INT
+  type tag_nat              = TAG_NAT
+  type tag_string           = TAG_STRING
+  type tag_bytes            = TAG_BYTES
+  type tag_mutez            = TAG_MUTEZ
+  type tag_bool             = TAG_BOOL
+  type tag_key_hash         = TAG_KEY_HASH
+  type tag_timestamp        = TAG_TIMESTAMP
+  type tag_address          = TAG_ADDRESS
+  type tag_key              = TAG_KEY
+  type tag_unit             = TAG_UNIT
+  type tag_signature        = TAG_SIGNATURE
+  type tag_option           = TAG_OPTION
+  type tag_list             = TAG_LIST
+  type tag_set              = TAG_SET
+  type tag_operation        = TAG_OPERATION
+  type tag_contract         = TAG_CONTRACT
+  type tag_pair             = TAG_PAIR
+  type tag_or               = TAG_OR
+  type tag_lambda           = TAG_LAMBDA
+  type tag_map              = TAG_MAP
+  type tag_big_map          = TAG_BIG_MAP
+  type tag_chain_id         = TAG_CHAIN_ID
 
 
-(*****************************************************************************)
-(* Data Information                                                          *)
-(*****************************************************************************)
+  (*****************************************************************************)
+  (* Type Representation                                                       *)
+  (*****************************************************************************)
 
-type data_info = (var, data) CPMap.t    (* variable -> data, WARNING: No type information included. *)
+  module Ty : sig
+    type _ t =
+      | INT : tag_int t
+      | NAT : tag_nat t
+      | STRING : tag_string t
+      | BYTES : tag_bytes t
+      | MUTEZ : tag_mutez t
+      | BOOL : tag_bool t
+      | KEY_HASH : tag_key_hash t
+      | TIMESTAMP : tag_timestamp t
+      | ADDRESS : tag_address t
+      | KEY : tag_key t
+      | UNIT : tag_unit t
+      | SIGNATURE : tag_signature t
+      | OPTION : 'a t -> tag_option t
+      | LIST : 'a t -> tag_list t
+      | SET : 'a t -> tag_set t
+      | OPERATION : tag_operation t
+      | CONTRACT : 'a t -> tag_contract t
+      | PAIR : ('a t * 'b t) -> tag_pair t
+      | OR : ('a t * 'b t) -> tag_or t
+      | LAMBDA : ('a t * 'b t) -> tag_lambda t
+      | MAP : ('a t * 'b t) -> tag_map t
+      | BIG_MAP : ('a t * 'b t) -> tag_big_map t
+      | CHAIN_ID : tag_chain_id t
+
+    type packed = Pack : 'a t -> packed
+
+  end (* module Semantic.Ty end *)
+
+  
+  (*****************************************************************************)
+  (* Data Representation used in interpreting Cfg expr/stmt                    *)
+  (*****************************************************************************)
+
+  module Data : sig
+    type _ t =
+      | V_int : Z.t -> tag_int t
+      | V_nat : Z.t -> tag_nat t
+      | V_string : string -> tag_string t
+      | V_bytes_raw : string -> tag_bytes t
+      | V_bytes_packed : 'a t -> tag_bytes t
+      | V_bytes_hashed : (hash_func * (tag_bytes t)) -> tag_bytes t
+      | V_mutez : Int64.t -> tag_mutez t
+      | V_bool : bool -> tag_bool t
+      | V_key_hash_str : string -> tag_key_hash t
+      | V_key_hash_hashed : (hash_func * (tag_bytes t)) -> tag_key_hash t
+      | V_timestamp_str : string -> tag_timestamp t
+      | V_timestamp_sec : Z.t -> tag_timestamp t
+      | V_address : tag_key_hash t -> tag_address t
+      | V_key : string -> tag_key t
+      | V_unit : tag_unit t
+      | V_sig_signed : sign -> tag_signature t
+      | V_sig_raw : string -> tag_signature t
+      | V_none : 'a Ty.t -> tag_option t
+      | V_some : 'a t -> tag_option t
+      | V_list : ('a t) list -> tag_list t
+      | V_set : ('a t) Core.Set.Poly.t -> tag_set t
+      | V_oper_TransferToken : ('a, 'b) oper_transfer_token -> tag_operation t
+      | V_oper_SetDelegate : ((tag_key_hash t) option) -> tag_operation t
+      | V_oper_CreateContract : ('a, 'b) oper_create_contract -> tag_operation t
+      | V_contract_pgm : ('a, 'b) contract -> tag_contract t
+      | V_contract_implicit_account : tag_key_hash t -> tag_contract t
+      | V_pair : ('a t * 'b t) -> tag_pair t
+      | V_or_left : (tag_or Ty.t * 'a t) -> tag_or t
+      | V_or_right : (tag_or Ty.t * 'b t) -> tag_or t
+        (* This semantic considers that the every known Michelson-codes are already converted into graph, and the only unknown code sequences are the codes from the contract argument. *)
+      | V_lambda_unknown : tag_lambda Ty.t -> tag_lambda t
+      | V_lambda_ident : (tag_lambda Ty.t * lambda_ident) -> tag_lambda t  (* (a*b -> c)  to  (b -> c) *)
+      | V_lambda_closure : tag_lambda Ty.t * 'a t -> tag_lambda t
+      | V_map : ('a t, 'b t) Core.Map.Poly.t -> tag_map t
+      | V_big_map : ('a t, 'b t) Core.Map.Poly.t -> tag_big_map t
+      | V_chain_id : string -> tag_chain_id t
+
+    and hash_func = BLAKE2B | SHA256 | SHA512
+    and sign = {
+      sign_key : tag_key t;
+      sign_bytes : tag_bytes t;
+    }
+    and ('a, 'b) oper_transfer_token = {
+      oper_tt_arg : 'a t; 
+      oper_tt_amount : Int64.t; 
+      oper_tt_contract : ('a, 'b) contract;
+    }
+    and ('a, 'b) oper_create_contract = {
+      oper_cc_mutez : tag_mutez t;
+      oper_cc_delegate : tag_key_hash t option;
+      oper_cc_storage : 'b t;
+      oper_cc_paramstorage_typ : tag_pair Ty.t;
+      oper_cc_program : Mich.program;
+    }
+    and ('a, 'b) contract = {
+      ctrt_address : tag_address t;
+      ctrt_mutez : tag_mutez t;
+      ctrt_delegate : tag_key_hash t option;
+      ctrt_strg : 'b t;
+      ctrt_paramstorage_typ : tag_pair Ty.t; 
+      ctrt_program : Mich.program; 
+    }    
+    
+    type packed = Pack : 'a t -> packed
+
+    val unpack : 'a Ty.t -> packed -> 'a t
+
+  end (* module Semantic.Data end *)
 
 
-(*****************************************************************************)
-(* Main Interpreting Functions                                               *)
-(*****************************************************************************)
+  (*****************************************************************************)
+  (* Simple Tezos Blockchain model                                             *)
+  (*****************************************************************************)
 
-val interpret_expr : t -> expr -> data_info -> data       (* Cfg.t is needed to find the type information & lambda-id-map if needed. *)
-(*val interpret_stmt : t -> stmt -> data_info -> data_info  (* Return updated data_info by stmt. data_info will be only updated when stmt is (Cfg_assign ...) *)*)
+  module Blockchain : sig
+    type address_map = (tag_address Data.t, tag_contract Data.t) Core.Map.Poly.t
+    type transaction = { (* 'a is the parameter type of receiver's contract. *)
+      source : tag_address Data.t;
+      sender : tag_address Data.t;
+      receiver : tag_address Data.t;
+      amount : tag_mutez Data.t;
+      argument : Data.packed;
+    }
 
+    type t = {
+      chain_id : tag_chain_id Data.t;
+      current_address_map : address_map;
+      changelog : (address_map * transaction) list; (* It means the list of (before-address, given-transaction) pair *)
+    }
+
+  end (* module Semantic.Blockchain end *)
+  
+
+  (*****************************************************************************)
+  (* Execution                                                                 *)
+  (*****************************************************************************)
+
+  module Execution : sig
+    type error =
+      | ERR_MUTEZ_OVERFLOW
+      | ERR_MUTEZ_UNDERFLOW
+      | ERR_LSL_EXCEPTION
+      | ERR_LSR_EXCEPTION
+
+    type action =
+      | ACT_enter_vertex of vertex
+      | ACT_exit_vertex of vertex
+      | ACT_call_function of lambda_ident
+      | ACT_return_val of Data.packed
+      | ACT_update_var of var * Data.packed
+      | ACT_error of error
+
+    type state = (var, Data.packed) Core.Map.Poly.t
+    type assumption = (var * bool) list    (* assumption [("x", true); ("y", false); ("z", true)] means (x=true && y=false && z=true) *)
+    type trace = {
+      current_state : state;
+      log : (state * action) list;
+      assume : assumption;
+    }
+    type traces = trace list
+
+    type blockchain_env = Blockchain.t * Blockchain.transaction
+    val run_expr : t -> blockchain_env -> expr -> traces -> traces
+    val run_vertex : t -> blockchain_env -> vertex -> traces -> traces
+    val run_program : t -> blockchain_env -> vertex -> Data.packed -> traces -> traces
+    (* "run_program" does not deal any returned operations, but "run_transaction" does. *)
+    (*val run_transaction : t -> blockchain_env -> trace -> trace*)
+
+  end (* module Semantic.Execution end *)
+
+end (* module Semantic end *)
