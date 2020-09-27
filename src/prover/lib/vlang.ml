@@ -41,8 +41,6 @@ and v_exp =
   | VE_bin_cont of v_bin_cont * v_exp * v_exp * typ
   | VE_list of v_exp list * typ
   | VE_var of var * typ
-  | VE_read of v_exp * v_exp (* (i, A) : A[i] in RHS *)
-  | VE_write of v_exp * v_exp * v_exp (* (i, v, A) : A[i] = v *)
   | VE_nul_op of v_nul_op * typ
   | VE_uni_op of v_uni_op * v_exp * typ
   | VE_bin_op of v_bin_op * v_exp * v_exp * typ
@@ -218,12 +216,6 @@ let create_exp_list : v_exp list -> typ -> v_exp
 
 let create_exp_var : var -> typ -> v_exp
 =fun v t -> VE_var (v, t)
-
-let create_exp_read : v_exp -> v_exp -> v_exp
-=fun ie ae -> VE_read (ie, ae)
-
-let create_exp_write : v_exp -> v_exp -> v_exp -> v_exp
-=fun ie ve ae -> VE_write (ie, ve, ae)
 
 let create_exp_nul_op : v_nul_op -> typ -> v_exp
 =fun vno t -> VE_nul_op (vno, t)
@@ -514,8 +506,6 @@ and string_of_exp : v_exp -> string
       "List [" ^ (Core.String.concat ~sep:"; " (Core.List.map el' ~f:(fun e' -> "(" ^ (string_of_exp e') ^ ")"))) ^ "]"
     end
   | VE_var (v, _) -> v
-  | VE_read (ie', ae') -> "(" ^ (string_of_exp ae') ^ ")[" ^ (string_of_exp ie') ^ "]"
-  | VE_write  (ie', ve', ae') -> "(" ^ (string_of_exp ae') ^ ")[" ^ (string_of_exp ie') ^ "] = (" ^ (string_of_exp ve') ^ ")"
   | VE_nul_op (vno, _) -> begin
       match vno with
       | VE_self -> "SELF"

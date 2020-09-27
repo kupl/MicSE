@@ -74,6 +74,12 @@ let create_or_symbol : z_sort -> z_sort -> z_symbol
 let create_list_symbol : z_sort -> z_symbol
 =fun content_sort -> create_symbol ("List_(" ^ (string_of_sort content_sort) ^ ")")
 
+let create_elt_symbol : z_sort -> z_sort -> z_symbol
+=fun key_sort value_sort -> create_symbol ("Elt_(" ^ (string_of_sort key_sort) ^ ")_(" ^ (string_of_sort value_sort) ^ ")")
+
+let create_map_symbol : z_sort -> z_sort -> z_symbol
+=fun key_sort value_sort -> create_symbol ("Map_(" ^ (string_of_sort key_sort) ^ ")_(" ^ (string_of_sort value_sort) ^ ")")
+
 
 (* UNINTERPRETED SORTS *)
 let create_unit_sort : z_sort
@@ -128,8 +134,23 @@ let create_list_sort : z_sort -> z_sort
 end
 
 
-let create_map_sort : z_sort -> z_sort -> z_sort
-=fun key_sort value_sort -> Z3.Z3Array.mk_sort !ctx key_sort value_sort
+let create_elt_sort : key_sort:z_sort -> value_sort:z_sort -> z_sort
+=fun ~key_sort ~value_sort -> begin
+  let elt_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Elt") (create_symbol "is_elt") [(create_symbol "key"); (create_symbol "value")] [Some key_sort; Some value_sort] [1; 2] in
+  Z3.Datatype.mk_sort !ctx (create_elt_symbol key_sort value_sort) [elt_const]
+end
+
+let create_map_sort : elt_sort:z_sort -> z_sort
+=fun ~elt_sort -> begin
+  let list_cons_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Cons") (create_symbol "is_cons") [(create_symbol "head"); (create_symbol "tail")] [(Some elt_sort); None] [1; 0] in
+  Z3.Datatype.mk_sort !ctx (create_list_symbol elt_sort) [list_nil_const; list_cons_const]
+end
+
+
+let read_constructor_domain_sort : z_sort -> const_idx:int -> sort_idx:int -> z_sort
+=fun const_sort ~const_idx ~sort_idx -> begin
+  get_field (Z3.FuncDecl.get_domain (get_field (Z3.Datatype.get_constructors const_sort) const_idx)) sort_idx
+end
 
 
 (*****************************************************************************)
@@ -313,23 +334,97 @@ let read_list_tail : z_expr -> z_expr
 =fun e -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr e)) 1) 1) [e]
 
 let update_list_cons : z_expr -> z_expr -> z_expr
-=fun item e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (read_sort_of_expr e)) 0) [item; e]
+=fun item e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (read_sort_of_expr e)) 1) [item; e]
 
 
-let create_map : z_sort -> z_expr
-=fun sort -> begin
-  let key_sort, value_sort = ((Z3.Z3Array.get_domain sort), (Z3.Z3Array.get_range sort)) in
-  Z3.Z3Array.mk_const !ctx (create_dummy_symbol ()) key_sort value_sort
+let create_elt : key:z_expr -> value:z_expr -> z_expr
+=fun ~key ~value -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (create_elt_sort ~key_sort:(read_sort_of_expr key) ~value_sort:(read_sort_of_expr value))) 0) [key; value]
+
+let read_elt_key : elt:z_expr -> z_expr
+=fun ~elt -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr elt)) 0) 0) [elt]
+
+let read_elt_value : elt:z_expr -> z_expr
+=fun ~elt -> Z3.FuncDecl.apply (get_field (get_field (Z3.Datatype.get_accessors (read_sort_of_expr elt)) 0) 1) [elt]
+
+
+let create_map : elt_sort:z_sort -> z_expr
+=fun ~elt_sort -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_constructors (create_map_sort ~elt_sort:elt_sort)) 0) []
+
+let read_map_elt_content : key:z_expr -> map:z_expr -> z_expr
+=fun ~key ~map -> begin
+  let map_sort, key_sort = ((read_sort_of_expr map), (read_sort_of_expr key)) in
+  let elt_sort = read_constructor_domain_sort map_sort ~const_idx:1 ~sort_idx:0 in
+  let value_sort = read_constructor_domain_sort elt_sort ~const_idx:0 ~sort_idx:1 in
+  let value_opt_sort = create_option_sort value_sort in
+  let nim = create_map ~elt_sort:elt_sort in
+  let f = Z3.FuncDecl.mk_rec_func_decl !ctx (create_symbol "Get_Map") [map_sort; key_sort] value_opt_sort in
+  let f_arg_m = read_var (create_dummy_symbol ()) map_sort in
+  let f_arg_k = read_var (create_dummy_symbol ()) key_sort in
+  let f_body = create_ite
+                (create_bool_eq f_arg_m nim)
+                (create_option value_sort None)
+                (create_ite
+                  (create_bool_eq f_arg_k (read_elt_key ~elt:(read_list_head f_arg_m)))
+                  (create_option value_sort (Some (read_elt_value ~elt:(read_list_head f_arg_m))))
+                  (Z3.FuncDecl.apply f [(read_list_tail f_arg_m); f_arg_k])
+                ) in
+  let _ = Z3.FuncDecl.add_rec_def !ctx f [f_arg_m; f_arg_k] f_body in
+  Z3.FuncDecl.apply f [map; key]
 end
 
-let read_map : z_expr -> z_expr -> z_expr
-=fun map key -> Z3.Z3Array.mk_select !ctx map key
+let read_map_elt_exists : key:z_expr -> map:z_expr -> z_expr
+=fun ~key ~map -> begin
+  let map_sort, key_sort = ((read_sort_of_expr map), (read_sort_of_expr key)) in
+  let elt_sort = read_constructor_domain_sort map_sort ~const_idx:1 ~sort_idx:0 in
+  let nim = create_map ~elt_sort:elt_sort in
+  let f = Z3.FuncDecl.mk_rec_func_decl !ctx (create_symbol "Mem_Map") [map_sort; key_sort] create_bool_sort in
+  let f_arg_m = read_var (create_dummy_symbol ()) map_sort in
+  let f_arg_k = read_var (create_dummy_symbol ()) key_sort in
+  let f_body = create_ite
+                (create_bool_eq f_arg_m nim)
+                (create_bool_false)
+                (create_ite
+                  (create_bool_eq f_arg_k (read_elt_key ~elt:(read_list_head f_arg_m)))
+                  (create_bool_true)
+                  (Z3.FuncDecl.apply f [(read_list_tail f_arg_m); f_arg_k])
+                ) in
+  let _ = Z3.FuncDecl.add_rec_def !ctx f [f_arg_m; f_arg_k] f_body in
+  Z3.FuncDecl.apply f [map; key]
+end
 
-let read_default_term : z_expr -> z_expr
-=fun map -> Z3.Z3Array.mk_term_array !ctx map
-
-let update_map : z_expr -> z_expr -> z_expr -> z_expr
-=fun map key value -> Z3.Z3Array.mk_store !ctx map key value
+let update_map : key:z_expr -> value_opt:z_expr -> map:z_expr -> z_expr
+=fun ~key ~value_opt ~map -> begin
+  let value = read_option_content value_opt in
+  let map_sort, key_sort, value_sort = ((read_sort_of_expr map), (read_sort_of_expr key), (read_sort_of_expr value)) in
+  let elt_sort = create_elt_sort ~key_sort:key_sort ~value_sort:value_sort in
+  let elt = create_elt ~key:key ~value:value in
+  let nim = create_map ~elt_sort:elt_sort in
+  let f = Z3.FuncDecl.mk_rec_func_decl !ctx (create_symbol "Update_Map") [map_sort; elt_sort] map_sort in
+  let f_arg_m = read_var (create_dummy_symbol ()) map_sort in
+  let f_arg_e = read_var (create_dummy_symbol ()) elt_sort in
+  let f_body = create_ite
+                (create_bool_eq f_arg_m nim)
+                (update_list_cons f_arg_e f_arg_m)
+                (create_ite
+                  (create_bool_eq (read_elt_key ~elt:(read_list_head f_arg_m)) (read_elt_key ~elt:f_arg_e))
+                  (update_list_cons f_arg_e (read_list_tail f_arg_m))
+                  (update_list_cons (read_list_head f_arg_m) (Z3.FuncDecl.apply f [(read_list_tail f_arg_m); f_arg_e]))
+                ) in
+  let _ = Z3.FuncDecl.add_rec_def !ctx f [f_arg_m; f_arg_e] f_body in
+  let g = Z3.FuncDecl.mk_rec_func_decl !ctx (create_symbol "Delete_Map") [map_sort; key_sort] map_sort in
+  let g_arg_m = read_var (create_dummy_symbol ()) map_sort in
+  let g_arg_k = read_var (create_dummy_symbol ()) key_sort in
+  let g_body = create_ite
+                (create_bool_eq g_arg_m nim)
+                g_arg_m
+                (create_ite
+                  (create_bool_eq (read_elt_key ~elt:(read_list_head g_arg_m)) g_arg_k)
+                  (read_list_tail g_arg_m)
+                  (update_list_cons (read_list_head g_arg_m) (Z3.FuncDecl.apply g [(read_list_tail g_arg_m); g_arg_k]))
+                ) in
+  let _ = Z3.FuncDecl.add_rec_def !ctx g [g_arg_m; g_arg_k] g_body in
+  create_ite (create_bool_option_is_none value_opt) (Z3.FuncDecl.apply g [map; key]) (Z3.FuncDecl.apply f [map; elt])
+end
 
 
 let create_cmp : z_expr -> z_expr -> z_expr

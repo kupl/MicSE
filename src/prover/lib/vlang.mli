@@ -173,8 +173,6 @@ and v_exp =
   | VE_bin_cont of v_bin_cont * v_exp * v_exp * typ
   | VE_list of v_exp list * typ
   | VE_var of var * typ
-  | VE_read of v_exp * v_exp (* A[i] in RHS *)
-  | VE_write of v_exp * v_exp * v_exp (* A[i] = v *)
   | VE_nul_op of v_nul_op * typ
   | VE_uni_op of v_uni_op * v_exp * typ
   | VE_bin_op of v_bin_op * v_exp * v_exp * typ
@@ -309,10 +307,6 @@ val create_exp_bin_cont_elt : v_exp -> v_exp -> typ -> v_exp
 val create_exp_list : v_exp list -> typ -> v_exp
 
 val create_exp_var : var -> typ -> v_exp
-
-val create_exp_read : v_exp -> v_exp -> v_exp
-
-val create_exp_write : v_exp -> v_exp -> v_exp -> v_exp
 
 val create_exp_nul_op : v_nul_op -> typ -> v_exp
 

@@ -1,0 +1,79 @@
+parameter (pair (mutez %amount) (address %toAddr));
+storage   (map address mutez);
+code
+  {
+    DUP;        # pair @parameter @storage : pair @parameter @storage
+    CDR;        # @storage : pair @parameter @storage
+    SWAP;       # pair @parameter @storage : @storage
+    CAR;        # @parameter : @storage
+    # == add ==
+    # sp.verify((self.data.balance.get(params.toAddr, default_value = sp.tez(0)) + params.amount) < sp.mutez(9223372036854775808)) # @parameter : @storage
+    DUP;        # @parameter : @parameter : @storage
+    CAR;        # mutez : @parameter : @storage
+    PUSH mutez 9223372036854775808; # mutez : mutez : @parameter : @storage
+    SWAP;       # mutez : mutez : @parameter : @storage
+    DIG 3;      # @storage : mutez : mutez : @parameter
+    DUP;        # @storage : @storage : mutez : mutez : @parameter
+    DUG 4;      # @storage : mutez : mutez : @parameter : @storage
+    DIG 3;      # @parameter : @storage : mutez : mutez : @storage
+    DUP;        # @parameter : @parameter : @storage : mutez : mutez : @storage
+    DUG 4;      # @parameter : @storage : mutez : mutez : @parameter : @storage
+    CDR;        # address : @storage : mutez : mutez : @parameter : @storage
+    GET;        # option mutez : mutez : mutez : @parameter : @storage
+    IF_SOME
+      {
+        # of_some: Get-item:12 # @some : mutez : mutez : @parameter : @storage
+      }
+      {
+        PUSH mutez 0; # mutez : mutez : mutez : @parameter : @storage
+      }; # @some : mutez : mutez : @parameter : @storage
+    ADD;        # mutez : mutez : @parameter : @storage
+    COMPARE;    # int : @parameter : @storage
+    LT;         # bool : @parameter : @storage
+    IF
+      {}
+      {
+        PUSH string "WrongCondition: (self.data.balance.get(params.toAddr, default_value = sp.tez(0)) + params.amount) < sp.mutez(9223372036854775808)"; # string : @parameter : @storage
+        FAILWITH;   # FAILED
+      }; # @parameter : @storage
+    SWAP;       # @storage : @parameter
+    # self.data.balance[params.toAddr] = self.data.balance.get(params.toAddr, default_value = sp.tez(0)) + params.amount # @storage : @parameter
+    DUP;        # @storage : @storage : @parameter
+    DUG 2;      # @storage : @parameter : @storage
+    SWAP;       # @parameter : @storage : @storage
+    DUP;        # @parameter : @parameter : @storage : @storage
+    CDR;        # address : @parameter : @storage : @storage
+    SWAP;       # @parameter : address : @storage : @storage
+    DUP;        # @parameter : @parameter : address : @storage : @storage
+    DUG 3;      # @parameter : address : @storage : @parameter : @storage
+    CAR;        # mutez : address : @storage : @parameter : @storage
+    DIG 2;      # @storage : mutez : address : @parameter : @storage
+    DUP;        # @storage : @storage : mutez : address : @parameter : @storage
+    DUG 3;      # @storage : mutez : address : @storage : @parameter : @storage
+    DIG 4;      # @parameter : @storage : mutez : address : @storage : @storage
+    DUP;        # @parameter : @parameter : @storage : mutez : address : @storage : @storage
+    DUG 5;      # @parameter : @storage : mutez : address : @storage : @parameter : @storage
+    CDR;        # address : @storage : mutez : address : @storage : @parameter : @storage
+    GET;        # option mutez : mutez : address : @storage : @parameter : @storage
+    IF_SOME
+      {
+        DIG 4;      # @parameter : @some : mutez : address : @storage : @storage
+        DROP;       # @some : mutez : address : @storage : @storage
+        DIG 4;      # @storage : @some : mutez : address : @storage
+        DROP;       # @some : mutez : address : @storage
+        # of_some: Get-item:13 # @some : mutez : address : @storage
+      }
+      {
+        DIG 3;      # @parameter : mutez : address : @storage : @storage
+        DROP;       # mutez : address : @storage : @storage
+        DIG 3;      # @storage : mutez : address : @storage
+        DROP;       # mutez : address : @storage
+        PUSH mutez 0; # mutez : mutez : address : @storage
+      }; # @some : mutez : address : @storage
+    ADD;        # mutez : address : @storage
+    SOME;       # option mutez : address : @storage
+    SWAP;       # address : option mutez : @storage
+    UPDATE;     # map address mutez
+    NIL operation; # list operation : map address mutez
+    PAIR;       # pair (list operation) (map address mutez)
+  };
