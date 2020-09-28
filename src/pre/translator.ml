@@ -2729,7 +2729,59 @@ begin
 end
   
 
+let adt_to_cfg_counter_included : (PreLib.Adt.t * (Cfg.cfgcon_ctr option)) -> (PreLib.Cfg.t * Cfg.cfgcon_ctr)
+= let open Cfg in
+  let imap_add = map_add "adt_to_cfg" in
+  let smap_add = map_add "adt_to_cfg" in  (* this duplicated might be refactored later. *)
+  (* FUNCTION BEGIN *)
+  fun (adt, ctr_opt) ->
+  let counter : cfgcon_ctr = (function | Some c -> c | None -> {vertex_counter=(ref (-1)); var_counter=(ref (-1)); lambda_counter=(ref 0);}) ctr_opt in
+  (*  INITIALIZE GRAPH 
+      flow          : two vertices. main_entry and main_exit.
+      vertex_info   : main_exit vertex -> Cfg_skip
+                      main_entry vertex's vertex-info will be updated in "inst_to_cfg" function.
+      type_info     : type of parameter-storage will be added
+      stack_info    : put the parameter-storage value to entry-v.
+      adt           : input adt itself.
+      lambda_id_map : empty map.
+      fail_vertices : empty set.
+      pos_info      : empty map.
+  *)
+  let entry_v = new_vtx counter in
+  let exit_v = new_vtx counter in
+  let flow_1 = G.add_vertex (G.add_vertex G.empty entry_v) exit_v in
+  let param_storage_type = gen_t (Mich.T_pair (adt.param, adt.storage)) in
+  let type_info_1 = smap_add CPMap.empty param_storage_name param_storage_type in
+  let stack_info_1 : stack_info_t = NS [Cfg.param_storage_name] in
+  let cfg_init = {
+    flow          = flow_1;
+    vertex_info   = CPMap.empty;
+    type_info     = type_info_1;
+    main_entry    = entry_v;
+    main_exit     = exit_v;
+    adt           = adt;
+    lambda_id_map = CPMap.empty;
+    fail_vertices = Core.Set.Poly.empty;
+    pos_info      = CPMap.empty; } in
+  let (cfg_last, stack_info) = inst_to_cfg_handle_es counter (cfg_init.main_entry, cfg_init.main_exit) (cfg_init.main_entry, cfg_init.main_exit) adt.code (cfg_init, stack_info_1) in
+  (* Check if the last stack_info is (normal & size=1) stack. Otherwise, handle them carefully. *)
+  (match stack_info with
+  | NS ns when (List.length ns = 1) ->
+    let hd_stack_info = ns_hd stack_info in
+    let vertex_info_last = imap_add cfg_last.vertex_info exit_v (Cfg_assign (hd_stack_info, E_itself hd_stack_info)) in
+    ({cfg_last with vertex_info=vertex_info_last;}, counter)
+  | NS ns -> fail ("adt_to_cfg : stack_info check failed : NS stack has non-1 elements : #elem=" ^ (string_of_int (List.length ns)))
+  | ES ev ->
+    let vertex_info_last = imap_add cfg_last.vertex_info exit_v (Cfg_assign (ev, E_itself ev)) in
+    ({cfg_last with vertex_info=vertex_info_last;}, counter)
+  ) 
+  (* TODO : if necessary, update exit node's stack info. *)
+
+
 let adt_to_cfg : Adt.t -> Cfg.t
+= fun adt ->
+  adt_to_cfg_counter_included (adt, None) |> Stdlib.fst
+(*
 = let open Cfg in
   let imap_add = map_add "adt_to_cfg" in
   let smap_add = map_add "adt_to_cfg" in  (* this duplicated might be refactored later. *)
@@ -2776,3 +2828,4 @@ let adt_to_cfg : Adt.t -> Cfg.t
     {cfg_last with vertex_info=vertex_info_last;}
   ) 
   (* TODO : if necessary, update exit node's stack info. *)
+*)

@@ -39,4 +39,7 @@ val get_es_str  : stack_info_t -> string
 (*****************************************************************************)
 (*****************************************************************************)
 
+(* "adt_to_cfg_counter_included" is recommended for advanced users who know what Cfg.cfgcon_ctr do *)
+val adt_to_cfg_counter_included : (PreLib.Adt.t * (PreLib.Cfg.cfgcon_ctr option)) -> (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr)
+
 val adt_to_cfg : PreLib.Adt.t -> PreLib.Cfg.t
