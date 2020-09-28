@@ -706,9 +706,9 @@ module Semantic = struct
     
     type blockchain_env = Blockchain.t * Blockchain.transaction
 
-    let run_expr : t -> blockchain_env -> expr -> traces -> traces = Stdlib.failwith "unimplemented" (* TODO *)
-    let run_vertex : t -> blockchain_env -> vertex -> traces -> traces = Stdlib.failwith "unimplemented" (* TODO *)
-    let run_program : t -> blockchain_env -> vertex -> Data.packed -> traces -> traces = Stdlib.failwith "unimplemented" (* TODO *)
+    let run_expr : t -> blockchain_env -> expr -> traces -> traces = fun _ _ _ _ -> Stdlib.failwith "unimplemented" (* TODO *)
+    let run_vertex : t -> blockchain_env -> vertex -> traces -> traces = fun _ _ _ -> Stdlib.failwith "unimplemented" (* TODO *)
+    let run_program : t -> blockchain_env -> vertex -> Data.packed -> traces -> traces = fun _ _ _ _ _ -> Stdlib.failwith "unimplemented" (* TODO *)
     (* "run_program" does not deal any returned operations, but "run_transaction" does. *)
     (*val run_transaction : t -> blockchain_env -> trace -> trace*)
 
