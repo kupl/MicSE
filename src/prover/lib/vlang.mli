@@ -155,6 +155,8 @@ and v_formula =
   | VF_imply of v_formula * v_formula
   | VF_iff of v_formula * v_formula
   | VF_forall of (var * typ) list * v_formula
+  (* Customized formula *)
+  | VF_sigma_equal of v_exp * v_exp (* VF_sigma_equal a b = VF_bin_rel VF_eq Sigma(a) b *)
 
 and v_uni_rel =
   | VF_is_true  | VF_is_none  | VF_is_left  | VF_is_cons
@@ -264,6 +266,10 @@ val create_formula_imply : v_formula -> v_formula -> v_formula
 val create_formula_iff : v_formula -> v_formula -> v_formula
 
 val create_formula_forall : (var * typ) list -> v_formula -> v_formula
+
+(* Customized formula *)
+
+val create_formula_sigma_equal : map:v_exp -> mutez:v_exp -> v_formula
 
 
 (*****************************************************************************)

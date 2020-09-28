@@ -23,6 +23,8 @@ and v_formula =
   | VF_imply of v_formula * v_formula
   | VF_iff of v_formula * v_formula
   | VF_forall of (var * typ) list * v_formula
+  (* Customized formula *)
+  | VF_sigma_equal of v_exp * v_exp (* VF_sigma_equal a b = VF_bin_rel VF_eq Sigma(a) b *)
 
 and v_uni_rel =
   | VF_is_true  | VF_is_none  | VF_is_left  | VF_is_cons
@@ -155,6 +157,11 @@ let create_formula_iff : v_formula -> v_formula -> v_formula
 
 let create_formula_forall : (var * typ) list -> v_formula -> v_formula
 =fun vl f -> VF_forall (vl, f)
+
+(* Customized formula *)
+
+let create_formula_sigma_equal : map:v_exp -> mutez:v_exp -> v_formula
+=fun ~map ~mutez -> VF_sigma_equal (map, mutez)
 
 
 (*****************************************************************************)
@@ -481,6 +488,7 @@ let rec string_of_formula : v_formula -> string
   | VF_imply (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") -> (" ^ (string_of_formula f2') ^ ")"
   | VF_iff (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") <-> (" ^ (string_of_formula f2') ^ ")"
   | VF_forall (vl', f') -> "ForAll " ^ (Core.String.concat ~sep:", " (Core.List.map vl' ~f:(fun (v', _) -> v'))) ^ ". " ^ (string_of_formula f')
+  | VF_sigma_equal (e1', e2') -> "(Σ" ^ (string_of_exp e1') ^ " == " ^ (string_of_exp e2') ^ ")"
 end
 
 and string_of_exp : v_exp -> string

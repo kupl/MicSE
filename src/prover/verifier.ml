@@ -95,6 +95,11 @@ and create_convert_vformula : Vlang.v_formula -> Smt.z_expr
         let f' = create_convert_vformula f in
         Smt.create_forall vl' f'
       end
+    | VF_sigma_equal (e1, e2) -> begin
+        let e1', e2' = ((create_convert_vexp e1), (create_convert_vexp e2)) in
+        let sigma = Smt.read_map_sigma ~map:e1' in
+        Smt.create_bool_eq sigma e2'
+      end
   with
   | Smt.Z3Error s -> raise (Failure ("Verifier.create_convert_vformula (" ^ (Vlang.string_of_formula vf) ^ "): " ^ s))
   | err -> raise err

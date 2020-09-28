@@ -392,6 +392,22 @@ let read_map_elt_exists : key:z_expr -> map:z_expr -> z_expr
   Z3.FuncDecl.apply f [map; key]
 end
 
+let read_map_sigma : map:z_expr -> z_expr
+=fun ~map -> begin
+  let map_sort = read_sort_of_expr map in
+  let elt_sort = read_constructor_domain_sort map_sort ~const_idx:1 ~sort_idx:0 in
+  let nim = create_map ~elt_sort:elt_sort in
+  let f = Z3.FuncDecl.mk_rec_func_decl !ctx (create_symbol "Sigma_Map") [map_sort; create_int_sort] create_int_sort in
+  let f_arg_m = read_var (create_dummy_symbol ()) map_sort in
+  let f_arg_s = read_var (create_dummy_symbol ()) create_int_sort in
+  let f_body = create_ite
+                (create_bool_eq f_arg_m nim)
+                f_arg_s
+                (Z3.FuncDecl.apply f [(read_list_tail f_arg_m); (create_int_add [(read_elt_value ~elt:(read_list_head f_arg_m)); f_arg_s])]) in
+  let _ = Z3.FuncDecl.add_rec_def !ctx f [f_arg_m; f_arg_s] f_body in
+  Z3.FuncDecl.apply f [map; (create_int 0)]
+end
+
 let update_map : key:z_expr -> value_opt:z_expr -> map:z_expr -> z_expr
 =fun ~key ~value_opt ~map -> begin
   let value = read_option_content value_opt in

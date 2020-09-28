@@ -237,6 +237,8 @@ val read_map_elt_content : key:z_expr -> map:z_expr -> z_expr
 
 val read_map_elt_exists : key:z_expr -> map:z_expr -> z_expr
 
+val read_map_sigma : map:z_expr -> z_expr
+
 val update_map : key:z_expr -> value_opt:z_expr -> map:z_expr -> z_expr
 
 

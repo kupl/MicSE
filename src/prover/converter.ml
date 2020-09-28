@@ -78,6 +78,7 @@ and create_rewrite_formula : Vlang.var -> Vlang.var -> Vlang.v_formula -> Vlang.
       let vf' = nested_rewrite vf in
       Vlang.create_formula_forall vvl' vf'
     end
+  | VF_sigma_equal (e1, e2) -> Vlang.create_formula_sigma_equal ~map:(exp_rewrite e1) ~mutez:(exp_rewrite e2) 
 end
 
 and create_rewrite_exp : Vlang.var -> Vlang.var -> Vlang.v_exp -> Vlang.v_exp
