@@ -48,12 +48,12 @@ and create_formula_from_param_storage : Pre.Lib.Cfg.t -> Vlang.v_formula
   )) in
   let mutez_map_formulae = Core.List.map ps_comp.mutez_map ~f:(fun (e, ty, fl) -> (
     let bound = "_bnd_mutez_map" in
-    let ty1' = match ty.d with T_map (ty1', _) -> ty1' | _ -> raise (Failure "") in
-    let map_entry = Vlang.create_exp_read (Vlang.create_exp_var bound ty1') e in
+    let ty1', ty2' = match ty.d with T_map (ty1', ty2') -> (ty1', ty2') | _ -> raise (Failure "") in
+    let map_entry = Vlang.create_exp_bin_op_get (Vlang.create_exp_var bound ty1') e ty2' in
     Vlang.create_formula_forall [(bound, ty1')] (
       Core.List.fold_right fl ~f:(fun func formula -> (
         func formula
-      )) ~init:(Vlang.create_formula_mutez_bound map_entry)
+      )) ~init:(Vlang.create_formula_imply (Vlang.create_formula_is_some map_entry) (Vlang.create_formula_mutez_bound (Vlang.create_exp_uni_op_un_opt map_entry ty2')))
     )
   )) in
   Vlang.create_formula_and (

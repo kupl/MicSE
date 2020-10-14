@@ -58,6 +58,11 @@ val create_or_symbol : z_sort -> z_sort -> z_symbol
 val create_list_symbol : z_sort -> z_symbol
 
 
+val create_elt_symbol : z_sort -> z_sort -> z_symbol
+
+val create_map_symbol : z_sort -> z_sort -> z_symbol
+
+
 val create_unit_sort : z_sort
 
 val create_operation_sort : z_sort
@@ -86,7 +91,12 @@ val create_or_sort : z_sort -> z_sort -> z_sort
 val create_list_sort : z_sort -> z_sort
 
 
-val create_map_sort : z_sort -> z_sort -> z_sort
+val create_elt_sort : key_sort:z_sort -> value_sort:z_sort -> z_sort
+
+val create_map_sort : elt_sort:z_sort -> z_sort
+
+
+val read_constructor_domain_sort : z_sort -> const_idx:int -> sort_idx:int -> z_sort
 
 
 (*****************************************************************************)
@@ -214,13 +224,20 @@ val read_list_tail : z_expr -> z_expr
 val update_list_cons : z_expr -> z_expr -> z_expr
 
 
-val create_map : z_sort -> z_expr
+val create_elt : key:z_expr -> value:z_expr -> z_expr
 
-val read_map : z_expr -> z_expr -> z_expr
+val read_elt_key : elt:z_expr -> z_expr
 
-val read_default_term : z_expr -> z_expr
+val read_elt_value : elt:z_expr -> z_expr
 
-val update_map : z_expr -> z_expr -> z_expr -> z_expr
+
+val create_map : elt_sort:z_sort -> z_expr
+
+val read_map_elt_content : key:z_expr -> map:z_expr -> z_expr
+
+val read_map_elt_exists : key:z_expr -> map:z_expr -> z_expr
+
+val update_map : key:z_expr -> value_opt:z_expr -> map:z_expr -> z_expr
 
 
 val create_cmp : z_expr -> z_expr -> z_expr

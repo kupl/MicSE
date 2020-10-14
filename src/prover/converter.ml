@@ -93,8 +93,6 @@ and create_rewrite_exp : Vlang.var -> Vlang.var -> Vlang.v_exp -> Vlang.v_exp
       if vv = v then create_var v'
       else e
     end
-  | VE_read (ve1, ve2) -> Vlang.create_exp_read (nested_rewrite ve1) (nested_rewrite ve2)
-  | VE_write (ve1, ve2, ve3) -> Vlang.create_exp_write (nested_rewrite ve1) (nested_rewrite ve2) (nested_rewrite ve3)
   | VE_uni_op (vo, ve, t) -> Vlang.create_exp_uni_op vo (nested_rewrite ve) t
   | VE_bin_op (vo, ve1, ve2, t) -> Vlang.create_exp_bin_op vo (nested_rewrite ve1) (nested_rewrite ve2) t
   | VE_ter_op (vo, ve1, ve2, ve3, t) -> Vlang.create_exp_ter_op vo (nested_rewrite ve1) (nested_rewrite ve2) (nested_rewrite ve3) t
