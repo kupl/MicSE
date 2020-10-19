@@ -1131,7 +1131,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         variables   : var-1     : list/set/map which placed on the top of the stack at the beginning of this process.
                       elem      : indicates the element of list/set/map
         vertex_info : in_v            -> Cfg_skip
-                      iter_v          -> Cfg_init var-1
+                      iter_v          -> Cfg_iter var-1
                       iter_setup_1    -> Cfg_assign (elem,  E_hd var-1)
                       iter_setup_2    -> Cfg_assign (var-1, E_tl var-1)
                       iter_body_begin -> decided by i
