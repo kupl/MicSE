@@ -394,7 +394,7 @@ module LoopUnrolling = struct
     (* FUNCTION BEGIN *)
     fun p -> begin
     let ptval = p.cuc_ptval in
-    let _ = print_endline ("DEBUG : copy_unrolled_cfg : p.cuc_loopvtx = " ^ (string_of_int p.cuc_loopvtx)) in
+    (*let _ = print_endline ("DEBUG : copy_unrolled_cfg : p.cuc_loopvtx = " ^ (string_of_int p.cuc_loopvtx)) in*)
     let uenv : unroll_env = t_map_find ~errtrace:(emsg_gen "uenv") ptval.env p.cuc_loopvtx in
     (* add vertices *)
     (* new_ptval : updated pt. cfg(flow, vertex-info) and vtxrel will be changed. counter will be updated autmoatically.
@@ -461,7 +461,7 @@ module LoopUnrolling = struct
     let emsg_gen s : string = ("cfgUtil.LoopUnrolling.dfs_copy_cfg : " ^ s) in
     (* FUNCTION BEGIN *)
     fun p -> begin
-      let _ : unit = print_endline  ("DEBUG : dfs_copy_cfg : p.o_entry = " ^ (string_of_int p.dcc_o_entry) ^ ", p.o_exit = " ^ (string_of_int p.dcc_o_exit)) in
+      (*let _ : unit = print_endline  ("DEBUG : dfs_copy_cfg : p.o_entry = " ^ (string_of_int p.dcc_o_entry) ^ ", p.o_exit = " ^ (string_of_int p.dcc_o_exit)) in*)
       (* 1. DFS - collects original-cfg's vertices between dcc_o_entry and dcc_o_exit *)
       (* Loop body are not collected *)
       let cfg_0 : t = p.dcc_ptval.cfg in
