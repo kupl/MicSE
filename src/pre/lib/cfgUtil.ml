@@ -675,6 +675,53 @@ module LoopUnrolling = struct
           let new_acc_uenv : unroll_env = {env_entry_vtx=v_if; env_exit_vtx=v_exit; env_vset=new_vset_1; env_eset=new_eset} in
           unroll_fold_f {p with ptval=newpt_2; unroll_count=(p.unroll_count + 1); acc_unroll_env=new_acc_uenv}
         ) 
+      | Cfg_loop_left var_1 ->
+        let emsg_gen s : string = ("CfgUtil.LoopUnrolling.unroll_fold_f : Cfg_loop_left : " ^ s) in
+        if (p.unroll_count = 0) 
+        then(
+          (* insert initial exit vertex only, no edge needed (and no eset update). *)
+          (* unwrap-r is out of this function's scope *)
+          let (cfg_0, v_exit) = t_add_vtx p.ptval.counter (p.ptval.cfg, ())
+                                |> t_add_vinfo_now ~errtrace:(emsg_gen "cfg_0") Cfg_skip
+          in
+          let new_vtxrel : (vertex, vertex CPSet.t) CPMap.t = t_map_add ~errtrace:(emsg_gen "new_vtxrel") p.ptval.vtxrel v_exit (CPSet.singleton p.target_vtx) in
+          let newpt : pt = {p.ptval with cfg=cfg_0; vtxrel=new_vtxrel} in
+          let new_vset : vertex CPSet.t = CPSet.singleton v_exit in
+          let new_acc_uenv : unroll_env = {env_entry_vtx=v_exit; env_exit_vtx=v_exit; env_vset=new_vset; env_eset=CPSet.empty} in
+          unroll_fold_f {p with ptval=newpt; unroll_count=(p.unroll_count+1); acc_unroll_env=new_acc_uenv}
+        )
+        else (
+          (* wrap previous cfg from Cfg_if_left to new-exit (insert if-stmt) *)
+          let (cfg_0, (v_ifleft, v_exit)) = t_add_vtx_2 p.ptval.counter (p.ptval.cfg, ()) in
+          let (cfg_1, _) = t_add_vinfos ~errtrace:(emsg_gen "else : cfg_1") [v_ifleft, Cfg_if_left var_1; v_exit, Cfg_skip] (cfg_0, ()) in
+          let else_edge : G.edge = (v_ifleft, If_false, v_exit) in
+          let new_exit_edge : G.edge = (p.acc_unroll_env.env_exit_vtx, Normal, v_exit) in
+          let cfg_2 = add_edges_cfg cfg_1 [else_edge; new_exit_edge] in
+          let new_vtxrel_0 : (vertex, vertex CPSet.t) CPMap.t = 
+            let tvtx_set : vertex CPSet.t = CPSet.singleton p.target_vtx in
+            let vtxrel_1 = t_map_add ~errtrace:(emsg_gen "else : new-vtxrel : vtxrel_1") p.ptval.vtxrel v_ifleft tvtx_set in
+            let vtxrel_2 = t_map_add ~errtrace:(emsg_gen "else : new-vtxrel : vtxrel_2") vtxrel_1 v_exit tvtx_set in
+            vtxrel_2
+          in
+          let newpt_0 : pt = {p.ptval with cfg=cfg_2; vtxrel=new_vtxrel_0;} in
+          (* copy loop body *)
+          (* before copy loop body, we should know the loop body entry vertex. PRECONDITION: there are only one loop body entry vertex, which has If_true edge comes from the target loop vertex. *)
+          let loop_body_entry_vtx : vertex = List.find (fun (_, lbl, _) -> lbl = If_true) (G.succ_e p.ptval.cfg.flow p.target_vtx) |> (fun (_, _, dst) -> dst) in
+          let (newpt_1, added_vtx_1, added_edg_1, (new_entry_v_1, new_exit_set)) = dfs_copy_cfg {dcc_ptval=newpt_0; dcc_o_entry=loop_body_entry_vtx; dcc_o_exit=p.target_vtx} in
+          (* add edge between then-body and if-stmt *)
+          let then_edge : G.edge = (v_ifleft, If_true, new_entry_v_1) in
+          let new_exit_edg_list : G.edge list = 
+            CPSet.fold new_exit_set ~init:[] ~f:(fun acclist (ev, lbl) -> (ev, lbl, p.acc_unroll_env.env_entry_vtx) :: acclist) 
+          in
+          (* add edges to pt's cfg flow *)
+          let cfg_3 : t = add_edges_cfg newpt_1.cfg (then_edge :: new_exit_edg_list) in
+          let newpt_2 = {newpt_1 with cfg=cfg_3} in
+          let new_vset_0 : vertex CPSet.t = CPSet.add (CPSet.add p.acc_unroll_env.env_vset v_ifleft) v_exit in
+          let new_vset_1 : vertex CPSet.t = CPSet.union new_vset_0 added_vtx_1 in
+          let new_eset : G.edge CPSet.t = List.fold_left CPSet.add p.acc_unroll_env.env_eset ([then_edge; else_edge; new_exit_edge] @ new_exit_edg_list @ (CPSet.to_list added_edg_1)) in
+          let new_acc_uenv : unroll_env = {env_entry_vtx=v_ifleft; env_exit_vtx=v_exit; env_vset=new_vset_1; env_eset=new_eset} in
+          unroll_fold_f {p with ptval=newpt_2; unroll_count=(p.unroll_count+1); acc_unroll_env=new_acc_uenv}
+        )
       | _ -> Stdlib.failwith (emsg_gen "targt_stmt match failed") (* TODO *)
   end   (* function unroll_fold_f ends *)
 
