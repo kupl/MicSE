@@ -261,12 +261,12 @@ module LoopUnrolling = struct
       (G.succ_e cfg.flow cfg.main_entry) @ lambda_entry_e
     in
     let {lni_acc_map=loopmap; _} : lni_dfs_param = dfs {lni_worklist=entry_edges; lni_acc_map=CPMap.empty; lni_visited=CPSet.empty} in
-    let _ = print_endline ("DEBUG : loopnest_info : loopmap = {" ^ (CPMap.fold loopmap ~init:"" ~f:(fun ~key:k ~data:d acc_str -> acc_str ^ "; " ^ (string_of_int k) ^ ": (" ^ (List.fold_left (fun acc x -> acc ^ ", " ^ (string_of_int x)) "" d) ^ ")" )) ^ "}") in
+    (*let _ = print_endline ("DEBUG : loopnest_info : loopmap = {" ^ (CPMap.fold loopmap ~init:"" ~f:(fun ~key:k ~data:d acc_str -> acc_str ^ "; " ^ (string_of_int k) ^ ": (" ^ (List.fold_left (fun acc x -> acc ^ ", " ^ (string_of_int x)) "" d) ^ ")" )) ^ "}") in*)
     (* 2. Collects loop-list *)
     (* these vertex lists are represented backward, e.g. [vtx-1; vtx-2] means that the vtx-1-loop located insided vtx-2-loop. *)
     let loop_dependencies : (vertex list) CPSet.t = CPMap.fold loopmap ~init:(CPSet.empty) ~f:(fun ~key:_ ~data:vl acc_set -> CPSet.add acc_set vl) in
-    let _ : unit = print_endline ("DEBUG : loopnest_info : loop_dependencies size = " ^ (CPSet.length loop_dependencies |> string_of_int)) in 
-    let _ : unit = print_endline ("DEBUG : loopnest_info : loop_dependencies = " ^ (CPSet.fold loop_dependencies ~init:"" ~f:(fun accstr vl -> accstr ^ (List.fold_left (fun accstr v -> accstr ^ "," ^ (string_of_int v)) "} :: {" vl ) ) ^ "}" )) in
+    (*let _ : unit = print_endline ("DEBUG : loopnest_info : loop_dependencies size = " ^ (CPSet.length loop_dependencies |> string_of_int)) in *)
+    (*let _ : unit = print_endline ("DEBUG : loopnest_info : loop_dependencies = " ^ (CPSet.fold loop_dependencies ~init:"" ~f:(fun accstr vl -> accstr ^ (List.fold_left (fun accstr v -> accstr ^ "," ^ (string_of_int v)) "} :: {" vl ) ) ^ "}" )) in*)
     (* 3. Construct loopnest-info *)
     (* "dependencies_fold" : collect all loop-nested information from the given vertex list, for example,
         "dependencies_fold ([vtx-1; vtx-2; vtx-3], EMPTY-MAP)" makes (vtx-3 -> {vtx-1; vtx-2}) and (vtx-2 -> {vtx-1})
@@ -394,7 +394,7 @@ module LoopUnrolling = struct
     (* FUNCTION BEGIN *)
     fun p -> begin
     let ptval = p.cuc_ptval in
-    let _ = print_endline ("DEBUG : copy_unrolled_cfg : p.cuc_loopvtx = " ^ (string_of_int p.cuc_loopvtx)) in
+    (*let _ = print_endline ("DEBUG : copy_unrolled_cfg : p.cuc_loopvtx = " ^ (string_of_int p.cuc_loopvtx)) in*)
     let uenv : unroll_env = t_map_find ~errtrace:(emsg_gen "uenv") ptval.env p.cuc_loopvtx in
     (* add vertices *)
     (* new_ptval : updated pt. cfg(flow, vertex-info) and vtxrel will be changed. counter will be updated autmoatically.
@@ -461,7 +461,7 @@ module LoopUnrolling = struct
     let emsg_gen s : string = ("cfgUtil.LoopUnrolling.dfs_copy_cfg : " ^ s) in
     (* FUNCTION BEGIN *)
     fun p -> begin
-      let _ : unit = print_endline  ("DEBUG : dfs_copy_cfg : p.o_entry = " ^ (string_of_int p.dcc_o_entry) ^ ", p.o_exit = " ^ (string_of_int p.dcc_o_exit)) in
+      (*let _ : unit = print_endline  ("DEBUG : dfs_copy_cfg : p.o_entry = " ^ (string_of_int p.dcc_o_entry) ^ ", p.o_exit = " ^ (string_of_int p.dcc_o_exit)) in*)
       (* 1. DFS - collects original-cfg's vertices between dcc_o_entry and dcc_o_exit *)
       (* Loop body are not collected *)
       let cfg_0 : t = p.dcc_ptval.cfg in
@@ -565,10 +565,10 @@ module LoopUnrolling = struct
       let add_edg : (pt * G.edge CPSet.t) -> G.edge -> (pt * G.edge CPSet.t)
       =fun (acc_pt, acc_eset) (src, lbl, dst) -> begin
         if dst = p.dcc_o_exit then (acc_pt, acc_eset) else
-        let _ : unit = print_endline ("DEBUG : dfs_copy_cfg : add_edg : src=" ^ (string_of_int src) ^ ", dst=" ^ (string_of_int dst)) in
+        (*let _ : unit = print_endline ("DEBUG : dfs_copy_cfg : add_edg : src=" ^ (string_of_int src) ^ ", dst=" ^ (string_of_int dst)) in*)
         let (_, src_exit) : vertex * vertex = List.assoc src nv3list_1 in
         let (dst_entry, _) : vertex * vertex = List.assoc dst nv3list_1 in
-        let _ : unit = print_endline ("DEBUG : dfs_copy_cfg : add_edg : src_exit=" ^ (string_of_int src_exit) ^ ", dst_entry=" ^ (string_of_int dst_entry)) in
+        (*let _ : unit = print_endline ("DEBUG : dfs_copy_cfg : add_edg : src_exit=" ^ (string_of_int src_exit) ^ ", dst_entry=" ^ (string_of_int dst_entry)) in*)
         let new_edg : G.edge = (src_exit, lbl, dst_entry) in
         let ncfg = {acc_pt.cfg with flow=(G.add_edge_e acc_pt.cfg.flow new_edg)} in
         let new_eset = CPSet.add acc_eset new_edg in
@@ -604,7 +604,7 @@ module LoopUnrolling = struct
     let add_edges_cfg : t -> G.edge list -> t = fun cfg el -> {cfg with flow=(add_edges cfg.flow el)} in
     (* FUNCTION BEGIN *)
     fun p -> begin
-      let _ = print_endline ("DEBUG : unroll_fold_f : target_vtx = " ^ (string_of_int p.target_vtx) ^ ", unroll_count = " ^ (string_of_int p.unroll_count)) in
+      (*let _ = print_endline ("DEBUG : unroll_fold_f : target_vtx = " ^ (string_of_int p.target_vtx) ^ ", unroll_count = " ^ (string_of_int p.unroll_count)) in*)
       if p.unroll_count > p.ptval.unroll_num 
       then (
         let newenv : (vertex, unroll_env) CPMap.t = t_map_add ~errtrace:(emsg_gen "before recursion escape") p.ptval.env p.target_vtx p.acc_unroll_env in 
@@ -657,9 +657,9 @@ module LoopUnrolling = struct
           (* copy loop body *)
           (* before copy loop body, we should know the loop body entry vertex. PRECONDITION: there are only one loop body entry vertex, which has If_true edge comes from the target loop vertex. *)
           let loop_body_entry_vtx : vertex = List.find (fun (_, lbl, _) -> lbl = If_true) (G.succ_e p.ptval.cfg.flow p.target_vtx) |> (fun (_, _, dst) -> dst) in
-          let _ : unit = print_endline "DEBUG : unroll_fold_f : above dfs_copy_cfg" in
+          (*let _ : unit = print_endline "DEBUG : unroll_fold_f : above dfs_copy_cfg" in*)
           let (newpt_1, added_vtx_1, added_edg_1, (new_entry_v_1, new_exit_set)) = dfs_copy_cfg {dcc_ptval=newpt_0; dcc_o_entry=loop_body_entry_vtx; dcc_o_exit=p.target_vtx} in
-          let _ : unit = print_endline "DEBUG : unroll_fold_f : below dfs_copy_cfg" in
+          (*let _ : unit = print_endline "DEBUG : unroll_fold_f : below dfs_copy_cfg" in*)
           (* add edge from v_if to new_entry_v_1 *)
           let then_edge : G.edge = (v_if, If_true, new_entry_v_1) in
           (* add edges from new_exit_set to p.acc_unroll_env.env_entry_vtx *)
@@ -675,6 +675,115 @@ module LoopUnrolling = struct
           let new_acc_uenv : unroll_env = {env_entry_vtx=v_if; env_exit_vtx=v_exit; env_vset=new_vset_1; env_eset=new_eset} in
           unroll_fold_f {p with ptval=newpt_2; unroll_count=(p.unroll_count + 1); acc_unroll_env=new_acc_uenv}
         ) 
+      | Cfg_loop_left var_1 ->
+        let emsg_gen s : string = ("CfgUtil.LoopUnrolling.unroll_fold_f : Cfg_loop_left : " ^ s) in
+        if (p.unroll_count = 0) 
+        then(
+          (* insert initial exit vertex only, no edge needed (and no eset update). *)
+          (* unwrap-r is out of this function's scope *)
+          let (cfg_0, v_exit) = t_add_vtx p.ptval.counter (p.ptval.cfg, ())
+                                |> t_add_vinfo_now ~errtrace:(emsg_gen "cfg_0") Cfg_skip
+          in
+          let new_vtxrel : (vertex, vertex CPSet.t) CPMap.t = t_map_add ~errtrace:(emsg_gen "new_vtxrel") p.ptval.vtxrel v_exit (CPSet.singleton p.target_vtx) in
+          let newpt : pt = {p.ptval with cfg=cfg_0; vtxrel=new_vtxrel} in
+          let new_vset : vertex CPSet.t = CPSet.singleton v_exit in
+          let new_acc_uenv : unroll_env = {env_entry_vtx=v_exit; env_exit_vtx=v_exit; env_vset=new_vset; env_eset=CPSet.empty} in
+          unroll_fold_f {p with ptval=newpt; unroll_count=(p.unroll_count+1); acc_unroll_env=new_acc_uenv}
+        )
+        else (
+          (* wrap previous cfg from Cfg_if_left to new-exit (insert if-stmt) *)
+          let (cfg_0, (v_ifleft, v_exit)) = t_add_vtx_2 p.ptval.counter (p.ptval.cfg, ()) in
+          let (cfg_1, _) = t_add_vinfos ~errtrace:(emsg_gen "else : cfg_1") [v_ifleft, Cfg_if_left var_1; v_exit, Cfg_skip] (cfg_0, ()) in
+          let else_edge : G.edge = (v_ifleft, If_false, v_exit) in
+          let new_exit_edge : G.edge = (p.acc_unroll_env.env_exit_vtx, Normal, v_exit) in
+          let cfg_2 = add_edges_cfg cfg_1 [else_edge; new_exit_edge] in
+          let new_vtxrel_0 : (vertex, vertex CPSet.t) CPMap.t = 
+            let tvtx_set : vertex CPSet.t = CPSet.singleton p.target_vtx in
+            let vtxrel_1 = t_map_add ~errtrace:(emsg_gen "else : new-vtxrel : vtxrel_1") p.ptval.vtxrel v_ifleft tvtx_set in
+            let vtxrel_2 = t_map_add ~errtrace:(emsg_gen "else : new-vtxrel : vtxrel_2") vtxrel_1 v_exit tvtx_set in
+            vtxrel_2
+          in
+          let newpt_0 : pt = {p.ptval with cfg=cfg_2; vtxrel=new_vtxrel_0;} in
+          (* copy loop body *)
+          (* before copy loop body, we should know the loop body entry vertex. PRECONDITION: there are only one loop body entry vertex, which has If_true edge comes from the target loop vertex. *)
+          let loop_body_entry_vtx : vertex = List.find (fun (_, lbl, _) -> lbl = If_true) (G.succ_e p.ptval.cfg.flow p.target_vtx) |> (fun (_, _, dst) -> dst) in
+          let (newpt_1, added_vtx_1, added_edg_1, (new_entry_v_1, new_exit_set)) = dfs_copy_cfg {dcc_ptval=newpt_0; dcc_o_entry=loop_body_entry_vtx; dcc_o_exit=p.target_vtx} in
+          (* add edge between then-body and if-stmt *)
+          let then_edge : G.edge = (v_ifleft, If_true, new_entry_v_1) in
+          let new_exit_edg_list : G.edge list = 
+            CPSet.fold new_exit_set ~init:[] ~f:(fun acclist (ev, lbl) -> (ev, lbl, p.acc_unroll_env.env_entry_vtx) :: acclist) 
+          in
+          (* add edges to pt's cfg flow *)
+          let cfg_3 : t = add_edges_cfg newpt_1.cfg (then_edge :: new_exit_edg_list) in
+          let newpt_2 = {newpt_1 with cfg=cfg_3} in
+          let new_vset_0 : vertex CPSet.t = CPSet.add (CPSet.add p.acc_unroll_env.env_vset v_ifleft) v_exit in
+          let new_vset_1 : vertex CPSet.t = CPSet.union new_vset_0 added_vtx_1 in
+          let new_eset : G.edge CPSet.t = List.fold_left CPSet.add p.acc_unroll_env.env_eset ([then_edge; else_edge; new_exit_edge] @ new_exit_edg_list @ (CPSet.to_list added_edg_1)) in
+          let new_acc_uenv : unroll_env = {env_entry_vtx=v_ifleft; env_exit_vtx=v_exit; env_vset=new_vset_1; env_eset=new_eset} in
+          unroll_fold_f {p with ptval=newpt_2; unroll_count=(p.unroll_count+1); acc_unroll_env=new_acc_uenv}
+        )
+        (* unrolling procedure produces same result for ITER and MAP *)
+      | Cfg_iter var_1
+      | Cfg_map var_1 ->
+        let emsg_gen s : string = ("CfgUtil.LoopUnrolling.unroll_fold_f : Cfg_loop_left : " ^ s) in
+        if (p.unroll_count = 0)
+        then (
+          (* insert initial exit vertex only, no edge needed (and no eset update) *)
+          let (cfg_0, v_exit) = t_add_vtx p.ptval.counter (p.ptval.cfg, ())
+                                |> t_add_vinfo_now ~errtrace:(emsg_gen "cfg_0") Cfg_skip
+          in
+          let new_vtxrel : (vertex, vertex CPSet.t) CPMap.t = t_map_add ~errtrace:(emsg_gen "new_vtxrel") p.ptval.vtxrel v_exit (CPSet.singleton p.target_vtx) in
+          let newpt : pt = {p.ptval with cfg=cfg_0; vtxrel=new_vtxrel} in
+          let new_vset : vertex CPSet.t = CPSet.singleton v_exit in
+          let new_acc_uenv : unroll_env = {env_entry_vtx=v_exit; env_exit_vtx=v_exit; env_vset=new_vset; env_eset=CPSet.empty} in
+          unroll_fold_f {p with ptval=newpt; unroll_count=(p.unroll_count+1); acc_unroll_env=new_acc_uenv}
+        )
+        else (
+          (* Put [Cfg_assign (nvar-1, E_size var-1); Cfg_assign (nvar-2, E_int nvar-1); Cfg_assign (nvar-3, E_neq nvar-2); Cfg_if (nvar-3)] *)
+          let (cfg_nv_1, nvar_1) = t_add_nv_tinfo ~errtrace:(emsg_gen "else : cfg_nv_1") p.ptval.counter (Mich.gen_t Mich.T_nat) (p.ptval.cfg, ()) in
+          let (cfg_nv_2, nvar_2) = t_add_nv_tinfo ~errtrace:(emsg_gen "else : cfg_nv_2") p.ptval.counter (Mich.gen_t Mich.T_int) (cfg_nv_1, ()) in
+          let (cfg_nv_3, nvar_3) = t_add_nv_tinfo ~errtrace:(emsg_gen "else : cfg_nv_3") p.ptval.counter (Mich.gen_t Mich.T_bool) (cfg_nv_2, ()) in
+          let (cfg_0, (v_size, v_int, v_neq, v_if, v_exit)) = t_add_vtx_5 p.ptval.counter (cfg_nv_3, ()) in
+          let (cfg_1, _) = 
+            t_add_vinfos 
+              ~errtrace:(emsg_gen "else : cfg_1")
+              [ v_size, Cfg_assign (nvar_1, E_size var_1);
+                v_int, Cfg_assign (nvar_2, E_int_of_nat nvar_1);
+                v_neq, Cfg_assign (nvar_3, E_neq nvar_2);
+                v_if, Cfg_if (nvar_3);
+                v_exit, Cfg_skip;
+              ]
+              (cfg_0, ())
+          in
+          let (edg_size_int, edg_int_neq, edg_neq_if, edg_else, new_exit_edge) : (G.edge * G.edge * G.edge * G.edge * G.edge) = 
+            ((v_size, Normal, v_int), (v_int, Normal, v_neq), (v_neq, Normal, v_if), (v_if, If_false, v_exit), (p.acc_unroll_env.env_exit_vtx, Normal, v_exit))
+          in
+          let cfg_2 = add_edges_cfg cfg_1 [edg_size_int; edg_int_neq; edg_neq_if; edg_else; new_exit_edge] in
+          let new_vtxrel_0 : (vertex, vertex CPSet.t) CPMap.t =
+            let tvtx_set : vertex CPSet.t = CPSet.singleton p.target_vtx in
+            let vtxrel_1 = t_map_add ~errtrace:(emsg_gen "else : new-vtxrel : vtxrel_1") p.ptval.vtxrel v_size tvtx_set in
+            let vtxrel_2 = t_map_add ~errtrace:(emsg_gen "else : new-vtxrel : vtxrel_2") vtxrel_1 v_int tvtx_set in
+            let vtxrel_3 = t_map_add ~errtrace:(emsg_gen "else : new-vtxrel : vtxrel_3") vtxrel_2 v_neq tvtx_set in
+            let vtxrel_4 = t_map_add ~errtrace:(emsg_gen "else : new-vtxrel : vtxrel_4") vtxrel_3 v_if tvtx_set in
+            let vtxrel_5 = t_map_add ~errtrace:(emsg_gen "else : new_vtxrel : vtxrel_5") vtxrel_4 v_exit tvtx_set in
+            vtxrel_5
+          in
+          let newpt_0 : pt = {p.ptval with cfg=cfg_2; vtxrel=new_vtxrel_0;} in
+          (* copy loop body *)
+          (* before copy loop body, we should know the loop body entry vertex. PRECONDITION: there are only one loop body entry vertex, which has If_true edge comes from the target loop vertex. *)
+          let loop_body_entry_vtx : vertex = List.find (fun (_, lbl, _) -> lbl = If_true) (G.succ_e p.ptval.cfg.flow p.target_vtx) |> (fun (_, _, dst) -> dst) in
+          let (newpt_1, added_vtx_1, added_edg_1, (new_entry_v_1, new_exit_set)) = dfs_copy_cfg {dcc_ptval=newpt_0; dcc_o_entry=loop_body_entry_vtx; dcc_o_exit=p.target_vtx} in
+          (* add edge between then-body and if-stmt *)
+          let then_edge : G.edge = (v_if, If_true, new_entry_v_1) in
+          let new_exit_edg_list : G.edge list = CPSet.fold new_exit_set ~init:[] ~f:(fun acclist (ev, lbl) -> (ev, lbl, p.acc_unroll_env.env_entry_vtx) :: acclist) in
+          (* add edges to pt's cfg flow *)
+          let cfg_3 : t = add_edges_cfg newpt_1.cfg (then_edge :: new_exit_edg_list) in
+          let newpt_2 = {newpt_1 with cfg=cfg_3} in
+          let new_vset_0 : vertex CPSet.t = CPSet.union p.acc_unroll_env.env_vset (CPSet.union added_vtx_1 (CPSet.of_list [v_size; v_int; v_neq; v_if; v_exit])) in
+          let new_eset : G.edge CPSet.t = List.fold_left CPSet.add p.acc_unroll_env.env_eset ([edg_size_int; edg_int_neq; edg_neq_if; then_edge; edg_else; new_exit_edge] @ new_exit_edg_list @ (CPSet.to_list added_edg_1)) in
+          let new_acc_uenv : unroll_env = {env_entry_vtx=v_size; env_exit_vtx=v_exit; env_vset=new_vset_0; env_eset=new_eset} in
+          unroll_fold_f {p with ptval=newpt_2; unroll_count=(p.unroll_count+1); acc_unroll_env=new_acc_uenv}
+        )
       | _ -> Stdlib.failwith (emsg_gen "targt_stmt match failed") (* TODO *)
   end   (* function unroll_fold_f ends *)
 
@@ -688,9 +797,9 @@ module LoopUnrolling = struct
     let gen_emsg s : string = ("CfgUtil : LoopUnrolling : unroll : " ^ s) in
     (* 1. collect topology sorted loop dependencies *)
     let lni : (vertex, vertex CPSet.t) CPMap.t = loopnest_info p.cfg in
-    let _ = print_endline ("DEBUG : unroll : lni = {" ^ (CPMap.fold lni ~init:"" ~f:(fun ~key:k ~data:d acc_str -> acc_str ^ "; " ^ (string_of_int k) ^ ": " ^ (CPSet.fold d ~init:"" ~f:(fun acc x -> acc ^ ", " ^ (string_of_int x))) )) ^ "}") in
+    (*let _ = print_endline ("DEBUG : unroll : lni = {" ^ (CPMap.fold lni ~init:"" ~f:(fun ~key:k ~data:d acc_str -> acc_str ^ "; " ^ (string_of_int k) ^ ": " ^ (CPSet.fold d ~init:"" ~f:(fun acc x -> acc ^ ", " ^ (string_of_int x))) )) ^ "}") in*)
     let tplg_sorted_loops : vertex list = tplg_sort lni in
-    let _ = print_endline ("DEBUG : unroll : tplg_sorted_loops = [" ^ (String.concat ", " (List.map string_of_int tplg_sorted_loops)) ^ "]" ) in
+    (*let _ = print_endline ("DEBUG : unroll : tplg_sorted_loops = [" ^ (String.concat ", " (List.map string_of_int tplg_sorted_loops)) ^ "]" ) in*)
     (* 2. unroll every loop vertices and store it at UnrollParam.pt value *)
     let urpt : pt = 
       let arbitrary_unroll_env : unroll_env = {env_entry_vtx=0; env_exit_vtx=0; env_vset=CPSet.empty; env_eset=CPSet.empty;} in

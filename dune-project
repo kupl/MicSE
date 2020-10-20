@@ -22,8 +22,5 @@
 (package
   (name micse)
   (synopsis "Michelson Symbolic vErifier, for verifying and testing the integrity of smart contracts in the Tezos blockchain")
-  (depends
-    (dune :build)
-    (michelson :build)
-    (tezla :build)))
+)
 (using menhir 2.1)
