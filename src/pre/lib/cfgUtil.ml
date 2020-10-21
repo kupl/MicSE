@@ -784,7 +784,7 @@ module LoopUnrolling = struct
           let new_acc_uenv : unroll_env = {env_entry_vtx=v_size; env_exit_vtx=v_exit; env_vset=new_vset_0; env_eset=new_eset} in
           unroll_fold_f {p with ptval=newpt_2; unroll_count=(p.unroll_count+1); acc_unroll_env=new_acc_uenv}
         )
-      | _ -> Stdlib.failwith (emsg_gen "targt_stmt match failed") (* TODO *)
+      | _ -> Stdlib.failwith (emsg_gen "targt_stmt match failed")
   end   (* function unroll_fold_f ends *)
 
   let construct_pt : t * cfgcon_ctr * int -> UnrollParam.pt
@@ -841,7 +841,6 @@ module LoopUnrolling = struct
             (G.add_edge_e acc_flw (ev, el, new_main_exit_v), (e :: acc_edgs))
         ) 
       in
-      (*{_npt with cfg=new_cfg; vtxrel=new_vrel}, *)
       let new_uenv : unroll_env = 
         { env_entry_vtx = _entry_v;
           env_exit_vtx = new_main_exit_v;
@@ -849,11 +848,55 @@ module LoopUnrolling = struct
           env_eset = CPSet.union _eset (CPSet.of_list exit_edgs);
         }
       in
-      ({_npt with cfg={new_cfg with flow=new_flow}; vtxrel=new_vrel}, new_uenv)
+      (* 3.1.2. update main_entry and main_exit in cfg too *)
+      ({_npt with cfg={new_cfg with flow=new_flow; main_entry=_entry_v; main_exit=new_main_exit_v;}; vtxrel=new_vrel}, new_uenv)
     in
     (* 3.2. copy lambda functions / update lambda_id_map too *)
-    let (new_pt_2, n_lambda_ues) : pt * (unroll_env list) = (* TODO *) (new_pt_1, []) in
+    let (new_pt_2, n_lambda_ues) : pt * (unroll_env list) =
+      let lm : (lambda_ident, lambda_summary) CPMap.t = new_pt_1.cfg.lambda_id_map in
+      CPMap.fold
+        lm
+        ~init:(new_pt_1, [])
+        ~f:(fun ~key:k ~data:(lmb_entry, lmb_exit, paramtyp, outtyp) (acc_pt, acc_uel) ->
+          (* 3.2.1. for each lambda, copy graph *)
+          let (_l_pt, _l_vset, _l_eset, (_l_entry_v, _l_end_rel)) : pt * (vertex CPSet.t) * (G.edge CPSet.t) * (vertex * ((vertex * edge_label) CPSet.t)) =
+            dfs_copy_cfg {dcc_ptval=acc_pt; dcc_o_entry=lmb_entry; dcc_o_exit=lmb_exit}
+          in
+          (* 3.2.2. create new lambda-exit-vertex and update cfg(flow,vertex-info), vertex-relationship, vset, eset *)
+          let (cfg_with_lmbd_exit, lmbd_exit_vertex) : (t * vertex) =
+            (_l_pt.cfg, ())
+            |> t_add_vtx _l_pt.counter
+            |> t_add_vinfo_now
+                ~errtrace:(gen_emsg "new_pt_2 : cfg_with_lmbd_exit")
+                (t_map_find ~errtrace:(gen_emsg "new_pt_2 : cfg_with_lmbd_exit : find stmt") _l_pt.cfg.vertex_info lmb_exit)
+          in
+          let (cfg_with_lmbd_exit_connected, new_eset) : t * (G.edge CPSet.t) =
+            CPSet.fold
+              _l_end_rel
+              ~init:(cfg_with_lmbd_exit, _l_eset)
+              ~f:(fun (acfg, aeset) (ev, el) -> let e : G.edge = (ev, el, lmbd_exit_vertex) in ({acfg with flow=(G.add_edge_e acfg.flow e)}, CPSet.add aeset e))
+          in
+          let new_vtxrel : (vertex, vertex CPSet.t) CPMap.t = t_map_add ~errtrace:(gen_emsg "new_pt_2 : new_vtxrel") _l_pt.vtxrel lmbd_exit_vertex (CPSet.singleton lmb_exit) in
+          let new_vset : vertex CPSet.t = CPSet.add _l_vset lmbd_exit_vertex in
+          (* 3.2.3. create new unroll_env *)
+          let new_ue : unroll_env = {
+            env_entry_vtx=_l_entry_v;
+            env_exit_vtx=lmbd_exit_vertex;
+            env_vset=new_vset;
+            env_eset=new_eset;
+          }
+          in
+          (* 3.2.4. update lambda_id_map in cfg(cfg_with_lmbd_exit_connected) *)
+          let new_ls : lambda_summary = (_l_entry_v, lmbd_exit_vertex, paramtyp, outtyp) in
+          let new_lim : (lambda_ident, lambda_summary) CPMap.t = CPMap.change cfg_with_lmbd_exit_connected.lambda_id_map k ~f:(fun _ -> Some new_ls) in
+          let new_cfg_f : t = {cfg_with_lmbd_exit_connected with lambda_id_map=new_lim} in
+          (* 3.2.5. accumulate *)
+          ({_l_pt with cfg=new_cfg_f; vtxrel=new_vtxrel;}, new_ue :: acc_uel)
+        )
+    in
     (* 4. remove (original or unrelated) subgraphs from new_pt.cfg *)
+    (* 4.1. use n_main_ue & n_main_ues, remove vertices in flow *)
+    (* The only thing to do is remove vertices *)
     let new_pt_3 : pt = (* TODO *) let _ = (n_main_ue, n_lambda_ues) in new_pt_2 in
     (* 5. update fail_vertices, pos_info *)
       (* TODO *)
