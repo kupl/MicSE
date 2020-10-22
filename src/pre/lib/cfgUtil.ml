@@ -895,10 +895,15 @@ module LoopUnrolling = struct
         )
     in
     (* 4. remove (original or unrelated) subgraphs from new_pt.cfg *)
-    (* 4.1. use n_main_ue & n_main_ues, remove vertices in flow *)
-    (* The only thing to do is remove vertices *)
-    let new_pt_3 : pt = (* TODO *) let _ = (n_main_ue, n_lambda_ues) in new_pt_2 in
-    (* 5. update fail_vertices, pos_info *)
+    (* 4.1. collect vertices which should be remained (use n_main_ue & n_main_ues) *)
+    let all_new_vertices : vertex CPSet.t = List.fold_left (fun accset x_ue -> CPSet.union accset x_ue.env_vset ) n_main_ue.env_vset n_lambda_ues in
+    (* 4.2. use n_main_ue & n_main_ues, remove vertices in flow *)
+    let trimmed_flow : G.t = 
+      let o_f : G.t = new_pt_2.cfg.flow in 
+      G.fold_vertex (fun v accflow -> if CPSet.mem all_new_vertices v then accflow else (G.remove_vertex accflow v)) o_f o_f 
+    in
+    let new_pt_3 : pt = {new_pt_2 with cfg={new_pt_2.cfg with flow=trimmed_flow}} in
+    (* 5. update fail_vertices, pos_info in cfg *)
       (* TODO *)
     (* 6. return *)
     new_pt_3
