@@ -19,7 +19,7 @@ let remove_meaningless_skip_vertices =
         let (in_v, in_label, mid_v) = G.pred_e cfg.flow v |> Core.List.hd_exn in
         let (mid_v_2, out_label, out_v) = G.succ_e cfg.flow v |> Core.List.hd_exn in
         if (  (mid_v = mid_v_2)
-              && (in_label = Normal)
+              && (in_label = Normal || in_label = If_true || in_label = If_false)
               && (out_label = Normal)
               && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> in_v))
               && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> mid_v))
@@ -32,10 +32,11 @@ let remove_meaningless_skip_vertices =
     end in
     let (vvvl, _) = G.fold_vertex fold_func cfg.flow ([], Core.Set.Poly.empty) in
     let optfunc fl (in_v, mid_v, out_v) = begin
+      let (_, in_label, _) = G.pred_e fl mid_v |> Core.List.hd_exn in
       let fl_1 = G.remove_edge fl in_v mid_v in
       let fl_2 = G.remove_edge fl_1 mid_v out_v in
       let fl_3 = G.remove_vertex fl_2 mid_v in
-      (G.add_edge fl_3 in_v out_v)
+      (G.add_edge_e fl_3 (in_v, in_label, out_v))
     end in
     let newflow = Core.List.fold vvvl ~init:(cfg.flow) ~f:optfunc in
     {cfg with flow=newflow;}
@@ -88,6 +89,44 @@ let rec remove_meaningless_fail_vertices_fixpoint cfg =
   let cfg'  = remove_meaningless_fail_vertices cfg in
   let sz'   = G.nb_vertex cfg'.flow in
   if sz <> sz' then remove_meaningless_fail_vertices_fixpoint cfg' else cfg'
+
+
+let remove_simple_stack_operation_vertices : t -> t
+= let naive_merge_edge_label : (edge_label * edge_label) -> (bool * edge_label) =
+  ( function
+    | Normal, Normal -> (true, Normal)
+    | If_true, Normal -> (true, If_true)
+    | If_false, Normal -> (true, If_false)
+    | Failed, Normal -> (true, Failed)
+    | _ -> (false, Normal)
+  )
+  in
+  (* FUNCTION BEGIN *)
+  fun cfg ->
+  let is_ssop : stmt -> bool = (function | Cfg_drop _ | Cfg_swap | Cfg_dig | Cfg_dug -> true | _ -> false) in
+  G.fold_vertex 
+    (fun v acc_cfg ->
+      let nvi : (vertex, stmt) Core.Map.Poly.t = Core.Map.Poly.update acc_cfg.vertex_info v ~f:(function | _ -> Cfg_skip) in
+      let cfg_elsebr : t = {acc_cfg with vertex_info=nvi} in
+      let is_ssop_v : bool = t_map_find ~errtrace:("cfgUtil : remove_simple_stack_operation_vertices : if") cfg.vertex_info v |> is_ssop in
+      if is_ssop_v
+      then (
+        let pel : G.edge list = G.pred_e acc_cfg.flow v in
+        let sel : G.edge list = G.succ_e acc_cfg.flow v in
+        if (List.length pel = 1 && List.length sel = 1)
+        then (
+          let ((pv, pl, _), (_, sl, sv)) : (G.edge * G.edge) = List.hd pel, List.hd sel in
+          let (flag, lbl) = naive_merge_edge_label (pl, sl) in
+          if flag
+          then ({acc_cfg with flow=(G.remove_vertex (G.add_edge_e acc_cfg.flow (pv, lbl, sv)) v);})
+          else (cfg_elsebr)
+        )
+        else (cfg_elsebr)
+      )
+      else (acc_cfg)
+    )
+    cfg.flow
+    cfg
 
 
 (*****************************************************************************)

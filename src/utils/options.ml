@@ -16,6 +16,8 @@ let flag_cfgopt_rsv : bool ref
 =ref false (* remove-skip-vertices *)
 let flag_cfgopt_rfv : bool ref
 =ref false (* remove-fail-vertices *)
+let flag_cfgopt_rssov : bool ref
+=ref false (* remove-simple-stack-operation-vertices *)
 let flag_cfgopt_all : bool ref
 =ref false (* it will set all cfg-optimization *)
 
@@ -32,6 +34,7 @@ let set_all_cfg_opt : unit -> unit
   if (not !flag_cfgopt_all) then () else (
     flag_cfgopt_rsv := true;
     flag_cfgopt_rfv := true;
+    flag_cfgopt_rssov := true;
   )
 end
 
@@ -58,6 +61,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-cfgopt", (Arg.Set flag_cfgopt_all), "Set all cfg optimization options");
     ("-cfgopt_rsv", (Arg.Set flag_cfgopt_rsv), "Remove all trivial skip vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
     ("-cfgopt_rfv", (Arg.Set flag_cfgopt_rfv), "Remove all trivial fail vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
+    ("-cfgopt_rssov", (Arg.Set flag_cfgopt_rssov), "Remove vertex with simple stack operations (Cfg_drop, Cfg_swap, Cfg_dig, Cfg_dug statements). If that vertex has one pred-edge and one succ-edge, remove that vertex. WARNING: It might overwrite vertex-information in Cfg");
     ("-cfg_print_dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
     ("-bpopt_rsi", (Arg.Set flag_bpopt_rsi), "Remove all trivial skip instructions in bp printing.");
     ("-bp_print", (Arg.Set flag_bp_print), "Print all basic paths.");
