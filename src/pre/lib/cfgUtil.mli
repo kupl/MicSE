@@ -15,6 +15,10 @@ val remove_meaningless_skip_vertices_fixpoint : Cfg.t -> Cfg.t
 val remove_meaningless_fail_vertices : Cfg.t -> Cfg.t
 val remove_meaningless_fail_vertices_fixpoint : Cfg.t -> Cfg.t
 
+(* simple optimization - remove Cfg_drop, Cfg_swap, Cfg_dig, and Cfg_dug *)
+(* it can remove vertices only if the node has one predecessor and one successor. otherwise, it will replace the statememnt into Cfg_skip *)
+val remove_simple_stack_operation_vertices : Cfg.t -> Cfg.t
+
 
 (*****************************************************************************)
 (*****************************************************************************)

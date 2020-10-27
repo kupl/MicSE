@@ -19,7 +19,7 @@ let remove_meaningless_skip_vertices =
         let (in_v, in_label, mid_v) = G.pred_e cfg.flow v |> Core.List.hd_exn in
         let (mid_v_2, out_label, out_v) = G.succ_e cfg.flow v |> Core.List.hd_exn in
         if (  (mid_v = mid_v_2)
-              && (in_label = Normal)
+              && (in_label = Normal || in_label = If_true || in_label = If_false)
               && (out_label = Normal)
               && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> in_v))
               && (Core.Set.Poly.for_all vset ~f:(fun x -> x <> mid_v))
@@ -32,10 +32,11 @@ let remove_meaningless_skip_vertices =
     end in
     let (vvvl, _) = G.fold_vertex fold_func cfg.flow ([], Core.Set.Poly.empty) in
     let optfunc fl (in_v, mid_v, out_v) = begin
+      let (_, in_label, _) = G.pred_e fl mid_v |> Core.List.hd_exn in
       let fl_1 = G.remove_edge fl in_v mid_v in
       let fl_2 = G.remove_edge fl_1 mid_v out_v in
       let fl_3 = G.remove_vertex fl_2 mid_v in
-      (G.add_edge fl_3 in_v out_v)
+      (G.add_edge_e fl_3 (in_v, in_label, out_v))
     end in
     let newflow = Core.List.fold vvvl ~init:(cfg.flow) ~f:optfunc in
     {cfg with flow=newflow;}
@@ -88,6 +89,44 @@ let rec remove_meaningless_fail_vertices_fixpoint cfg =
   let cfg'  = remove_meaningless_fail_vertices cfg in
   let sz'   = G.nb_vertex cfg'.flow in
   if sz <> sz' then remove_meaningless_fail_vertices_fixpoint cfg' else cfg'
+
+
+let remove_simple_stack_operation_vertices : t -> t
+= let naive_merge_edge_label : (edge_label * edge_label) -> (bool * edge_label) =
+  ( function
+    | Normal, Normal -> (true, Normal)
+    | If_true, Normal -> (true, If_true)
+    | If_false, Normal -> (true, If_false)
+    | Failed, Normal -> (true, Failed)
+    | _ -> (false, Normal)
+  )
+  in
+  (* FUNCTION BEGIN *)
+  fun cfg ->
+  let is_ssop : stmt -> bool = (function | Cfg_drop _ | Cfg_swap | Cfg_dig | Cfg_dug -> true | _ -> false) in
+  G.fold_vertex 
+    (fun v acc_cfg ->
+      let nvi : (vertex, stmt) Core.Map.Poly.t = Core.Map.Poly.update acc_cfg.vertex_info v ~f:(function | _ -> Cfg_skip) in
+      let cfg_elsebr : t = {acc_cfg with vertex_info=nvi} in
+      let is_ssop_v : bool = t_map_find ~errtrace:("cfgUtil : remove_simple_stack_operation_vertices : if") cfg.vertex_info v |> is_ssop in
+      if is_ssop_v
+      then (
+        let pel : G.edge list = G.pred_e acc_cfg.flow v in
+        let sel : G.edge list = G.succ_e acc_cfg.flow v in
+        if (List.length pel = 1 && List.length sel = 1)
+        then (
+          let ((pv, pl, _), (_, sl, sv)) : (G.edge * G.edge) = List.hd pel, List.hd sel in
+          let (flag, lbl) = naive_merge_edge_label (pl, sl) in
+          if flag
+          then ({acc_cfg with flow=(G.remove_vertex (G.add_edge_e acc_cfg.flow (pv, lbl, sv)) v);})
+          else (cfg_elsebr)
+        )
+        else (cfg_elsebr)
+      )
+      else (acc_cfg)
+    )
+    cfg.flow
+    cfg
 
 
 (*****************************************************************************)
@@ -784,7 +823,7 @@ module LoopUnrolling = struct
           let new_acc_uenv : unroll_env = {env_entry_vtx=v_size; env_exit_vtx=v_exit; env_vset=new_vset_0; env_eset=new_eset} in
           unroll_fold_f {p with ptval=newpt_2; unroll_count=(p.unroll_count+1); acc_unroll_env=new_acc_uenv}
         )
-      | _ -> Stdlib.failwith (emsg_gen "targt_stmt match failed") (* TODO *)
+      | _ -> Stdlib.failwith (emsg_gen "targt_stmt match failed")
   end   (* function unroll_fold_f ends *)
 
   let construct_pt : t * cfgcon_ctr * int -> UnrollParam.pt
@@ -841,7 +880,6 @@ module LoopUnrolling = struct
             (G.add_edge_e acc_flw (ev, el, new_main_exit_v), (e :: acc_edgs))
         ) 
       in
-      (*{_npt with cfg=new_cfg; vtxrel=new_vrel}, *)
       let new_uenv : unroll_env = 
         { env_entry_vtx = _entry_v;
           env_exit_vtx = new_main_exit_v;
@@ -849,13 +887,62 @@ module LoopUnrolling = struct
           env_eset = CPSet.union _eset (CPSet.of_list exit_edgs);
         }
       in
-      ({_npt with cfg={new_cfg with flow=new_flow}; vtxrel=new_vrel}, new_uenv)
+      (* 3.1.2. update main_entry and main_exit in cfg too *)
+      ({_npt with cfg={new_cfg with flow=new_flow; main_entry=_entry_v; main_exit=new_main_exit_v;}; vtxrel=new_vrel}, new_uenv)
     in
     (* 3.2. copy lambda functions / update lambda_id_map too *)
-    let (new_pt_2, n_lambda_ues) : pt * (unroll_env list) = (* TODO *) (new_pt_1, []) in
+    let (new_pt_2, n_lambda_ues) : pt * (unroll_env list) =
+      let lm : (lambda_ident, lambda_summary) CPMap.t = new_pt_1.cfg.lambda_id_map in
+      CPMap.fold
+        lm
+        ~init:(new_pt_1, [])
+        ~f:(fun ~key:k ~data:(lmb_entry, lmb_exit, paramtyp, outtyp) (acc_pt, acc_uel) ->
+          (* 3.2.1. for each lambda, copy graph *)
+          let (_l_pt, _l_vset, _l_eset, (_l_entry_v, _l_end_rel)) : pt * (vertex CPSet.t) * (G.edge CPSet.t) * (vertex * ((vertex * edge_label) CPSet.t)) =
+            dfs_copy_cfg {dcc_ptval=acc_pt; dcc_o_entry=lmb_entry; dcc_o_exit=lmb_exit}
+          in
+          (* 3.2.2. create new lambda-exit-vertex and update cfg(flow,vertex-info), vertex-relationship, vset, eset *)
+          let (cfg_with_lmbd_exit, lmbd_exit_vertex) : (t * vertex) =
+            (_l_pt.cfg, ())
+            |> t_add_vtx _l_pt.counter
+            |> t_add_vinfo_now
+                ~errtrace:(gen_emsg "new_pt_2 : cfg_with_lmbd_exit")
+                (t_map_find ~errtrace:(gen_emsg "new_pt_2 : cfg_with_lmbd_exit : find stmt") _l_pt.cfg.vertex_info lmb_exit)
+          in
+          let (cfg_with_lmbd_exit_connected, new_eset) : t * (G.edge CPSet.t) =
+            CPSet.fold
+              _l_end_rel
+              ~init:(cfg_with_lmbd_exit, _l_eset)
+              ~f:(fun (acfg, aeset) (ev, el) -> let e : G.edge = (ev, el, lmbd_exit_vertex) in ({acfg with flow=(G.add_edge_e acfg.flow e)}, CPSet.add aeset e))
+          in
+          let new_vtxrel : (vertex, vertex CPSet.t) CPMap.t = t_map_add ~errtrace:(gen_emsg "new_pt_2 : new_vtxrel") _l_pt.vtxrel lmbd_exit_vertex (CPSet.singleton lmb_exit) in
+          let new_vset : vertex CPSet.t = CPSet.add _l_vset lmbd_exit_vertex in
+          (* 3.2.3. create new unroll_env *)
+          let new_ue : unroll_env = {
+            env_entry_vtx=_l_entry_v;
+            env_exit_vtx=lmbd_exit_vertex;
+            env_vset=new_vset;
+            env_eset=new_eset;
+          }
+          in
+          (* 3.2.4. update lambda_id_map in cfg(cfg_with_lmbd_exit_connected) *)
+          let new_ls : lambda_summary = (_l_entry_v, lmbd_exit_vertex, paramtyp, outtyp) in
+          let new_lim : (lambda_ident, lambda_summary) CPMap.t = CPMap.change cfg_with_lmbd_exit_connected.lambda_id_map k ~f:(fun _ -> Some new_ls) in
+          let new_cfg_f : t = {cfg_with_lmbd_exit_connected with lambda_id_map=new_lim} in
+          (* 3.2.5. accumulate *)
+          ({_l_pt with cfg=new_cfg_f; vtxrel=new_vtxrel;}, new_ue :: acc_uel)
+        )
+    in
     (* 4. remove (original or unrelated) subgraphs from new_pt.cfg *)
-    let new_pt_3 : pt = (* TODO *) let _ = (n_main_ue, n_lambda_ues) in new_pt_2 in
-    (* 5. update fail_vertices, pos_info *)
+    (* 4.1. collect vertices which should be remained (use n_main_ue & n_main_ues) *)
+    let all_new_vertices : vertex CPSet.t = List.fold_left (fun accset x_ue -> CPSet.union accset x_ue.env_vset ) n_main_ue.env_vset n_lambda_ues in
+    (* 4.2. use n_main_ue & n_main_ues, remove vertices in flow *)
+    let trimmed_flow : G.t = 
+      let o_f : G.t = new_pt_2.cfg.flow in 
+      G.fold_vertex (fun v accflow -> if CPSet.mem all_new_vertices v then accflow else (G.remove_vertex accflow v)) o_f o_f 
+    in
+    let new_pt_3 : pt = {new_pt_2 with cfg={new_pt_2.cfg with flow=trimmed_flow}} in
+    (* 5. update fail_vertices, pos_info in cfg *)
       (* TODO *)
     (* 6. return *)
     new_pt_3
