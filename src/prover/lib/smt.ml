@@ -104,6 +104,9 @@ let create_int_sort : z_sort
 let create_string_sort : z_sort
 =Z3.Seq.mk_string_sort !ctx
 
+let create_mutez_sort : z_sort
+=Z3.BitVector.mk_sort !ctx 63
+
 
 let create_option_sort : z_sort -> z_sort
 =fun content_sort -> begin
@@ -238,6 +241,18 @@ let create_bool_int_gt : z_expr -> z_expr -> z_expr
 let create_bool_int_ge : z_expr -> z_expr -> z_expr
 =fun e1 e2 -> Z3.Arithmetic.mk_ge !ctx e1 e2
 
+let create_bool_mutez_lt : v1:z_expr -> v2:z_expr -> z_expr (* v1 < v2 *)
+=fun ~v1 ~v2 -> Z3.BitVector.mk_ult !ctx v1 v2
+
+let create_bool_mutez_le : v1:z_expr -> v2:z_expr -> z_expr (* v1 ≦ v2 *)
+=fun ~v1 ~v2 -> Z3.BitVector.mk_ule !ctx v1 v2
+
+let create_bool_mutez_gt : v1:z_expr -> v2:z_expr -> z_expr (* v1 > v2 *)
+=fun ~v1 ~v2 -> Z3.BitVector.mk_ugt !ctx v1 v2
+
+let create_bool_mutez_ge : v1:z_expr -> v2:z_expr -> z_expr (* v1 ≧ v2 *)
+=fun ~v1 ~v2 -> Z3.BitVector.mk_uge !ctx v1 v2
+
 let create_bool_option_is_none : z_expr -> z_expr
 =fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 0) [e]
 
@@ -287,6 +302,28 @@ let create_string_concat : z_expr list -> z_expr
 
 let create_string_slice : z_expr -> z_expr -> z_expr -> z_expr
 =fun s lo hi -> Z3.Seq.mk_seq_extract !ctx s lo hi
+
+
+let create_mutez_from_zarith : value:Z.t -> z_expr
+=fun ~value -> Z3.BitVector.mk_numeral !ctx (Z.to_string value) 63
+
+let create_mutez : value:int -> z_expr
+=fun ~value -> Z3.BitVector.mk_numeral !ctx (string_of_int value) 63
+
+let create_mutez_add : v1:z_expr -> v2:z_expr -> z_expr
+=fun ~v1 ~v2 -> Z3.BitVector.mk_add !ctx v1 v2
+
+let create_mutez_sub : v1:z_expr -> v2:z_expr -> z_expr
+=fun ~v1 ~v2 -> Z3.BitVector.mk_sub !ctx v1 v2
+
+let create_mutez_mul : v1:z_expr -> v2:z_expr -> z_expr
+=fun ~v1 ~v2 -> Z3.BitVector.mk_mul !ctx v1 v2
+
+let create_mutez_div : v1:z_expr -> v2:z_expr -> z_expr
+=fun ~v1 ~v2 -> Z3.BitVector.mk_udiv !ctx v1 v2
+
+let create_mutez_mod : v1:z_expr -> v2:z_expr -> z_expr
+=fun ~v1 ~v2 -> Z3.BitVector.mk_urem !ctx v1 v2
 
 
 let create_option : z_sort -> z_expr option -> z_expr

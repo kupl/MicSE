@@ -34,7 +34,7 @@ and sort_of_typt : Smt.typ -> Smt.z_sort
   | T_nat -> Smt.create_int_sort
   | T_string -> Smt.create_string_sort
   | T_bytes -> Smt.create_string_sort
-  | T_mutez -> Smt.create_int_sort
+  | T_mutez -> Smt.create_mutez_sort
   | T_bool -> Smt.create_bool_sort
   | T_key_hash -> Smt.create_string_sort
   | T_timestamp -> Smt.create_string_sort
@@ -70,173 +70,225 @@ and create_convert_vformula : Vlang.v_formula -> Smt.z_expr
         let formulas = Core.List.map fl ~f:create_convert_vformula in
         Smt.create_bool_or formulas
       end
-    | VF_uni_rel (vur, e) -> begin
-        let e' = create_convert_vexp e in
+    | VF_uni_rel (vur, o1) -> begin
+        let ze1 = create_convert_vobj o1 in
         match vur with
-        | VF_is_true -> Smt.create_bool_eq e' (Smt.create_bool_true)
-        | VF_is_none -> Smt.create_bool_option_is_none e'
-        | VF_is_left -> Smt.create_bool_option_is_left e'
-        | VF_is_cons -> Smt.create_bool_list_is_cons e'
+        | VF_is_true -> Smt.create_bool_eq ze1 (Smt.create_bool_true)
+        | VF_is_none -> Smt.create_bool_option_is_none ze1
+        | VF_is_left -> Smt.create_bool_option_is_left ze1
+        | VF_is_cons -> Smt.create_bool_list_is_cons ze1
       end
-    | VF_bin_rel (vbr, e1, e2) -> begin
-        let e1', e2' = ((create_convert_vexp e1), (create_convert_vexp e2)) in
-        match vbr with
-        | VF_eq -> Smt.create_bool_eq e1' e2'
-        | VF_neq -> Smt.create_bool_not (Smt.create_bool_eq e1' e2')
-        | VF_lt -> Smt.create_bool_int_lt e1' e2'
-        | VF_le -> Smt.create_bool_int_le e1' e2'
-        | VF_gt -> Smt.create_bool_int_gt e1' e2'
-        | VF_ge -> Smt.create_bool_int_ge e1' e2'
+    | VF_bin_rel (vbr, o1, o2) -> begin
+        let ze1, ze2 = ((create_convert_vobj o1), (create_convert_vobj o2)) in
+        match o1.typ.d, o2.typ.d with
+        | T_int, T_int
+        | T_nat, T_nat -> begin
+            match vbr with
+            | VF_eq -> Smt.create_bool_eq ze1 ze2
+            | VF_neq -> Smt.create_bool_not (Smt.create_bool_eq ze1 ze2)
+            | VF_lt -> Smt.create_bool_int_lt ze1 ze2
+            | VF_le -> Smt.create_bool_int_le ze1 ze2
+            | VF_gt -> Smt.create_bool_int_gt ze1 ze2
+            | VF_ge -> Smt.create_bool_int_ge ze1 ze2
+          end
+        | T_mutez, T_mutez -> begin
+            match vbr with
+            | VF_eq -> Smt.create_bool_eq ze1 ze2
+            | VF_neq -> Smt.create_bool_not (Smt.create_bool_eq ze1 ze2)
+            | VF_lt -> Smt.create_bool_mutez_lt ~v1:ze1 ~v2:ze2
+            | VF_le -> Smt.create_bool_mutez_le ~v1:ze1 ~v2:ze2
+            | VF_gt -> Smt.create_bool_mutez_gt ~v1:ze1 ~v2:ze2
+            | VF_ge -> Smt.create_bool_mutez_ge ~v1:ze1 ~v2:ze2
+          end
+        | _, _ -> begin
+            match vbr with
+            | VF_eq -> Smt.create_bool_eq ze1 ze2
+            | VF_neq -> Smt.create_bool_not (Smt.create_bool_eq ze1 ze2)
+            | _ -> raise (Failure "Verifier.create_convert_vformula: binary relation error")
+          end
       end
     | VF_imply (f1, f2) -> Smt.create_bool_imply (create_convert_vformula f1) (create_convert_vformula f2)
     | VF_iff (f1, f2) -> Smt.create_bool_iff (create_convert_vformula f1) (create_convert_vformula f2)
-    | VF_forall (vl, f) -> begin
-        let vl' = Core.List.map vl ~f:(fun (v, t) -> Smt.read_var (Smt.create_symbol v) (sort_of_typt t)) in
+    | VF_forall (ol, f) -> begin
+        let el = Core.List.map ol ~f:(fun o -> (
+          match o.exp with
+          | VE_var _ -> (create_convert_vobj o)
+          | _ -> raise (Failure "Verifier.create_convert_vformula: forall error")
+        )) in
         let f' = create_convert_vformula f in
-        Smt.create_forall vl' f'
+        Smt.create_forall el f'
       end
-    | VF_sigma_equal (e1, e2) -> begin
-        let e1', e2' = ((create_convert_vexp e1), (create_convert_vexp e2)) in
-        let sigma = Smt.read_map_sigma ~map:e1' in
-        Smt.create_bool_eq sigma e2'
+    | VF_sigma_equal (o1, o2) -> begin
+        let ze1, ze2 = ((create_convert_vobj o1), (create_convert_vobj o2)) in
+        let sigma = Smt.read_map_sigma ~map:ze1 in
+        Smt.create_bool_eq sigma ze2
       end
   with
   | Smt.Z3Error s -> raise (Failure ("Verifier.create_convert_vformula (" ^ (Vlang.string_of_formula vf) ^ "): " ^ s))
   | err -> raise err
 end
 
-and create_convert_vexp : Vlang.v_exp -> Smt.z_expr
-=fun ve -> begin
+and create_convert_vobj : Vlang.v_obj -> Smt.z_expr
+=fun vo -> begin
   try
     let get_nth = Core.List.nth_exn in
-    match ve with
-    | VE_int n -> Smt.create_int_from_zarith n
+    match vo.exp with
+    | VE_int n -> begin
+        match vo.typ.d with
+        | T_mutez -> Smt.create_mutez_from_zarith ~value:n
+        | _ -> Smt.create_int_from_zarith n
+      end
     | VE_string s -> Smt.create_string s
     | VE_bool f -> create_convert_vformula f
     | VE_unit -> Smt.create_unit
-    | VE_none t -> Smt.create_option (get_nth (sort_of_inner_type t) 0) None
-    | VE_uni_cont (vuc, e1, t) -> begin
-        let inner_sorts = sort_of_inner_type t in
+    | VE_none -> Smt.create_option (get_nth (sort_of_inner_type vo.typ) 0) None
+    | VE_uni_cont (vuc, o1) -> begin
+        let inner_sorts = sort_of_inner_type vo.typ in
         match vuc with
         | VE_left -> begin
             let right_dummy_sort = get_nth inner_sorts 1 in
-            Smt.create_or right_dummy_sort (Left (create_convert_vexp e1))
+            Smt.create_or right_dummy_sort (Left (create_convert_vobj o1))
           end
         | VE_right -> begin
             let left_dummy_sort = get_nth inner_sorts 0 in
-            Smt.create_or left_dummy_sort (Right (create_convert_vexp e1))
+            Smt.create_or left_dummy_sort (Right (create_convert_vobj o1))
           end
         | VE_some -> begin
             let item_sort = get_nth inner_sorts 0 in
-            Smt.create_option item_sort (Some (create_convert_vexp e1))
+            Smt.create_option item_sort (Some (create_convert_vobj o1))
           end
       end
-    | VE_bin_cont (vbc, e1, e2, _) -> begin
+    | VE_bin_cont (vbc, o1, o2) -> begin
         match vbc with
-        | VE_pair -> Smt.create_pair (create_convert_vexp e1) (create_convert_vexp e2)
-        | VE_elt -> Smt.create_elt ~key:(create_convert_vexp e1) ~value:(create_convert_vexp e2)
+        | VE_pair -> Smt.create_pair (create_convert_vobj o1) (create_convert_vobj o2)
+        | VE_elt -> Smt.create_elt ~key:(create_convert_vobj o1) ~value:(create_convert_vobj o2)
       end
-    | VE_list (vel, t) -> begin
-        let nil = Smt.create_list (get_nth (sort_of_inner_type t) 0) in
-        Core.List.fold_right vel ~f:(fun e l -> Smt.update_list_cons (create_convert_vexp e) l) ~init:nil
+    | VE_list vol -> begin
+        let nil = Smt.create_list (get_nth (sort_of_inner_type vo.typ) 0) in
+        Core.List.fold_right vol ~f:(fun o l -> Smt.update_list_cons (create_convert_vobj o) l) ~init:nil
       end
-    | VE_var (v, t) -> Smt.read_var (Smt.create_symbol v) (sort_of_typt t)
-    | VE_nul_op (vno, t) -> begin
+    | VE_var v -> Smt.read_var (Smt.create_symbol v) (sort_of_typt vo.typ)
+    | VE_nul_op vno -> begin
         match vno with
-        | VE_self -> Smt.read_var (Smt.create_symbol "self") (sort_of_typt t)
-        | VE_now -> Smt.read_var (Smt.create_symbol "now") (sort_of_typt t)
-        | VE_amount -> Smt.read_var (Smt.create_symbol "amount") (sort_of_typt t)
-        | VE_balance -> Smt.read_var (Smt.create_symbol "balance") (sort_of_typt t)
-        | VE_steps_to_quota -> Smt.read_var (Smt.create_symbol "steps_to_quota") (sort_of_typt t)
-        | VE_source -> Smt.read_var (Smt.create_symbol "source") (sort_of_typt t)
-        | VE_sender -> Smt.read_var (Smt.create_symbol "sender") (sort_of_typt t)
-        | VE_chain_id -> Smt.read_var (Smt.create_symbol "chain_id") (sort_of_typt t)
+        | VE_self -> Smt.read_var (Smt.create_symbol "self") (sort_of_typt vo.typ)
+        | VE_now -> Smt.read_var (Smt.create_symbol "now") (sort_of_typt vo.typ)
+        | VE_amount -> Smt.read_var (Smt.create_symbol "amount") (sort_of_typt vo.typ)
+        | VE_balance -> Smt.read_var (Smt.create_symbol "balance") (sort_of_typt vo.typ)
+        | VE_steps_to_quota -> Smt.read_var (Smt.create_symbol "steps_to_quota") (sort_of_typt vo.typ)
+        | VE_source -> Smt.read_var (Smt.create_symbol "source") (sort_of_typt vo.typ)
+        | VE_sender -> Smt.read_var (Smt.create_symbol "sender") (sort_of_typt vo.typ)
+        | VE_chain_id -> Smt.read_var (Smt.create_symbol "chain_id") (sort_of_typt vo.typ)
       end
-    | VE_uni_op (vuo, e1, t) -> begin
+    | VE_uni_op (vuo, o1) -> begin
         let zero = Smt.create_int 0 in
         match vuo with
-        | VE_car -> Smt.read_pair_fst (create_convert_vexp e1)
-        | VE_cdr -> Smt.read_pair_snd (create_convert_vexp e1)
+        | VE_car -> Smt.read_pair_fst (create_convert_vobj o1)
+        | VE_cdr -> Smt.read_pair_snd (create_convert_vobj o1)
         | VE_abs -> begin
-            let ze1 = create_convert_vexp e1 in
+            let ze1 = create_convert_vobj o1 in
             Smt.create_ite (Smt.create_bool_int_ge ze1 zero) ze1 (Smt.create_int_neg ze1)
           end
-        | VE_neg -> Smt.create_int_neg (create_convert_vexp e1)
-        | VE_not -> Smt.create_bool_not (create_convert_vexp e1)
-        | VE_eq -> Smt.create_bool_eq (create_convert_vexp e1) zero
-        | VE_neq -> Smt.create_bool_not (Smt.create_bool_eq (create_convert_vexp e1) zero)
-        | VE_lt -> Smt.create_bool_int_lt (create_convert_vexp e1) zero
-        | VE_gt -> Smt.create_bool_int_gt (create_convert_vexp e1) zero
-        | VE_leq -> Smt.create_bool_int_le (create_convert_vexp e1) zero
-        | VE_geq -> Smt.create_bool_int_ge (create_convert_vexp e1) zero
-        | VE_cast -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_list_concat -> Smt.create_string_concat [(create_convert_vexp e1)]
-        | VE_pack -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_unpack -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_contract -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_account -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_blake2b -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_sha256 -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_sha512 -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_hash_key -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_address -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_un_opt -> Smt.read_option_content (create_convert_vexp e1)
-        | VE_un_left -> Smt.read_or_left_content (create_convert_vexp e1)
-        | VE_un_right -> Smt.read_or_right_content (create_convert_vexp e1)
-        | VE_hd -> Smt.read_list_head (create_convert_vexp e1)
-        | VE_tl -> Smt.read_list_tail (create_convert_vexp e1)
-        | VE_size -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_isnat -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_to_int -> Smt.create_dummy_expr (sort_of_typt t)
+        | VE_neg -> Smt.create_int_neg (create_convert_vobj o1)
+        | VE_not -> Smt.create_bool_not (create_convert_vobj o1)
+        | VE_eq -> Smt.create_bool_eq (create_convert_vobj o1) zero
+        | VE_neq -> Smt.create_bool_not (Smt.create_bool_eq (create_convert_vobj o1) zero)
+        | VE_lt -> Smt.create_bool_int_lt (create_convert_vobj o1) zero
+        | VE_gt -> Smt.create_bool_int_gt (create_convert_vobj o1) zero
+        | VE_leq -> Smt.create_bool_int_le (create_convert_vobj o1) zero
+        | VE_geq -> Smt.create_bool_int_ge (create_convert_vobj o1) zero
+        | VE_cast -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_list_concat -> Smt.create_string_concat [(create_convert_vobj o1)]
+        | VE_pack -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_unpack -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_contract -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_account -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_blake2b -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_sha256 -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_sha512 -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_hash_key -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_address -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_un_opt -> Smt.read_option_content (create_convert_vobj o1)
+        | VE_un_left -> Smt.read_or_left_content (create_convert_vobj o1)
+        | VE_un_right -> Smt.read_or_right_content (create_convert_vobj o1)
+        | VE_hd -> Smt.read_list_head (create_convert_vobj o1)
+        | VE_tl -> Smt.read_list_tail (create_convert_vobj o1)
+        | VE_size -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_isnat -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_to_int -> Smt.create_dummy_expr (sort_of_typt vo.typ)
       end
-    | VE_bin_op (vbo, e1, e2, t) -> begin
+    | VE_bin_op (vbo, o1, o2) -> begin
         let zero = Smt.create_int 0 in
         let two = Smt.create_int 2 in
         match vbo with
-        | VE_add -> Smt.create_int_add [(create_convert_vexp e1); (create_convert_vexp e2)]
-        | VE_sub -> Smt.create_int_sub [(create_convert_vexp e1); (create_convert_vexp e2)]
-        | VE_mul -> Smt.create_int_mul [(create_convert_vexp e1); (create_convert_vexp e2)]
+        | VE_add -> begin
+            match vo.typ.d with
+            | T_mutez -> Smt.create_mutez_add ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
+            | T_nat | T_int -> Smt.create_int_add [(create_convert_vobj o1); (create_convert_vobj o2)]
+            | _ -> raise (Failure "Wrong Type")
+          end
+        | VE_sub -> begin
+            match vo.typ.d with
+            | T_mutez -> Smt.create_mutez_sub ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
+            | T_nat | T_int -> Smt.create_int_sub [(create_convert_vobj o1); (create_convert_vobj o2)]
+            | _ -> raise (Failure "Wrong Type")
+          end
+        | VE_mul -> begin
+            match vo.typ.d with
+            | T_mutez -> Smt.create_mutez_mul ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
+            | T_nat | T_int -> Smt.create_int_mul [(create_convert_vobj o1); (create_convert_vobj o2)]
+            | _ -> raise (Failure "Wrong Type")
+          end
         | VE_ediv -> begin
-            let dividend, divisor = ((create_convert_vexp e1), (create_convert_vexp e2)) in
+            let dividend, divisor = ((create_convert_vobj o1), (create_convert_vobj o2)) in
             let x = Smt.create_pair (Smt.create_int_div dividend divisor) (Smt.create_int_mod dividend divisor) in
             let sort_of_x = Smt.read_sort_of_expr x in
             Smt.create_ite (Smt.create_bool_eq divisor zero) (Smt.create_option sort_of_x None) (Smt.create_option sort_of_x (Some x))
           end
-        | VE_div -> Smt.create_int_div (create_convert_vexp e1) (create_convert_vexp e2)
-        | VE_mod -> Smt.create_int_mod (create_convert_vexp e1) (create_convert_vexp e2)
+        | VE_div -> begin
+            match vo.typ.d with
+            | T_mutez -> Smt.create_mutez_div ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
+            | T_nat | T_int -> Smt.create_int_div (create_convert_vobj o1) (create_convert_vobj o2)
+            | _ -> raise (Failure "Wrong Type")
+          end
+        | VE_mod -> begin
+            match vo.typ.d with
+            | T_mutez -> Smt.create_mutez_div ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
+            | T_nat | T_int -> Smt.create_int_mod (create_convert_vobj o1) (create_convert_vobj o2)
+            | _ -> raise (Failure "Wrong Type")
+          end
         | VE_lsl -> begin
-            let bin_exp = Smt.create_int_power two (create_convert_vexp e2) in
-            Smt.create_int_mul [(create_convert_vexp e1); bin_exp]
+            let bin_exp = Smt.create_int_power two (create_convert_vobj o2) in
+            Smt.create_int_mul [(create_convert_vobj o1); bin_exp]
           end
         | VE_lsr -> begin
-            let bin_exp = Smt.create_int_power two (create_convert_vexp e2) in
-            Smt.create_int_div (create_convert_vexp e1) bin_exp
+            let bin_exp = Smt.create_int_power two (create_convert_vobj o2) in
+            Smt.create_int_div (create_convert_vobj o1) bin_exp
           end
-        | VE_and -> Smt.create_bool_and [(create_convert_vexp e1); (create_convert_vexp e2)]
-        | VE_or -> Smt.create_bool_or [(create_convert_vexp e1); (create_convert_vexp e2)]
-        | VE_xor -> Smt.create_bool_xor (create_convert_vexp e1) (create_convert_vexp e2)
-        | VE_cmp -> Smt.create_cmp (create_convert_vexp e1) (create_convert_vexp e2)
-        | VE_cons -> Smt.update_list_cons (create_convert_vexp e1) (create_convert_vexp e2)
-        | VE_concat -> Smt.create_string_concat [(create_convert_vexp e1); (create_convert_vexp e2)]
-        | VE_exec -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_append -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_get -> Smt.read_map_elt_content ~key:(create_convert_vexp e1) ~map:(create_convert_vexp e2)
-        | VE_mem -> Smt.read_map_elt_exists ~key:(create_convert_vexp e1) ~map:(create_convert_vexp e2)
+        | VE_and -> Smt.create_bool_and [(create_convert_vobj o1); (create_convert_vobj o2)]
+        | VE_or -> Smt.create_bool_or [(create_convert_vobj o1); (create_convert_vobj o2)]
+        | VE_xor -> Smt.create_bool_xor (create_convert_vobj o1) (create_convert_vobj o2)
+        | VE_cmp -> Smt.create_cmp (create_convert_vobj o1) (create_convert_vobj o2)
+        | VE_cons -> Smt.update_list_cons (create_convert_vobj o1) (create_convert_vobj o2)
+        | VE_concat -> Smt.create_string_concat [(create_convert_vobj o1); (create_convert_vobj o2)]
+        | VE_exec -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_append -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_get -> Smt.read_map_elt_content ~key:(create_convert_vobj o1) ~map:(create_convert_vobj o2)
+        | VE_mem -> Smt.read_map_elt_exists ~key:(create_convert_vobj o1) ~map:(create_convert_vobj o2)
       end
-    | VE_ter_op (vto, e1, e2, e3, t) -> begin
+    | VE_ter_op (vto, o1, o2, o3) -> begin
         match vto with
         | VE_slice -> begin
-            let offset, length, s = ((create_convert_vexp e1), (create_convert_vexp e2), (create_convert_vexp e3)) in
+            let offset, length, s = ((create_convert_vobj o1), (create_convert_vobj o2), (create_convert_vobj o3)) in
             Smt.create_string_slice s offset (Smt.create_int_add [offset; length])
           end
-        | VE_check_signature -> Smt.create_dummy_expr (sort_of_typt t)
-        | VE_update -> Smt.update_map ~key:(create_convert_vexp e1) ~value_opt:(create_convert_vexp e2) ~map:(create_convert_vexp e3)
+        | VE_check_signature -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+        | VE_update -> Smt.update_map ~key:(create_convert_vobj o1) ~value_opt:(create_convert_vobj o2) ~map:(create_convert_vobj o3)
       end
-    | VE_lambda t -> Smt.create_dummy_expr (sort_of_typt t)
-    | VE_operation (_, t) -> Smt.create_dummy_expr (sort_of_typt t)
+    | VE_lambda -> Smt.create_dummy_expr (sort_of_typt vo.typ)
+    | VE_operation _ -> Smt.create_dummy_expr (sort_of_typt vo.typ)
   with
-  | Smt.Z3Error s -> raise (Failure ("Verifier.create_convert_vexp (" ^ (Vlang.string_of_exp ve) ^ "): " ^ s))
-  | err -> print_endline (Vlang.string_of_exp ve); raise err
+  | Smt.Z3Error s -> raise (Failure ("Verifier.create_convert_vobj (" ^ (Vlang.string_of_exp vo.exp) ^ "): " ^ s))
+  | err -> print_endline (Vlang.string_of_exp vo.exp); raise err
 end
 
 and create_param_storage_from_model : Smt.model -> Pre.Lib.Cfg.t -> (Smt.z_expr * Smt.z_expr) option

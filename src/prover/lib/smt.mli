@@ -78,6 +78,8 @@ val create_int_sort : z_sort
 
 val create_string_sort : z_sort
 
+val create_mutez_sort : z_sort
+
 
 val create_option_sort : z_sort -> z_sort
 
@@ -161,6 +163,14 @@ val create_bool_int_gt : z_expr -> z_expr -> z_expr
 
 val create_bool_int_ge : z_expr -> z_expr -> z_expr
 
+val create_bool_mutez_lt : v1:z_expr -> v2:z_expr -> z_expr (* v1 < v2 *)
+
+val create_bool_mutez_le : v1:z_expr -> v2:z_expr -> z_expr (* v1 ≦ v2 *)
+
+val create_bool_mutez_gt : v1:z_expr -> v2:z_expr -> z_expr (* v1 > v2 *)
+
+val create_bool_mutez_ge : v1:z_expr -> v2:z_expr -> z_expr (* v1 ≧ v2 *)
+
 val create_bool_option_is_none : z_expr -> z_expr
 
 val create_bool_option_is_some : z_expr -> z_expr
@@ -194,6 +204,21 @@ val create_string : string -> z_expr
 val create_string_concat : z_expr list -> z_expr
 
 val create_string_slice : z_expr -> z_expr -> z_expr -> z_expr
+
+
+val create_mutez_from_zarith : value:Z.t -> z_expr
+
+val create_mutez : value:int -> z_expr
+
+val create_mutez_add : v1:z_expr -> v2:z_expr -> z_expr
+
+val create_mutez_sub : v1:z_expr -> v2:z_expr -> z_expr
+
+val create_mutez_mul : v1:z_expr -> v2:z_expr -> z_expr
+
+val create_mutez_div : v1:z_expr -> v2:z_expr -> z_expr
+
+val create_mutez_mod : v1:z_expr -> v2:z_expr -> z_expr
 
 
 val create_option : z_sort -> z_expr option -> z_expr
