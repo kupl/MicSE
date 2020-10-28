@@ -9,6 +9,7 @@
 *)
 
 let unroll_NUM = 2
+let transaction_seq_NUM = 2
 
 let _ =
   let _ = Utils.Options.create_options () in
@@ -26,13 +27,18 @@ let _ =
   let (cfg_unrolled, _) : Cfg.t * Cfg.cfgcon_ctr = CfgUtil.LoopUnrolling.run (cfg_optimized, ctr, unroll_NUM) in
   let cfg_ur_rsv_optimized = (if (!Utils.Options.flag_cfgopt_rsv) then (CfgUtil.remove_meaningless_skip_vertices_fixpoint cfg_unrolled) else (cfg_unrolled)) in
   let cfg_ur_optimized = cfg_ur_rsv_optimized in
-  let _ : unit = print_endline (CfgUtil.cfg_to_dotformat cfg_ur_optimized) in
+  let _ : unit = if (!Utils.Options.flag_cfg_print_dot) then (print_endline (CfgUtil.cfg_to_dotformat cfg_ur_optimized)) else () in
   let cfg = cfg_ur_optimized in
 
-
+  (*
   let brt_lst = Refuter.Extractor.extract_basicpaths cfg in
-  let _ = List.iter (fun x -> Prover.Lib.Bp.to_string x |> Stdlib.print_endline; Stdlib.print_newline ()) brt_lst.bps  in
-  (*let _ = List.length brt_lst.bps |> Stdlib.string_of_int |> Stdlib.print_endline in*)
-  let _ = List.length brt_lst.trx_inv_vtx |> Stdlib.string_of_int |> Stdlib.print_endline in
-  let _ = List.length brt_lst.loop_inv_vtx |> Stdlib.string_of_int |> Stdlib.print_endline in
+  (*let _ = List.iter (fun x -> Prover.Lib.Bp.to_string x |> Stdlib.print_endline; Stdlib.print_newline ()) brt_lst.bps  in*)
+  let _ = List.length brt_lst.bps |> Stdlib.string_of_int |> Stdlib.(^) "# of basic paths : " |> Stdlib.print_endline in
+  let _ = List.length brt_lst.trx_inv_vtx |> Stdlib.string_of_int |> Stdlib.(^) "# of transaction invariant vertices : " |> Stdlib.print_endline in
+  let _ = List.length brt_lst.loop_inv_vtx |> Stdlib.string_of_int |> Stdlib.(^) "# of loop invariant vertices : " |> Stdlib.print_endline in
+  *)
+
+  let bplist : Prover.Lib.Bp.t list = Refuter.Extractor.get_concatenated_basicpaths None cfg transaction_seq_NUM in
+  let _ : unit = List.iter (fun x -> Prover.Lib.Bp.to_string x |> Stdlib.print_endline) bplist in
+
   Stdlib.exit 0

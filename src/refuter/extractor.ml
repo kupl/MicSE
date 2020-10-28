@@ -1,9 +1,9 @@
 (* get_unrolled_cfg : filepath -> unroll-num -> (cfg * cfg-counter) *)
 (* Any cfg-printing options will be ignored. *)
 let get_unrolled_cfg : string -> int -> (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr)
-=fun filename unroll_num -> begin
-  let open Pre in
+= let open Pre in
   let open PreLib in
+  fun filename unroll_num -> begin
   (* parsing and construct original cfg *)
   let adt : Adt.t = Adt.parse filename |> Mich.subst_standard_macro_all_pgm |> Mich.optm_all_pgm |> Mich.fill_position_all_pgm ~update_loc:false in
   let (cfg_first, ctr1) : Cfg.t * Cfg.cfgcon_ctr = Translator.adt_to_cfg_counter_included (adt, None) in
@@ -27,7 +27,11 @@ let extract_basicpaths : Pre.Lib.Cfg.t -> Prover.Lib.Bp.raw_t_list = Prover.Extr
 let get_regular_basicpaths : Pre.Lib.Cfg.t -> Prover.Lib.Bp.t list -> Prover.Lib.Bp.t list
 =fun cfg tlist -> begin
   (* filter_func : Is body's last vertex Main-Exit? *)
-  let filter_func : Prover.Lib.Bp.t -> bool = fun {body=blist; _} -> List.nth_opt blist (List.length blist - 1) |> (function | None -> false | Some (v, _) -> v = cfg.main_exit) in
+  let filter_func : Prover.Lib.Bp.t -> bool = 
+    fun {body=blist; _} -> 
+    List.nth_opt blist (List.length blist - 1) 
+    |> (function | None -> false | Some (v, _) -> v = cfg.main_exit) 
+  in
   List.filter filter_func tlist
 end
 
@@ -44,6 +48,7 @@ let trx_seq_param_name : int -> string = fun i -> ("tsParam-" ^ (Stdlib.string_o
 (* variable name which contains initial storage. magic-storage generator *)
 let trx_seq_storage_name : string = "tsStorage"
 
+type initial_storage_typ = (PreLib.Mich.data PreLib.Mich.t * PreLib.Mich.typ PreLib.Mich.t) option
 (* concat N-basicpaths into one basicpath. *)
 (* Example.
     (*  bp1.body = [(v1,i1);(v2,var-2 := E_itself _)];
@@ -64,11 +69,10 @@ let trx_seq_storage_name : string = "tsStorage"
     ]
   (* v7,v8,v9,v10 are newly-created vertices. In implementation, they will be all negative-integer, and their uniqueness is not guaranteed *)
 *)
-(*
-let concat_basicpath : (PreLib.Mich.data PreLib.Mich.t * PreLib.Mich.typ PreLib.Mich.t) option -> Pre.Lib.Cfg.t -> Prover.Lib.Bp.t list -> Prover.Lib.Bp.t
-=fun initStgOpt cfg bplist ->
-  let open Prover.Lib in
+let concat_basicpath : initial_storage_typ -> Pre.Lib.Cfg.t -> Prover.Lib.Bp.t list -> Prover.Lib.Bp.t
+= let open Prover.Lib in
   let open PreLib in
+  fun initStgOpt cfg bplist ->
   let exit_vtx = cfg.main_exit in
   let exit_vtx_stmt = Cfg.t_map_find ~errtrace:("refuter/extractor.ml : concat_basicpath : exit_vtx_stmt") cfg.vertex_info exit_vtx in
   let exit_vtx_var = (
@@ -94,6 +98,20 @@ let concat_basicpath : (PreLib.Mich.data PreLib.Mich.t * PreLib.Mich.typ PreLib.
   in
   let bodylist : ((Bp.vertex * Bp.inst) list) list = (List.fold_left (fun acc bp -> bp.Bp.body :: (sandwich_inst exit_vtx_var) :: acc) [firstInst] bplist) |> List.rev in
   let bodylist_ft : (Bp.vertex * Bp.inst) list = List.flatten bodylist in
-  {pre=Vlang.create_formula_true; body=bodylist_ft; }
+  let dummy_inv : Inv.t = {id=exit_vtx; formula=None} in
+  {pre=dummy_inv; body=bodylist_ft; post=dummy_inv}
+
+(* get_concatenated_basicpaths
+input : initial starge, unrolled cfg, maximum length of transaction sequence
+output : transaction sequences (from length 1 ~ input-N)
 *)
-(* TODO *)
+let get_concatenated_basicpaths : initial_storage_typ -> Pre.Lib.Cfg.t -> int -> Prover.Lib.Bp.t list
+= let open Prover.Lib in
+  fun initStgOpt unrolled_cfg n -> begin
+  let basicpaths : Bp.raw_t_list = extract_basicpaths unrolled_cfg in
+  (* (* print basicpaths *) let _ : unit = List.iter (fun l -> (List.iter (fun (v, _) -> print_int v; print_string " ") l.Bp.body); print_newline ()) basicpaths.bps in*)
+  let filtered_basicpaths : Bp.t list = get_regular_basicpaths unrolled_cfg basicpaths.bps in
+  (* (* print filtered basicpaths' list-length *) let _ : unit = List.length filtered_basicpaths |> Stdlib.string_of_int |> Stdlib.print_endline in *)
+  let (_, bpll) : int * (Bp.t list list) = basicpath_sequences (n, []) filtered_basicpaths in
+  List.map (fun bpl -> concat_basicpath initStgOpt unrolled_cfg bpl) bpll
+end
