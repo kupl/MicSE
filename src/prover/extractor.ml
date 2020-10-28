@@ -16,8 +16,17 @@ and translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
 =fun cur_bp cur_vtx cfg -> begin
   let stmt = Pre.Lib.Cfg.read_stmt_from_vtx cfg cur_vtx in
   let succ = Pre.Lib.Cfg.read_succ_from_vtx cfg cur_vtx in
-  if Pre.Lib.Cfg.is_main_exit cfg cur_vtx then [cur_bp]
-  else begin
+  if Pre.Lib.Cfg.is_main_exit cfg cur_vtx then begin
+    match stmt with
+    | Cfg_assign (id, e) -> begin
+        let assert_inst = create_basic_safety_property cur_vtx e (Pre.Lib.Cfg.CPMap.find_exn cfg.type_info id) in
+        let new_bp = update_current_bp cur_bp assert_inst in
+        let inst = Bp.create_inst_assign id e in
+        let new_bp' = update_current_bp new_bp (Some (cur_vtx, inst)) in
+        [new_bp']
+      end
+    | _ -> raise (Failure "Extractor.translate: main-exit vertex error")
+  end else begin
     match stmt with
     | Cfg_assign (id, e) -> begin
         let assert_inst = create_basic_safety_property cur_vtx e (Pre.Lib.Cfg.CPMap.find_exn cfg.type_info id) in
@@ -66,7 +75,7 @@ and translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
     | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _ -> begin
         let _ = loop_inv_vtx := cur_vtx::!loop_inv_vtx in
         let (terminated_bp, loop_bp, new_bp) = create_bp_of_loop cur_bp cur_vtx in
-        let search = translate_search_normal cfg new_bp in
+        let search = translate_search_loop cfg (loop_bp, new_bp) in
         let result = terminated_bp::[] in
         let result = loop_bp::result in
         let result = Core.List.fold_right succ ~f:search ~init:result in
@@ -98,16 +107,28 @@ end
 
 and translate_search_normal : Pre.Lib.Cfg.t -> Bp.t -> (Bp.edge * Bp.vertex) -> Bp.t list -> Bp.t list
 =fun cfg new_bp (edge, vtx) result -> begin
-  if (Pre.Lib.Cfg.is_edge_normal edge) then result@(translate new_bp vtx cfg)
-  else if (Pre.Lib.Cfg.is_edge_check_skip edge) then result
-  else raise (Failure "Extractor.translate_search_normal: Wrong edge label")
+  match edge with
+  | Normal -> result@(translate new_bp vtx cfg)
+  | If_true | If_false -> raise (Failure "Extractor.translate_search_normal: Wrong edge label")
+  | Check_skip | Failed -> result
 end
 
 and translate_search_branch : Pre.Lib.Cfg.t -> (Bp.t * Bp.t) -> (Bp.edge * Bp.vertex) -> Bp.t list -> Bp.t list
 =fun cfg (new_bp_if, new_bp_else) (edge, vtx) result -> begin
-  if Pre.Lib.Cfg.is_edge_true edge then result@(translate new_bp_if vtx cfg)
-  else if Pre.Lib.Cfg.is_edge_false edge then result@(translate new_bp_else vtx cfg)
-  else raise (Failure "Extractor.translate_search_branch: Wrong edge label")
+  match edge with
+  | If_true -> result@(translate new_bp_if vtx cfg)
+  | If_false -> result@(translate new_bp_else vtx cfg)
+  | Normal | Failed -> raise (Failure "Extractor.translate_search_branch: Wrong edge label")
+  | Check_skip -> result
+end
+
+and translate_search_loop : Pre.Lib.Cfg.t -> (Bp.t * Bp.t) -> (Bp.edge * Bp.vertex) -> Bp.t list -> Bp.t list
+=fun cfg (_, new_bp_exit) (edge, vtx) result -> begin
+  match edge with
+  | If_true -> result (* Not implemented *)
+  | If_false -> result@(translate new_bp_exit vtx cfg)
+  | Normal | Failed -> raise (Failure "Extractor.translate_search_loop: Wrong edge label")
+  | Check_skip -> result
 end
 
 and create_bp_of_branch : Bp.t -> Bp.vertex -> Bp.cond -> (Bp.t * Bp.t)
