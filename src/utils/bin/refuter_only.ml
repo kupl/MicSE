@@ -30,6 +30,7 @@ let _ =
   let _ : unit = if (!Utils.Options.flag_cfg_print_dot) then (print_endline (CfgUtil.cfg_to_dotformat cfg_ur_optimized)) else () in
   let cfg = cfg_ur_optimized in
 
+  
   (*
   let brt_lst = Refuter.Extractor.extract_basicpaths cfg in
   (*let _ = List.iter (fun x -> Prover.Lib.Bp.to_string x |> Stdlib.print_endline; Stdlib.print_newline ()) brt_lst.bps  in*)
@@ -38,7 +39,10 @@ let _ =
   let _ = List.length brt_lst.loop_inv_vtx |> Stdlib.string_of_int |> Stdlib.(^) "# of loop invariant vertices : " |> Stdlib.print_endline in
   *)
 
-  let bplist : Prover.Lib.Bp.t list = Refuter.Extractor.get_concatenated_basicpaths None cfg transaction_seq_NUM in
-  let _ : unit = List.iter (fun x -> Prover.Lib.Bp.to_string x |> Stdlib.print_endline) bplist in
+  let (bplist, bpupdated_cfg) : (Prover.Lib.Bp.t list * PreLib.Cfg.t) = Refuter.Extractor.get_concatenated_basicpaths None cfg transaction_seq_NUM in
+  (*let _ : unit = List.length bplist |> Stdlib.print_int in*)
+  (*let _ : unit = List.iter (fun x -> Prover.Lib.Bp.to_string x |> Stdlib.print_endline) bplist in*)
+  let querylist : Prover.Lib.Query.t list = Refuter.Runner.collect_queries cfg bplist (fun x -> x) in
+  let _ : unit = (querylist, bpupdated_cfg) |> Stdlib.ignore in
 
   Stdlib.exit 0
