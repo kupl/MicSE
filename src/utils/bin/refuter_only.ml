@@ -42,7 +42,8 @@ let _ =
   let (bplist, bpupdated_cfg) : (Prover.Lib.Bp.t list * PreLib.Cfg.t) = Refuter.Extractor.get_concatenated_basicpaths None cfg transaction_seq_NUM in
   (*let _ : unit = List.length bplist |> Stdlib.print_int in*)
   (*let _ : unit = List.iter (fun x -> Prover.Lib.Bp.to_string x |> Stdlib.print_endline) bplist in*)
-  let querylist : Prover.Lib.Query.t list = Refuter.Runner.collect_queries cfg bplist (fun x -> x) in
+  let querylist : Prover.Lib.Query.t list = Refuter.Runner.collect_queries bpupdated_cfg bplist (fun x -> x) in
+  let _ : unit = List.iter (fun q -> (Prover.Lib.Vlang.string_of_formula q.Prover.Lib.Query.query |> Stdlib.print_endline); Stdlib.print_newline ()) querylist in
   let _ : unit = (querylist, bpupdated_cfg) |> Stdlib.ignore in
 
   Stdlib.exit 0

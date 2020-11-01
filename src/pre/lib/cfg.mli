@@ -205,6 +205,7 @@ type t = {
 
 val param_storage_name : string
 
+(* paramter name for lambda functions *)
 val gen_param_name : int -> string
 
 val read_stmt_from_vtx : t -> vertex -> stmt

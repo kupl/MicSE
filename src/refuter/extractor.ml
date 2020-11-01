@@ -67,19 +67,49 @@ let trx_seq_operation_name : int -> string = fun i -> ("trxOper-" ^ (Stdlib.stri
 
 (* add_trxseq_var_types adds transaction-related variables' type information *)
 (* It heavily depends on the implementation of "initial_storage_typ" and some "trx_seq_" ... strings *)
-(*
 let add_trxseq_var_types : PreLib.Cfg.t -> int -> PreLib.Cfg.t
 =fun cfg n -> begin
-  let rec vargen_template : (int -> string) -> int -> string list -> string list
-  =fun vargen k acc_l -> begin
-    [] (* TODO : complete this recursive values *)
+  (* Collect newly-added variable names (generated from "initial_storage_typ" *)
+  let rec vargen_template : (int -> string) -> int -> int -> string list -> string list
+  =fun vargen i_start i_ubound acc_l -> begin
+    if i_start > i_ubound then acc_l else
+    vargen_template vargen (i_start+1) i_ubound ((vargen i_start) :: acc_l)
   end in
-  let trx_seq_param_names : string list = vargen_template trx_seq_param_name n [] in
-  let trx_seq_storage_names : string list = vargen_template trx_seq_storage_name n [] in
-  (* TODO : operation name and update type-info *)
-  cfg
+  let trx_seq_param_names : string list = vargen_template trx_seq_param_name 0 n [] in
+  let trx_seq_storage_names : string list = vargen_template trx_seq_storage_name 0 (n+1) [] in
+  let trx_seq_operation_names : string list = vargen_template trx_seq_operation_name 1 (n+1) [] in
+  (* Get the Michelson types of paramter, storage, and operation-list. *)
+  let open PreLib in
+  let gen_t = Mich.gen_t in
+  let ripoff_pairtyp : Mich.typ Mich.t -> (Mich.typ Mich.t * Mich.typ Mich.t)
+  =fun t -> begin
+    match Mich.get_d t with
+    | Mich.T_pair (t1, t2) -> (t1, t2)
+    | _ -> Stdlib.failwith "Refuter : extractor.ml : add_trxseq_var_types : ripoff_pairtyp"
+  end in
+  let ps_typ : Mich.typ Mich.t = Cfg.t_map_find ~errtrace:("Refuter : extractor.ml : add_trxseq_var_types : ps_typ") cfg.type_info Cfg.param_storage_name in
+  let (param_typ, storage_typ) = ripoff_pairtyp ps_typ in
+  let operation_list_typ : Mich.typ Mich.t = gen_t (Mich.T_list (gen_t Mich.T_operation)) in
+  (* Update Type-Info *)
+  let update_cfg_tmpl : (Mich.typ Mich.t) -> string list -> Cfg.t -> Cfg.t
+  =fun ty varlist cfg -> begin
+    let new_type_info = 
+      List.fold_left
+        (fun typeinfo var -> Cfg.t_map_add ~errtrace:("Refuter : extractor.ml : add_trxseq_var_types : update_cfg_tmpl") typeinfo var ty)
+        cfg.type_info
+        varlist
+    in
+    {cfg with type_info=new_type_info}
+  end in
+  let updated_cfg : Cfg.t = begin
+    cfg
+    |> update_cfg_tmpl param_typ trx_seq_param_names
+    |> update_cfg_tmpl storage_typ trx_seq_storage_names
+    |> update_cfg_tmpl operation_list_typ trx_seq_operation_names
+  end in
+  (* Return type-information udpated cfg *)
+  updated_cfg
 end
-*)
 
 type initial_storage_typ = (PreLib.Mich.data PreLib.Mich.t * PreLib.Mich.typ PreLib.Mich.t) option
 (* concat N-basicpaths into one basicpath. *)
@@ -166,5 +196,6 @@ let get_concatenated_basicpaths : initial_storage_typ -> Pre.Lib.Cfg.t -> int ->
   let filtered_basicpaths : Bp.t list = get_regular_basicpaths unrolled_cfg basicpaths.bps in
   (*(* print filtered basicpaths' list-length *) let _ : unit = List.length filtered_basicpaths |> Stdlib.string_of_int |> Stdlib.print_endline in*)
   let (_, bpll) : int * (Bp.t list list) = basicpath_sequences_N (n, [filtered_basicpaths]) filtered_basicpaths in
-  List.map (fun bpl -> concat_basicpath initStgOpt unrolled_cfg bpl) bpll, unrolled_cfg (* TODO : update this unrolled_cfg with "add_trxseq_var_types" function. *)
+  let typeinfo_updated_cfg : PreLib.Cfg.t = add_trxseq_var_types unrolled_cfg n in
+  ((List.map (fun bpl -> concat_basicpath initStgOpt unrolled_cfg bpl) bpll), typeinfo_updated_cfg)
 end
