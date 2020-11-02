@@ -480,9 +480,11 @@ let update_map : key:z_expr -> value_opt:z_expr -> map:z_expr -> z_expr
 end
 
 
-let create_cmp : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> create_ite (create_bool_int_lt e1 e2) (create_int (-1)) (create_ite (create_bool_int_gt e1 e2) (create_int 1) (create_int 0))
+let create_int_cmp : v1:z_expr -> v2:z_expr -> z_expr
+=fun ~v1 ~v2 -> create_ite (create_bool_int_lt v1 v2) (create_int (-1)) (create_ite (create_bool_int_gt v1 v2) (create_int 1) (create_int 0))
 
+let create_mutez_cmp : v1:z_expr -> v2:z_expr -> z_expr
+=fun ~v1 ~v2 -> create_ite (create_bool_mutez_lt ~v1:v1 ~v2:v2) (create_int (-1)) (create_ite (create_bool_mutez_gt ~v1:v1 ~v2:v2) (create_int 1) (create_int 0))
 
 (*****************************************************************************)
 (*****************************************************************************)

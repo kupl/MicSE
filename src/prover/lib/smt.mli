@@ -267,7 +267,9 @@ val read_map_sigma : map:z_expr -> z_expr
 val update_map : key:z_expr -> value_opt:z_expr -> map:z_expr -> z_expr
 
 
-val create_cmp : z_expr -> z_expr -> z_expr
+val create_int_cmp : v1:z_expr -> v2:z_expr -> z_expr
+
+val create_mutez_cmp : v1:z_expr -> v2:z_expr -> z_expr
 
 
 (*****************************************************************************)

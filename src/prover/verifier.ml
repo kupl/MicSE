@@ -267,7 +267,11 @@ and create_convert_vobj : Vlang.v_obj -> Smt.z_expr
         | VE_and -> Smt.create_bool_and [(create_convert_vobj o1); (create_convert_vobj o2)]
         | VE_or -> Smt.create_bool_or [(create_convert_vobj o1); (create_convert_vobj o2)]
         | VE_xor -> Smt.create_bool_xor (create_convert_vobj o1) (create_convert_vobj o2)
-        | VE_cmp -> Smt.create_cmp (create_convert_vobj o1) (create_convert_vobj o2)
+        | VE_cmp -> begin
+            match o1.typ.d, o2.typ.d with
+            | T_mutez, T_mutez -> Smt.create_mutez_cmp ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
+            | _, _ -> Smt.create_int_cmp ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
+          end
         | VE_cons -> Smt.update_list_cons (create_convert_vobj o1) (create_convert_vobj o2)
         | VE_concat -> Smt.create_string_concat [(create_convert_vobj o1); (create_convert_vobj o2)]
         | VE_exec -> Smt.create_dummy_expr (sort_of_typt vo.typ)
