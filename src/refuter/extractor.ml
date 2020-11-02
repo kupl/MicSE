@@ -38,20 +38,10 @@ end
 (* create length-N basicpaths (only when "acc" is empty list) *)
 (* After recursion, it will generate every length-N transactions *)
 let rec basicpath_sequences_N : (int * (Prover.Lib.Bp.t list) list) -> Prover.Lib.Bp.t list -> (int * (Prover.Lib.Bp.t list) list)
-=fun (n, acc) tlist -> begin
-  if n <= 1 then (n, acc) else
+=fun (n, accparam) tlist -> begin
+  if n <= 1 then (n, accparam) else
   let combination : (Prover.Lib.Bp.t list) list = 
-    List.fold_left 
-      (fun acc_total bp ->
-        List.fold_left (
-          fun accumulate_inside each_elem_in_acc ->
-          (bp :: each_elem_in_acc) :: accumulate_inside
-        )
-        []
-        acc_total
-      )
-      acc
-      tlist
+    List.fold_left (fun acc bp -> (List.map (fun trxseq -> bp :: trxseq) accparam) @ acc) [] tlist
   in
   basicpath_sequences_N ((n-1), combination) tlist
 end
@@ -194,8 +184,10 @@ let get_concatenated_basicpaths : initial_storage_typ -> Pre.Lib.Cfg.t -> int ->
   let basicpaths : Bp.raw_t_list = extract_basicpaths unrolled_cfg in
   (*(* print basicpaths *) let _ : unit = List.iter (fun l -> (List.iter (fun (v, _) -> print_int v; print_string " ") l.Bp.body); print_newline ()) basicpaths.bps in*)
   let filtered_basicpaths : Bp.t list = get_regular_basicpaths unrolled_cfg basicpaths.bps in
-  (*(* print filtered basicpaths' list-length *) let _ : unit = List.length filtered_basicpaths |> Stdlib.string_of_int |> Stdlib.print_endline in*)
-  let (_, bpll) : int * (Bp.t list list) = basicpath_sequences_N (n, [filtered_basicpaths]) filtered_basicpaths in
+  (* print filtered basicpaths' list-length *) let _ : unit = Stdlib.print_string "# of filtered_basicpaths : "; List.length filtered_basicpaths |> Stdlib.string_of_int |> Stdlib.print_endline in
+  let wrapped_filtered_basicpaths : Bp.t list list = List.fold_left (fun acc x -> [x] :: acc) [] filtered_basicpaths |> List.rev in
+  let (_, bpll) : int * (Bp.t list list) = basicpath_sequences_N (n, wrapped_filtered_basicpaths) filtered_basicpaths in
+  let _ : unit = Stdlib.print_string "# of basicpath_sequences : "; List.length bpll |> Stdlib.print_int; Stdlib.print_newline () in
   let typeinfo_updated_cfg : PreLib.Cfg.t = add_trxseq_var_types unrolled_cfg n in
   ((List.map (fun bpl -> concat_basicpath initStgOpt unrolled_cfg bpl) bpll), typeinfo_updated_cfg)
 end
