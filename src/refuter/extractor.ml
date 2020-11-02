@@ -39,7 +39,7 @@ end
 (* After recursion, it will generate every length-N transactions *)
 let rec basicpath_sequences_N : (int * (Prover.Lib.Bp.t list) list) -> Prover.Lib.Bp.t list -> (int * (Prover.Lib.Bp.t list) list)
 =fun (n, acc) tlist -> begin
-  if n <= 0 then (n, acc) else
+  if n <= 1 then (n, acc) else
   let combination : (Prover.Lib.Bp.t list) list = 
     List.fold_left 
       (fun acc_total bp ->
@@ -72,7 +72,7 @@ let add_trxseq_var_types : PreLib.Cfg.t -> int -> PreLib.Cfg.t
   (* Collect newly-added variable names (generated from "initial_storage_typ" *)
   let rec vargen_template : (int -> string) -> int -> int -> string list -> string list
   =fun vargen i_start i_ubound acc_l -> begin
-    if i_start > i_ubound then acc_l else
+    if i_start >= i_ubound then acc_l else
     vargen_template vargen (i_start+1) i_ubound ((vargen i_start) :: acc_l)
   end in
   let trx_seq_param_names : string list = vargen_template trx_seq_param_name 0 n [] in

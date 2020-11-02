@@ -34,3 +34,57 @@ let collect_queries : PreLib.Cfg.t -> (Prover.Lib.Bp.t list) -> (Prover.Lib.Quer
   let queryll : Prover.Lib.Query.t list list = List.map (fun bp -> Prover.Converter.convert bp cfg |> Stdlib.snd) bplist in
   List.flatten (List.map queryfilter queryll)
 end
+
+(* It depends on newly created parameter/storage variable names in "Refuter.Extractor.concat_basicpath" *)
+let get_param_stg_from_model : PreLib.Cfg.t -> ProverLib.Smt.model option -> ((string * ProverLib.Smt.z_expr) list) option
+=fun cfg modelopt -> begin
+  match modelopt with
+  | None -> None
+  | Some model -> (
+      let rec append_template : (int -> string) -> int -> ((string * ProverLib.Smt.z_expr) list) -> ((string * ProverLib.Smt.z_expr) list)
+      =fun vargen i_now acc_l -> begin
+        try
+          let varname = vargen i_now in
+          let varsort = Prover.Verifier.sort_of_typt (PreLib.Cfg.CPMap.find_exn cfg.type_info varname) in
+          let varexpr_1 = ProverLib.Smt.read_var (ProverLib.Smt.create_symbol varname) varsort in
+          let varexpr_2 = ProverLib.Smt.create_evaluation model varexpr_1 |> Option.get in
+          append_template vargen (i_now + 1) ((varname, varexpr_2) :: acc_l)
+        with
+        | Core.Not_found_s _ -> acc_l (* Not_found from CPMap.find_exn *)
+        | Stdlib.Invalid_argument _ -> Stdlib.failwith "Refuter : runner.ml : get_param_stg_from_model : append_template" (* Invalid_argument from Option.get *)
+      end in
+      Some ( 
+        []
+        |> append_template Extractor.trx_seq_param_name 0
+        |> append_template Extractor.trx_seq_storage_name 0
+      )
+    )
+end
+
+(* Recieve one query(formula), and if refutable, return true and parameter/storages. else, return false and None. *)
+(* this function repeats "Prover.Verifier.verify" function in refuter's way. *)
+let refute_unit : PreLib.Cfg.t -> ProverLib.Query.t -> Z3.Solver.status * ((string * ProverLib.Smt.z_expr) list) option
+=fun cfg query -> begin
+  let open Prover in
+  let open ProverLib in 
+  let zexp_of_vc = Verifier.create_convert_vformula (Vlang.create_formula_not query.query) in
+  let solver = Smt.create_solver() in
+  let result = Z3.Solver.check solver [zexp_of_vc] in
+  let model_opt = Z3.Solver.get_model solver in
+  (result, get_param_stg_from_model cfg model_opt)
+end
+
+let string_of_refute_result : Z3.Solver.status * ((string * ProverLib.Smt.z_expr) list) option -> string
+=fun (b, ropt) -> begin
+  let statusstr : string = (
+    match b with
+    | Z3.Solver.SATISFIABLE -> "SAT"
+    | Z3.Solver.UNKNOWN -> "UNKNOWN"
+    | Z3.Solver.UNSATISFIABLE -> "UNSAT"
+  ) in
+  let bodystr : string =
+    match ropt with
+    | None -> ""
+    | Some lst -> List.fold_right (fun (varname, zexpr) accstr -> (varname ^ " : " ^ (ProverLib.Smt.string_of_expr zexpr)) ^ "\n" ^ accstr) lst ""
+  in statusstr ^ ("{\n" ^ bodystr ^ "}")
+end
