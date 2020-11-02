@@ -42,14 +42,41 @@ let _ =
   let (bplist, bpupdated_cfg) : (Prover.Lib.Bp.t list * PreLib.Cfg.t) = Refuter.Extractor.get_concatenated_basicpaths None cfg transaction_seq_NUM in
   (*let _ : unit = List.length bplist |> Stdlib.print_int in*)
   (*let _ : unit = List.iter (fun x -> (Prover.Lib.Bp.to_string x |> Stdlib.print_endline); Stdlib.print_newline ()) bplist in*)
+
   let querylist : Prover.Lib.Query.t list = Refuter.Runner.collect_queries bpupdated_cfg bplist (fun x -> x) in
-  (*let _ : unit = List.iter (fun q -> (Prover.Lib.Vlang.string_of_formula q.Prover.Lib.Query.query |> Stdlib.print_endline); Stdlib.print_newline ()) querylist in*)
+  let _ : unit = print_endline ("# of queries : " ^ (List.length querylist |> string_of_int)) in
   
+  (*
   let refute_results : (Z3.Solver.status * ((string * ProverLib.Smt.z_expr) list) option) list
     = List.map (fun q -> Refuter.Runner.refute_unit bpupdated_cfg q) querylist
   in
   let _ : unit = List.iter (fun q -> ProverLib.Vlang.string_of_formula q.ProverLib.Query.query |> Stdlib.print_endline; Stdlib.print_newline ()) querylist in
   let _ : unit = List.iter (fun r -> Refuter.Runner.string_of_refute_result r |> Stdlib.print_endline; Stdlib.print_newline ()) refute_results in
+  *)
+
+  (* Enhanced Readability *)
+  let _ : unit = 
+    let count = ref 0 in
+    List.iter (
+      fun q ->
+        print_string ("Current processor time : " ^ (Sys.time () |> string_of_float));
+        print_newline ();
+        print_newline ();
+        print_string "Query #";
+        print_int !count;
+        incr count;
+        print_newline ();
+        ProverLib.Vlang.string_of_formula q.ProverLib.Query.query |> print_endline;
+        print_newline ();
+        let result = Refuter.Runner.refute_unit bpupdated_cfg q in
+        Refuter.Runner.string_of_refute_result result |> print_endline;
+        print_newline ();
+        print_newline ();
+    )
+    querylist
+  in
+
+
   
   let _ : unit = (querylist, bpupdated_cfg) |> Stdlib.ignore in
 
