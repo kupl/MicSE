@@ -271,6 +271,8 @@ val create_int_cmp : v1:z_expr -> v2:z_expr -> z_expr
 
 val create_mutez_cmp : v1:z_expr -> v2:z_expr -> z_expr
 
+val create_string_cmp : v1:z_expr -> v2:z_expr -> z_expr
+
 
 (*****************************************************************************)
 (*****************************************************************************)

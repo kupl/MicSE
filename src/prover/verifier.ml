@@ -272,8 +272,10 @@ and create_convert_vobj : Vlang.v_obj -> Smt.z_expr
         | VE_xor -> Smt.create_bool_xor (create_convert_vobj o1) (create_convert_vobj o2)
         | VE_cmp -> begin
             match o1.typ.d, o2.typ.d with
+            | T_int, T_int | T_nat, T_nat -> Smt.create_int_cmp ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
             | T_mutez, T_mutez -> Smt.create_mutez_cmp ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
-            | _, _ -> Smt.create_int_cmp ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
+            | T_string, T_string | T_address, T_address -> Smt.create_string_cmp ~v1:(create_convert_vobj o1) ~v2:(create_convert_vobj o2)
+            | _, _ -> raise (Failure ("Verifier.create_convert_vobj (" ^ (Vlang.string_of_exp vo.exp) ^ "): (" ^ (Pre.Lib.Mich.string_of_typt o1.typ) ^ ") & (" ^ (Pre.Lib.Mich.string_of_typt o2.typ) ^ ") is not supported."))
           end
         | VE_cons -> Smt.update_list_cons (create_convert_vobj o1) (create_convert_vobj o2)
         | VE_concat -> Smt.create_string_concat [(create_convert_vobj o1); (create_convert_vobj o2)]
@@ -294,7 +296,12 @@ and create_convert_vobj : Vlang.v_obj -> Smt.z_expr
     | VE_lambda -> Smt.create_dummy_expr (sort_of_typt vo.typ)
     | VE_operation _ -> Smt.create_dummy_expr (sort_of_typt vo.typ)
   with
-  | Smt.Z3Error s -> raise (Failure ("Verifier.create_convert_vobj (" ^ (Vlang.string_of_exp vo.exp) ^ "): " ^ s))
+  | Smt.Z3Error s -> begin
+      raise (Failure ("Verifier.create_convert_vobj:\n" ^
+                      "  Expr: (" ^ (Vlang.string_of_exp vo.exp) ^ ") \n" ^
+                      "  Type: (" ^ (Pre.Lib.Mich.string_of_typt vo.typ) ^ ") \n" ^
+                      "  Msg: " ^ s))
+    end
   | err -> print_endline (Vlang.string_of_exp vo.exp); raise err
 end
 
