@@ -115,9 +115,10 @@ and create_convert_data : Vlang.data -> Vlang.typ -> Vlang.v_obj
   | D_right c, T_or(_, t') -> make_obj (Vlang.create_exp_uni_cont_right (create_convert_data c t'))
   | D_some c, T_option t' -> make_obj (Vlang.create_exp_uni_cont_some (create_convert_data c t'))
   | D_none, T_option _ -> make_obj (Vlang.create_exp_none)
-  | D_elt (c1, c2), T_map (t1, t2) -> make_obj (Vlang.create_exp_bin_cont_elt (create_convert_data c1 t1) (create_convert_data c2 t2))
+  | D_elt (c1, c2), T_big_map (t1, t2) | D_elt (c1, c2), T_map (t1, t2) -> make_obj (Vlang.create_exp_bin_cont_elt (create_convert_data c1 t1) (create_convert_data c2 t2))
+  | D_list cl, T_map _ -> make_obj (Vlang.create_exp_list (Core.List.map cl ~f:(fun c -> (create_convert_data c t))))
   | D_list cl, T_list t' -> make_obj (Vlang.create_exp_list (Core.List.map cl ~f:(fun c -> (create_convert_data c t'))))
-  | _ -> raise (Failure "Converter.create_convert_data: Wrong data and type")
+  | _ -> raise (Failure ("Converter.create_convert_data: Wrong data (" ^ (Pre.Lib.Mich.string_of_datat_ol d) ^ ") and type (" ^ (Pre.Lib.Mich.string_of_typt t) ^ ")"))
 end
 
 and create_convert_cond : Bp.cond -> Vlang.v_formula
