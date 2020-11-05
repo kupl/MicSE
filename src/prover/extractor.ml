@@ -166,7 +166,7 @@ and read_loc_of_check : Pre.Lib.Cfg.t -> Bp.vertex -> Bp.loc
   then begin
     let (_, etr_vtx) = Core.List.hd_exn etr_vtxs in
     Bp.create_loc etr_vtx cur_vtx
-  end else raise (Failure "Extractor.read_loc_of_check: Cannot find check entry")
+  end else Bp.create_loc cur_vtx cur_vtx
 end
 
 and update_current_bp : Bp.t -> (Bp.vertex * Bp.inst) option -> Bp.t
