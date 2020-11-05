@@ -164,11 +164,22 @@ and create_convert_vobj : Vlang.v_obj -> Smt.z_expr
         | VE_elt -> Smt.create_elt ~key:(create_convert_vobj o1) ~value:(create_convert_vobj o2)
       end
     | VE_list vol -> begin
-        let nil = match vo.typ.d with
-          | T_list t' -> Smt.create_list (sort_of_typt t')
-          | T_map (t1', t2') | T_big_map (t1', t2') -> Smt.create_map ~elt_sort:(Smt.create_elt_sort ~key_sort:(sort_of_typt t1') ~value_sort:(sort_of_typt t2'))
-          | _ -> raise (Failure ("Verifier.create_convert_vobj: Type error in list creation")) in
-        Core.List.fold_right vol ~f:(fun o l -> Smt.update_list_cons (create_convert_vobj o) l) ~init:nil
+        match vo.typ.d with
+        | T_list t' -> begin
+            let nil = Smt.create_list (sort_of_typt t') in
+            Core.List.fold_right vol ~f:(fun o l -> Smt.update_list_cons (create_convert_vobj o) l) ~init:nil
+          end
+        | T_map (t1', t2') | T_big_map (t1', t2') -> begin
+            let key_sort, value_sort = ((sort_of_typt t1'), (sort_of_typt t2')) in
+            let nim = Smt.create_map ~key_sort:key_sort ~value_sort:value_sort in
+            Core.List.fold_right vol ~f:(fun o m -> begin
+              let elt = create_convert_vobj o in
+              let key, value = ((Smt.read_elt_key ~elt:elt), (Smt.read_elt_value ~elt:elt)) in
+              let value_opt = Smt.create_option value_sort (Some value) in
+              Smt.update_map ~key:key ~value_opt:value_opt ~map:m
+            end) ~init:nim
+          end
+        | _ -> raise (Failure ("Verifier.create_convert_vobj: Type error in list creation"))
       end
     | VE_var v -> Smt.read_var (Smt.create_symbol v) (sort_of_typt vo.typ)
     | VE_nul_op vno -> begin

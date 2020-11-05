@@ -47,6 +47,9 @@ val list_nil_const : z_const
 type z_sort = Z3.Sort.sort
 
 
+val read_constructor_domain_sort : z_sort -> const_idx:int -> sort_idx:int -> z_sort
+
+
 val string_of_sort : z_sort -> string
 
 val create_option_symbol : z_sort -> z_symbol
@@ -58,9 +61,9 @@ val create_or_symbol : z_sort -> z_sort -> z_symbol
 val create_list_symbol : z_sort -> z_symbol
 
 
-val create_elt_symbol : z_sort -> z_sort -> z_symbol
+val create_elt_symbol : key_sort:z_sort -> value_sort:z_sort -> z_symbol
 
-val create_map_symbol : z_sort -> z_sort -> z_symbol
+val create_map_symbol : key_sort:z_sort -> value_sort:z_sort -> z_symbol
 
 
 val create_unit_sort : z_sort
@@ -96,9 +99,6 @@ val create_list_sort : z_sort -> z_sort
 val create_elt_sort : key_sort:z_sort -> value_sort:z_sort -> z_sort
 
 val create_map_sort : elt_sort:z_sort -> z_sort
-
-
-val read_constructor_domain_sort : z_sort -> const_idx:int -> sort_idx:int -> z_sort
 
 
 (*****************************************************************************)
@@ -256,7 +256,7 @@ val read_elt_key : elt:z_expr -> z_expr
 val read_elt_value : elt:z_expr -> z_expr
 
 
-val create_map : elt_sort:z_sort -> z_expr
+val create_map : key_sort:z_sort -> value_sort:z_sort -> z_expr
 
 val read_map_elt_content : key:z_expr -> map:z_expr -> z_expr
 
