@@ -177,7 +177,6 @@ val string_of_category : category -> string
 (*****************************************************************************)
 
 type t = { pre: Inv.t; body: (vertex * inst) list; post: Inv.t }
-and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
 val create_new_bp : vertex -> vertex -> t
 
@@ -188,3 +187,22 @@ val update_body : t -> vertex * inst -> t
 val update_inv : t -> pre:Inv.t -> post:Inv.t -> t
 
 val to_string : t -> string
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Basic path list                                                           *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type lst = {
+  bp_list: t list;
+  entry: inv_point;
+  exit: inv_point;
+  loop: inv_point list;
+}
+and inv_point = { vtx: vertex; var: var option }
+
+val create_bp_list : bp_list:t list -> entry:inv_point -> exit:inv_point -> loop:inv_point list -> lst
+
+val create_inv_point : vtx:vertex -> var_opt:var option -> inv_point

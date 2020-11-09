@@ -131,7 +131,6 @@ end
 (*****************************************************************************)
 
 type t = { pre: Inv.t; body: (vertex * inst) list; post: Inv.t }
-and raw_t_list = { bps: t list; trx_inv_vtx: vertex list; loop_inv_vtx: vertex list }
 
 let create_new_bp : vertex -> vertex -> t
 =fun pre post -> { pre=(Inv.create_dummy_inv pre); body=[]; post=(Inv.create_dummy_inv post) }
@@ -162,3 +161,24 @@ let to_string : t -> string
   )) in
   str
 end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Basic path list                                                           *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type lst = {
+  bp_list: t list;
+  entry: inv_point;
+  exit: inv_point;
+  loop: inv_point list;
+}
+and inv_point = { vtx: vertex; var: var option }
+
+let create_bp_list : bp_list:t list -> entry:inv_point -> exit:inv_point -> loop:inv_point list -> lst
+=fun ~bp_list ~entry ~exit ~loop -> { bp_list=bp_list; entry=entry; exit=exit; loop=loop }
+
+let create_inv_point : vtx:vertex -> var_opt:var option -> inv_point
+=fun ~vtx ~var_opt -> { vtx=vtx; var=var_opt }

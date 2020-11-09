@@ -5,11 +5,17 @@ open ProverLib
 
 let loop_inv_vtx = ref []
 
-let rec extract : Pre.Lib.Cfg.t -> Bp.raw_t_list
+let exit_var = ref None
+
+let rec extract : Pre.Lib.Cfg.t -> Bp.lst
 =fun cfg -> begin
   let entry_bp = Bp.create_new_bp cfg.main_entry cfg.main_exit in
   let result = translate entry_bp cfg.main_entry cfg in
-  { bps=result; trx_inv_vtx=[cfg.main_entry; cfg.main_exit]; loop_inv_vtx=(!loop_inv_vtx) }
+  Bp.create_bp_list
+    ~bp_list:result
+    ~entry:(Bp.create_inv_point ~vtx:cfg.main_entry ~var_opt:(Some (Pre.Lib.Cfg.param_storage_name)))
+    ~exit:(Bp.create_inv_point ~vtx:cfg.main_exit ~var_opt:(Some (Option.get !exit_var)))
+    ~loop:(Core.List.map !loop_inv_vtx ~f:(fun vtx -> Bp.create_inv_point ~vtx:vtx ~var_opt:None))
 end
 
 and translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
@@ -21,6 +27,9 @@ and translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
     | Cfg_assign (id, e) -> begin
         let assert_inst = create_basic_safety_property cur_vtx e (Pre.Lib.Cfg.CPMap.find_exn cfg.type_info id) in
         let new_bp = update_current_bp cur_bp assert_inst in
+        let _ = if (Option.is_none !exit_var)
+                then exit_var := Some (id)
+                else if (Option.get !exit_var) <> id then raise (Failure "Extractor.translator: main-exit var conflict") in
         let inst = Bp.create_inst_assign id e in
         let new_bp' = update_current_bp new_bp (Some (cur_vtx, inst)) in
         [new_bp']

@@ -3,7 +3,11 @@ open ProverLib
 (************************************************)
 (************************************************)
 
-val extract : Pre.Lib.Cfg.t -> Bp.raw_t_list
+val loop_inv_vtx : (Bp.vertex list) ref
+
+val exit_var : (Bp.var option) ref
+
+val extract : Pre.Lib.Cfg.t -> Bp.lst
 
 val translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
 

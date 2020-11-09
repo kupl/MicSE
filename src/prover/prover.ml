@@ -13,16 +13,16 @@ module Verifier = Verifier
 let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
 =fun cfg init_stg_opt -> begin
   (* Construct basic path *)
-  let raw_bp_list = Extractor.extract cfg in
+  let bp_list = Extractor.extract cfg in
   let _ = if !Utils.Options.flag_bp_print
           then print_endline (":: Basic Paths" ^ 
-                              (Core.List.foldi raw_bp_list.bps ~init:"" ~f:(fun idx str bp -> (
+                              (Core.List.foldi bp_list.bp_list ~init:"" ~f:(fun idx str bp -> (
                                 str ^ "\nBasic Path #" ^ (string_of_int idx) ^ "\n" ^ (Bp.to_string bp))
                               ))) in
 
   (* Verify all of basic path *)
-  let initial_worklist = Generator.create_initial_worklist raw_bp_list.trx_inv_vtx raw_bp_list.loop_inv_vtx in
-  let raw_queries = work initial_worklist raw_bp_list cfg init_stg_opt in
+  let initial_worklist = Generator.create_initial_worklist bp_list in
+  let raw_queries = work initial_worklist bp_list cfg init_stg_opt in
 
   (* Print out result *)
   let queries = Core.List.sort (Core.List.fold_right raw_queries ~f:(fun raw_q qs -> ( (* only when proven@unproven *)
@@ -61,15 +61,15 @@ let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
   ()
 end
 
-and work : Inv.WorkList.t -> Bp.raw_t_list -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> Query.t list
-=fun w raw_bps cfg init_stg_opt -> begin
+and work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> Query.t list
+=fun w bp_list cfg init_stg_opt -> begin
   let _ = init_stg_opt in
   (* Choose a candidate invariant *)
   let inv_map, _ = Inv.WorkList.pop w in
 
   (* Verify Queries *)
-  let bp_list = Generator.apply inv_map raw_bps.bps in
-  let _, proven, unproven = Core.List.fold_right bp_list ~f:(fun bp (inductive, proven, unproven) -> (
+  let bp_list = Generator.apply inv_map bp_list.bp_list in
+  let inductiveness, proven, unproven = Core.List.fold_right bp_list ~f:(fun bp (inductive, proven, unproven) -> (
     let path_vc, queries = Converter.convert bp cfg in
     let path_inductive, _ = Verifier.verify path_vc cfg in
     let proven, unproven = Core.List.fold_right queries ~f:(fun q (p, up) -> (
@@ -85,6 +85,7 @@ and work : Inv.WorkList.t -> Bp.raw_t_list -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data
     )) ~init:(proven, unproven) in
     (inductive&&path_inductive, proven, unproven)
   )) ~init:(true, [], []) in
+  let _ = inductiveness in
   proven@unproven
 end
 
