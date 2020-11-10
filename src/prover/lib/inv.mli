@@ -8,12 +8,14 @@ type vertex = Pre.Lib.Cfg.vertex
 
 type formula = Vlang.t
 
-type t = { id: vertex; formula: formula option }
+type t = { id: vertex; formula: formula list }
 and inv = t
 
-val create_dummy_inv : vertex -> t
+val create : vtx:vertex -> t
 
-val create_inv : vertex -> formula -> t
+val read_formula : inv:t -> formula
+
+val update : inv:t -> f:formula -> t
 
 val string_of_inv : t -> string
 

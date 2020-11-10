@@ -21,7 +21,7 @@ let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
                               ))) in
 
   (* Verify all of basic path *)
-  let initial_worklist = Generator.create_initial_worklist bp_list in
+  let initial_worklist = Generator.W.create ~bp_list:bp_list in
   let raw_queries = work initial_worklist bp_list cfg init_stg_opt in
 
   (* Print out result *)

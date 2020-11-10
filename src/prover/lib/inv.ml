@@ -8,19 +8,31 @@ type vertex = Pre.Lib.Cfg.vertex
 
 type formula = Vlang.t
 
-type t = { id: vertex; formula: formula option }
+type t = { id: vertex; formula: formula list }
 and inv = t
 
-let create_dummy_inv : vertex -> t
-=fun vtx -> { id=vtx; formula=None }
+let create : vtx:vertex -> t
+=fun ~vtx -> { id=vtx; formula=[] }
 
-let create_inv : vertex -> formula -> t
-=fun vtx f -> { id=vtx; formula=Some f }
+let create_with_formulae : vtx:vertex -> fl:formula list -> t
+=fun ~vtx ~fl -> { id=vtx; formula=fl }
+
+let read_formula : inv:t -> formula
+=fun ~inv -> begin
+  if Core.List.is_empty (inv.formula)
+  then Vlang.create_formula_true
+  else Vlang.create_formula_and (inv.formula)
+end
+
+let update : inv:t -> f:formula -> t
+=fun ~inv ~f -> { inv with formula=(f::inv.formula) }
 
 let string_of_inv : t -> string
 =fun inv -> begin
-  if Option.is_none inv.formula then (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": None"
-  else (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": " ^ (Vlang.string_of_formula (Option.get inv.formula))
+  if Core.List.is_empty (inv.formula)
+  then (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": True"
+  else (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": " ^
+         (Core.String.concat ~sep:" && " (Core.List.map (inv.formula) ~f:Vlang.string_of_formula))
 end
 
 
@@ -60,7 +72,7 @@ module Map = struct
   =fun m key -> begin
     let data_opt = T.find m key in
     match data_opt with
-    | None -> create_inv key (Vlang.create_formula_true)
+    | None -> create ~vtx:key
     | Some data -> data
   end
 
@@ -84,13 +96,7 @@ module Map = struct
       | `Both (inv1, inv2) -> begin
           if key <> inv1.id || key <> inv2.id
           then raise (Failure "Inv.Map.merge: Error from the invariant id")
-          else begin
-            match (inv1.formula, inv2.formula) with
-            | Some v1, Some v2 -> Some (create_inv key (Vlang.create_formula_and [v1; v2]))
-            | Some _, None -> Some inv1
-            | None, Some _ -> Some inv2
-            | None, None -> None
-          end
+          else Some (create_with_formulae ~vtx:key ~fl:((inv1.formula)@(inv2.formula)))
         end
       | `Left inv -> Some inv
       | `Right inv -> Some inv
@@ -101,14 +107,10 @@ module Map = struct
   let to_string : t -> string
   =fun m -> begin
     "{\n" ^ 
-    fold m ~init:"" ~f:(fun ~key ~data str -> (
-      match data.formula with
-      | None -> str
-      | Some v -> begin
-          str ^
-          (string_of_int key) ^ ": " ^ (Vlang.string_of_formula v) ^ "\n"
-        end
-    )) ^
+    fold m ~init:"" ~f:(fun ~key ~data str -> begin
+      str ^
+      (Pre.Lib.Cfg.string_of_vertex key) ^ " |-> " ^ (string_of_inv data) ^ "\n"
+    end) ^
     "}"
   end
 end

@@ -133,11 +133,11 @@ end
 type t = { pre: Inv.t; body: (vertex * inst) list; post: Inv.t }
 
 let create_new_bp : vertex -> vertex -> t
-=fun pre post -> { pre=(Inv.create_dummy_inv pre); body=[]; post=(Inv.create_dummy_inv post) }
+=fun pre post -> { pre=(Inv.create ~vtx:pre); body=[]; post=(Inv.create ~vtx:post) }
 
 let create_cut_bp : t -> vertex -> (t * t)
 =fun bp loop -> begin
-  let loop_inv = Inv.create_dummy_inv loop in
+  let loop_inv = Inv.create ~vtx:loop in
   let terminated_bp = { pre=bp.pre; body=bp.body; post=loop_inv } in
   let new_bp = { pre=loop_inv; body=[]; post=bp.post } in
   (terminated_bp, new_bp)

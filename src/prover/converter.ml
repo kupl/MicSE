@@ -12,7 +12,7 @@ let type_map = ref Pre.Lib.Cfg.CPMap.empty
 let rec convert : Bp.t -> Pre.Lib.Cfg.t -> (Vlang.t * Query.t list)
 =fun bp cfg -> begin
   let _ = type_map := cfg.type_info in
-  let (f, g) = (Option.get bp.pre.formula, Option.get bp.post.formula) in
+  let (f, g) = (Inv.read_formula ~inv:(bp.pre), Inv.read_formula ~inv:(bp.post)) in
   let f', qs = Core.List.fold_left bp.body ~init:(f, []) ~f:sp in
   let inductive = Vlang.create_formula_imply f' g in
   (inductive, qs)
