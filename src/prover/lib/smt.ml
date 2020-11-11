@@ -13,7 +13,36 @@ exception Z3Error = Z3.Error
 let get_field : 'a list -> int -> 'a
 =fun l n -> Core.List.nth_exn l n
 
-let ctx = ref (Z3.mk_context [])
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Context                                                                   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module Ctx = struct
+  type t = Z3.context
+  type component = (string * string)
+
+  let obj : t ref
+  =ref (Z3.mk_context []) 
+
+  let create_timeout : unit -> component
+  =fun () -> begin
+    let budget = !Utils.Options.z3_time_budget * 1000 in
+    ("timeout", (string_of_int (budget)))
+  end
+
+  let create : unit -> unit
+  =fun () -> begin
+    let c = [] in
+    let c = (create_timeout ())::c in
+    obj := Z3.mk_context c
+  end
+  
+  let read : t
+  =(!obj)
+end
 
 
 (*****************************************************************************)
@@ -28,11 +57,11 @@ let dummy_tmp = ref 0
 let create_dummy_symbol : unit -> z_symbol
 =fun () -> begin
   let _ = dummy_tmp := !dummy_tmp + 1 in
-  Z3.Symbol.mk_string !ctx ("DUMMY" ^ (string_of_int !dummy_tmp))
+  Z3.Symbol.mk_string (Ctx.read) ("DUMMY" ^ (string_of_int !dummy_tmp))
 end
 
 let create_symbol : string -> z_symbol
-=fun s -> Z3.Symbol.mk_string !ctx s
+=fun s -> Z3.Symbol.mk_string (Ctx.read) s
 
 
 (*****************************************************************************)
@@ -44,10 +73,10 @@ let create_symbol : string -> z_symbol
 type z_const = Z3.Datatype.Constructor.constructor
 
 let option_none_const : z_const
-= Z3.Datatype.mk_constructor !ctx (create_symbol "None") (create_symbol "is_none") [] [] []
+= Z3.Datatype.mk_constructor (Ctx.read) (create_symbol "None") (create_symbol "is_none") [] [] []
 
 let list_nil_const : z_const
-= Z3.Datatype.mk_constructor !ctx (create_symbol "Nil") (create_symbol "is_nil") [] [] []
+= Z3.Datatype.mk_constructor (Ctx.read) (create_symbol "Nil") (create_symbol "is_nil") [] [] []
 
 
 (*****************************************************************************)
@@ -89,71 +118,71 @@ let create_map_symbol : key_sort:z_sort -> value_sort:z_sort -> z_symbol
 
 (* UNINTERPRETED SORTS *)
 let create_unit_sort : z_sort
-=Z3.Sort.mk_uninterpreted_s !ctx "Unit" 
+=Z3.Sort.mk_uninterpreted_s (Ctx.read) "Unit" 
 
 let create_operation_sort : z_sort
-=Z3.Sort.mk_uninterpreted_s !ctx "Operation"
+=Z3.Sort.mk_uninterpreted_s (Ctx.read) "Operation"
 
 let create_contract_sort : z_sort
-=Z3.Sort.mk_uninterpreted_s !ctx "Contract"
+=Z3.Sort.mk_uninterpreted_s (Ctx.read) "Contract"
 
 let create_lambda_sort : z_sort
-=Z3.Sort.mk_uninterpreted_s !ctx "Lambda"
+=Z3.Sort.mk_uninterpreted_s (Ctx.read) "Lambda"
 
 
 let create_bool_sort : z_sort
-=Z3.Boolean.mk_sort !ctx
+=Z3.Boolean.mk_sort (Ctx.read)
 
 let create_int_sort : z_sort
-=Z3.Arithmetic.Integer.mk_sort !ctx
+=Z3.Arithmetic.Integer.mk_sort (Ctx.read)
 
 let create_string_sort : z_sort
-=Z3.Seq.mk_string_sort !ctx
+=Z3.Seq.mk_string_sort (Ctx.read)
 
 let create_mutez_sort : z_sort
-=Z3.BitVector.mk_sort !ctx 63
+=Z3.BitVector.mk_sort (Ctx.read) 63
 
 
 let create_option_sort : z_sort -> z_sort
 =fun content_sort -> begin
-  let option_some_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Some") (create_symbol "is_some") [(create_symbol "content")] [(Some content_sort)] [1] in
-  Z3.Datatype.mk_sort !ctx (create_option_symbol content_sort) [option_none_const; option_some_const]
+  let option_some_const = Z3.Datatype.mk_constructor (Ctx.read) (create_symbol "Some") (create_symbol "is_some") [(create_symbol "content")] [(Some content_sort)] [1] in
+  Z3.Datatype.mk_sort (Ctx.read) (create_option_symbol content_sort) [option_none_const; option_some_const]
 end
 
 
 let create_pair_sort : z_sort -> z_sort -> z_sort
 =fun fst_sort snd_sort -> begin
-  let pair_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Pair") (create_symbol "is_pair") [(create_symbol "fst"); (create_symbol "snd")] [(Some fst_sort); (Some snd_sort)] [1; 2] in
-  Z3.Datatype.mk_sort !ctx (create_pair_symbol fst_sort snd_sort) [pair_const]
+  let pair_const = Z3.Datatype.mk_constructor (Ctx.read) (create_symbol "Pair") (create_symbol "is_pair") [(create_symbol "fst"); (create_symbol "snd")] [(Some fst_sort); (Some snd_sort)] [1; 2] in
+  Z3.Datatype.mk_sort (Ctx.read) (create_pair_symbol fst_sort snd_sort) [pair_const]
 end
 
 
 let create_or_sort : z_sort -> z_sort -> z_sort
 =fun left_sort right_sort -> begin
-  let or_left_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Left") (create_symbol "is_left") [(create_symbol "content")] [(Some left_sort)] [1] in
-  let or_right_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Right") (create_symbol "is_right") [(create_symbol "content")] [(Some right_sort)] [1] in
-  Z3.Datatype.mk_sort !ctx (create_or_symbol left_sort right_sort) [or_left_const; or_right_const]
+  let or_left_const = Z3.Datatype.mk_constructor (Ctx.read) (create_symbol "Left") (create_symbol "is_left") [(create_symbol "content")] [(Some left_sort)] [1] in
+  let or_right_const = Z3.Datatype.mk_constructor (Ctx.read) (create_symbol "Right") (create_symbol "is_right") [(create_symbol "content")] [(Some right_sort)] [1] in
+  Z3.Datatype.mk_sort (Ctx.read) (create_or_symbol left_sort right_sort) [or_left_const; or_right_const]
 end
 
 
 let create_list_sort : z_sort -> z_sort
 =fun content_sort -> begin
-  let list_cons_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Cons") (create_symbol "is_cons") [(create_symbol "head"); (create_symbol "tail")] [(Some content_sort); None] [1; 0] in
-  Z3.Datatype.mk_sort !ctx (create_list_symbol content_sort) [list_nil_const; list_cons_const]
+  let list_cons_const = Z3.Datatype.mk_constructor (Ctx.read) (create_symbol "Cons") (create_symbol "is_cons") [(create_symbol "head"); (create_symbol "tail")] [(Some content_sort); None] [1; 0] in
+  Z3.Datatype.mk_sort (Ctx.read) (create_list_symbol content_sort) [list_nil_const; list_cons_const]
 end
 
 
 let create_elt_sort : key_sort:z_sort -> value_sort:z_sort -> z_sort
 =fun ~key_sort ~value_sort -> begin
-  let elt_const = Z3.Datatype.mk_constructor !ctx (create_symbol "Elt") (create_symbol "is_elt") [(create_symbol "key"); (create_symbol "value")] [Some key_sort; Some value_sort] [1; 2] in
-  Z3.Datatype.mk_sort !ctx (create_elt_symbol ~key_sort:key_sort ~value_sort:value_sort) [elt_const]
+  let elt_const = Z3.Datatype.mk_constructor (Ctx.read) (create_symbol "Elt") (create_symbol "is_elt") [(create_symbol "key"); (create_symbol "value")] [Some key_sort; Some value_sort] [1; 2] in
+  Z3.Datatype.mk_sort (Ctx.read) (create_elt_symbol ~key_sort:key_sort ~value_sort:value_sort) [elt_const]
 end
 
 let create_map_sort : elt_sort:z_sort -> z_sort
 =fun ~elt_sort -> begin
   let key_sort = read_constructor_domain_sort elt_sort ~const_idx:0 ~sort_idx:0 in
   let value_sort = read_constructor_domain_sort elt_sort ~const_idx:0 ~sort_idx:1 in
-  Z3.Z3Array.mk_sort !ctx key_sort value_sort
+  Z3.Z3Array.mk_sort (Ctx.read) key_sort value_sort
 end
 
 
@@ -176,53 +205,53 @@ let string_of_func : z_func -> string
 
 
 let create_dummy_expr : z_sort -> z_expr
-=fun sort -> Z3.Expr.mk_const !ctx (create_dummy_symbol ()) sort
+=fun sort -> Z3.Expr.mk_const (Ctx.read) (create_dummy_symbol ()) sort
 
 let read_sort_of_expr : z_expr -> z_sort
 =fun e -> Z3.Expr.get_sort e
 
 let read_var : z_symbol -> z_sort -> z_expr
-=fun v t -> Z3.Expr.mk_const !ctx v t
+=fun v t -> Z3.Expr.mk_const (Ctx.read) v t
 
 
 let create_ite : z_expr -> z_expr -> z_expr -> z_expr
-=fun cond true_expr false_expr -> Z3.Boolean.mk_ite !ctx cond true_expr false_expr
+=fun cond true_expr false_expr -> Z3.Boolean.mk_ite (Ctx.read) cond true_expr false_expr
 
 
 let create_unit : z_expr
-=Z3.Expr.mk_const !ctx (create_symbol "UNIT") create_unit_sort
+=Z3.Expr.mk_const (Ctx.read) (create_symbol "UNIT") create_unit_sort
 
 
 let create_forall : z_expr list -> z_expr -> z_expr
-=fun vl f -> Z3.Quantifier.expr_of_quantifier (Z3.Quantifier.mk_forall_const !ctx vl f None [] [] None None)
+=fun vl f -> Z3.Quantifier.expr_of_quantifier (Z3.Quantifier.mk_forall_const (Ctx.read) vl f None [] [] None None)
 
 
 let create_bool_true : z_expr
-=Z3.Boolean.mk_true !ctx
+=Z3.Boolean.mk_true (Ctx.read)
 
 let create_bool_false : z_expr
-=Z3.Boolean.mk_false !ctx
+=Z3.Boolean.mk_false (Ctx.read)
 
 let create_bool_not : z_expr -> z_expr
-=fun e -> Z3.Boolean.mk_not !ctx e
+=fun e -> Z3.Boolean.mk_not (Ctx.read) e
 
 let create_bool_and : z_expr list -> z_expr
-=fun el -> Z3.Boolean.mk_and !ctx el
+=fun el -> Z3.Boolean.mk_and (Ctx.read) el
 
 let create_bool_or : z_expr list -> z_expr
-=fun el -> Z3.Boolean.mk_or !ctx el
+=fun el -> Z3.Boolean.mk_or (Ctx.read) el
 
 let create_bool_xor : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Boolean.mk_xor !ctx e1 e2
+=fun e1 e2 -> Z3.Boolean.mk_xor (Ctx.read) e1 e2
 
 let create_bool_eq : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Boolean.mk_eq !ctx e1 e2
+=fun e1 e2 -> Z3.Boolean.mk_eq (Ctx.read) e1 e2
 
 let create_bool_imply : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Boolean.mk_implies !ctx e1 e2
+=fun e1 e2 -> Z3.Boolean.mk_implies (Ctx.read) e1 e2
 
 let create_bool_iff : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Boolean.mk_iff !ctx e1 e2
+=fun e1 e2 -> Z3.Boolean.mk_iff (Ctx.read) e1 e2
 
 let create_bool_list_is_nil : z_expr -> z_expr
 =fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 0) [e]
@@ -231,28 +260,28 @@ let create_bool_list_is_cons : z_expr -> z_expr
 =fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 1) [e]
 
 let create_bool_int_lt : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Arithmetic.mk_lt !ctx e1 e2
+=fun e1 e2 -> Z3.Arithmetic.mk_lt (Ctx.read) e1 e2
 
 let create_bool_int_le : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Arithmetic.mk_le !ctx e1 e2
+=fun e1 e2 -> Z3.Arithmetic.mk_le (Ctx.read) e1 e2
 
 let create_bool_int_gt : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Arithmetic.mk_gt !ctx e1 e2
+=fun e1 e2 -> Z3.Arithmetic.mk_gt (Ctx.read) e1 e2
 
 let create_bool_int_ge : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Arithmetic.mk_ge !ctx e1 e2
+=fun e1 e2 -> Z3.Arithmetic.mk_ge (Ctx.read) e1 e2
 
 let create_bool_mutez_lt : v1:z_expr -> v2:z_expr -> z_expr (* v1 < v2 *)
-=fun ~v1 ~v2 -> Z3.BitVector.mk_ult !ctx v1 v2
+=fun ~v1 ~v2 -> Z3.BitVector.mk_ult (Ctx.read) v1 v2
 
 let create_bool_mutez_le : v1:z_expr -> v2:z_expr -> z_expr (* v1 ≦ v2 *)
-=fun ~v1 ~v2 -> Z3.BitVector.mk_ule !ctx v1 v2
+=fun ~v1 ~v2 -> Z3.BitVector.mk_ule (Ctx.read) v1 v2
 
 let create_bool_mutez_gt : v1:z_expr -> v2:z_expr -> z_expr (* v1 > v2 *)
-=fun ~v1 ~v2 -> Z3.BitVector.mk_ugt !ctx v1 v2
+=fun ~v1 ~v2 -> Z3.BitVector.mk_ugt (Ctx.read) v1 v2
 
 let create_bool_mutez_ge : v1:z_expr -> v2:z_expr -> z_expr (* v1 ≧ v2 *)
-=fun ~v1 ~v2 -> Z3.BitVector.mk_uge !ctx v1 v2
+=fun ~v1 ~v2 -> Z3.BitVector.mk_uge (Ctx.read) v1 v2
 
 let create_bool_option_is_none : z_expr -> z_expr
 =fun e -> Z3.FuncDecl.apply (get_field (Z3.Datatype.get_recognizers (read_sort_of_expr e)) 0) [e]
@@ -268,63 +297,63 @@ let create_bool_option_is_right : z_expr -> z_expr
 
 
 let create_int_from_zarith : Z.t -> z_expr
-=fun n -> Z3.Arithmetic.Integer.mk_numeral_s !ctx (Z.to_string n)
+=fun n -> Z3.Arithmetic.Integer.mk_numeral_s (Ctx.read) (Z.to_string n)
 
 let create_int : int -> z_expr
-=fun n -> Z3.Arithmetic.Integer.mk_numeral_i !ctx n
+=fun n -> Z3.Arithmetic.Integer.mk_numeral_i (Ctx.read) n
 
 let create_int_neg : z_expr -> z_expr
-=fun e -> Z3.Arithmetic.mk_unary_minus !ctx e
+=fun e -> Z3.Arithmetic.mk_unary_minus (Ctx.read) e
 
 let create_int_add : z_expr list -> z_expr
-=fun el -> Z3.Arithmetic.mk_add !ctx el
+=fun el -> Z3.Arithmetic.mk_add (Ctx.read) el
 
 let create_int_sub : z_expr list -> z_expr
-=fun el -> Z3.Arithmetic.mk_sub !ctx el
+=fun el -> Z3.Arithmetic.mk_sub (Ctx.read) el
 
 let create_int_mul : z_expr list -> z_expr
-=fun el -> Z3.Arithmetic.mk_mul !ctx el
+=fun el -> Z3.Arithmetic.mk_mul (Ctx.read) el
 
 let create_int_div : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Arithmetic.mk_div !ctx e1 e2
+=fun e1 e2 -> Z3.Arithmetic.mk_div (Ctx.read) e1 e2
 
 let create_int_mod : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Arithmetic.Integer.mk_mod !ctx e1 e2
+=fun e1 e2 -> Z3.Arithmetic.Integer.mk_mod (Ctx.read) e1 e2
 
 let create_int_power : z_expr -> z_expr -> z_expr
-=fun e1 e2 -> Z3.Arithmetic.mk_power !ctx e1 e2
+=fun e1 e2 -> Z3.Arithmetic.mk_power (Ctx.read) e1 e2
 
 
 let create_string : string -> z_expr
-=fun s -> Z3.Seq.mk_string !ctx s
+=fun s -> Z3.Seq.mk_string (Ctx.read) s
 
 let create_string_concat : z_expr list -> z_expr
-=fun sl -> Z3.Seq.mk_seq_concat !ctx sl
+=fun sl -> Z3.Seq.mk_seq_concat (Ctx.read) sl
 
 let create_string_slice : z_expr -> z_expr -> z_expr -> z_expr
-=fun s lo hi -> Z3.Seq.mk_seq_extract !ctx s lo hi
+=fun s lo hi -> Z3.Seq.mk_seq_extract (Ctx.read) s lo hi
 
 
 let create_mutez_from_zarith : value:Z.t -> z_expr
-=fun ~value -> Z3.BitVector.mk_numeral !ctx (Z.to_string value) 63
+=fun ~value -> Z3.BitVector.mk_numeral (Ctx.read) (Z.to_string value) 63
 
 let create_mutez : value:int -> z_expr
-=fun ~value -> Z3.BitVector.mk_numeral !ctx (string_of_int value) 63
+=fun ~value -> Z3.BitVector.mk_numeral (Ctx.read) (string_of_int value) 63
 
 let create_mutez_add : v1:z_expr -> v2:z_expr -> z_expr
-=fun ~v1 ~v2 -> Z3.BitVector.mk_add !ctx v1 v2
+=fun ~v1 ~v2 -> Z3.BitVector.mk_add (Ctx.read) v1 v2
 
 let create_mutez_sub : v1:z_expr -> v2:z_expr -> z_expr
-=fun ~v1 ~v2 -> Z3.BitVector.mk_sub !ctx v1 v2
+=fun ~v1 ~v2 -> Z3.BitVector.mk_sub (Ctx.read) v1 v2
 
 let create_mutez_mul : v1:z_expr -> v2:z_expr -> z_expr
-=fun ~v1 ~v2 -> Z3.BitVector.mk_mul !ctx v1 v2
+=fun ~v1 ~v2 -> Z3.BitVector.mk_mul (Ctx.read) v1 v2
 
 let create_mutez_div : v1:z_expr -> v2:z_expr -> z_expr
-=fun ~v1 ~v2 -> Z3.BitVector.mk_udiv !ctx v1 v2
+=fun ~v1 ~v2 -> Z3.BitVector.mk_udiv (Ctx.read) v1 v2
 
 let create_mutez_mod : v1:z_expr -> v2:z_expr -> z_expr
-=fun ~v1 ~v2 -> Z3.BitVector.mk_urem !ctx v1 v2
+=fun ~v1 ~v2 -> Z3.BitVector.mk_urem (Ctx.read) v1 v2
 
 
 let create_option : z_sort -> z_expr option -> z_expr
@@ -386,14 +415,14 @@ let read_elt_value : elt:z_expr -> z_expr
 
 
 let create_map : key_sort:z_sort -> value_sort:z_sort -> z_expr
-=fun ~key_sort ~value_sort -> Z3.Z3Array.mk_const !ctx (create_map_symbol ~key_sort:key_sort ~value_sort:value_sort) key_sort value_sort
+=fun ~key_sort ~value_sort -> Z3.Z3Array.mk_const (Ctx.read) (create_map_symbol ~key_sort:key_sort ~value_sort:value_sort) key_sort value_sort
 
 let read_map_elt_content : key:z_expr -> map:z_expr -> z_expr
 =fun ~key ~map -> begin
   let map_sort = (read_sort_of_expr map) in
   let value_sort = Z3.Z3Array.get_range map_sort in
-  let value = Z3.Z3Array.mk_select !ctx map key in
-  let default_value = Z3.Z3Array.mk_term_array !ctx map in
+  let value = Z3.Z3Array.mk_select (Ctx.read) map key in
+  let default_value = Z3.Z3Array.mk_term_array (Ctx.read) map in
   create_ite
     (create_bool_eq value default_value)
     (create_option value_sort None)
@@ -402,8 +431,8 @@ end
 
 let read_map_elt_exists : key:z_expr -> map:z_expr -> z_expr
 =fun ~key ~map -> begin
-  let value = Z3.Z3Array.mk_select !ctx map key in
-  let default_value = Z3.Z3Array.mk_term_array !ctx map in
+  let value = Z3.Z3Array.mk_select (Ctx.read) map key in
+  let default_value = Z3.Z3Array.mk_term_array (Ctx.read) map in
   create_ite
     (create_bool_eq value default_value)
     (create_bool_false)
@@ -411,16 +440,16 @@ let read_map_elt_exists : key:z_expr -> map:z_expr -> z_expr
 end
 
 let read_map_sigma : map:z_expr -> z_expr
-=fun ~map -> Z3.Expr.mk_const !ctx (create_symbol ("Sigma_of_" ^ (string_of_expr map))) (create_int_sort)
+=fun ~map -> Z3.Expr.mk_const (Ctx.read) (create_symbol ("Sigma_of_" ^ (string_of_expr map))) (create_int_sort)
 
 let update_map : key:z_expr -> value_opt:z_expr -> map:z_expr -> z_expr
 =fun ~key ~value_opt ~map -> begin
   let value = read_option_content value_opt in
-  let default_value = Z3.Z3Array.mk_term_array !ctx map in
+  let default_value = Z3.Z3Array.mk_term_array (Ctx.read) map in
   create_ite
     (create_bool_option_is_none value_opt)
-    (Z3.Z3Array.mk_store !ctx map key default_value)
-    (Z3.Z3Array.mk_store !ctx map key value)
+    (Z3.Z3Array.mk_store (Ctx.read) map key default_value)
+    (Z3.Z3Array.mk_store (Ctx.read) map key value)
 end
 
 let create_int_cmp : v1:z_expr -> v2:z_expr -> z_expr
@@ -442,7 +471,7 @@ type solver = Z3.Solver.solver
 and model = Z3.Model.model
 
 let create_solver : unit -> solver
-=fun () -> Z3.Solver.mk_solver !ctx None
+=fun () -> Z3.Solver.mk_solver (Ctx.read) None
 
 let update_solver_add : solver -> z_expr list -> unit
 =fun solver el -> Z3.Solver.add solver el

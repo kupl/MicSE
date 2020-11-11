@@ -12,6 +12,9 @@ module Verifier = Verifier
 
 let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
 =fun cfg init_stg_opt -> begin
+  (* Set the Z3 context *)
+  let _ = Smt.Ctx.create () in
+
   (* Construct basic path *)
   let bp_list = Extractor.extract cfg in
   let _ = if !Utils.Options.flag_bp_print
