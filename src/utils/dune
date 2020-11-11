@@ -1,3 +1,6 @@
 (library
   (name utils)
-  (public_name micse.utils))
+  (public_name micse.utils)
+  (libraries
+    unix
+    ))
