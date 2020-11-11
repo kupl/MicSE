@@ -68,8 +68,8 @@ and work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Li
   let inv_map, _ = Inv.WorkList.pop w in
 
   (* Verify Queries *)
-  let bp_list = Generator.apply inv_map bp_list.bp_list in
-  let inductiveness, proven, unproven = Core.List.fold_right bp_list ~f:(fun bp (inductive, proven, unproven) -> (
+  let bps = Generator.apply inv_map bp_list.bps in
+  let inductiveness, proven, unproven = Core.List.fold_right bps ~f:(fun bp (inductive, proven, unproven) -> (
     let path_vc, queries = Converter.convert bp cfg in
     let path_inductive, _ = Verifier.verify path_vc cfg in
     let proven, unproven = Core.List.fold_right queries ~f:(fun q (p, up) -> (
