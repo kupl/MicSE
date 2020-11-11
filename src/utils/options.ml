@@ -1,6 +1,6 @@
 (*****************************************************************************)
 (*****************************************************************************)
-(* Options                                                                   *)
+(* Options Variables                                                         *)
 (*****************************************************************************)
 (*****************************************************************************)
 
@@ -29,15 +29,6 @@ let flag_bpopt_rsi : bool ref
 let flag_param_storage : bool ref
 =ref false (* print counter-example on unsafe-path *)
 
-let set_all_cfg_opt : unit -> unit
-=fun () -> begin
-  if (not !flag_cfgopt_all) then () else (
-    flag_cfgopt_rsv := true;
-    flag_cfgopt_rfv := true;
-    flag_cfgopt_rssov := true;
-  )
-end
-
 (* FLAGS - Print components *)
 let flag_adt_print : bool ref
 =ref false
@@ -47,6 +38,27 @@ let flag_bp_print : bool ref
 =ref false
 let flag_vc_print : bool ref
 =ref false
+
+(* INT - Time Budgets *)
+let z3_time_budget : int ref
+=ref 30 (* z3 time budgets in seconds *)
+let prover_time_budget : int ref
+=ref 180 (* prover time budgets in seconds *)
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Option Settings                                                           *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let set_all_cfg_opt : unit -> unit
+=fun () -> begin
+  if (not !flag_cfgopt_all) then () else (
+    flag_cfgopt_rsv := true;
+    flag_cfgopt_rfv := true;
+    flag_cfgopt_rssov := true;
+  )
+end
 
 let activate_detector : string -> unit
 =fun s -> begin
@@ -68,6 +80,8 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-vc_print", (Arg.Set flag_vc_print), "Print all verification conditions.");
     ("-param_storage", (Arg.Set flag_param_storage), "Print counter-example from unsafe-path");
     ("-initial_storage", (Arg.String (fun s -> initial_storage_file := s)), "File path for initial storage of input michelson program");
+    ("-z3_timeout", (Arg.Int (fun i -> z3_time_budget := i)), "Time budget for z3 solver in seconds. (default: 30s)");
+    ("-prover_timeout", (Arg.Int (fun i -> prover_time_budget := i)), "Time budget for prover in seconds. (default: 180s)");
   ]
 
 let create_options : unit -> unit

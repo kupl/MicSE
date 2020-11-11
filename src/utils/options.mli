@@ -1,6 +1,6 @@
 (*****************************************************************************)
 (*****************************************************************************)
-(* Options                                                                   *)
+(* Options Variables                                                         *)
 (*****************************************************************************)
 (*****************************************************************************)
 
@@ -21,13 +21,23 @@ val flag_bpopt_rsi : bool ref (* remove-skip-instructions *)
 (* FLAGS - Result of solver *)
 val flag_param_storage : bool ref (* print counter-example on unsafe-path *)
 
-val set_all_cfg_opt : unit -> unit
-
 (* FLAGS - Print components *)
 val flag_adt_print : bool ref
 val flag_cfg_print_dot : bool ref
 val flag_bp_print : bool ref
 val flag_vc_print : bool ref
+
+(* INT - Time Budgets *)
+val z3_time_budget : int ref
+val prover_time_budget : int ref
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Option Settings                                                           *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val set_all_cfg_opt : unit -> unit
 
 val activate_detector : string -> unit
 
