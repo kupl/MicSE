@@ -10,9 +10,12 @@ module Generator = Generator
 module Verifier = Verifier
 
 
+type timer = Utils.Timer.t ref
+
+
 val prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
 
-val work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> Query.t list
+val work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> timer -> Query.t list
 
 val read_query_location : Pre.Lib.Cfg.t -> Query.t -> string
 

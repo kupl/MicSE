@@ -12,6 +12,20 @@ val apply : Inv.Map.t -> Bp.t list -> Bp.t list
 (*****************************************************************************)
 (*****************************************************************************)
 
+(*
+module TrxInv : sig
+end
+
+module LoopInv : sig
+end
+*)
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Worklist Management                                                       *)
+(*****************************************************************************)
+(*****************************************************************************)
+
 module Stg : sig
   type t = Vlang.v_obj
   type data = Pre.Lib.Mich.data Pre.Lib.Mich.t
@@ -35,5 +49,7 @@ module W : sig
 
   val create : bp_list:Bp.lst -> t
 
-  val update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> cur_wlst:t -> t
+  val update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> inv:m -> wlst:t -> t
+
+  val merge : inv:m -> wlst:t -> t
 end

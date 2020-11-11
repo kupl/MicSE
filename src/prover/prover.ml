@@ -10,6 +10,9 @@ module Generator = Generator
 module Verifier = Verifier
 
 
+type timer = Utils.Timer.t ref
+
+
 let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
 =fun cfg init_stg_opt -> begin
   (* Set the Z3 context *)
@@ -25,7 +28,8 @@ let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
 
   (* Verify all of basic path *)
   let initial_worklist = Generator.W.create ~bp_list:bp_list in
-  let raw_queries = work initial_worklist bp_list cfg init_stg_opt in
+  let time = Utils.Timer.create ~budget:(!Utils.Options.prover_time_budget) in
+  let raw_queries = work initial_worklist bp_list cfg init_stg_opt time in
 
   (* Print out result *)
   let queries = Core.List.sort (Core.List.fold_right raw_queries ~f:(fun raw_q qs -> ( (* only when proven@unproven *)
@@ -64,11 +68,10 @@ let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
   ()
 end
 
-and work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> Query.t list
-=fun w bp_list cfg init_stg_opt -> begin
-  let _ = init_stg_opt in
+and work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> timer -> Query.t list
+=fun w bp_list cfg init_stg_opt time -> begin
   (* Choose a candidate invariant *)
-  let inv_map, _ = Inv.WorkList.pop w in
+  let inv_map, cur_wlst = Inv.WorkList.pop w in
 
   (* Verify Queries *)
   let bps = Generator.apply inv_map bp_list.bps in
@@ -88,8 +91,16 @@ and work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Li
     )) ~init:(proven, unproven) in
     (inductive&&path_inductive, proven, unproven)
   )) ~init:(true, [], []) in
-  let _ = inductiveness in
-  proven@unproven
+  if Core.List.is_empty unproven
+  then proven
+  else begin
+    (* Generate invariants *)
+    let generated_wlst = Generator.W.update ~bp_list:bp_list ~cfg:cfg ~init_stg:init_stg_opt ~inv:inv_map ~wlst:cur_wlst in
+    let next_wlst = if inductiveness then (Generator.W.merge ~inv:inv_map ~wlst:generated_wlst) else generated_wlst in
+    if (Core.List.is_empty next_wlst) || (Utils.Timer.is_timeout time)
+    then proven@unproven
+    else work next_wlst bp_list cfg init_stg_opt time
+  end
 end
 
 and read_query_location : Pre.Lib.Cfg.t -> Query.t -> string

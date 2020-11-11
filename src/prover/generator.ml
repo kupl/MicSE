@@ -14,6 +14,22 @@ end
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Invariant Generator                                                       *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module TrxInv = struct
+
+end
+
+(*
+module LoopInv = struct
+end
+*)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Worklist Management                                                       *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -39,7 +55,7 @@ module Stg = struct
     let obj_t = create ~cfg:cfg in
     let f = Vlang.create_formula_eq obj obj_t in
     f
-end
+  end
 
   let equal_to_data : data:data -> cfg:cfg -> Vlang.t
   =fun ~data ~cfg -> equal_to_obj ~obj:(Converter.create_convert_data data (read_typt ~cfg:cfg)) ~cfg:cfg
@@ -62,7 +78,7 @@ module W = struct
   let create : bp_list:Bp.lst -> t
   =fun ~bp_list -> begin
     let empty_t = Inv.WorkList.empty in
-  let vtxs = (bp_list.entry.vtx)::(bp_list.exit.vtx)::(Core.List.map bp_list.loop ~f:(fun pt -> pt.vtx)) in
+    let vtxs = (bp_list.entry.vtx)::(bp_list.exit.vtx)::(Core.List.map bp_list.loop ~f:(fun pt -> pt.vtx)) in
     let init_m = Core.List.fold_right vtxs ~f:(fun vtx map -> begin
       Inv.Map.add map ~key:vtx ~data:(Inv.create ~vtx:vtx)
     end) ~init:(Inv.Map.empty) in
@@ -70,9 +86,15 @@ module W = struct
     init_t
   end
 
-  let update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> cur_wlst:t -> t
-  =fun ~bp_list ~cfg ~init_stg ~cur_wlst -> begin
-    let _, _, _, _ = bp_list, cfg, init_stg, cur_wlst in
-    Inv.WorkList.empty
+  let update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> inv:m -> wlst:t -> t
+  =fun ~bp_list ~cfg ~init_stg ~inv ~wlst -> begin
+    let _, _, _, _ = bp_list, cfg, inv, init_stg in
+    wlst
   end
+
+  let merge : inv:m -> wlst:t -> t
+  =fun ~inv ~wlst -> begin
+    let _ = inv in
+    wlst
+  end 
 end
