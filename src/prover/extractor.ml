@@ -12,7 +12,7 @@ let rec extract : Pre.Lib.Cfg.t -> Bp.lst
   let entry_bp = Bp.create_new_bp cfg.main_entry cfg.main_exit in
   let result = translate entry_bp cfg.main_entry cfg in
   Bp.create_bp_list
-    ~bp_list:result
+    ~bps:result
     ~entry:(Bp.create_inv_point ~vtx:cfg.main_entry ~var_opt:(Some (Pre.Lib.Cfg.param_storage_name)))
     ~exit:(Bp.create_inv_point ~vtx:cfg.main_exit ~var_opt:(Some (Option.get !exit_var)))
     ~loop:(Core.List.map !loop_inv_vtx ~f:(fun vtx -> Bp.create_inv_point ~vtx:vtx ~var_opt:None))

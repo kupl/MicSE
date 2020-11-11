@@ -16,7 +16,7 @@ let rec prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
   let bp_list = Extractor.extract cfg in
   let _ = if !Utils.Options.flag_bp_print
           then print_endline (":: Basic Paths" ^ 
-                              (Core.List.foldi bp_list.bp_list ~init:"" ~f:(fun idx str bp -> (
+                              (Core.List.foldi bp_list.bps ~init:"" ~f:(fun idx str bp -> (
                                 str ^ "\nBasic Path #" ^ (string_of_int idx) ^ "\n" ^ (Bp.to_string bp))
                               ))) in
 

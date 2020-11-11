@@ -183,7 +183,7 @@ let get_concatenated_basicpaths : initial_storage_typ -> Pre.Lib.Cfg.t -> int ->
   fun initStgOpt unrolled_cfg n -> begin
   let basicpaths : Bp.lst = extract_basicpaths unrolled_cfg in
   (*(* print basicpaths *) let _ : unit = List.iter (fun l -> (List.iter (fun (v, _) -> print_int v; print_string " ") l.Bp.body); print_newline ()) basicpaths.bps in*)
-  let filtered_basicpaths : Bp.t list = get_regular_basicpaths unrolled_cfg basicpaths.bp_list in
+  let filtered_basicpaths : Bp.t list = get_regular_basicpaths unrolled_cfg basicpaths.bps in
   (* print filtered basicpaths' list-length *) let _ : unit = Stdlib.print_string "# of filtered_basicpaths : "; List.length filtered_basicpaths |> Stdlib.string_of_int |> Stdlib.print_endline in
   let wrapped_filtered_basicpaths : Bp.t list list = List.fold_left (fun acc x -> [x] :: acc) [] filtered_basicpaths |> List.rev in
   let (_, bpll) : int * (Bp.t list list) = basicpath_sequences_N (n, wrapped_filtered_basicpaths) filtered_basicpaths in

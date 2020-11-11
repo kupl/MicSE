@@ -196,13 +196,13 @@ val to_string : t -> string
 (*****************************************************************************)
 
 type lst = {
-  bp_list: t list;
+  bps: t list;
   entry: inv_point;
   exit: inv_point;
   loop: inv_point list;
 }
 and inv_point = { vtx: vertex; var: var option }
 
-val create_bp_list : bp_list:t list -> entry:inv_point -> exit:inv_point -> loop:inv_point list -> lst
+val create_bp_list : bps:t list -> entry:inv_point -> exit:inv_point -> loop:inv_point list -> lst
 
 val create_inv_point : vtx:vertex -> var_opt:var option -> inv_point

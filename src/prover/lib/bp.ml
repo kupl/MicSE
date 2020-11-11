@@ -170,15 +170,15 @@ end
 (*****************************************************************************)
 
 type lst = {
-  bp_list: t list;
+  bps: t list;
   entry: inv_point;
   exit: inv_point;
   loop: inv_point list;
 }
 and inv_point = { vtx: vertex; var: var option }
 
-let create_bp_list : bp_list:t list -> entry:inv_point -> exit:inv_point -> loop:inv_point list -> lst
-=fun ~bp_list ~entry ~exit ~loop -> { bp_list=bp_list; entry=entry; exit=exit; loop=loop }
+let create_bp_list : bps:t list -> entry:inv_point -> exit:inv_point -> loop:inv_point list -> lst
+=fun ~bps ~entry ~exit ~loop -> { bps=bps; entry=entry; exit=exit; loop=loop }
 
 let create_inv_point : vtx:vertex -> var_opt:var option -> inv_point
 =fun ~vtx ~var_opt -> { vtx=vtx; var=var_opt }
