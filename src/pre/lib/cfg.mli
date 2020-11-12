@@ -63,7 +63,7 @@ type expr =
   | E_pack of var
   | E_unpack of typ * var
   | E_self
-  | E_contract_of_address of var
+  | E_contract_of_address of typ * var
   | E_implicit_account of var
   | E_now
   | E_amount

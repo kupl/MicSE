@@ -2411,7 +2411,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         variables   : v_1   : top element of the stack.
                       v_r   : new variable
         vertex_info : in_v       -> Cfg_skip
-                      new vertex -> Cfg_assign (v_r, E_contract_of_address v_1)
+                      new vertex -> Cfg_assign (v_r, E_contract_of_address (T_option (T_contract ty), v_1))
         type_info   : v_r   -> T_option (T_contract ty)
         stack_info  : pop a element and push "v_r"
     *)
@@ -2419,9 +2419,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (v_1, tl_si) = stack_hdtl stack_info in
     let t_r = gen_t (Mich.T_option (gen_t (Mich.T_contract ty))) in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
-    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_contract_of_address v_1)) cfg_vr_added in
+    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_contract_of_address (t_r, v_1))) cfg_vr_added in
     (cfg_ended, ns_cons v_r tl_si)
-
 
   | I_transfer_tokens ->
     (*  flow        : add new vertex between in-and-out

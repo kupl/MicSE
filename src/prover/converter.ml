@@ -186,7 +186,7 @@ and create_convert_obj : Vlang.exp -> Vlang.typ -> Vlang.v_obj
   | E_pack v -> make_obj (Vlang.create_exp_uni_op_pack (create_var v))
   | E_unpack (_, v) -> make_obj (Vlang.create_exp_uni_op_unpack (create_var v))
   | E_self -> make_obj (Vlang.create_exp_nul_op_self)
-  | E_contract_of_address v -> make_obj (Vlang.create_exp_uni_op_contract (create_var v))
+  | E_contract_of_address (_, v) -> make_obj (Vlang.create_exp_uni_op_contract (create_var v))
   | E_implicit_account v -> make_obj (Vlang.create_exp_uni_op_account (create_var v))
   | E_now -> make_obj (Vlang.create_exp_nul_op_now)
   | E_amount -> make_obj (Vlang.create_exp_nul_op_amount)
