@@ -34,6 +34,9 @@ module Stg = struct
   let create : cfg:cfg -> t
   =fun ~cfg -> Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_var "stg") ~typ:(read_typt ~cfg:cfg)
 
+  let create_comp : cfg:cfg -> Comps.t
+  =fun ~cfg -> Comps.read_components (create ~cfg:cfg) (Comps.empty)
+
   let equal_to_obj : obj:t -> cfg:cfg -> Vlang.t
   =fun ~obj ~cfg -> begin
     let obj_t = create ~cfg:cfg in
@@ -55,7 +58,47 @@ module Stg = struct
 end
 
 module TrxInv = struct
-  
+  type m = Inv.Map.t
+  type formula = Vlang.t
+  type cfg = Pre.Lib.Cfg.t
+
+  let formula_mutez_equal : comp:Comps.t -> formula list
+  =fun ~comp -> begin
+    let cartesian_product = Core.List.cartesian_product comp.mutez comp.mutez in
+    Core.List.map cartesian_product ~f:(fun ((a_obj, a_app), (b_obj, b_app)) -> begin
+      let app = a_app@b_app in
+      let equal = Vlang.create_formula_eq a_obj b_obj in
+      Core.List.fold_right app ~f:(fun app f -> app f) ~init:equal
+    end)
+  end
+
+  let wrap_formula : cfg:cfg -> entry:Vlang.var -> exit:Vlang.var -> comp:Comps.t -> f:(comp:Comps.t -> formula list) -> (formula * formula) list
+  =fun ~cfg ~entry ~exit ~comp ~f -> begin
+    let entry_equal = Stg.equal_to_ps_or_os ~ps_os:entry ~cfg:cfg in
+    let exit_equal = Stg.equal_to_ps_or_os ~ps_os:exit ~cfg:cfg in
+    Core.List.map (f ~comp:comp) ~f:(fun f -> begin
+      let entry_f = Vlang.create_formula_and [entry_equal; f] in
+      let exit_f = Vlang.create_formula_and [exit_equal; f] in
+      (entry_f, exit_f)
+    end)
+  end
+
+  let create : bp_list:Bp.lst -> cfg:cfg -> m list
+  =fun ~bp_list ~cfg -> begin
+    let entry_var = Option.get bp_list.entry.var in
+    let exit_var = Option.get bp_list.exit.var in
+    let comp = Stg.create_comp ~cfg:cfg in
+    let wrapper = wrap_formula ~cfg:cfg ~entry:entry_var ~exit:exit_var ~comp:comp in
+    let fs = (wrapper ~f:formula_mutez_equal) in
+    Core.List.map fs ~f:(fun (entry_f, exit_f) -> begin 
+      let entry_inv = Inv.T.create_with_formulae ~vtx:(bp_list.entry.vtx) ~fl:[entry_f] in
+      let exit_inv = Inv.T.create_with_formulae ~vtx:(bp_list.exit.vtx) ~fl:[exit_f] in
+      let empty_map = Inv.Map.empty in
+      let entry_map = Inv.Map.add empty_map ~key:(bp_list.entry.vtx) ~data:entry_inv in
+      let exit_map = Inv.Map.add entry_map ~key:(bp_list.exit.vtx) ~data:exit_inv in
+      exit_map
+    end)
+  end
 end
 
 (*
