@@ -171,7 +171,7 @@ let concat_basicpath : initial_storage_typ -> Pre.Lib.Cfg.t -> Prover.Lib.Bp.t l
     ([lastOp_bp; lastStg_bp] :: bodylist_i) |> List.rev
   in
   let bodylist_ft : (Bp.vertex * Bp.inst) list = List.flatten bodylist in
-  let dummy_true_inv : Inv.t = Inv.create ~vtx:exit_vtx in
+  let dummy_true_inv : Inv.T.t = Inv.T.create ~vtx:exit_vtx in
   {pre=dummy_true_inv; body=bodylist_ft; post=dummy_true_inv}
 
 (* get_concatenated_basicpaths

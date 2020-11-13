@@ -6,7 +6,7 @@ open ProverLib
 let apply : Inv.Map.t -> Bp.t list -> Bp.t list
 =fun inv_map raw_bps -> begin
   let bps = Core.List.map raw_bps ~f:(fun raw_bp -> begin
-    Bp.update_inv raw_bp ~pre:(Inv.Map.find inv_map raw_bp.pre.id) ~post:(Inv.Map.find inv_map raw_bp.post.id)
+    Bp.update_inv raw_bp ~pre:(Inv.Map.find_empty inv_map (raw_bp.pre.id)) ~post:(Inv.Map.find_empty inv_map (raw_bp.post.id))
   end) in
   bps
 end
@@ -15,22 +15,6 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 (* Invariant Generator                                                       *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-module TrxInv = struct
-
-end
-
-(*
-module LoopInv = struct
-end
-*)
-
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Worklist Management                                                       *)
 (*****************************************************************************)
 (*****************************************************************************)
 
@@ -70,6 +54,22 @@ module Stg = struct
   end
 end
 
+module TrxInv = struct
+  
+end
+
+(*
+module LoopInv = struct
+end
+*)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Worklist Management                                                       *)
+(*****************************************************************************)
+(*****************************************************************************)
+
 module W = struct
   type t = Inv.WorkList.t
   type m = Inv.Map.t
@@ -80,7 +80,7 @@ module W = struct
     let empty_t = Inv.WorkList.empty in
     let vtxs = (bp_list.entry.vtx)::(bp_list.exit.vtx)::(Core.List.map bp_list.loop ~f:(fun pt -> pt.vtx)) in
     let init_m = Core.List.fold_right vtxs ~f:(fun vtx map -> begin
-      Inv.Map.add map ~key:vtx ~data:(Inv.create ~vtx:vtx)
+      Inv.Map.add map ~key:vtx ~data:(Inv.T.create ~vtx:vtx)
     end) ~init:(Inv.Map.empty) in
     let init_t = Inv.WorkList.push empty_t init_m in
     init_t
@@ -92,7 +92,7 @@ module W = struct
     wlst
   end
 
-  let merge : inv:m -> wlst:t -> t
+  let join : inv:m -> wlst:t -> t
   =fun ~inv ~wlst -> begin
     let _ = inv in
     wlst

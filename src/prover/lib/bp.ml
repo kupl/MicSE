@@ -130,14 +130,14 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-type t = { pre: Inv.t; body: (vertex * inst) list; post: Inv.t }
+type t = { pre: Inv.T.t; body: (vertex * inst) list; post: Inv.T.t }
 
 let create_new_bp : vertex -> vertex -> t
-=fun pre post -> { pre=(Inv.create ~vtx:pre); body=[]; post=(Inv.create ~vtx:post) }
+=fun pre post -> { pre=(Inv.T.create ~vtx:pre); body=[]; post=(Inv.T.create ~vtx:post) }
 
 let create_cut_bp : t -> vertex -> (t * t)
 =fun bp loop -> begin
-  let loop_inv = Inv.create ~vtx:loop in
+  let loop_inv = Inv.T.create ~vtx:loop in
   let terminated_bp = { pre=bp.pre; body=bp.body; post=loop_inv } in
   let new_bp = { pre=loop_inv; body=[]; post=bp.post } in
   (terminated_bp, new_bp)
@@ -146,7 +146,7 @@ end
 let update_body : t -> vertex * inst -> t
 =fun bp vtx_inst -> { pre=bp.pre; body=(bp.body@[vtx_inst]); post=bp.post }
 
-let update_inv : t -> pre:Inv.t -> post:Inv.t -> t
+let update_inv : t -> pre:Inv.T.t -> post:Inv.T.t -> t
 =fun bp ~pre ~post -> { pre=pre; body=bp.body; post=post }
 
 let to_string : t -> string

@@ -1,38 +1,50 @@
+type vertex = Pre.Lib.Cfg.vertex
+type formula = Vlang.t
+
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Invariants                                                                *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-type vertex = Pre.Lib.Cfg.vertex
+module T = struct
+  module CPSet = Core.Set.Poly
+  type t = { id: vertex; formula: formula CPSet.t }
+  
+  let create : vtx:vertex -> t
+  =fun ~vtx -> { id=vtx; formula=CPSet.empty }
 
-type formula = Vlang.t
+  let create_with_formulae : vtx:vertex -> fl:formula list -> t
+  =fun ~vtx ~fl -> { id=vtx; formula=CPSet.of_list fl }
 
-type t = { id: vertex; formula: formula list }
-and inv = t
+  let read_formula : t -> formula
+  =fun inv -> begin
+    if CPSet.is_empty (inv.formula)
+    then Vlang.create_formula_true
+    else Vlang.create_formula_and (CPSet.to_list (inv.formula))
+  end
 
-let create : vtx:vertex -> t
-=fun ~vtx -> { id=vtx; formula=[] }
+  let update : t -> f:formula -> t
+  =fun inv ~f -> { inv with formula=(CPSet.add (inv.formula) f)}
 
-let create_with_formulae : vtx:vertex -> fl:formula list -> t
-=fun ~vtx ~fl -> { id=vtx; formula=fl }
+  let order : inv1:t -> inv2:t -> bool (* inv1 <= inv2 ? true : false *)
+  =fun ~inv1 ~inv2 -> CPSet.is_subset (inv1.formula) ~of_:(inv2.formula)
 
-let read_formula : inv:t -> formula
-=fun ~inv -> begin
-  if Core.List.is_empty (inv.formula)
-  then Vlang.create_formula_true
-  else Vlang.create_formula_and (inv.formula)
-end
+  let join : inv1:t -> inv2:t -> t
+  =fun ~inv1 ~inv2 -> begin
+    if inv1.id <> inv2.id
+    then raise (Failure "Inv.T.join: Error from the invariant id")
+    else { inv1 with formula=(CPSet.union (inv1.formula) (inv2.formula)) }
+  end
 
-let update : inv:t -> f:formula -> t
-=fun ~inv ~f -> { inv with formula=(f::inv.formula) }
-
-let string_of_inv : t -> string
-=fun inv -> begin
-  if Core.List.is_empty (inv.formula)
-  then (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": True"
-  else (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": " ^
-         (Core.String.concat ~sep:" && " (Core.List.map (inv.formula) ~f:Vlang.string_of_formula))
+  let to_string : t -> string
+  =fun inv -> begin
+    if CPSet.is_empty (inv.formula)
+    then (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": True"
+    else (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": " ^
+         (Core.String.concat ~sep:" && " (Core.List.map (CPSet.to_list (inv.formula)) ~f:Vlang.string_of_formula))
+  end
 end
 
 
@@ -55,53 +67,61 @@ module Map = struct
     include Core.Comparable.Make (Key)
   end
 
-  module T = Vtx.Map
+  module VtxMap = Vtx.Map
 
-  type t = inv T.t
+  type t = T.t VtxMap.t
 
   let empty : t
-  =T.empty
+  =VtxMap.empty
 
   let is_empty : t -> bool
-  =fun m -> T.is_empty m
+  =fun m -> VtxMap.is_empty m
 
-  let add : t -> key:vertex -> data:inv -> t
-  =fun m ~key ~data -> T.add_exn m ~key:key ~data:data
+  let add : t -> key:vertex -> data:T.t -> t
+  =fun m ~key ~data -> VtxMap.add_exn m ~key:key ~data:data
 
-  let find : t -> vertex -> inv
+  let find : t -> vertex -> T.t option
+  =fun m key -> VtxMap.find m key
+
+  let find_empty : t -> vertex -> T.t
   =fun m key -> begin
-    let data_opt = T.find m key in
+    let data_opt = VtxMap.find m key in
     match data_opt with
-    | None -> create ~vtx:key
-    | Some data -> data
+    | None -> T.create ~vtx:key
+    | Some inv -> inv
   end
 
   let mem : t -> vertex -> bool
-  =fun m key -> T.mem m key
+  =fun m key -> VtxMap.mem m key
   
-  let fold : t -> init:'a -> f:(key:vertex -> data:inv -> 'a -> 'a) -> 'a
-  =fun m ~init ~f -> T.fold m ~init:init ~f:f
+  let fold : t -> init:'a -> f:(key:vertex -> data:T.t -> 'a -> 'a) -> 'a
+  =fun m ~init ~f -> VtxMap.fold m ~init:init ~f:f
 
-  let map : t -> f:(key:vertex -> data:inv -> 'a) -> 'a T.t
-  =fun m ~f -> T.mapi m ~f:f
+  let map : t -> f:(key:vertex -> data:T.t -> 'a) -> 'a VtxMap.t
+  =fun m ~f -> VtxMap.mapi m ~f:f
   
-  let exists : t -> f:(key:vertex -> data:inv -> bool) -> bool
-  =fun m ~f -> T.existsi m ~f:f
+  let exists : t -> f:(key:vertex -> data:T.t -> bool) -> bool
+  =fun m ~f -> VtxMap.existsi m ~f:f
 
-  let merge : t -> t -> t
+  let order : m1:t -> m2:t -> bool (* m1 <= m2 ? true : false *)
+  =fun ~m1 ~m2 -> begin
+    VtxMap.fold_right m2 ~init:true ~f:(fun ~key ~data b -> begin
+      let data' = find_empty m1 key in
+      b&&(T.order ~inv1:data' ~inv2:data)
+    end)
+  end
+
+  let join : t -> t -> t
   =fun m1 m2 -> begin
-    let f : key:vertex -> [ `Both of inv * inv | `Left of inv | `Right of inv ] -> inv option
+    let f : key:vertex -> [ `Both of T.t * T.t | `Left of T.t | `Right of T.t ] -> T.t option
     =fun ~key dir -> begin
+      let _ = key in
       match dir with
-      | `Both (inv1, inv2) -> begin
-          if key <> inv1.id || key <> inv2.id
-          then raise (Failure "Inv.Map.merge: Error from the invariant id")
-          else Some (create_with_formulae ~vtx:key ~fl:((inv1.formula)@(inv2.formula)))
-        end
+      | `Both (inv1, inv2) -> Some (T.join ~inv1:inv1 ~inv2:inv2)
       | `Left inv -> Some inv
       | `Right inv -> Some inv
     end in
-    T.merge m1 m2 ~f:f
+    VtxMap.merge m1 m2 ~f:f
   end
 
   let to_string : t -> string
@@ -109,7 +129,7 @@ module Map = struct
     "{\n" ^ 
     fold m ~init:"" ~f:(fun ~key ~data str -> begin
       str ^
-      (Pre.Lib.Cfg.string_of_vertex key) ^ " |-> " ^ (string_of_inv data) ^ "\n"
+      (Pre.Lib.Cfg.string_of_vertex key) ^ " |-> " ^ (T.to_string data) ^ "\n"
     end) ^
     "}"
   end

@@ -96,7 +96,7 @@ and work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Li
   else begin
     (* Generate invariants *)
     let generated_wlst = Generator.W.update ~bp_list:bp_list ~cfg:cfg ~init_stg:init_stg_opt ~inv:inv_map ~wlst:cur_wlst in
-    let next_wlst = if inductiveness then (Generator.W.merge ~inv:inv_map ~wlst:generated_wlst) else generated_wlst in
+    let next_wlst = if inductiveness then (Generator.W.join ~inv:inv_map ~wlst:generated_wlst) else generated_wlst in
     if (Core.List.is_empty next_wlst) || (Utils.Timer.is_timeout time)
     then proven@unproven
     else work next_wlst bp_list cfg init_stg_opt time
