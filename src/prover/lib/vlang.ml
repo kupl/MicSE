@@ -1,613 +1,635 @@
 (*****************************************************************************)
 (*****************************************************************************)
-(* Verification Language                                                     *)
+(* Formula Representation                                                    *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-type typ = Pre.Lib.Adt.typ
-and data = Pre.Lib.Adt.data
-and operation = Pre.Lib.Cfg.operation
+module Ty = struct
+  type t =
+    | T_int
+    | T_nat
+    | T_string
+    | T_bytes
+    | T_mutez
+    | T_bool
+    | T_key_hash
+    | T_timestamp
+    | T_address
+    | T_key
+    | T_unit
+    | T_signature
+    | T_option    of t
+    | T_list      of t
+    | T_set       of t
+    | T_operation
+    | T_contract  of t
+    | T_pair      of t * t
+    | T_or        of t * t
+    | T_lambda    of t * t
+    | T_map       of t * t
+    | T_big_map   of t * t
+    | T_chain_id
+end
 
-type var = Pre.Lib.Cfg.ident
-and exp = Pre.Lib.Cfg.expr
 
-type t = v_formula
+module Expr = struct
 
-and v_obj = {
-  exp: v_exp;
-  typ: typ;
-}
+  type var = PreLib.Cfg.ident (* string *)
+  type typ = Ty.t
 
-and v_formula =
-  | VF_true  | VF_false
-  | VF_not of v_formula
-  | VF_and of v_formula list
-  | VF_or of v_formula list
-  | VF_uni_rel of v_uni_rel * v_obj
-  | VF_bin_rel of v_bin_rel * v_obj * v_obj
-  | VF_imply of v_formula * v_formula
-  | VF_iff of v_formula * v_formula
-  | VF_forall of v_obj list * v_formula
-  (* Customized formula *)
-  | VF_sigma_equal of v_obj * v_obj (* VF_sigma_equal a b = VF_bin_rel VF_eq Sigma(a) b *)
-
-and v_uni_rel =
-  | VF_is_true  | VF_is_none  | VF_is_left  | VF_is_cons
-
-and v_bin_rel =
-  | VF_eq       | VF_neq      | VF_lt       | VF_le
-  | VF_gt       | VF_ge
-
-and v_exp =
-  | VE_int of Z.t
-  | VE_string of string
-  | VE_bool of v_formula
-  | VE_unit
-  | VE_none
-  | VE_uni_cont of v_uni_cont * v_obj
-  | VE_bin_cont of v_bin_cont * v_obj * v_obj
-  | VE_list of v_obj list
-  | VE_var of var
-  | VE_nul_op of v_nul_op
-  | VE_uni_op of v_uni_op * v_obj
-  | VE_bin_op of v_bin_op * v_obj * v_obj
-  | VE_ter_op of v_ter_op * v_obj * v_obj * v_obj
-  | VE_lambda
-  | VE_operation of v_operation
-
-and v_uni_cont =
-  | VE_left     | VE_right    | VE_some
-
-and v_bin_cont =
-  | VE_pair     | VE_elt
-
-and v_nul_op =
-  | VE_self     | VE_now      | VE_amount   | VE_balance  | VE_steps_to_quota
-  | VE_source   | VE_sender   | VE_chain_id
-
-and v_uni_op =
-  | VE_car      | VE_cdr      | VE_abs      | VE_neg      | VE_not
-  | VE_eq       | VE_neq      | VE_lt       | VE_gt       | VE_leq
-  | VE_geq      | VE_cast     | VE_pack     | VE_unpack   | VE_list_concat
-  | VE_contract | VE_account  | VE_blake2b  | VE_sha256   | VE_sha512
-  | VE_hash_key | VE_address  | VE_un_opt   | VE_un_left  | VE_un_right
-  | VE_hd       | VE_tl       | VE_size     | VE_isnat    | VE_to_int
+  type raw_code = PreLib.Mich.inst PreLib.Mich.t
+  type raw_program = PreLib.Mich.program
+  type lambda_ident = Core.Int.t
   
-and v_bin_op =
-  | VE_add      | VE_sub      | VE_mul      | VE_ediv     | VE_div
-  | VE_mod      | VE_lsl      | VE_lsr      | VE_and      | VE_or
-  | VE_xor      | VE_cmp      | VE_cons     | VE_concat   | VE_exec
-  | VE_append   | VE_get      | VE_mem
+  type t =
+    (*************************************************************************)
+    (* Variable & Polymorphic                                                *)
+    (*************************************************************************)
+    | V_var of (typ * var)
+    | V_car of t  (* ('a, 'b) pair -> 'a *)
+    | V_cdr of t  (* ('a, 'b) pair -> 'b *)
+    | V_unlift_option of t  (* 'a option -> 'a *)
+    | V_unlift_left of t  (* ('a, 'b) or -> 'a *)
+    | V_unlift_right of t (* ('a, 'b) or -> 'b *) 
+    | V_hd_l of t (* 'a list -> 'a *)
+    | V_hd_s of t (* 'a set -> 'a *)
+    | V_exec of t * t (* 'a * ('a, 'b) lambda -> 'b *)
+    | V_dup  of t   (* 'a -> 'a *)
+    | V_itself of t (* 'a -> 'a *)
 
-and v_ter_op =
-  | VE_slice    | VE_check_signature        | VE_update
+    (*************************************************************************)
+    (* Integer                                                               *)
+    (*************************************************************************)
+    | V_lit_int of Z.t
+    | V_neg_ni of t (* nat -> int *)
+    | V_neg_ii of t (* int -> int *)
+    | V_not_ni of t (* nat -> int *)
+    | V_not_ii of t (* int -> int *)
+    | V_add_nii of t * t  (* nat * int -> int *)
+    | V_add_ini of t * t  (* int * nat -> int *)
+    | V_add_iii of t * t  (* int * int -> int *)
+    | V_sub_nni of t * t  (* nat * nat -> int *)
+    | V_sub_nii of t * t  (* nat * int -> int *)
+    | V_sub_ini of t * t  (* int * nat -> int *)
+    | V_sub_iii of t * t  (* int * int -> int *)
+    | V_sub_tti of t * t  (* timestamp * timestamp -> int *)
+    | V_mul_nii of t * t  (* nat * int -> int *)
+    | V_mul_ini of t * t  (* int * nat -> int *)
+    | V_mul_iii of t * t  (* int * int -> int *)
+    | V_compare of t * t  (* 'a * 'a -> int *)
+    | V_int_of_nat of t (* nat -> int *)
 
-and v_operation =
-  | VE_transaction
-  | VE_origination
-  | VE_delegation
+    (*************************************************************************)
+    (* Natural Number                                                        *)
+    (*************************************************************************)
+    | V_lit_nat of Z.t
+    | V_abs_in of t (* int -> nat *)
+    | V_add_nnn of t * t  (* nat * nat -> nat *)
+    | V_mul_nnn of t * t  (* nat * nat -> nat *)
+    | V_shiftL_nnn of t * t (* nat * nat -> nat *)
+    | V_shiftR_nnn of t * t (* nat * nat -> nat *)
+    | V_and_nnn   of t * t  (* nat * nat -> nat *)
+    | V_and_inn   of t * t  (* int * nat -> nat *)
+    | V_or_nnn    of t * t (* nat * nat -> nat *)
+    | V_xor_nnn   of t * t (* nat * nat -> nat *)
+    | V_size_s    of t  (* 'a set -> nat *)
+    | V_size_m    of t  (* ('k, 'v) map -> nat *)
+    | V_size_l    of t  (* 'a list -> nat *)
+    | V_size_str  of t  (* string -> nat *)
+    | V_size_b    of t  (* bytes -> nat *)
+
+    (*************************************************************************)
+    (* String                                                                *)
+    (*************************************************************************)
+    | V_lit_string of string
+    | V_concat_sss of t * t (* string * string -> string *)
+    | V_concat_list_s of t  (* string list -> string *)
+
+    (*************************************************************************)
+    (* Bytes                                                                 *)
+    (*************************************************************************)
+    | V_lit_bytes of string
+    | V_concat_bbb of t * t (* bytes * bytes -> bytes *)
+    | V_concat_list_b of t  (* bytes list -> bytes *)
+    | V_pack    of t (* 'a -> bytes *)
+    | V_blake2b of t  (* bytes -> bytes *)
+    | V_sha256  of t (* bytes -> bytes *)
+    | V_sha512  of t (* bytes -> bytes *)
+
+    (*************************************************************************)
+    (* Mutez                                                                 *)
+    (*************************************************************************)
+    | V_lit_mutez of Z.t
+    | V_amount
+    | V_balance
+    | V_add_mmm of t * t  (* mutez * mutez -> mutez *)
+    | V_sub_mmm of t * t  (* mutez * mutez -> mutez *)
+    | V_mul_mnm of t * t  (* mutez * nat -> mutez *)
+    | V_mul_nmm of t * t  (* nat * mutez -> mutez *)
+
+    (*************************************************************************)
+    (* Bool                                                                  *)
+    (*************************************************************************)
+    | V_lit_bool of bool
+    | V_not_bb  of t (* bool -> bool *)
+    | V_and_bbb of t * t  (* bool * bool -> bool *)
+    | V_or_bbb  of t * t  (* bool * bool -> bool *)
+    | V_xor_bbb of t * t  (* bool * bool -> bool *)
+    | V_eq_ib   of t  (* int -> bool *)
+    | V_neq_ib  of t  (* int -> bool *)
+    | V_lt_ib   of t  (* int -> bool *)
+    | V_gt_ib   of t  (* int -> bool *)
+    | V_leq_ib  of t  (* int -> bool *)
+    | V_geq_ib  of t  (* int -> bool *)
+    | V_mem_xsb of t * t  (* 'a * 'a set -> bool *)
+    | V_mem_xmb of t * t  (* 'k * ('k, 'v) map -> bool *)
+    | V_mem_xbmb of t * t  (* 'k * ('k, 'v) big_map -> bool *)
+    | V_check_signature of t * t * t (* key * signature * bytes -> bool *)
+
+    (*************************************************************************)
+    (* Key Hash                                                              *)
+    (*************************************************************************)
+    | V_lit_key_hash of string 
+    | V_hash_key of t (* key -> key_hash *)
+
+    (*************************************************************************)
+    (* Timestamp                                                             *)
+    (*************************************************************************)
+    | V_lit_timestamp_str of string 
+    | V_lit_timestamp_sec of Z.t
+    | V_now
+    | V_add_tit of t * t  (* timestamp * int -> timestamp *)
+    | V_add_itt of t * t  (* int * timestamp -> timestamp *)
+    | V_sub_tit of t * t  (* timestamp * int -> timestamp *)
+
+    (*************************************************************************)
+    (* Address                                                               *)
+    (*************************************************************************)
+    | V_lit_address of t (* key_hash -> address *)
+    | V_source
+    | V_sender
+    | V_address_of_contract of t (* 'a contract -> address *)
+
+    (*************************************************************************)
+    (* Key                                                                   *)
+    (*************************************************************************)
+    | V_lit_key of string
+
+    (*************************************************************************)
+    (* Unit                                                                  *)
+    (*************************************************************************)
+    (* | V_lit_unit : t_unit t *) (* V_unit has the same feature. *)
+    | V_unit
+
+    (*************************************************************************)
+    (* Signature                                                             *)
+    (*************************************************************************)
+    | V_lit_signature_str of string
+    | V_lit_signature_signed of t * t  (* key * bytes -> signature *)
+
+    (*************************************************************************)
+    (* Option                                                                *)
+    (*************************************************************************)
+    (* | V_lit_option : 'a t option -> 'a t_option t *) (* V_some and V_none has the same feature. *)
+    | V_some of t (* 'a -> 'a option *)
+    | V_none of typ (* ('a) -> 'a option *)
+    | V_ediv_nnnn of t * t  (* nat * nat -> (nat, nat) pair option *)
+    | V_ediv_niin of t * t  (* nat * int -> (int, nat) pair option *)
+    | V_ediv_inin of t * t  (* int * nat -> (int, nat) pair option *)
+    | V_ediv_iiin of t * t  (* int * int -> (int, nat) pair option *)
+    | V_ediv_mnmm of t * t  (* mutez * nat -> (mutez, mutez) pair option *)
+    | V_ediv_mmnm of t * t  (* mutez * mutez -> (nat, mutez) pair option *)
+    | V_get_xmoy  of t * t  (* 'k * ('k, 'v) map -> 'v option *)
+    | V_get_xbmo  of t * t  (* 'k * ('k, 'v) big_map -> 'v option *)
+    | V_slice_nnso of t * t * t (* nat * nat * string -> string option *)
+    | V_slice_nnbo of t * t * t (* nat * nat * bytes -> bytes option *)
+    | V_unpack of typ * t (* ('a) * bytes -> 'a option *)
+    | V_contract_of_address of typ * t (* ('a) -> address -> 'a contract option *)
+    | V_isnat of t (* int -> nat option *)
+
+    (*************************************************************************)
+    (* List                                                                  *)
+    (*************************************************************************)
+    | V_lit_list of typ * t list  (* ('a) * list-literal -> 'a list *)
+    | V_nil of typ  (* ('a) -> 'a list *)
+    | V_cons of t * t (* 'a * 'a list -> 'a list *)
+    | V_tl_l of t (* 'a list -> 'a list *)
+
+    (*************************************************************************)
+    (* Set                                                                   *)
+    (*************************************************************************)
+    | V_lit_set of typ * t Core.Set.Poly.t  (* ('a) * set-literal -> 'a set *)
+    | V_empty_set of typ (* ('a) -> 'a set *)
+    | V_update_xbss of t * t * t  (* 'a * bool * 'a set -> 'a set *)
+    | V_tl_s of t (* 'a set -> 'a set *)
+
+    (*************************************************************************)
+    (* Operation                                                             *)
+    (*************************************************************************)
+    (* | V_lit_operation of t_operation t *) (* V_create_contract, V_transfer_tokens, V_set_delegate has the same feature. *)
+    | V_create_contract of typ * typ * t * t * t * t (* ('param) * ('strg) * lambda * key_hash option * mutez * 'strg -> operation *)
+    | V_transfer_tokens of t * t * t  (* 'a * mutez * 'a contract -> operation *)
+    | V_set_delegate of t (* key_hash option -> operation *)
+
+    (*************************************************************************)
+    (* Contract                                                              *)
+    (*************************************************************************)
+    | V_lit_contract of t * t * t * t * t (* addres * mutez * key_hash option * 'strg * (('param, 'strg) pair, (operation list, 'strg) pair) lambda -> 'param contract *) (* address * balance * delegate * storage * program -> contract *)
+    | V_self of typ  (* 'a -> 'a contract *)
+    | V_implicit_account of t (* key_hash -> unit contract *)
+
+    (*************************************************************************)
+    (* Pair                                                                  *)
+    (*************************************************************************)
+    (* | V_lit_pair : 'a t * 'b t -> ('a, 'b) t_pair t *) (* V_pair has the same feature *)
+    | V_pair of t * t  (* 'a * 'b -> ('a, 'b) pair *)
+    | V_hd_m of t (* ('k, 'v) map -> ('k, 'v) pair *)
+    | V_hd_bm of t  (* ('k, 'v) big_map -> ('k, 'v) big_map *)
+
+    (*************************************************************************)
+    (* Or                                                                    *)
+    (*************************************************************************)
+    (* | V_lit_or *) (* It cannot construct any value, use V_left or V_right instead *)
+    | V_left of typ * t (* (('a, 'b) or) * 'a -> ('a, 'b) or *)
+    | V_right of typ * t (* (('a, 'b) or) * 'b -> ('a, 'b) or *)
+
+    (*************************************************************************)
+    (* Lambda                                                                *)
+    (*************************************************************************)
+    | V_lit_program of raw_program  (* ('param, 'strg) Mich.program -> (('param, 'strg) pair, (operation list, 'strg) pair) lambda *)
+    | V_lambda_id of typ * typ * lambda_ident (* ('param) * ('strg) * lambda_identifier -> ('param, 'strg) lambda *)
+    | V_lit_lambda of typ * typ * raw_code (* ('param) * ('ret) * ('param, 'ret) Mich.inst Mich.t -> ('param, 'ret) lambda *) (* embedded code with LAMBDA Michelson-instruction should be expressed with V_lambda_id, not V_lit_lambda *)
+    | V_lambda_unknown of typ * typ (* ('param) * ('ret) -> ('param, 'ret) lambda *)
+    | V_lambda_closure of t * t (* (('p1, 'p2) pair, 'ret) lambda * 'p1 -> ('p2, 'ret) lambda *)
+
+    (*************************************************************************)
+    (* Map                                                                   *)
+    (*************************************************************************)
+    | V_lit_map of typ * typ * (t, t) Core.Map.Poly.t (* ('k) * ('v) * map-literal -> ('k, 'v) map *)
+    | V_empty_map of typ * typ (* ('k) * ('v) -> ('k, 'v) map *)
+    | V_update_xomm of t * t * t (* 'k * 'v option * ('k, 'v) map -> ('k, 'v) map *)
+    | V_tl_m of t (* ('k, 'v) map -> ('k, 'v) map *)
+
+    (*************************************************************************)
+    (* Big Map                                                               *)
+    (*************************************************************************)
+    | V_lit_big_map of typ * typ * (t, t) Core.Map.Poly.t (* ('k) * ('v) * map-literal -> ('k, 'v) map *)
+    | V_empty_big_map of typ * typ  (* ('k) * ('v) -> ('k, 'v) big_map *)
+    | V_update_xobmbm of t * t * t  (* 'k * 'v option * ('k, 'v) big_map -> ('k, 'v) big_map *)
+    | V_tl_bm of t (* ('k, 'v) big_map -> ('k, 'v) big_map *)
+
+    (*************************************************************************)
+    (* Chain Id                                                              *)
+    (*************************************************************************)
+    | V_lit_chain_id of string
+    | V_chain_id
+
+end (* module Expr end *)
+
+
+module Formula = struct
+
+  type t =
+  (* Logical Formula *)
+  | VF_true
+  | VF_false
+  | VF_not of t
+  | VF_and of t list
+  | VF_or of t list
+  | VF_eq of Expr.t * Expr.t  (* 'a * 'a -> formula *)
+  | VF_imply of t * t
+  (* MicSE-Cfg Specific Boolean *)  
+  | VF_mich_if of Expr.t (* bool -> formula *)
+  | VF_mich_if_none of Expr.t (* 'a option -> formula *)
+  | VF_mich_if_left of Expr.t (* ('a, 'b) or -> formula *)
+  | VF_mich_if_cons of Expr.t (* 'a list -> formula *)
+  | VF_mich_loop of Expr.t (* bool -> formula*)
+  | VF_mich_loop_left of Expr.t (* ('a, 'b) or -> formula*)
+  | VF_mich_map_l of Expr.t (* 'a list -> formula *)
+  | VF_mich_map_m of Expr.t (* ('k, 'v) map -> formula *)
+  | VF_mich_iter_l of Expr.t (* 'a list -> formula *)
+  | VF_mich_iter_s of Expr.t (* 'a set -> formula *)
+  | VF_mich_iter_m of Expr.t (* ('k, 'v) map -> formula *)
+  | VF_mich_micse_check_value of Expr.t (* bool -> formula *)
+
+end (* module Formula end *)
+
+
+type t = Formula.t
+type typ = Ty.t
+
+type v_formula = t  (* legacy *)
+(*type typ = Pre.Lib.Adt.typ (* legacy *)*)
+type var = Expr.var (* legacy *)
+type v_exp = Expr.t (* legacy *)
 
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Verification object                                                       *)
+(* Type Utility                                                              *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-let create_obj_of_exp : exp:v_exp -> typ:typ -> v_obj
-=fun ~exp ~typ -> { exp=exp; typ=typ }
+module TypeUtil = struct
+  type mty = PreLib.Mich.typ PreLib.Mich.t
+  type michtyp = PreLib.Mich.typ
 
+  exception InvalidTyp of typ
+  let invalidtyp t = Stdlib.raise (InvalidTyp t)
+
+  let rec ty_of_mty : mty -> typ
+  =fun mtt -> begin
+    ty_of_michtyp (PreLib.Mich.get_d mtt)
+  end
+  and ty_of_michtyp : michtyp -> typ
+  = let open Ty in
+    let open PreLib in
+    (function
+    | Mich.T_key                -> T_key
+    | Mich.T_unit               -> T_unit
+    | Mich.T_signature          -> T_signature
+    | Mich.T_option    t1       -> T_option (ty_of_mty t1)
+    | Mich.T_list      t1       -> T_list (ty_of_mty t1)
+    | Mich.T_set       t1       -> T_set (ty_of_mty t1)
+    | Mich.T_operation          -> T_operation
+    | Mich.T_contract  t1       -> T_contract (ty_of_mty t1)
+    | Mich.T_pair      (t1, t2) -> T_pair (ty_of_mty t1, ty_of_mty t2)
+    | Mich.T_or        (t1, t2) -> T_or (ty_of_mty t1, ty_of_mty t2)
+    | Mich.T_lambda    (t1, t2) -> T_lambda (ty_of_mty t1, ty_of_mty t2)
+    | Mich.T_map       (t1, t2) -> T_map (ty_of_mty t1, ty_of_mty t2)
+    | Mich.T_big_map   (t1, t2) -> T_big_map (ty_of_mty t1, ty_of_mty t2)
+    | Mich.T_chain_id           -> T_chain_id
+    | Mich.T_int                -> T_int
+    | Mich.T_nat                -> T_nat
+    | Mich.T_string             -> T_string
+    | Mich.T_bytes              -> T_bytes
+    | Mich.T_mutez              -> T_mutez
+    | Mich.T_bool               -> T_bool
+    | Mich.T_key_hash           -> T_key_hash
+    | Mich.T_timestamp          -> T_timestamp
+    | Mich.T_address            -> T_address
+    )
+
+  (* WARNING: "ty_of_expr" does not check type validity of given expression *)
+  let rec ty_of_expr : Expr.t -> typ
+  = let open Ty in
+    let open Expr in
+    let toe = ty_of_expr in (* syntax sugar *)
+    fun eee -> begin
+    match eee with
+    (*************************************************************************)
+    (* Variable & Polymorphic                                                *)
+    (*************************************************************************)
+    | V_var (t, _) -> t
+    | V_car e -> (match toe e with | T_pair (tt, _) -> tt | _ as tt -> invalidtyp tt)
+    | V_cdr e -> (match toe e with | T_pair (_, tt) -> tt | _ as tt -> invalidtyp tt)
+    | V_unlift_option e -> (match toe e with | T_option tt -> tt | _ as tt -> invalidtyp tt)
+    | V_unlift_left e -> (match toe e with | T_or (tt, _) -> tt | _ as tt -> invalidtyp tt)
+    | V_unlift_right e -> (match toe e with | T_or (_, tt) -> tt | _ as tt -> invalidtyp tt)
+    | V_hd_l e -> (match toe e with | T_list tt -> tt | _ as tt -> invalidtyp tt)
+    | V_hd_s e -> (match toe e with | T_set tt -> tt | _ as tt -> invalidtyp tt)
+    | V_exec (e1, _) -> (match toe e1 with | T_lambda (_, t2) -> t2 | _ as tt -> invalidtyp tt)
+    | V_dup e -> toe e
+    | V_itself e -> toe e
+
+    (*************************************************************************)
+    (* Integer                                                               *)
+    (*************************************************************************)
+    | V_lit_int     _
+    | V_neg_ni      _
+    | V_neg_ii      _
+    | V_not_ni      _
+    | V_not_ii      _
+    | V_add_nii     _
+    | V_add_ini     _
+    | V_add_iii     _
+    | V_sub_nni     _
+    | V_sub_nii     _
+    | V_sub_ini     _
+    | V_sub_iii     _
+    | V_sub_tti     _
+    | V_mul_nii     _
+    | V_mul_ini     _
+    | V_mul_iii     _
+    | V_compare     _
+    | V_int_of_nat  _ -> T_int
+
+    (*************************************************************************)
+    (* Natural Number                                                        *)
+    (*************************************************************************)
+    | V_lit_nat     _
+    | V_abs_in      _
+    | V_add_nnn     _
+    | V_mul_nnn     _
+    | V_shiftL_nnn  _
+    | V_shiftR_nnn  _
+    | V_and_nnn     _
+    | V_and_inn     _
+    | V_or_nnn      _
+    | V_xor_nnn     _
+    | V_size_s      _
+    | V_size_m      _
+    | V_size_l      _
+    | V_size_str    _
+    | V_size_b      _ -> T_nat
+
+    (*************************************************************************)
+    (* String                                                                *)
+    (*************************************************************************)
+    | V_lit_string    _
+    | V_concat_sss    _
+    | V_concat_list_s _ -> T_string
+
+    (*************************************************************************)
+    (* Bytes                                                                 *)
+    (*************************************************************************)
+    | V_lit_bytes     _
+    | V_concat_bbb    _
+    | V_concat_list_b _
+    | V_pack          _
+    | V_blake2b       _
+    | V_sha256        _
+    | V_sha512        _ -> T_bytes
+
+    (*************************************************************************)
+    (* Mutez                                                                 *)
+    (*************************************************************************)
+    | V_lit_mutez _
+    | V_amount
+    | V_balance
+    | V_add_mmm   _
+    | V_sub_mmm   _
+    | V_mul_mnm   _
+    | V_mul_nmm   _ -> T_mutez
+
+    (*************************************************************************)
+    (* Bool                                                                  *)
+    (*************************************************************************)
+    | V_lit_bool  _
+    | V_not_bb    _
+    | V_and_bbb   _
+    | V_or_bbb    _
+    | V_xor_bbb   _
+    | V_eq_ib     _
+    | V_neq_ib    _
+    | V_lt_ib     _
+    | V_gt_ib     _
+    | V_leq_ib    _
+    | V_geq_ib    _
+    | V_mem_xsb   _
+    | V_mem_xmb   _
+    | V_mem_xbmb  _
+    | V_check_signature _ -> T_bool
+
+    (*************************************************************************)
+    (* Key Hash                                                              *)
+    (*************************************************************************)
+    | V_lit_key_hash  _
+    | V_hash_key      _ -> T_key_hash
+
+    (*************************************************************************)
+    (* Timestamp                                                             *)
+    (*************************************************************************)
+    | V_lit_timestamp_str _
+    | V_lit_timestamp_sec _
+    | V_now
+    | V_add_tit           _
+    | V_add_itt           _
+    | V_sub_tit           _ -> T_timestamp
+
+    (*************************************************************************)
+    (* Address                                                               *)
+    (*************************************************************************)
+    | V_lit_address _
+    | V_source
+    | V_sender
+    | V_address_of_contract _ -> T_address
+
+    (*************************************************************************)
+    (* Key                                                                   *)
+    (*************************************************************************)
+    | V_lit_key _ -> T_string
+
+    (*************************************************************************)
+    (* Unit                                                                  *)
+    (*************************************************************************)
+    (* | V_lit_unit : t_unit t *) (* V_unit has the same feature. *)
+    | V_unit -> T_unit
+
+    (*************************************************************************)
+    (* Signature                                                             *)
+    (*************************************************************************)
+    | V_lit_signature_str _
+    | V_lit_signature_signed _ -> T_signature
+
+    (*************************************************************************)
+    (* Option                                                                *)
+    (*************************************************************************)
+    (* | V_lit_option : 'a t option -> 'a t_option t *) (* V_some and V_none has the same feature. *)
+    | V_some e -> T_option (toe e)
+    | V_none t -> T_option t
+    | V_ediv_nnnn _ -> T_option (T_pair (T_nat, T_nat))
+    | V_ediv_niin _ -> T_option (T_pair (T_int, T_nat))
+    | V_ediv_inin _ -> T_option (T_pair (T_int, T_nat))
+    | V_ediv_iiin _ -> T_option (T_pair (T_int, T_nat))
+    | V_ediv_mnmm _ -> T_option (T_pair (T_mutez, T_mutez))
+    | V_ediv_mmnm _ -> T_option (T_pair (T_nat, T_mutez))
+    | V_get_xmoy (_, e2) -> (match toe e2 with | T_map (_, tt) -> T_option tt | _ as tt -> invalidtyp tt)
+    | V_get_xbmo (_, e2) -> (match toe e2 with | T_big_map (_, tt) -> T_option tt | _ as tt -> invalidtyp tt)
+    | V_slice_nnso _ -> T_option T_string
+    | V_slice_nnbo _ -> T_option T_bytes
+    | V_unpack (t, _) -> T_option t
+    | V_contract_of_address (t, _) -> T_option (T_contract t)
+    | V_isnat _ -> T_option T_int
+
+    (*************************************************************************)
+    (* List                                                                  *)
+    (*************************************************************************)
+    | V_lit_list (t, _) -> T_list t
+    | V_nil t -> T_list t
+    | V_cons (e1, _) -> T_list (toe e1)
+    | V_tl_l e -> toe e
+
+    (*************************************************************************)
+    (* Set                                                                   *)
+    (*************************************************************************)
+    | V_lit_set (t, _) -> T_set t
+    | V_empty_set t -> T_set t
+    | V_update_xbss (_, _, e3) -> toe e3
+    | V_tl_s e -> toe e
+
+    (*************************************************************************)
+    (* Operation                                                             *)
+    (*************************************************************************)
+    (* | V_lit_operation of t_operation t *) (* V_create_contract, V_transfer_tokens, V_set_delegate has the same feature. *)
+    | V_create_contract _
+    | V_transfer_tokens _
+    | V_set_delegate    _ -> T_operation
+
+    (*************************************************************************)
+    (* Contract                                                              *)
+    (*************************************************************************)
+    | V_lit_contract (_, _, _, _, e5) -> (match toe e5 with | T_lambda (T_pair (pt, _), _) -> T_contract pt | _ as tt -> invalidtyp tt)
+    | V_self t -> T_contract t
+    | V_implicit_account _ -> T_contract T_unit
+
+    (*************************************************************************)
+    (* Pair                                                                  *)
+    (*************************************************************************)
+    (* | V_lit_pair : 'a t * 'b t -> ('a, 'b) t_pair t *) (* V_pair has the same feature *)
+    | V_pair (e1, e2) -> T_pair (toe e1, toe e2)
+    | V_hd_m e -> (match toe e with | T_map (kt, vt) -> T_pair (kt, vt) | _ as tt -> invalidtyp tt)
+    | V_hd_bm e -> (match toe e with | T_big_map (kt, vt) -> T_pair (kt, vt) | _ as tt -> invalidtyp tt)
+
+    (*************************************************************************)
+    (* Or                                                                    *)
+    (*************************************************************************)
+    (* | V_lit_or *) (* It cannot construct any value, use V_left or V_right instead *)
+    | V_left (t, _) -> t
+    | V_right (t, _) -> t
+
+    (*************************************************************************)
+    (* Lambda                                                                *)
+    (*************************************************************************)
+    | V_lit_program r_p -> (
+        let pt_mic, st_mic = r_p.PreLib.Mich.param, r_p.PreLib.Mich.storage in
+        let (pt, st) : typ * typ = ty_of_mty pt_mic, ty_of_mty st_mic in
+        T_lambda (T_pair (pt, st), T_pair (T_list T_operation, st))
+      )
+    | V_lambda_id (t1, t2, _) -> T_lambda (t1, t2)
+    | V_lit_lambda (t1, t2, _) -> T_lambda (t1, t2)
+    | V_lambda_unknown (t1, t2) -> T_lambda (t1, t2)
+    | V_lambda_closure (e1, e2) -> (match toe e1, toe e2 with | T_lambda (T_pair(p1, p2), rett), pt when p1 = pt -> T_lambda(p2, rett) | _, tt2 -> invalidtyp tt2)
+    (*************************************************************************)
+    (* Map                                                                   *)
+    (*************************************************************************)
+    | V_lit_map (kt, vt, _) -> T_map (kt, vt)
+    | V_empty_map (kt, vt) -> T_map (kt, vt)
+    | V_update_xomm (_, _, e3) -> toe e3
+    | V_tl_m e -> toe e
+
+    (*************************************************************************)
+    (* Big Map                                                               *)
+    (*************************************************************************)
+    | V_lit_big_map (kt, vt, _) -> T_big_map (kt, vt)
+    | V_empty_big_map (kt, vt) -> T_big_map (kt, vt)
+    | V_update_xobmbm (_, _, e) -> toe e
+    | V_tl_bm e -> toe e
+    
+    (*************************************************************************)
+    (* Chain Id                                                              *)
+    (*************************************************************************)
+    | V_lit_chain_id  _
+    | V_chain_id -> T_chain_id
+
+  end (* function ty_of_expr end *)
+
+end (* module TypeUtil end *)
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Verification Formula                                                      *)
+(* Utility                                                                   *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-let create_formula_true : v_formula
-=VF_true
-
-let create_formula_false : v_formula
-=VF_false
-
-let create_formula_not : v_formula -> v_formula
-=fun f -> VF_not f
-
-let create_formula_and : v_formula list -> v_formula
-=fun fl -> VF_and fl
-
-let create_formula_or : v_formula list -> v_formula
-=fun fl -> VF_or fl
-
-let create_formula_uni_rel : rel:v_uni_rel -> o1:v_obj -> v_formula
-=fun ~rel ~o1 -> VF_uni_rel (rel, o1)
-
-let create_formula_is_true : v_obj -> v_formula
-=fun o1 -> create_formula_uni_rel ~rel:VF_is_true ~o1:o1
-
-let create_formula_is_none : v_obj -> v_formula
-=fun o1 -> create_formula_uni_rel ~rel:VF_is_none ~o1:o1
-
-let create_formula_is_some : v_obj -> v_formula
-=fun o1 -> create_formula_not (create_formula_uni_rel ~rel:VF_is_none ~o1:o1)
-
-let create_formula_is_left : v_obj -> v_formula
-=fun o1 -> create_formula_uni_rel ~rel:VF_is_left ~o1:o1
-
-let create_formula_is_right : v_obj -> v_formula
-=fun o1 -> create_formula_not (create_formula_uni_rel ~rel:VF_is_left ~o1:o1)
-
-let create_formula_is_cons : v_obj -> v_formula
-=fun o1 -> create_formula_uni_rel ~rel:VF_is_cons ~o1:o1
-
-let create_formula_is_nil : v_obj -> v_formula
-=fun o1 -> create_formula_not (create_formula_uni_rel ~rel:VF_is_cons ~o1:o1)
-
-let create_formula_bin_rel : rel:v_bin_rel -> o1:v_obj -> o2:v_obj -> v_formula
-=fun ~rel ~o1 ~o2 -> VF_bin_rel (rel, o1, o2)
-
-let create_formula_eq : v_obj -> v_obj -> v_formula
-=fun o1 o2 -> create_formula_bin_rel ~rel:VF_eq ~o1:o1 ~o2:o2
-
-let create_formula_neq : v_obj -> v_obj -> v_formula
-=fun o1 o2 -> create_formula_bin_rel ~rel:VF_neq ~o1:o1 ~o2:o2
-
-let create_formula_lt : v_obj -> v_obj -> v_formula
-=fun o1 o2 -> create_formula_bin_rel ~rel:VF_lt ~o1:o1 ~o2:o2
-
-let create_formula_le : v_obj -> v_obj -> v_formula
-=fun o1 o2 -> create_formula_bin_rel ~rel:VF_le ~o1:o1 ~o2:o2
-
-let create_formula_gt : v_obj -> v_obj -> v_formula
-=fun o1 o2 -> create_formula_bin_rel ~rel:VF_gt ~o1:o1 ~o2:o2
-
-let create_formula_ge : v_obj -> v_obj -> v_formula
-=fun o1 o2 -> create_formula_bin_rel ~rel:VF_ge ~o1:o1 ~o2:o2
-
-let create_formula_imply : v_formula -> v_formula -> v_formula
-=fun f1 f2 -> VF_imply (f1, f2)
-
-let create_formula_iff : v_formula -> v_formula -> v_formula
-=fun f1 f2 -> VF_iff (f1, f2)
-
-let create_formula_forall : bnd:v_obj list -> formula:v_formula -> v_formula
-=fun ~bnd ~formula -> VF_forall (bnd, formula)
-
-(* Customized formula *)
-
-let create_formula_no_overflow : v_obj -> v_formula
-=fun o -> begin
-  match o.exp with
-  | VE_bin_op (bop, o1, o2) -> begin
-      match o.typ.d, bop with
-      | T_mutez, VE_add -> create_formula_ge o o2
-      | T_mutez, VE_mul -> begin
-          if o2.typ.d = T_mutez
-          then create_formula_ge o o2
-          else create_formula_ge o o1
-        end
-      | _ -> raise (Failure "Vlang.create_formula_no_overflow: Wrong type or operation of VE_bin_op")
-    end
-  | _ -> raise (Failure "Vlang.create_formula_no_overflow: Wrong expression of object")
-end
-
-let create_formula_no_underflow : v_obj -> v_formula
-=fun o -> begin
-  match o.exp with
-  | VE_bin_op (bop, o1, _) -> begin
-      match o.typ.d, bop with
-      | T_mutez, VE_sub -> create_formula_le o o1
-      | _ -> raise (Failure "Vlang.create_formula_no_underflow: Wrong type or operation of VE_bin_op")
-    end
-  | _ -> raise (Failure "Vlang.create_formula_no_underflow: Wrong expression of object")
-end
-
-let create_formula_sigma_equal : map:v_obj -> mutez:v_obj -> v_formula
-=fun ~map ~mutez -> VF_sigma_equal (map, mutez)
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Verification Expression                                                   *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-let create_exp_int : Z.t -> v_exp
-=fun n -> VE_int n
-
-let create_exp_int_of_small_int : int -> v_exp
-=fun i -> create_exp_int (Z.of_int i)
-
-let create_exp_int_of_string : string -> v_exp
-=fun s -> create_exp_int (Z.of_string s)
-
-let create_exp_string : string -> v_exp
-=fun s -> VE_string s
-
-let create_exp_bool : v_formula -> v_exp
-=fun f -> VE_bool f
-
-let create_exp_bool_true : v_exp
-=create_exp_bool create_formula_true
-
-let create_exp_bool_false : v_exp
-=create_exp_bool create_formula_false
-
-let create_exp_unit : v_exp
-=VE_unit
-
-let create_exp_none : v_exp
-=VE_none
-
-let create_exp_uni_cont : cont:v_uni_cont -> o1:v_obj -> v_exp
-=fun ~cont ~o1 -> VE_uni_cont (cont, o1)
-
-let create_exp_uni_cont_left : v_obj -> v_exp
-=fun o1 -> create_exp_uni_cont ~cont:VE_left ~o1:o1
-
-let create_exp_uni_cont_right : v_obj -> v_exp
-=fun o1 -> create_exp_uni_cont ~cont:VE_right ~o1:o1
-
-let create_exp_uni_cont_some : v_obj -> v_exp
-=fun o1 -> create_exp_uni_cont ~cont:VE_some ~o1
-
-let create_exp_bin_cont : cont:v_bin_cont -> o1:v_obj -> o2:v_obj -> v_exp
-=fun ~cont ~o1 ~o2 -> VE_bin_cont (cont, o1, o2)
-
-let create_exp_bin_cont_pair : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_cont ~cont:VE_pair ~o1:o1 ~o2:o2
-
-let create_exp_bin_cont_elt : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_cont ~cont:VE_elt ~o1:o1 ~o2:o2
-
-let create_exp_list : v_obj list -> v_exp
-=fun ol -> VE_list ol
-
-let create_exp_var : var -> v_exp
-=fun v -> VE_var v
-
-let create_exp_nul_op : op:v_nul_op -> v_exp
-=fun ~op -> VE_nul_op op
-
-let create_exp_nul_op_self : v_exp
-=create_exp_nul_op ~op:VE_self
-
-let create_exp_nul_op_now : v_exp
-=create_exp_nul_op ~op:VE_now
-
-let create_exp_nul_op_amount : v_exp
-=create_exp_nul_op ~op:VE_amount
-
-let create_exp_nul_op_balance : v_exp
-=create_exp_nul_op ~op:VE_balance
-
-let create_exp_nul_op_steps_to_quota : v_exp
-=create_exp_nul_op ~op:VE_steps_to_quota
-
-let create_exp_nul_op_source : v_exp
-=create_exp_nul_op ~op:VE_source
-
-let create_exp_nul_op_sender : v_exp
-=create_exp_nul_op ~op:VE_sender
-
-let create_exp_nul_op_chain_id : v_exp
-=create_exp_nul_op ~op:VE_chain_id
-
-let create_exp_uni_op : op:v_uni_op -> o1:v_obj -> v_exp
-=fun ~op ~o1 -> VE_uni_op (op, o1)
-
-let create_exp_uni_op_car : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_car ~o1:o1
-
-let create_exp_uni_op_cdr : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_cdr ~o1:o1
-
-let create_exp_uni_op_abs : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_abs ~o1:o1
-
-let create_exp_uni_op_neg : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_neg ~o1:o1
-
-let create_exp_uni_op_not : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_not ~o1:o1
-
-let create_exp_uni_op_eq : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_eq ~o1:o1
-
-let create_exp_uni_op_neq : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_neq ~o1:o1
-
-let create_exp_uni_op_lt : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_lt ~o1:o1
-
-let create_exp_uni_op_gt : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_gt ~o1:o1
-
-let create_exp_uni_op_leq : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_leq ~o1:o1
-
-let create_exp_uni_op_geq : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_geq ~o1:o1
-
-let create_exp_uni_op_cast : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_cast ~o1:o1
-
-let create_exp_uni_op_concat : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_list_concat ~o1:o1
-
-let create_exp_uni_op_pack : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_pack ~o1:o1
-
-let create_exp_uni_op_unpack : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_unpack ~o1:o1
-
-let create_exp_uni_op_contract : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_contract ~o1:o1
-
-let create_exp_uni_op_account : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_account ~o1:o1
-
-let create_exp_uni_op_blake2b : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_blake2b ~o1:o1
-
-let create_exp_uni_op_sha256 : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_sha256 ~o1:o1
-
-let create_exp_uni_op_sha512 : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_sha512 ~o1:o1
-
-let create_exp_uni_op_hash_key : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_hash_key ~o1:o1
-
-let create_exp_uni_op_address : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_address ~o1:o1
-
-let create_exp_uni_op_un_opt : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_un_opt ~o1:o1
-
-let create_exp_uni_op_un_left : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_un_left ~o1:o1
-
-let create_exp_uni_op_un_right : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_un_right ~o1:o1
-
-let create_exp_uni_op_hd : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_hd ~o1:o1
-
-let create_exp_uni_op_tl : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_tl ~o1:o1
-
-let create_exp_uni_op_size : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_size ~o1:o1
-
-let create_exp_uni_op_isnat : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_isnat ~o1:o1
-
-let create_exp_uni_op_int : v_obj -> v_exp
-=fun o1 -> create_exp_uni_op ~op:VE_to_int ~o1:o1
-
-let create_exp_bin_op : op:v_bin_op -> o1:v_obj -> o2:v_obj -> v_exp
-=fun ~op ~o1 ~o2 -> VE_bin_op (op, o1, o2)
-
-let create_exp_bin_op_add : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_add ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_sub : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_sub ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_mul : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_mul ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_ediv : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_ediv ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_div : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_div ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_mod : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_mod ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_lsl : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_lsl ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_lsr : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_lsr ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_and : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_and ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_or : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_or ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_xor : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_xor ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_cmp : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_cmp ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_cons : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_cons ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_concat : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_concat ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_exec : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_exec ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_append : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_append ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_get : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_get ~o1:o1 ~o2:o2
-
-let create_exp_bin_op_mem : v_obj -> v_obj -> v_exp
-=fun o1 o2 -> create_exp_bin_op ~op:VE_mem ~o1:o1 ~o2:o2
-
-let create_exp_ter_op : op:v_ter_op -> o1:v_obj -> o2:v_obj -> o3:v_obj -> v_exp
-=fun ~op ~o1 ~o2 ~o3 -> VE_ter_op (op, o1, o2, o3)
-
-let create_exp_ter_op_slice : v_obj -> v_obj -> v_obj -> v_exp
-=fun o1 o2 o3 -> create_exp_ter_op ~op:VE_slice ~o1:o1 ~o2:o2 ~o3:o3
-
-let create_exp_ter_op_check_signature : v_obj -> v_obj -> v_obj -> v_exp
-=fun o1 o2 o3 -> create_exp_ter_op ~op:VE_check_signature ~o1:o1 ~o2:o2 ~o3:o3
-
-let create_exp_ter_op_update : v_obj -> v_obj -> v_obj -> v_exp
-=fun o1 o2 o3 -> create_exp_ter_op ~op:VE_update ~o1:o1 ~o2:o2 ~o3:o3
-
-let create_exp_lambda : v_exp
-=VE_lambda
-
-let create_exp_operation : v_operation -> v_exp
-=fun vop -> VE_operation (vop)
-
-let create_exp_operation_transaction : v_exp
-=create_exp_operation VE_transaction
-
-let create_exp_operation_origination : v_exp
-=create_exp_operation VE_origination
-
-let create_exp_operation_delegation : v_exp
-=create_exp_operation VE_delegation
-
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Stringify Modules                                                         *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-let rec string_of_formula : v_formula -> string
-=fun f -> begin
-  match f with
-  | VF_true -> "True"
-  | VF_false -> "False"
-  | VF_not f' -> "!(" ^ (string_of_formula f') ^ ")"
-  | VF_and fl' -> Core.String.concat ~sep:" && " (Core.List.map fl' ~f:(fun f' -> "(" ^ (string_of_formula f') ^ ")"))
-  | VF_or fl' -> Core.String.concat ~sep:" || " (Core.List.map fl' ~f:(fun f' -> "(" ^ (string_of_formula f') ^ ")"))
-  | VF_uni_rel (vur, o1') -> begin
-      match vur with
-      | VF_is_true -> (string_of_formula VF_true) ^ " == (" ^ (string_of_obj o1') ^ ")"
-      | VF_is_none -> "None == (" ^ (string_of_obj o1') ^ ")"
-      | VF_is_left -> "Left x == (" ^ (string_of_obj o1') ^ ")"
-      | VF_is_cons -> "Cons x == (" ^ (string_of_obj o1') ^ ")"
-    end
-  | VF_bin_rel (vbr, o1', o2') -> begin
-      match vbr with
-      | VF_eq -> "(" ^ (string_of_obj o1') ^ ") == (" ^ (string_of_obj o2') ^ ")"
-      | VF_neq -> "(" ^ (string_of_obj o1') ^ ") != (" ^ (string_of_obj o2') ^ ")"
-      | VF_lt -> "(" ^ (string_of_obj o1') ^ ") < (" ^ (string_of_obj o2') ^ ")"
-      | VF_le -> "(" ^ (string_of_obj o1') ^ ") <= (" ^ (string_of_obj o2') ^ ")"
-      | VF_gt -> "(" ^ (string_of_obj o1') ^ ") > (" ^ (string_of_obj o2') ^ ")"
-      | VF_ge -> "(" ^ (string_of_obj o1') ^ ") >= (" ^ (string_of_obj o2') ^ ")"
-    end
-  | VF_imply (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") -> (" ^ (string_of_formula f2') ^ ")"
-  | VF_iff (f1', f2') -> "(" ^ (string_of_formula f1') ^ ") <-> (" ^ (string_of_formula f2') ^ ")"
-  | VF_forall (ol', f') -> "ForAll " ^ (
-        Core.String.concat ~sep:", " (Core.List.map ol' ~f:string_of_obj)
-      ) ^ ". " ^ (string_of_formula f')
-  | VF_sigma_equal (o1', o2') -> "(Σ" ^ (string_of_obj o1') ^ " == " ^ (string_of_obj o2') ^ ")"
-end
-
-and string_of_obj : v_obj -> string
-=fun o -> string_of_exp o.exp
-
-and string_of_exp : v_exp -> string
-=fun e -> begin
-  match e with
-  | VE_int n -> Z.to_string n
-  | VE_string s -> "\"" ^ s ^ "\""
-  | VE_bool f -> string_of_formula f
-  | VE_unit -> "Unit"
-  | VE_none -> "None"
-  | VE_uni_cont (vuc, o1') -> begin
-      match vuc with
-      | VE_left -> "Left (" ^ (string_of_obj o1') ^ ")"
-      | VE_right -> "Right (" ^ (string_of_obj o1') ^ ")"
-      | VE_some -> "Some (" ^ (string_of_obj o1') ^ ")"
-    end
-  | VE_bin_cont (vbc, o1', o2') -> begin
-      match vbc with
-      | VE_pair -> "Pair (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")"
-      | VE_elt -> "Elt (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")"
-    end
-  | VE_list ol' -> begin
-      "List [" ^ (Core.String.concat ~sep:"; " (Core.List.map ol' ~f:(fun o' -> "(" ^ (string_of_obj o') ^ ")"))) ^ "]"
-    end
-  | VE_var v -> v
-  | VE_nul_op vno -> begin
-      match vno with
-      | VE_self -> "SELF"
-      | VE_now -> "NOW"
-      | VE_amount -> "AMOUNT"
-      | VE_balance -> "BALANCE"
-      | VE_steps_to_quota -> "STEPS_TO_QUOTA"
-      | VE_source -> "SOURCE"
-      | VE_sender -> "SENDER"
-      | VE_chain_id -> "CHAIN_ID"
-    end
-  | VE_uni_op (vuo, o1') -> begin
-      match vuo with
-      | VE_car -> "CAR (" ^ (string_of_obj o1') ^ ")"
-      | VE_cdr -> "CDR (" ^ (string_of_obj o1') ^ ")"
-      | VE_abs -> "ABS (" ^ (string_of_obj o1') ^ ")"
-      | VE_neg -> "NEG (" ^ (string_of_obj o1') ^ ")"
-      | VE_not -> "NOT (" ^ (string_of_obj o1') ^ ")"
-      | VE_eq -> "EQ (" ^ (string_of_obj o1') ^ ")"
-      | VE_neq -> "NEQ (" ^ (string_of_obj o1') ^ ")"
-      | VE_lt -> "LT (" ^ (string_of_obj o1') ^ ")"
-      | VE_gt -> "GT (" ^ (string_of_obj o1') ^ ")"
-      | VE_leq -> "LEQ (" ^ (string_of_obj o1') ^ ")"
-      | VE_geq -> "GEQ (" ^ (string_of_obj o1') ^ ")"
-      | VE_cast -> "CAST (" ^ (string_of_obj o1') ^ ")"
-      | VE_list_concat -> "CONCAT (" ^ (string_of_obj o1') ^ ")"
-      | VE_pack -> "PACK (" ^ (string_of_obj o1') ^ ")"
-      | VE_unpack -> "UNPACK (" ^ (string_of_obj o1') ^ ")"
-      | VE_contract -> "CONTRACT (" ^ (string_of_obj o1') ^ ")"
-      | VE_account -> "ACCOUNT (" ^ (string_of_obj o1') ^ ")"
-      | VE_blake2b -> "BLAKE2B (" ^ (string_of_obj o1') ^ ")"
-      | VE_sha256 -> "SHA256 (" ^ (string_of_obj o1') ^ ")"
-      | VE_sha512 -> "SHA512 (" ^ (string_of_obj o1') ^ ")"
-      | VE_hash_key -> "HASH_KEY (" ^ (string_of_obj o1') ^ ")"
-      | VE_address -> "ADDRESS (" ^ (string_of_obj o1') ^ ")"
-      | VE_un_opt -> "UN_OPT (" ^ (string_of_obj o1') ^ ")"
-      | VE_un_left -> "UN_LEFT (" ^ (string_of_obj o1') ^ ")"
-      | VE_un_right -> "UN_RIGHT (" ^ (string_of_obj o1') ^ ")"
-      | VE_hd -> "HD (" ^ (string_of_obj o1') ^ ")"
-      | VE_tl -> "TL (" ^ (string_of_obj o1') ^ ")"
-      | VE_size -> "SIZE (" ^ (string_of_obj o1') ^ ")"
-      | VE_isnat -> "ISNAT (" ^ (string_of_obj o1') ^ ")"
-      | VE_to_int -> "INT (" ^ (string_of_obj o1') ^ ")"
-    end
-  | VE_bin_op (vbo, o1', o2') -> begin
-      match vbo with
-      | VE_add -> "ADD (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_sub -> "SUB (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_mul -> "MUL (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_ediv -> "EDIV (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_div -> "DIV (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_mod -> "MOD (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_lsl -> "LSL (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_lsr -> "LSR (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_and -> "AND (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_or -> "OR (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_xor -> "XOR (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_cmp -> "COMPARE (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_cons -> "CONS (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_concat -> "CONCAT (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_exec -> "EXEC (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")" 
-      | VE_append -> "APPEND (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")"
-      | VE_get -> "GET (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")"
-      | VE_mem -> "MEM (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ")"
-    end
-  | VE_ter_op (vto, o1', o2', o3') -> begin
-      match vto with
-      | VE_slice -> "SLICE (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ") (" ^ (string_of_obj o3') ^ ")"
-      | VE_check_signature -> "CHECK_SIGNATURE (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ") (" ^ (string_of_obj o3') ^ ")"
-      | VE_update -> "UPDATE (" ^ (string_of_obj o1') ^ ") (" ^ (string_of_obj o2') ^ ") (" ^ (string_of_obj o3') ^ ")"
-    end
-  | VE_lambda -> "LAMBDA"
-  | VE_operation _ -> "OPERATION"
-end
-
-let string_of_vlang : t -> string
-=fun f -> string_of_formula f
+let string_of_formula : t -> string = fun _ -> "Vlang.string_of_formula.UNIMPLEMENTED_TODO" (* TODO *)

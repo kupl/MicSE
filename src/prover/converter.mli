@@ -1,34 +1,36 @@
-open ProverLib
+exception InvalidSituation of PreLib.Cfg.expr
 
-type object_typ =
-  | Mutez_Map
-  | Mutez
-  
-(************************************************)
-(************************************************)
+val newvar_prefix : string
+val gen_nv : string -> string
 
-val type_map : (Pre.Lib.Cfg.ident, Pre.Lib.Cfg.typ) Pre.Lib.Cfg.CPMap.t ref
+type convert_env_body = {
+    cfg : PreLib.Cfg.t;
+    varname : (string, string) Core.Map.Poly.t;
+}
+type convert_env = convert_env_body ref
 
-val convert : Bp.t -> Pre.Lib.Cfg.t -> (Vlang.t * Query.t list)
+(* deal with convert_env's varname *)
+val get_cur_varname : convert_env -> string -> string
+val get_new_varname : convert_env -> string -> string
 
-val sp : (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t * Query.t list)
+(* read or generate Vlang.typ value *)
+val read_type_cfgvar : convert_env -> PreLib.Cfg.ident -> ProverLib.Vlang.typ
+val convert_type : PreLib.Cfg.typ -> ProverLib.Vlang.typ
 
-val read_type : Vlang.var -> Vlang.typ
+(* main convert functions - variable, michelson datas(literal), and cfg-expressions *)
+val create_var_of_cfgvar : convert_env -> PreLib.Cfg.ident -> ProverLib.Vlang.Expr.t
+val create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t
+val create_expr_of_cfgexpr : convert_env -> PreLib.Cfg.expr -> ProverLib.Vlang.Expr.t
 
-val update_type : Vlang.var -> Vlang.typ -> unit
+(* special case *)
+val create_formula_no_overflow : ProverLib.Vlang.Expr.t -> ProverLib.Vlang.t
 
-val create_var : Vlang.var -> Vlang.v_obj
+(* deal with convert_cond *)
+val create_var_in_convert_cond : convert_env -> PreLib.Cfg.ident -> ProverLib.Vlang.Expr.t
+val convert_cond : convert_env -> ProverLib.Bp.cond -> ProverLib.Vlang.v_formula
 
-val create_rename_var : Vlang.var -> Vlang.var
+(* convert differently for each basicpaths *)
+val sp : convert_env -> (ProverLib.Vlang.t * ProverLib.Query.t list) -> (ProverLib.Bp.vertex * ProverLib.Bp.inst) -> (ProverLib.Vlang.t * ProverLib.Query.t list)
 
-val create_rewrite_formula : Vlang.var -> Vlang.var -> Vlang.v_formula -> Vlang.v_formula
-
-val create_rewrite_exp : Vlang.var -> Vlang.var -> Vlang.v_exp -> Vlang.v_exp
-
-val create_rewrite_obj : Vlang.var -> Vlang.var -> Vlang.v_obj -> Vlang.v_obj
-
-val create_convert_data : Vlang.data -> Vlang.typ -> Vlang.v_obj
-
-val create_convert_cond : Bp.cond -> Vlang.v_formula
-
-val create_convert_obj : Vlang.exp -> Vlang.typ -> Vlang.v_obj
+(* main convert function *)
+val convert : ProverLib.Bp.t -> PreLib.Cfg.t -> (ProverLib.Vlang.t * ProverLib.Query.t list)
