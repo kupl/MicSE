@@ -624,6 +624,25 @@ module TypeUtil = struct
 
   end (* function ty_of_expr end *)
 
+  (* option & list & set & contract *)
+  let get_innertyp : typ -> typ =
+    function
+    | T_option it
+    | T_list it
+    | T_set it
+    | T_contract it -> it
+    | _ as tt -> invalidtyp tt
+
+  (* pair & or & lambda & map & big_map *)
+  let get_innertyp2 : typ -> (typ * typ) = 
+    function
+    | T_pair (t1, t2)
+    | T_or (t1, t2)
+    | T_lambda (t1, t2)
+    | T_map (t1, t2)
+    | T_big_map (t1, t2) -> (t1, t2)
+    | _ as tt -> invalidtyp tt
+
 end (* module TypeUtil end *)
 
 (*****************************************************************************)

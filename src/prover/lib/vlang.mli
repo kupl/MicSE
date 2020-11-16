@@ -342,6 +342,9 @@ module Ty : sig
   
     (* WARNING: "ty_of_expr" does not check type validity of given expression *)
     val ty_of_expr : Expr.t -> typ
+
+    val get_innertyp : typ -> typ (* option & list & set & contract *)
+    val get_innertyp2 : typ -> (typ * typ)  (* pair & or & lambda & map & big_map *)
   
   end (* module TypeUtil end *)
   
