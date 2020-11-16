@@ -64,12 +64,16 @@ module TrxInv = struct
 
   let formula_mutez_equal : comp:Comps.t -> formula list
   =fun ~comp -> begin
-    let cartesian_product = Core.List.cartesian_product comp.mutez comp.mutez in
-    Core.List.map cartesian_product ~f:(fun ((a_obj, a_app), (b_obj, b_app)) -> begin
-      let app = a_app@b_app in
-      let equal = Vlang.create_formula_eq a_obj b_obj in
-      Core.List.fold_right app ~f:(fun app f -> app f) ~init:equal
-    end)
+    let fs, _ = Core.List.fold_left comp.mutez ~f:(fun (fs, comps) (a_obj, a_app) -> begin
+      let comps' = Core.List.tl_exn comps in
+      let fs' = Core.List.map comps' ~f:(fun (b_obj, b_app) -> begin
+        let app = a_app@b_app in
+        let equal = Vlang.create_formula_eq a_obj b_obj in
+        Core.List.fold_right app ~f:(fun app f -> app f) ~init:equal
+      end) in
+      (fs'@fs, comps')
+    end) ~init:([], comp.mutez) in
+    fs
   end
 
   let wrap_formula : bp_list:Bp.lst -> cfg:cfg -> (f:(comp:Comps.t -> formula list) -> (formula * formula) list)
@@ -80,7 +84,7 @@ module TrxInv = struct
     let wrapper : f:(comp:Comps.t -> formula list) -> (formula * formula) list
     =fun ~f -> begin
       Core.List.map (f ~comp:comp) ~f:(fun f -> begin
-        let entry_f = Converter.create_rewrite_formula "stg" "pre_stg" (Vlang.create_formula_imply entry_equal f) in
+        let entry_f = Converter.create_rewrite_formula "stg" "pre_stg" (Vlang.create_formula_and [entry_equal; f]) in
         let exit_f = Converter.create_rewrite_formula "stg" "post_stg" (Vlang.create_formula_imply exit_equal f) in
         (entry_f, exit_f)
       end)
