@@ -143,24 +143,40 @@ end
 (*****************************************************************************)
 
 module WorkList = struct
-  type t = Map.t list
+  module CPSet = Core.Set.Poly
+  type t = {
+    enable: Map.t CPSet.t;
+    disable: Map.t CPSet.t;
+  }
 
   let empty : t
-  =[]
+  ={ enable=CPSet.empty; disable=CPSet.empty }
 
   let is_empty : t -> bool
-  =fun wl -> Core.List.is_empty wl
+  =fun w -> CPSet.is_empty (w.enable)
 
   let push : t -> Map.t -> t
-  =fun wl m -> begin
-    m::wl
+  =fun w m -> begin
+    if CPSet.mem (w.disable) m
+    then w
+    else { w with enable=(CPSet.add (w.enable) m) }
   end
 
+  let push_list : t -> Map.t list -> t
+  =fun w ml -> Core.List.fold_left ml ~init:w ~f:push
+
   let pop : t -> (Map.t * t)
-  =fun wl -> begin
-    let m_opt, wl'_opt = (Core.List.hd wl), (Core.List.tl wl) in
-    match m_opt, wl'_opt with
-    | Some m, Some wl' -> (m, wl')
-    | _, _ -> raise (Failure "")
+  =fun w -> begin
+    let m = CPSet.choose_exn (w.enable) in
+    let w' = { enable=(CPSet.remove (w.enable) m); disable=(CPSet.add (w.disable) m) } in
+    (m, w')
+  end
+  
+  let map : t -> f:(Map.t -> Map.t) -> t
+  =fun w ~f -> begin
+    let el = CPSet.to_list (w.enable) in
+    let mapped_el = Core.List.map el ~f:f in
+    let w' = { w with enable=(CPSet.of_list mapped_el)} in
+    w'
   end
 end
