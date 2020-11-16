@@ -37,8 +37,8 @@ module TrxInv : sig
 
   val formula_mutez_equal : comp:Comps.t -> formula list
 
-  val wrap_formula : cfg:cfg -> entry:Vlang.var -> exit:Vlang.var -> comp:Comps.t -> f:(comp:Comps.t -> formula list) -> (formula * formula) list
-
+  val wrap_formula : bp_list:Bp.lst -> cfg:cfg -> (f:(comp:Comps.t -> formula list) -> (formula * formula) list)
+  
   val create : bp_list:Bp.lst -> cfg:cfg -> m list
 end
 
