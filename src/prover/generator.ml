@@ -129,15 +129,17 @@ module W = struct
     init_t
   end
 
-  let update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> inv:m -> wlst:t -> t
-  =fun ~bp_list ~cfg ~init_stg ~inv ~wlst -> begin
-    let _, _, _, _ = bp_list, cfg, inv, init_stg in
-    wlst
+  let update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> wlst:t -> t
+  =fun ~bp_list ~cfg ~init_stg ~wlst -> begin
+    let _ = init_stg in
+    let trx_maps = TrxInv.create ~bp_list:bp_list ~cfg:cfg in
+    let next_wlst = Inv.WorkList.push_list wlst trx_maps in
+    next_wlst
   end
 
   let join : inv:m -> wlst:t -> t
   =fun ~inv ~wlst -> begin
-    let _ = inv in
-    wlst
+    let next_wlst = Inv.WorkList.map wlst ~f:(Inv.Map.join inv) in
+    next_wlst
   end 
 end

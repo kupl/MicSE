@@ -60,7 +60,7 @@ module W : sig
 
   val create : bp_list:Bp.lst -> t
 
-  val update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> inv:m -> wlst:t -> t
+  val update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> wlst:t -> t
 
   val join : inv:m -> wlst:t -> t
 end
