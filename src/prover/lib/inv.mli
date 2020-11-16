@@ -66,16 +66,19 @@ end
 (*****************************************************************************)
 
 module WorkList : sig
-  module CPSet = Core.Set.Poly
   type t = {
-    enable: Map.t CPSet.t;
-    disable: Map.t CPSet.t;
+    current: Map.t;
+    enable: Map.t list;
+    disable: Map.t list;
   }
+
 
   val empty : t
   val is_empty : t -> bool
+  val mem : Map.t list -> Map.t -> bool
   val push : t -> Map.t -> t
   val push_list : t -> Map.t list -> t
   val pop : t -> (Map.t * t)
   val map : t -> f:(Map.t -> Map.t) -> t
+  val update_current : t -> new_:Map.t -> t
 end

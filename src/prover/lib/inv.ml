@@ -31,6 +31,9 @@ module T = struct
   let order : inv1:t -> inv2:t -> bool (* inv1 <= inv2 ? true : false *)
   =fun ~inv1 ~inv2 -> CPSet.is_subset (inv1.formula) ~of_:(inv2.formula)
 
+  let equal : inv1:t -> inv2:t -> bool (* inv1 = inv2 *)
+  =fun ~inv1 ~inv2 -> (order ~inv1:inv1 ~inv2:inv2)&&(order ~inv1:inv1 ~inv2:inv2)
+
   let join : inv1:t -> inv2:t -> t
   =fun ~inv1 ~inv2 -> begin
     if inv1.id <> inv2.id
@@ -111,6 +114,18 @@ module Map = struct
     end)
   end
 
+  let equal : m1:t -> m2:t -> bool (* m1 = m2 *)
+  =fun ~m1 ~m2 -> begin
+    if (VtxMap.length m1) <> (VtxMap.length m2)
+    then false
+    else begin
+      VtxMap.fold_right m2 ~init:true ~f:(fun ~key ~data b -> begin
+        let data' = find_empty m1 key in
+        b&&(T.equal ~inv1:data' ~inv2:data)
+      end)
+    end
+  end
+
   let join : t -> t -> t
   =fun m1 m2 -> begin
     let f : key:vertex -> [ `Both of T.t * T.t | `Left of T.t | `Right of T.t ] -> T.t option
@@ -143,23 +158,26 @@ end
 (*****************************************************************************)
 
 module WorkList = struct
-  module CPSet = Core.Set.Poly
   type t = {
-    enable: Map.t CPSet.t;
-    disable: Map.t CPSet.t;
+    current: Map.t;
+    enable: Map.t list;
+    disable: Map.t list;
   }
 
   let empty : t
-  ={ enable=CPSet.empty; disable=CPSet.empty }
+  ={ current=(Map.empty); enable=[]; disable=[] }
 
   let is_empty : t -> bool
-  =fun w -> CPSet.is_empty (w.enable)
+  =fun w -> Core.List.is_empty (w.enable)
+
+  let mem : Map.t list -> Map.t -> bool
+  =fun l m -> Core.List.exists l ~f:(fun m' -> Map.equal ~m1:m ~m2:m')
 
   let push : t -> Map.t -> t
   =fun w m -> begin
-    if CPSet.mem (w.disable) m
+    if (mem (w.disable) m) || (mem (w.enable) m)
     then w
-    else { w with enable=(CPSet.add (w.enable) m) }
+    else { w with enable=((w.enable)@[m]) }
   end
 
   let push_list : t -> Map.t list -> t
@@ -167,16 +185,14 @@ module WorkList = struct
 
   let pop : t -> (Map.t * t)
   =fun w -> begin
-    let m = CPSet.choose_exn (w.enable) in
-    let w' = { enable=(CPSet.remove (w.enable) m); disable=(CPSet.add (w.disable) m) } in
+    let m = Core.List.hd_exn (w.enable) in
+    let w' = { w with enable=(Core.List.tl_exn (w.enable)); disable=(m::(w.disable)) } in
     (m, w')
   end
   
   let map : t -> f:(Map.t -> Map.t) -> t
-  =fun w ~f -> begin
-    let el = CPSet.to_list (w.enable) in
-    let mapped_el = Core.List.map el ~f:f in
-    let w' = { w with enable=(CPSet.of_list mapped_el)} in
-    w'
-  end
+  =fun w ~f -> { w with enable=(Core.List.map (w.enable) ~f:f) }
+
+  let update_current : t -> new_:Map.t -> t
+  =fun w ~new_ -> { w with current=new_ }
 end
