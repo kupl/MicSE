@@ -65,31 +65,37 @@ module TrxInv = struct
 
   let formula_mutez_equal : comp:Comps.t -> formula list
   =fun ~comp -> begin
-    let cartesian_product = Core.List.cartesian_product comp.mutez comp.mutez in
-    Core.List.map cartesian_product ~f:(fun ((a_obj, a_app), (b_obj, b_app)) -> begin
-      let app = a_app@b_app in
-      let equal = Vlang.create_formula_eq a_obj b_obj in
-      Core.List.fold_right app ~f:(fun app f -> app f) ~init:equal
-    end)
+    let fs, _ = Core.List.fold_left comp.mutez ~f:(fun (fs, comps) (a_obj, a_app) -> begin
+      let comps' = Core.List.tl_exn comps in
+      let fs' = Core.List.map comps' ~f:(fun (b_obj, b_app) -> begin
+        let app = a_app@b_app in
+        let equal = Vlang.create_formula_eq a_obj b_obj in
+        Core.List.fold_right app ~f:(fun app f -> app f) ~init:equal
+      end) in
+      (fs'@fs, comps')
+    end) ~init:([], comp.mutez) in
+    fs
   end
 
-  let wrap_formula : cfg:cfg -> entry:Vlang.var -> exit:Vlang.var -> comp:Comps.t -> f:(comp:Comps.t -> formula list) -> (formula * formula) list
-  =fun ~cfg ~entry ~exit ~comp ~f -> begin
-    let entry_equal = Stg.equal_to_ps_or_os ~ps_os:entry ~cfg:cfg in
-    let exit_equal = Stg.equal_to_ps_or_os ~ps_os:exit ~cfg:cfg in
-    Core.List.map (f ~comp:comp) ~f:(fun f -> begin
-      let entry_f = Vlang.create_formula_and [entry_equal; f] in
-      let exit_f = Vlang.create_formula_and [exit_equal; f] in
-      (entry_f, exit_f)
-    end)
+  let wrap_formula : bp_list:Bp.lst -> cfg:cfg -> (f:(comp:Comps.t -> formula list) -> (formula * formula) list)
+  =fun ~bp_list ~cfg -> begin
+    let comp = Stg.create_comp ~cfg:cfg in
+    let entry_equal = Stg.equal_to_ps_or_os ~ps_os:(Option.get bp_list.entry.var) ~cfg:cfg in
+    let exit_equal = Stg.equal_to_ps_or_os ~ps_os:(Option.get bp_list.exit.var) ~cfg:cfg in
+    let wrapper : f:(comp:Comps.t -> formula list) -> (formula * formula) list
+    =fun ~f -> begin
+      Core.List.map (f ~comp:comp) ~f:(fun f -> begin
+        let entry_f = Converter.create_rewrite_formula "stg" "pre_stg" (Vlang.create_formula_and [entry_equal; f]) in
+        let exit_f = Converter.create_rewrite_formula "stg" "post_stg" (Vlang.create_formula_imply exit_equal f) in
+        (entry_f, exit_f)
+      end)
+    end in
+    wrapper
   end
 
   let create : bp_list:Bp.lst -> cfg:cfg -> m list
   =fun ~bp_list ~cfg -> begin
-    let entry_var = Option.get bp_list.entry.var in
-    let exit_var = Option.get bp_list.exit.var in
-    let comp = Stg.create_comp ~cfg:cfg in
-    let wrapper = wrap_formula ~cfg:cfg ~entry:entry_var ~exit:exit_var ~comp:comp in
+    let wrapper = wrap_formula ~bp_list:bp_list ~cfg:cfg in
     let fs = (wrapper ~f:formula_mutez_equal) in
     Core.List.map fs ~f:(fun (entry_f, exit_f) -> begin 
       let entry_inv = Inv.T.create_with_formulae ~vtx:(bp_list.entry.vtx) ~fl:[entry_f] in
@@ -130,16 +136,22 @@ module W = struct
     init_t
   end
 
-  let update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> inv:m -> wlst:t -> t
-  =fun ~bp_list ~cfg ~init_stg ~inv ~wlst -> begin
-    let _, _, _, _ = bp_list, cfg, inv, init_stg in
-    wlst
+  let update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> wlst:t -> t
+  =fun ~bp_list ~cfg ~init_stg ~wlst -> begin
+    let _ = init_stg in
+    let trx_maps = TrxInv.create ~bp_list:bp_list ~cfg:cfg in
+    let next_wlst = Inv.WorkList.push_list wlst trx_maps in
+    next_wlst
   end
 
   let join : inv:m -> wlst:t -> t
   =fun ~inv ~wlst -> begin
-    let _ = inv in
-    wlst
-  end 
+    let next_wlst' = Inv.WorkList.update_current wlst ~new_:inv in
+    let next_wlst = Inv.WorkList.map next_wlst' ~f:(Inv.Map.join inv) in
+    next_wlst
+  end
+
+  let last_worklist : wlst:t -> t
+  =fun ~wlst -> Inv.WorkList.push_force wlst (wlst.current)
 end
 *)

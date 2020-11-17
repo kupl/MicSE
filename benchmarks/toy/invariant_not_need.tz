@@ -1,0 +1,82 @@
+parameter (or (mutez %add) (mutez %sub));
+storage   (pair (mutez %a) (mutez %b));
+code
+  {
+    DUP;        # pair @parameter @storage : pair @parameter @storage
+    CDR;        # @storage : pair @parameter @storage
+    SWAP;       # pair @parameter @storage : @storage
+    CAR;        # @parameter : @storage
+    IF_LEFT
+      {
+        SWAP;       # @storage : @parameter%add
+        # == add ==
+        # sp.verify(params.value < (sp.mutez(9223372036854775807) - self.data.a)) # @storage : @parameter%add
+        DUP;        # @storage : @storage : @parameter%add
+        DUG 2;      # @storage : @parameter%add : @storage
+        CAR;        # mutez : @parameter%add : @storage
+        PUSH mutez 9223372036854775807; # mutez : mutez : @parameter%add : @storage
+        SUB;        # mutez : @parameter%add : @storage
+        SWAP;       # @parameter%add : mutez : @storage
+        DUP;        # @parameter%add : @parameter%add : mutez : @storage
+        DUG 2;      # @parameter%add : mutez : @parameter%add : @storage
+        COMPARE;    # int : @parameter%add : @storage
+        LT;         # bool : @parameter%add : @storage
+        IF
+          {}
+          {
+            PUSH string "WrongCondition: params.value < (sp.mutez(9223372036854775807) - self.data.a)"; # string : @parameter%add : @storage
+            FAILWITH;   # FAILED
+          }; # @parameter%add : @storage
+        SWAP;       # @storage : @parameter%add
+        # self.data.a += params.value # @storage : @parameter%add
+        DUP;        # @storage : @storage : @parameter%add
+        CDR;        # mutez : @storage : @parameter%add
+        SWAP;       # @storage : mutez : @parameter%add
+        CAR;        # mutez : mutez : @parameter%add
+        DIG 2;      # @parameter%add : mutez : mutez
+        DUP;        # @parameter%add : @parameter%add : mutez : mutez
+        DUG 3;      # @parameter%add : mutez : mutez : @parameter%add
+        ADD;        # mutez : mutez : @parameter%add
+        PAIR;       # pair mutez mutez : @parameter%add
+        # self.data.b += params.value # pair mutez mutez : @parameter%add
+        DUP;        # pair mutez mutez : pair mutez mutez : @parameter%add
+        CAR;        # mutez : pair mutez mutez : @parameter%add
+        SWAP;       # pair mutez mutez : mutez : @parameter%add
+        CDR;        # mutez : mutez : @parameter%add
+        DIG 2;      # @parameter%add : mutez : mutez
+        ADD;        # mutez : mutez
+        SWAP;       # mutez : mutez
+        PAIR;       # pair mutez mutez
+      }
+      {
+        SWAP;       # @storage : @parameter%sub
+        # == sub ==
+        # sp.verify(params.value < self.data.a) # @storage : @parameter%sub
+        DUP;        # @storage : @storage : @parameter%sub
+        DUG 2;      # @storage : @parameter%sub : @storage
+        CAR;        # mutez : @parameter%sub : @storage
+        SWAP;       # @parameter%sub : mutez : @storage
+        DUP;        # @parameter%sub : @parameter%sub : mutez : @storage
+        DUG 2;      # @parameter%sub : mutez : @parameter%sub : @storage
+        COMPARE;    # int : @parameter%sub : @storage
+        LT;         # bool : @parameter%sub : @storage
+        IF
+          {}
+          {
+            PUSH string "WrongCondition: params.value < self.data.a"; # string : @parameter%sub : @storage
+            FAILWITH;   # FAILED
+          }; # @parameter%sub : @storage
+        SWAP;       # @storage : @parameter%sub
+        # self.data.a -= params.value # @storage : @parameter%sub
+        DUP;        # @storage : @storage : @parameter%sub
+        CDR;        # mutez : @storage : @parameter%sub
+        SWAP;       # @storage : mutez : @parameter%sub
+        CAR;        # mutez : mutez : @parameter%sub
+        DIG 2;      # @parameter%sub : mutez : mutez
+        SWAP;       # mutez : @parameter%sub : mutez
+        SUB;        # mutez : mutez
+        PAIR;       # pair mutez mutez
+      }; # pair mutez mutez
+    NIL operation; # list operation : pair mutez mutez
+    PAIR;       # pair (list operation) (pair mutez mutez)
+  };
