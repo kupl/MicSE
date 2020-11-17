@@ -67,7 +67,7 @@ let refute_unit : PreLib.Cfg.t -> ProverLib.Query.t -> Z3.Solver.status * ((stri
 =fun cfg query -> begin
   let open Prover in
   let open ProverLib in 
-  let zexp_of_vc = Verifier.create_convert_vformula (Vlang.create_formula_not query.query) in
+  let zexp_of_vc = Verifier.smtexpr_of_vlangformula (Vlang.Formula.VF_not query.query) in
   let solver = Smt.create_solver() in
   let result = Z3.Solver.check solver [zexp_of_vc] in
   let model_opt = Z3.Solver.get_model solver in
