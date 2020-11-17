@@ -78,6 +78,7 @@ module WorkList : sig
   val mem : Map.t list -> Map.t -> bool
   val push : t -> Map.t -> t
   val push_list : t -> Map.t list -> t
+  val push_force : t -> Map.t -> t
   val pop : t -> (Map.t * t)
   val map : t -> f:(Map.t -> Map.t) -> t
   val update_current : t -> new_:Map.t -> t

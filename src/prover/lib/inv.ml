@@ -183,6 +183,9 @@ module WorkList = struct
   let push_list : t -> Map.t list -> t
   =fun w ml -> Core.List.fold_left ml ~init:w ~f:push
 
+  let push_force : t -> Map.t -> t
+  =fun w m -> { w with enable=(m::(w.enable)) }
+
   let pop : t -> (Map.t * t)
   =fun w -> begin
     let m = Core.List.hd_exn (w.enable) in

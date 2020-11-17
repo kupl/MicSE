@@ -145,7 +145,11 @@ module W = struct
 
   let join : inv:m -> wlst:t -> t
   =fun ~inv ~wlst -> begin
-    let next_wlst = Inv.WorkList.map wlst ~f:(Inv.Map.join inv) in
+    let next_wlst' = Inv.WorkList.update_current wlst ~new_:inv in
+    let next_wlst = Inv.WorkList.map next_wlst' ~f:(Inv.Map.join inv) in
     next_wlst
-  end 
+  end
+
+  let last_worklist : wlst:t -> t
+  =fun ~wlst -> Inv.WorkList.push_force wlst (wlst.current)
 end

@@ -63,4 +63,6 @@ module W : sig
   val update : bp_list:Bp.lst -> cfg:cfg -> init_stg:Stg.data option -> wlst:t -> t
 
   val join : inv:m -> wlst:t -> t
+
+  val last_worklist : wlst:t -> t
 end

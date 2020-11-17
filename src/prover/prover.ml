@@ -91,15 +91,22 @@ and work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Li
     )) ~init:(proven, unproven) in
     (inductive&&path_inductive, proven, unproven)
   )) ~init:(true, [], []) in
-  if Core.List.is_empty unproven
-  then proven
-  else begin
-    (* Generate invariants *)
-    let generated_wlst = Generator.W.update ~bp_list:bp_list ~cfg:cfg ~init_stg:init_stg_opt ~wlst:cur_wlst in
-    let next_wlst = if inductiveness then (Generator.W.join ~inv:inv_map ~wlst:generated_wlst) else generated_wlst in
-    if (Inv.WorkList.is_empty next_wlst) || (Utils.Timer.is_timeout time)
-    then proven@unproven
-    else work next_wlst bp_list cfg init_stg_opt time
+  if inductiveness
+  then begin
+    if Core.List.is_empty unproven
+    then unproven
+    else begin
+      let generated_wlst = Generator.W.update ~bp_list:bp_list ~cfg:cfg ~init_stg:init_stg_opt ~wlst:cur_wlst in
+      let next_wlst = Generator.W.join ~inv:inv_map ~wlst:generated_wlst in
+      if Utils.Timer.is_timeout time || Inv.WorkList.is_empty next_wlst
+      then proven@unproven
+      else work next_wlst bp_list cfg init_stg_opt time
+    end
+  end else begin
+    let next_wlst = if (Utils.Timer.is_timeout time) || (Inv.WorkList.is_empty next_wlst)
+      then Generator.W.last_worklist ~wlst:cur_wlst
+      else cur_wlst in
+    work next_wlst bp_list cfg init_stg_opt time
   end
 end
 
