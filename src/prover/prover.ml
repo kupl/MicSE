@@ -94,7 +94,7 @@ and work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Li
   if inductiveness
   then begin
     if Core.List.is_empty unproven
-    then unproven
+    then proven@unproven
     else begin
       let generated_wlst = Generator.W.update ~bp_list:bp_list ~cfg:cfg ~init_stg:init_stg_opt ~wlst:cur_wlst in
       let next_wlst = Generator.W.join ~inv:inv_map ~wlst:generated_wlst in
@@ -103,7 +103,7 @@ and work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Li
       else work next_wlst bp_list cfg init_stg_opt time
     end
   end else begin
-    let next_wlst = if (Utils.Timer.is_timeout time) || (Inv.WorkList.is_empty next_wlst)
+    let next_wlst = if (Utils.Timer.is_timeout time) || (Inv.WorkList.is_empty cur_wlst)
       then Generator.W.last_worklist ~wlst:cur_wlst
       else cur_wlst in
     work next_wlst bp_list cfg init_stg_opt time
