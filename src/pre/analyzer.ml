@@ -42,6 +42,15 @@ module AvailVar = struct
   type t = (int, abs_set * abs_set) CPMap.t
   type worklist = vertex CPSet.t
 
+  (* ANALYSIS PROCESS 
+    1. Problem Def: Calculate pre & post available-variable set for each vertex
+    2. Main-Entry vertex and Lambda-Entry vertices' pre-set are always bottom (bottom = empty set)
+    3. Other pre & post sets are all Top (artificial, abstract domain set) value
+    4. pre-set of the vertex-v from worklist = (forall pv in (v's predecessor): Meet-All pv.postset)
+    5. Strong update vertex-v's postset, postset = join((v's preset from 4),(v's assign-stmt LHS))S
+    6. initial worklist = {main entry} + lambda_entries
+    7. if vertex-v's preset or postset updated, (worklist := worklist + v's successors)
+  *)
   let run : Cfg.t -> t
   =fun cfg -> begin
     let emsg_gen s : string = "Pre.Analyzer.AvailVar.run : " ^ s in
