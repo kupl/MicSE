@@ -40,7 +40,7 @@ module AvailVar = struct
   end
 
   type t = (int, abs_set * abs_set) CPMap.t
-  type worklist = vertex CPSet.t (* WARNING: this datatype has side effects *)
+  type worklist = vertex CPSet.t
 
   let run : Cfg.t -> t
   =fun cfg -> begin
