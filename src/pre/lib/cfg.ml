@@ -76,6 +76,7 @@ type expr =
   | E_unlift_right of var
   | E_hd of var
   | E_tl of var
+  | E_hdtl of var
   | E_size of var
   | E_isnat of var
   | E_int_of_nat of var
@@ -196,6 +197,7 @@ let expr_to_str : expr -> string
     | E_unlift_right v -> ["unlift_right"; v]
     | E_hd v -> ["hd"; v]
     | E_tl v -> ["tl"; v]
+    | E_hdtl v -> ["hdtl"; v]
     | E_size v -> ["SIZE"; v]
     | E_isnat v -> ["ISNAT"; v]
     | E_int_of_nat v -> ["INT"; v]

@@ -267,6 +267,14 @@ let create_expr_of_cfgexpr : convert_env -> PreLib.Cfg.expr -> Vlang.Expr.t
       | T_big_map _ -> V_tl_bm vv
       | _ -> err ()
     )
+  | E_hdtl v -> (
+      let vv = cvf v in
+      match cvt v with
+      | T_list _ -> V_hdtl_l vv
+      | T_set _ -> V_hdtl_s vv
+      | T_map _ -> V_hdtl_m vv
+      | _ -> err ()
+    )
   | E_size v -> (
       let vv = cvf v in
       match cvt v with 
@@ -295,9 +303,13 @@ let create_expr_of_cfgexpr : convert_env -> PreLib.Cfg.expr -> Vlang.Expr.t
   | E_empty_map (t1, t2) -> V_empty_map (convert_type t1, convert_type t2)
   | E_empty_big_map (t1, t2) -> V_empty_big_map (convert_type t1, convert_type t2)
   | E_itself v -> V_itself (cvf v)
+  | E_append (v1, v2) -> (
+      match cvt v1, cvt v2 with
+      | elt1, T_list elt2 when elt1 = elt2 -> V_append_l (cvf v1, cvf v2)
+      | _ -> err ()
+    )
 
   (* TODOs *)
-  | E_append _ -> err () (* TODO : vlang-unimplemented. append is not-used in Pre.Translator yet. *)
   | E_cast _ -> err () (* TODO : vlang-unimplemented *)
   | E_steps_to_quota -> err () (* deprecated instruction *)
   

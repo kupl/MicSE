@@ -214,6 +214,7 @@ module Ty : sig
       | V_nil of typ  (* ('a) -> 'a list *)
       | V_cons of t * t (* 'a * 'a list -> 'a list *)
       | V_tl_l of t (* 'a list -> 'a list *)
+      | V_append_l of t * t (* 'a -> 'a list -> 'a list *)
   
       (*************************************************************************)
       (* Set                                                                   *)
@@ -245,6 +246,9 @@ module Ty : sig
       | V_pair of t * t  (* 'a * 'b -> ('a, 'b) pair *)
       | V_hd_m of t (* ('k, 'v) map -> ('k, 'v) pair *)
       | V_hd_bm of t  (* ('k, 'v) big_map -> ('k, 'v) big_map *)
+      | V_hdtl_l of t (* 'a list -> ('a, 'a list) pair *)
+      | V_hdtl_s of t (* 'a set -> ('a, 'a set) pair *)
+      | V_hdtl_m of t (* ('k, 'v) map -> (('k, 'v) pair, ('k, 'v) map) pair *)
   
       (*************************************************************************)
       (* Or                                                                    *)

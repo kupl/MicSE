@@ -285,6 +285,7 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.z_expr
   | V_nil t -> Smt.create_list (smtsort_of_vlangtyp t)
   | V_cons (e1, e2) -> Smt.update_list_cons (soe e1) (soe e2)
   | V_tl_l e -> Smt.read_list_tail (soe e)
+  | V_append_l _ -> err ve
 
   (*************************************************************************)
   (* Set                                                                   *)
@@ -316,6 +317,9 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.z_expr
   | V_pair (e1, e2) -> Smt.create_pair (soe e1) (soe e2)
   | V_hd_m _ -> err ve  (* previous implementation mixes list and array theories *) 
   | V_hd_bm _ -> err ve
+  | V_hdtl_l _ -> err ve
+  | V_hdtl_s _ -> err ve
+  | V_hdtl_m _ -> err ve
 
   (*************************************************************************)
   (* Or                                                                    *)

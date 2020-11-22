@@ -214,6 +214,7 @@ module Expr = struct
     | V_nil of typ  (* ('a) -> 'a list *)
     | V_cons of t * t (* 'a * 'a list -> 'a list *)
     | V_tl_l of t (* 'a list -> 'a list *)
+    | V_append_l of t * t (* 'a -> 'a list -> 'a list *)
 
     (*************************************************************************)
     (* Set                                                                   *)
@@ -245,6 +246,9 @@ module Expr = struct
     | V_pair of t * t  (* 'a * 'b -> ('a, 'b) pair *)
     | V_hd_m of t (* ('k, 'v) map -> ('k, 'v) pair *)
     | V_hd_bm of t  (* ('k, 'v) big_map -> ('k, 'v) big_map *)
+    | V_hdtl_l of t (* 'a list -> ('a, 'a list) pair *)
+    | V_hdtl_s of t (* 'a set -> ('a, 'a set) pair *)
+    | V_hdtl_m of t (* ('k, 'v) map -> (('k, 'v) pair, ('k, 'v) map) pair *)
 
     (*************************************************************************)
     (* Or                                                                    *)
@@ -549,6 +553,7 @@ module TypeUtil = struct
     | V_nil t -> T_list t
     | V_cons (e1, _) -> T_list (toe e1)
     | V_tl_l e -> toe e
+    | V_append_l (e1, _) -> T_list (toe e1)
 
     (*************************************************************************)
     (* Set                                                                   *)
@@ -580,6 +585,9 @@ module TypeUtil = struct
     | V_pair (e1, e2) -> T_pair (toe e1, toe e2)
     | V_hd_m e -> (match toe e with | T_map (kt, vt) -> T_pair (kt, vt) | _ as tt -> invalidtyp tt)
     | V_hd_bm e -> (match toe e with | T_big_map (kt, vt) -> T_pair (kt, vt) | _ as tt -> invalidtyp tt)
+    | V_hdtl_l e -> (match toe e with | T_list elt -> T_pair (elt, T_list elt) | _ as tt -> invalidtyp tt)
+    | V_hdtl_s e -> (match toe e with | T_set elt -> T_pair (elt, T_set elt) | _ as tt -> invalidtyp tt)
+    | V_hdtl_m e -> (match toe e with | T_map (kt, vt) -> T_pair (T_pair (kt, vt), T_map (kt, vt)) | _ as tt -> invalidtyp tt)
 
     (*************************************************************************)
     (* Or                                                                    *)
