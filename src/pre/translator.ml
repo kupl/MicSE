@@ -885,7 +885,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       (*  flow        : (i1_begin -> i1_begin_2 -> i1_begin_3 -> i1_ready) & (i1_ready -> (i1 ...) -> i1_end)
           vertex_info : i1_begin   : Cfg_assign (new-var-hdtl, (E_hdtl top-var))
                         i1_begin_2 : Cfg_assign (new-var-hd, (E_car new-var-hdtl))
-                        i1_begin_3 : Cfg_assign (new-var-hd, (E_cdr new-var-hdtl))
+                        i1_begin_3 : Cfg_assign (new-var-tl, (E_cdr new-var-hdtl))
                         i1_ready : decided by i1
           type_info   : new-var-hdtl -> (match t1 with | T_list tt -> T_pair (tt, t1) | _ -> error case)
                         new-var-hd -> (match t1 with | T_list tt -> tt | _ -> error case)
