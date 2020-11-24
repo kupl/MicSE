@@ -38,14 +38,23 @@ let get_new_varname : convert_env -> string -> string
   )
 end
 
+(* "get_original_varname" just removes continuous "newvar_prefix"es in front of the given string *)
+let get_original_varname : string -> string
+=fun v -> begin
+  let idx : int ref = ref 0 in
+  let flag : bool ref = ref true in
+  let _ : unit = String.iter (fun c -> if !flag && (String.make 1 c = newvar_prefix) then Stdlib.incr idx else flag := false) v in
+  String.sub v !idx (String.length v - !idx)
+end
+
 let read_type_cfgvar : convert_env -> PreLib.Cfg.ident -> Vlang.typ
-=fun cenv v -> begin Pre.Lib.Cfg.CPMap.find_exn !cenv.cfg.type_info v |> Vlang.TypeUtil.ty_of_mty end
+=fun cenv v -> begin Pre.Lib.Cfg.CPMap.find !cenv.cfg.type_info v |> (function Some x -> Vlang.TypeUtil.ty_of_mty x | None -> Stdlib.failwith "Prover.Converter.read_type_cfgvar : None") end
 
 (*let read_type : Vlang.Expr.t -> Vlang.typ = Vlang.TypeUtil.ty_of_expr*)
 let convert_type : PreLib.Cfg.typ -> Vlang.typ = Vlang.TypeUtil.ty_of_mty
 
 let create_var_of_cfgvar : convert_env -> PreLib.Cfg.ident -> Vlang.Expr.t
-= fun cenv v -> Vlang.Expr.V_var ((read_type_cfgvar cenv v), v)
+= fun cenv v -> Vlang.Expr.V_var ((read_type_cfgvar cenv (get_original_varname v)), v)
 
 let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.t = 
   let open PreLib.Mich in
@@ -55,8 +64,16 @@ let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.
   (fun michdata vtyp ->
     match (vtyp, michdata) with 
     | T_int, D_int zn -> V_lit_int zn
+    | T_nat, D_int zn -> V_lit_int zn
+    | T_mutez, D_int zn -> V_lit_int zn
+    | T_timestamp, D_int zn -> V_lit_timestamp_sec zn
     | T_string, D_string s -> V_lit_string s
+    | T_key_hash, D_string s -> V_lit_key_hash s
+    | T_timestamp, D_string s -> V_lit_timestamp_str s
+    | T_address, D_string s -> V_lit_address (V_lit_key_hash s)
+    | T_key, D_string s -> V_lit_key s
     | T_bytes, D_bytes s -> V_lit_bytes s
+    | T_chain_id, D_bytes s -> V_lit_chain_id s
     | T_unit, D_unit -> V_unit
     | T_bool, D_bool b -> V_lit_bool b
     | T_pair (t1, t2), D_pair (d1, d2) -> V_pair (cem d1 t1, cem d2 t2)
