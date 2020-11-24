@@ -1,7 +1,12 @@
 open ProverLib
 
+exception Error of string
+
 exception Not_Implemented_f of Vlang.t
 exception Not_Implemented_e of Vlang.Expr.t
+
+exception SMT_Encode_Error_f of (Vlang.Formula.t * string)
+exception SMT_Encode_Error_e of (Vlang.Expr.t * string)
 
 
 let rec smtsort_of_vlangtyp : Vlang.Ty.t -> Smt.ZSort.t
@@ -66,293 +71,297 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
   let soe = smtexpr_of_vlangexpr in (* syntax sugar *)
   let err e = Stdlib.raise (Not_Implemented_e e) in (* syntax sugar *)
   fun ve -> begin
-  match ve with
-  (*************************************************************************)
-  (* Variable & Polymorphic                                                *)
-  (*************************************************************************)
-  | V_var (t,v) -> Smt.ZExpr.create_var (t |> smtsort_of_vlangtyp) ~name:v
-  | V_car e -> Smt.ZPair.read_fst (e |> soe)
-  | V_cdr e -> Smt.ZPair.read_snd (e |> soe)
-  | V_unlift_option e -> Smt.ZOption.read (e |> soe)
-  | V_unlift_left e -> Smt.ZOr.read_left (e |> soe)
-  | V_unlift_right e -> Smt.ZOr.read_right (e |> soe)
-  | V_hd_l e -> Smt.ZList.read_head (e |> soe)
-  | V_hd_s _ -> err ve (* get the first element of the set *)
-  | V_exec (_, _) -> err ve (* function application & execution *)
-  | V_dup e -> soe e
-  | V_itself e -> soe e
+    try
+      match ve with
+      (*************************************************************************)
+      (* Variable & Polymorphic                                                *)
+      (*************************************************************************)
+      | V_var (t,v) -> Smt.ZExpr.create_var (t |> smtsort_of_vlangtyp) ~name:v
+      | V_car e -> Smt.ZPair.read_fst (e |> soe)
+      | V_cdr e -> Smt.ZPair.read_snd (e |> soe)
+      | V_unlift_option e -> Smt.ZOption.read (e |> soe)
+      | V_unlift_left e -> Smt.ZOr.read_left (e |> soe)
+      | V_unlift_right e -> Smt.ZOr.read_right (e |> soe)
+      | V_hd_l e -> Smt.ZList.read_head (e |> soe)
+      | V_hd_s _ -> err ve (* get the first element of the set *)
+      | V_exec (_, _) -> err ve (* function application & execution *)
+      | V_dup e -> soe e
+      | V_itself e -> soe e
 
-  (*************************************************************************)
-  (* Integer                                                               *)
-  (*************************************************************************)
-  | V_lit_int zn -> zn |> Smt.ZInt.of_zarith
-  | V_neg_ni e -> Smt.ZInt.create_neg (e |> soe)
-  | V_neg_ii e -> Smt.ZInt.create_neg (e |> soe)
-  | V_not_ni _ -> err ve  (* not supported yet *)
-  | V_not_ii _ -> err ve  (* not supported *)
-  | V_add_nii (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
-  | V_add_ini (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
-  | V_add_iii (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
-  | V_sub_nni (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
-  | V_sub_nii (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
-  | V_sub_ini (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
-  | V_sub_iii (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
-  | V_sub_tti _ -> err ve (* not supported *)
-  | V_mul_nii (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
-  | V_mul_ini (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
-  | V_mul_iii (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
-  | V_compare (e1, e2) -> smtexpr_of_compare e1 e2
-  | V_int_of_nat  _ -> err ve (* not supported *)
+      (*************************************************************************)
+      (* Integer                                                               *)
+      (*************************************************************************)
+      | V_lit_int zn -> zn |> Smt.ZInt.of_zarith
+      | V_neg_ni e -> Smt.ZInt.create_neg (e |> soe)
+      | V_neg_ii e -> Smt.ZInt.create_neg (e |> soe)
+      | V_not_ni _ -> err ve  (* not supported yet *)
+      | V_not_ii _ -> err ve  (* not supported *)
+      | V_add_nii (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
+      | V_add_ini (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
+      | V_add_iii (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
+      | V_sub_nni (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
+      | V_sub_nii (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
+      | V_sub_ini (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
+      | V_sub_iii (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
+      | V_sub_tti _ -> err ve (* not supported *)
+      | V_mul_nii (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
+      | V_mul_ini (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
+      | V_mul_iii (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
+      | V_compare (e1, e2) -> smtexpr_of_compare e1 e2
+      | V_int_of_nat  _ -> err ve (* not supported *)
 
-  (*************************************************************************)
-  (* Natural Number                                                        *)
-  (*************************************************************************)
-  | V_lit_nat zn -> Smt.ZInt.of_zarith zn
-  | V_abs_in e -> Smt.ZInt.create_abs (e |> soe)
-  | V_add_nnn (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
-  | V_mul_nnn (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
-  | V_shiftL_nnn (_, _) -> err ve   (* not supported *)
-  | V_shiftR_nnn (_, _) -> err ve   (* not supported *)
-  | V_and_nnn (_, _) -> err ve      (* not supported *)
-  | V_and_inn (_, _) -> err ve      (* not supported *)
-  | V_or_nnn (_, _) -> err ve       (* not supported *)
-  | V_xor_nnn (_, _) -> err ve      (* not supported *)
-  | V_size_s _ -> err ve            (* not supported *)
-  | V_size_m _ -> err ve            (* not supported *)
-  | V_size_l _ -> err ve            (* not supported *)
-  | V_size_str _ -> err ve          (* not supported *)
-  | V_size_b _ -> err ve            (* not supported *)
+      (*************************************************************************)
+      (* Natural Number                                                        *)
+      (*************************************************************************)
+      | V_lit_nat zn -> Smt.ZInt.of_zarith zn
+      | V_abs_in e -> Smt.ZInt.create_abs (e |> soe)
+      | V_add_nnn (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
+      | V_mul_nnn (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
+      | V_shiftL_nnn (_, _) -> err ve   (* not supported *)
+      | V_shiftR_nnn (_, _) -> err ve   (* not supported *)
+      | V_and_nnn (_, _) -> err ve      (* not supported *)
+      | V_and_inn (_, _) -> err ve      (* not supported *)
+      | V_or_nnn (_, _) -> err ve       (* not supported *)
+      | V_xor_nnn (_, _) -> err ve      (* not supported *)
+      | V_size_s _ -> err ve            (* not supported *)
+      | V_size_m _ -> err ve            (* not supported *)
+      | V_size_l _ -> err ve            (* not supported *)
+      | V_size_str _ -> err ve          (* not supported *)
+      | V_size_b _ -> err ve            (* not supported *)
 
-  (*************************************************************************)
-  (* String                                                                *)
-  (*************************************************************************)
-  | V_lit_string s -> Smt.ZStr.of_string s
-  | V_concat_sss (e1, e2) -> Smt.ZStr.create_concat [(e1 |> soe); (e2 |> soe)]
-  | V_concat_list_s _ -> err ve (* cannot find how to convert "z_expr (smt-string smt-list)" to "(z_expr (string)) list" *)
+      (*************************************************************************)
+      (* String                                                                *)
+      (*************************************************************************)
+      | V_lit_string s -> Smt.ZStr.of_string s
+      | V_concat_sss (e1, e2) -> Smt.ZStr.create_concat [(e1 |> soe); (e2 |> soe)]
+      | V_concat_list_s _ -> err ve (* cannot find how to convert "z_expr (smt-string smt-list)" to "(z_expr (string)) list" *)
 
-  (*************************************************************************)
-  (* Bytes                                                                 *)
-  (*************************************************************************)
-  | V_lit_bytes _ -> err ve
-  | V_concat_bbb (_, _) -> err ve
-  | V_concat_list_b _ -> err ve (* same error reason as "V_concat_list_s" *)
-  | V_pack _ -> err ve      (* uninterpreted function needed *)
-  | V_blake2b _ -> err ve   (* uninterpreted function needed *)
-  | V_sha256 _ -> err ve    (* uninterpreted function needed *)
-  | V_sha512 _ -> err ve    (* uninterpreted function needed *)
+      (*************************************************************************)
+      (* Bytes                                                                 *)
+      (*************************************************************************)
+      | V_lit_bytes _ -> err ve
+      | V_concat_bbb (_, _) -> err ve
+      | V_concat_list_b _ -> err ve (* same error reason as "V_concat_list_s" *)
+      | V_pack _ -> err ve      (* uninterpreted function needed *)
+      | V_blake2b _ -> err ve   (* uninterpreted function needed *)
+      | V_sha256 _ -> err ve    (* uninterpreted function needed *)
+      | V_sha512 _ -> err ve    (* uninterpreted function needed *)
 
-  (*************************************************************************)
-  (* Mutez                                                                 *)
-  (*************************************************************************)
-  | V_lit_mutez zn -> Smt.ZMutez.of_zarith zn
-  | V_amount -> err ve    (* native & uninterpreted symbol needed *)
-  | V_balance -> err ve   (* native & uninterpreted symbol needed *)
-  | V_add_mmm (e1, e2) -> Smt.ZMutez.create_add (e1 |> soe) (e2 |> soe)
-  | V_sub_mmm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe) (e2 |> soe)
-  | V_mul_mnm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
-  | V_mul_nmm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe)
+      (*************************************************************************)
+      (* Mutez                                                                 *)
+      (*************************************************************************)
+      | V_lit_mutez zn -> Smt.ZMutez.of_zarith zn
+      | V_amount -> err ve    (* native & uninterpreted symbol needed *)
+      | V_balance -> err ve   (* native & uninterpreted symbol needed *)
+      | V_add_mmm (e1, e2) -> Smt.ZMutez.create_add (e1 |> soe) (e2 |> soe)
+      | V_sub_mmm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe) (e2 |> soe)
+      | V_mul_mnm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
+      | V_mul_nmm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe)
 
-  (*************************************************************************)
-  (* Bool                                                                  *)
-  (*************************************************************************)
-  | V_lit_bool b -> Smt.ZBool.of_bool b
-  | V_not_bb e -> Smt.ZBool.create_not (e |> soe) 
-  | V_and_bbb (e1, e2) -> Smt.ZBool.create_and (e1 |> soe) (e2 |> soe)
-  | V_or_bbb (e1, e2) -> Smt.ZBool.create_or (e1 |> soe) (e2 |> soe)
-  | V_xor_bbb (e1, e2) -> Smt.ZBool.create_xor (e1 |> soe) (e2 |> soe)
-  | V_eq_ib e -> Smt.ZInt.create_eq (e |> soe) (Smt.ZInt.zero_)
-  | V_neq_ib e -> Smt.ZInt.create_neq (e |> soe) (Smt.ZInt.zero_)
-  | V_lt_ib e -> Smt.ZInt.create_lt (e |> soe) (Smt.ZInt.zero_)
-  | V_gt_ib e -> Smt.ZInt.create_gt (e |> soe) (Smt.ZInt.zero_)
-  | V_leq_ib e -> Smt.ZInt.create_le (e |> soe) (Smt.ZInt.zero_)
-  | V_geq_ib e -> Smt.ZInt.create_ge (e |> soe) (Smt.ZInt.zero_)
-  | V_mem_xsb _ -> err ve (* not supported *)
-  | V_mem_xmb (e1, e2) -> Smt.ZMap.read_exist ~key:(e1 |> soe) ~map:(e2 |> soe)
-  | V_mem_xbmb (e1, e2) -> Smt.ZMap.read_exist ~key:(e1 |> soe) ~map:(e2 |> soe)
-  | V_check_signature _ -> err ve (* not supported *)
+      (*************************************************************************)
+      (* Bool                                                                  *)
+      (*************************************************************************)
+      | V_lit_bool b -> Smt.ZBool.of_bool b
+      | V_not_bb e -> Smt.ZBool.create_not (e |> soe) 
+      | V_and_bbb (e1, e2) -> Smt.ZBool.create_and (e1 |> soe) (e2 |> soe)
+      | V_or_bbb (e1, e2) -> Smt.ZBool.create_or (e1 |> soe) (e2 |> soe)
+      | V_xor_bbb (e1, e2) -> Smt.ZBool.create_xor (e1 |> soe) (e2 |> soe)
+      | V_eq_ib e -> Smt.ZInt.create_eq (e |> soe) (Smt.ZInt.zero_)
+      | V_neq_ib e -> Smt.ZInt.create_neq (e |> soe) (Smt.ZInt.zero_)
+      | V_lt_ib e -> Smt.ZInt.create_lt (e |> soe) (Smt.ZInt.zero_)
+      | V_gt_ib e -> Smt.ZInt.create_gt (e |> soe) (Smt.ZInt.zero_)
+      | V_leq_ib e -> Smt.ZInt.create_le (e |> soe) (Smt.ZInt.zero_)
+      | V_geq_ib e -> Smt.ZInt.create_ge (e |> soe) (Smt.ZInt.zero_)
+      | V_mem_xsb _ -> err ve (* not supported *)
+      | V_mem_xmb (e1, e2) -> Smt.ZMap.read_exist ~key:(e1 |> soe) ~map:(e2 |> soe)
+      | V_mem_xbmb (e1, e2) -> Smt.ZMap.read_exist ~key:(e1 |> soe) ~map:(e2 |> soe)
+      | V_check_signature _ -> err ve (* not supported *)
 
-  (*************************************************************************)
-  (* Key Hash                                                              *)
-  (*************************************************************************)
-  | V_lit_key_hash _ -> err ve
-  | V_hash_key _ -> err ve (* not supported *)
+      (*************************************************************************)
+      (* Key Hash                                                              *)
+      (*************************************************************************)
+      | V_lit_key_hash _ -> err ve
+      | V_hash_key _ -> err ve (* not supported *)
 
-  (*************************************************************************)
-  (* Timestamp                                                             *)
-  (*************************************************************************)
-  | V_lit_timestamp_str _ -> err ve
-  | V_lit_timestamp_sec _ -> err ve (* not supproted *)
-  | V_now -> err ve (* native & uninterpreted symbol needed *)
-  | V_add_tit (_, _) -> err ve (* not supported *)
-  | V_add_itt (_, _) -> err ve (* not supported *)
-  | V_sub_tit (_, _) -> err ve (* not supported *)
+      (*************************************************************************)
+      (* Timestamp                                                             *)
+      (*************************************************************************)
+      | V_lit_timestamp_str _ -> err ve
+      | V_lit_timestamp_sec _ -> err ve (* not supproted *)
+      | V_now -> err ve (* native & uninterpreted symbol needed *)
+      | V_add_tit (_, _) -> err ve (* not supported *)
+      | V_add_itt (_, _) -> err ve (* not supported *)
+      | V_sub_tit (_, _) -> err ve (* not supported *)
 
-  (*************************************************************************)
-  (* Address                                                               *)
-  (*************************************************************************)
-  | V_lit_address _ -> err ve (* not supported *)
-  | V_source -> err ve (* native & uninterpreted symbol needed *)
-  | V_sender -> err ve (* native & uninterpreted symbol needed *)
-  | V_address_of_contract _ -> err ve (* not supported *)
+      (*************************************************************************)
+      (* Address                                                               *)
+      (*************************************************************************)
+      | V_lit_address _ -> err ve (* not supported *)
+      | V_source -> err ve (* native & uninterpreted symbol needed *)
+      | V_sender -> err ve (* native & uninterpreted symbol needed *)
+      | V_address_of_contract _ -> err ve (* not supported *)
 
-  (*************************************************************************)
-  (* Key                                                                   *)
-  (*************************************************************************)
-  | V_lit_key _ -> err ve
+      (*************************************************************************)
+      (* Key                                                                   *)
+      (*************************************************************************)
+      | V_lit_key _ -> err ve
 
-  (*************************************************************************)
-  (* Unit                                                                  *)
-  (*************************************************************************)
-  (* | V_lit_unit : t_unit t *) (* V_unit has the same feature. *)
-  | V_unit -> Smt.ZUnit.create
+      (*************************************************************************)
+      (* Unit                                                                  *)
+      (*************************************************************************)
+      (* | V_lit_unit : t_unit t *) (* V_unit has the same feature. *)
+      | V_unit -> Smt.ZUnit.create
 
-  (*************************************************************************)
-  (* Signature                                                             *)
-  (*************************************************************************)
-  | V_lit_signature_str _ -> err ve
-  | V_lit_signature_signed (_, _) -> err ve (* uninterpreted function needed *)
+      (*************************************************************************)
+      (* Signature                                                             *)
+      (*************************************************************************)
+      | V_lit_signature_str _ -> err ve
+      | V_lit_signature_signed (_, _) -> err ve (* uninterpreted function needed *)
 
-  (*************************************************************************)
-  (* Option                                                                *)
-  (*************************************************************************)
-  (* | V_lit_option : 'a t option -> 'a t_option t *) (* V_some and V_none has the same feature. *)
-  | V_some e -> Smt.ZOption.create_some ~content:(e |> soe)
-  | V_none t -> Smt.ZOption.create_none ~content_sort:(smtsort_of_vlangtyp t)
-  | V_ediv_nnnn (e1, e2) -> begin
-      let dividend, divisor = (e1 |> soe), (e2 |> soe) in
-      let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
-      let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-      Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
-    end
-  | V_ediv_niin (e1, e2) -> begin
-      let dividend, divisor = (e1 |> soe), (e2 |> soe) in
-      let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
-      let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-      Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
-    end
-  | V_ediv_inin (e1, e2) -> begin
-      let dividend, divisor = (e1 |> soe), (e2 |> soe) in
-      let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
-      let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-      Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
-    end
-  | V_ediv_iiin (e1, e2) -> begin
-      let dividend, divisor = (e1 |> soe), (e2 |> soe) in
-      let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
-      let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-      Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
-    end
-  | V_ediv_mnmm (e1, e2) -> begin
-      let dividend, divisor = (e1 |> soe), (e2 |> soe |> Smt.ZInt.to_zmutez) in
-      let qr = Smt.ZPair.create ~fst:(Smt.ZMutez.create_div dividend divisor) ~snd:(Smt.ZMutez.create_mod dividend divisor) in
-      let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-      Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:qr
-    end
-  | V_ediv_mmnm (e1, e2) -> begin
-      let dividend, divisor = (e1 |> soe), (e2 |> soe) in
-      let qr = Smt.ZPair.create ~fst:(Smt.ZMutez.create_div dividend divisor |> Smt.ZMutez.to_zint) ~snd:(Smt.ZMutez.create_mod dividend divisor) in
-      let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-      Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:qr
-    end
-  | V_get_xmoy (e1, e2) -> Smt.ZMap.read_value ~key:(e1 |> soe) ~map:(e2 |> soe)
-  | V_get_xbmo (e1, e2) -> Smt.ZMap.read_value ~key:(e1 |> soe) ~map:(e2 |> soe)
-  | V_slice_nnso (e1, e2, e3) -> e3 |> soe |> Smt.ZStr.create_slice ~low:(e1 |> soe) ~high:(Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);])
-  | V_slice_nnbo _ -> err ve
-  | V_unpack _ -> err ve (* similar to pack *)
-  | V_contract_of_address _ -> err ve (* encoding is complicated *)
-  | V_isnat _ -> err ve (* not supported *)
+      (*************************************************************************)
+      (* Option                                                                *)
+      (*************************************************************************)
+      (* | V_lit_option : 'a t option -> 'a t_option t *) (* V_some and V_none has the same feature. *)
+      | V_some e -> Smt.ZOption.create_some ~content:(e |> soe)
+      | V_none t -> Smt.ZOption.create_none ~content_sort:(smtsort_of_vlangtyp t)
+      | V_ediv_nnnn (e1, e2) -> begin
+          let dividend, divisor = (e1 |> soe), (e2 |> soe) in
+          let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
+          let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+        end
+      | V_ediv_niin (e1, e2) -> begin
+          let dividend, divisor = (e1 |> soe), (e2 |> soe) in
+          let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
+          let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+        end
+      | V_ediv_inin (e1, e2) -> begin
+          let dividend, divisor = (e1 |> soe), (e2 |> soe) in
+          let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
+          let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+        end
+      | V_ediv_iiin (e1, e2) -> begin
+          let dividend, divisor = (e1 |> soe), (e2 |> soe) in
+          let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
+          let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+        end
+      | V_ediv_mnmm (e1, e2) -> begin
+          let dividend, divisor = (e1 |> soe), (e2 |> soe |> Smt.ZInt.to_zmutez) in
+          let qr = Smt.ZPair.create ~fst:(Smt.ZMutez.create_div dividend divisor) ~snd:(Smt.ZMutez.create_mod dividend divisor) in
+          let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
+          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:qr
+        end
+      | V_ediv_mmnm (e1, e2) -> begin
+          let dividend, divisor = (e1 |> soe), (e2 |> soe) in
+          let qr = Smt.ZPair.create ~fst:(Smt.ZMutez.create_div dividend divisor |> Smt.ZMutez.to_zint) ~snd:(Smt.ZMutez.create_mod dividend divisor) in
+          let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
+          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:qr
+        end
+      | V_get_xmoy (e1, e2) -> Smt.ZMap.read_value ~key:(e1 |> soe) ~map:(e2 |> soe)
+      | V_get_xbmo (e1, e2) -> Smt.ZMap.read_value ~key:(e1 |> soe) ~map:(e2 |> soe)
+      | V_slice_nnso (e1, e2, e3) -> e3 |> soe |> Smt.ZStr.create_slice ~low:(e1 |> soe) ~high:(Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);])
+      | V_slice_nnbo _ -> err ve
+      | V_unpack _ -> err ve (* similar to pack *)
+      | V_contract_of_address _ -> err ve (* encoding is complicated *)
+      | V_isnat _ -> err ve (* not supported *)
 
-  (*************************************************************************)
-  (* List                                                                  *)
-  (*************************************************************************)
-  | V_lit_list (t, el) -> begin
-      el |> Core.List.fold_right
-              ~f:(fun e l -> l |> Smt.ZList.update ~content:(e |> soe))
-              ~init:(Smt.ZList.create ~content_sort:(t |> smtsort_of_vlangtyp))
-    end
-  | V_nil t -> Smt.ZList.create ~content_sort:(t |> smtsort_of_vlangtyp)
-  | V_cons (e1, e2) -> e2 |> soe |> Smt.ZList.update ~content:(e1 |> soe)
-  | V_tl_l e -> e |> soe |> Smt.ZList.read_tail
-  | V_append_l _ -> err ve
+      (*************************************************************************)
+      (* List                                                                  *)
+      (*************************************************************************)
+      | V_lit_list (t, el) -> begin
+          el |> Core.List.fold_right
+                  ~f:(fun e l -> l |> Smt.ZList.update ~content:(e |> soe))
+                  ~init:(Smt.ZList.create ~content_sort:(t |> smtsort_of_vlangtyp))
+        end
+      | V_nil t -> Smt.ZList.create ~content_sort:(t |> smtsort_of_vlangtyp)
+      | V_cons (e1, e2) -> e2 |> soe |> Smt.ZList.update ~content:(e1 |> soe)
+      | V_tl_l e -> e |> soe |> Smt.ZList.read_tail
+      | V_append_l _ -> err ve
 
-  (*************************************************************************)
-  (* Set                                                                   *)
-  (*************************************************************************)
-  | V_lit_set _ -> err ve
-  | V_empty_set _ -> err ve
-  | V_update_xbss _ -> err ve
-  | V_tl_s _ -> err ve
+      (*************************************************************************)
+      (* Set                                                                   *)
+      (*************************************************************************)
+      | V_lit_set _ -> err ve
+      | V_empty_set _ -> err ve
+      | V_update_xbss _ -> err ve
+      | V_tl_s _ -> err ve
 
-  (*************************************************************************)
-  (* Operation                                                             *)
-  (*************************************************************************)
-  (* | V_lit_operation of t_operation t *) (* V_create_contract, V_transfer_tokens, V_set_delegate has the same feature. *)
-  | V_create_contract _ -> err ve
-  | V_transfer_tokens _ -> err ve
-  | V_set_delegate    _ -> err ve
+      (*************************************************************************)
+      (* Operation                                                             *)
+      (*************************************************************************)
+      (* | V_lit_operation of t_operation t *) (* V_create_contract, V_transfer_tokens, V_set_delegate has the same feature. *)
+      | V_create_contract _ -> err ve
+      | V_transfer_tokens _ -> err ve
+      | V_set_delegate    _ -> err ve
 
-  (*************************************************************************)
-  (* Contract                                                              *)
-  (*************************************************************************)
-  | V_lit_contract _ -> err ve
-  | V_self _ -> err ve
-  | V_implicit_account _ -> err ve
+      (*************************************************************************)
+      (* Contract                                                              *)
+      (*************************************************************************)
+      | V_lit_contract _ -> err ve
+      | V_self _ -> err ve
+      | V_implicit_account _ -> err ve
 
-  (*************************************************************************)
-  (* Pair                                                                  *)
-  (*************************************************************************)
-  (* | V_lit_pair : 'a t * 'b t -> ('a, 'b) t_pair t *) (* V_pair has the same feature *)
-  | V_pair (e1, e2) -> Smt.ZPair.create ~fst:(e1 |> soe) ~snd:(e2 |> soe)
-  | V_hd_m _ -> err ve  (* previous implementation mixes list and array theories *) 
-  | V_hd_bm _ -> err ve
-  | V_hdtl_l e -> Smt.ZPair.create ~fst:(e |> soe |> Smt.ZList.read_head) ~snd:(e |> soe |> Smt.ZList.read_tail)
-  | V_hdtl_s _ -> err ve
-  | V_hdtl_m _ -> err ve
+      (*************************************************************************)
+      (* Pair                                                                  *)
+      (*************************************************************************)
+      (* | V_lit_pair : 'a t * 'b t -> ('a, 'b) t_pair t *) (* V_pair has the same feature *)
+      | V_pair (e1, e2) -> Smt.ZPair.create ~fst:(e1 |> soe) ~snd:(e2 |> soe)
+      | V_hd_m _ -> err ve  (* previous implementation mixes list and array theories *) 
+      | V_hd_bm _ -> err ve
+      | V_hdtl_l e -> Smt.ZPair.create ~fst:(e |> soe |> Smt.ZList.read_head) ~snd:(e |> soe |> Smt.ZList.read_tail)
+      | V_hdtl_s _ -> err ve
+      | V_hdtl_m _ -> err ve
 
-  (*************************************************************************)
-  (* Or                                                                    *)
-  (*************************************************************************)
-  (* | V_lit_or *) (* It cannot construct any value, use V_left or V_right instead *)
-  | V_left (t, e) -> Smt.ZOr.create_left ~left_content:(e |> soe) ~right_sort:(t |> Vlang.TypeUtil.get_innertyp2 |> Stdlib.snd |> smtsort_of_vlangtyp)
-  | V_right (t, e) -> Smt.ZOr.create_right ~left_sort:(t |> Vlang.TypeUtil.get_innertyp2 |> Stdlib.fst |> smtsort_of_vlangtyp) ~right_content:(e |> soe)
+      (*************************************************************************)
+      (* Or                                                                    *)
+      (*************************************************************************)
+      (* | V_lit_or *) (* It cannot construct any value, use V_left or V_right instead *)
+      | V_left (t, e) -> Smt.ZOr.create_left ~left_content:(e |> soe) ~right_sort:(t |> Vlang.TypeUtil.get_innertyp2 |> Stdlib.snd |> smtsort_of_vlangtyp)
+      | V_right (t, e) -> Smt.ZOr.create_right ~left_sort:(t |> Vlang.TypeUtil.get_innertyp2 |> Stdlib.fst |> smtsort_of_vlangtyp) ~right_content:(e |> soe)
 
-  (*************************************************************************)
-  (* Lambda                                                                *)
-  (*************************************************************************)
-  | V_lit_program _ -> err ve
-  | V_lambda_id _ -> err ve
-  | V_lit_lambda _ -> err ve
-  | V_lambda_unknown _ -> err ve
-  | V_lambda_closure _ -> err ve
-  (*************************************************************************)
-  (* Map                                                                   *)
-  (*************************************************************************)
-  | V_lit_map (kt, vt, e) -> begin
-      e |> Core.Map.Poly.fold
-        ~init:(Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp))
-        ~f:(fun ~key ~data acc_zm -> Smt.ZMap.update ~key:(key |> soe) ~value:(Smt.ZOption.create_some ~content:(data |> soe)) ~map:acc_zm)
-    end
-  | V_empty_map (kt, vt) -> Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp)
-  | V_update_xomm (e1, e2, e3) -> Smt.ZMap.update ~key:(e1 |> soe) ~value:(Smt.ZOption.create_some ~content:(e2 |> soe)) ~map:(e3 |> soe)
-  | V_tl_m _ -> err ve  (* not supported *)
+      (*************************************************************************)
+      (* Lambda                                                                *)
+      (*************************************************************************)
+      | V_lit_program _ -> err ve
+      | V_lambda_id _ -> err ve
+      | V_lit_lambda _ -> err ve
+      | V_lambda_unknown _ -> err ve
+      | V_lambda_closure _ -> err ve
+      (*************************************************************************)
+      (* Map                                                                   *)
+      (*************************************************************************)
+      | V_lit_map (kt, vt, e) -> begin
+          e |> Core.Map.Poly.fold
+            ~init:(Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp))
+            ~f:(fun ~key ~data acc_zm -> Smt.ZMap.update ~key:(key |> soe) ~value:(Smt.ZOption.create_some ~content:(data |> soe)) ~map:acc_zm)
+        end
+      | V_empty_map (kt, vt) -> Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp)
+      | V_update_xomm (e1, e2, e3) -> Smt.ZMap.update ~key:(e1 |> soe) ~value:(Smt.ZOption.create_some ~content:(e2 |> soe)) ~map:(e3 |> soe)
+      | V_tl_m _ -> err ve  (* not supported *)
 
-  (*************************************************************************)
-  (* Big Map                                                               *)
-  (*************************************************************************)
-  | V_lit_big_map (kt, vt, e) -> begin
-      e |> Core.Map.Poly.fold
-        ~init:(Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp))
-        ~f:(fun ~key ~data acc_zm -> Smt.ZMap.update ~key:(key |> soe) ~value:(Smt.ZOption.create_some ~content:(data |> soe)) ~map:acc_zm)
-    end
-  | V_empty_big_map (kt, vt) -> Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp)
-  | V_update_xobmbm (e1, e2, e3) -> Smt.ZMap.update ~key:(e1 |> soe) ~value:(Smt.ZOption.create_some ~content:(e2 |> soe)) ~map:(e3 |> soe)
-  | V_tl_bm _ -> err ve  (* not supported *)
-  
-  (*************************************************************************)
-  (* Chain Id                                                              *)
-  (*************************************************************************)
-  | V_lit_chain_id _ -> err ve
-  | V_chain_id -> err ve
+      (*************************************************************************)
+      (* Big Map                                                               *)
+      (*************************************************************************)
+      | V_lit_big_map (kt, vt, e) -> begin
+          e |> Core.Map.Poly.fold
+            ~init:(Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp))
+            ~f:(fun ~key ~data acc_zm -> Smt.ZMap.update ~key:(key |> soe) ~value:(Smt.ZOption.create_some ~content:(data |> soe)) ~map:acc_zm)
+        end
+      | V_empty_big_map (kt, vt) -> Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp)
+      | V_update_xobmbm (e1, e2, e3) -> Smt.ZMap.update ~key:(e1 |> soe) ~value:(Smt.ZOption.create_some ~content:(e2 |> soe)) ~map:(e3 |> soe)
+      | V_tl_bm _ -> err ve  (* not supported *)
+      
+      (*************************************************************************)
+      (* Chain Id                                                              *)
+      (*************************************************************************)
+      | V_lit_chain_id _ -> err ve
+      | V_chain_id -> err ve
+    with
+    | Smt.ZError s -> SMT_Encode_Error_e (ve, s) |> raise
+    | e -> e |> raise
 end (* function smtexpr_of_vlangexpr end *)
 
 let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
@@ -361,30 +370,42 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
   let soe = smtexpr_of_vlangexpr in (* syntax sugar *)
   let err f = Stdlib.raise (Not_Implemented_f f) in (* syntax sugar *)
   fun vf -> begin
-  match vf with
-  (* logical formula *)
-  | VF_true -> Smt.ZFormula.true_
-  | VF_false -> Smt.ZFormula.false_
-  | VF_not f -> Smt.ZFormula.create_not (f |> sof)
-  | VF_and fl -> Smt.ZFormula.create_and (fl |> Core.List.map ~f:sof)
-  | VF_or fl -> Smt.ZFormula.create_or (fl |> Core.List.map ~f:sof)
-  | VF_eq (e1,e2) -> Smt.ZFormula.create_eq (e1 |> soe) (e2 |> soe)
-  | VF_imply (f1, f2) -> Smt.ZFormula.create_imply (f1 |> sof) (f2 |> sof)
-  (* micse-cfg specific boolean *)
-  | VF_mich_if e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
-  | VF_mich_if_none e -> Smt.ZOption.is_none (e |> soe)
-  | VF_mich_if_left e -> Smt.ZOr.is_left (e |> soe)
-  | VF_mich_if_cons e -> Smt.ZList.is_cons (e |> soe)
-  (* NOT USED. belows are not constructed from Prover.converter *)
-  | VF_mich_loop e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
-  | VF_mich_loop_left e -> Smt.ZOr.is_left (e |> soe)
-  | VF_mich_map_l e -> Smt.ZOption.is_none (e |> soe)
-  | VF_mich_map_m _ -> err vf (* check whether map's size is not 0 *)
-  | VF_mich_iter_l e -> Smt.ZOption.is_none (e |> soe)
-  | VF_mich_iter_s _ -> err vf (* check whether set's size is not 0 *)
-  | VF_mich_iter_m _ -> err vf (* check whether map's size is not 0 *)
-  | VF_mich_micse_check_value e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
+    try
+      match vf with
+      (* logical formula *)
+      | VF_true -> Smt.ZFormula.true_
+      | VF_false -> Smt.ZFormula.false_
+      | VF_not f -> Smt.ZFormula.create_not (f |> sof)
+      | VF_and fl -> Smt.ZFormula.create_and (fl |> Core.List.map ~f:sof)
+      | VF_or fl -> Smt.ZFormula.create_or (fl |> Core.List.map ~f:sof)
+      | VF_eq (e1,e2) -> Smt.ZFormula.create_eq (e1 |> soe) (e2 |> soe)
+      | VF_imply (f1, f2) -> Smt.ZFormula.create_imply (f1 |> sof) (f2 |> sof)
+      (* micse-cfg specific boolean *)
+      | VF_mich_if e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
+      | VF_mich_if_none e -> Smt.ZOption.is_none (e |> soe)
+      | VF_mich_if_left e -> Smt.ZOr.is_left (e |> soe)
+      | VF_mich_if_cons e -> Smt.ZList.is_cons (e |> soe)
+      (* NOT USED. belows are not constructed from Prover.converter *)
+      | VF_mich_loop e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
+      | VF_mich_loop_left e -> Smt.ZOr.is_left (e |> soe)
+      | VF_mich_map_l e -> Smt.ZOption.is_none (e |> soe)
+      | VF_mich_map_m _ -> err vf (* check whether map's size is not 0 *)
+      | VF_mich_iter_l e -> Smt.ZOption.is_none (e |> soe)
+      | VF_mich_iter_s _ -> err vf (* check whether set's size is not 0 *)
+      | VF_mich_iter_m _ -> err vf (* check whether map's size is not 0 *)
+      | VF_mich_micse_check_value e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
+    with
+    | Smt.ZError s -> SMT_Encode_Error_f (vf, s) |> raise
+    | e -> e |> raise
 end (* function smtexpr_of_vlangformula end *)
 
 let verify : Vlang.Formula.t -> Smt.ZSolver.validity * Smt.ZModel.t option
-=fun f -> Smt.ZSolver.check_validity [(f |> smtexpr_of_vlangformula)]
+= let fts = Vlang.Formula.to_string in  (* syntax sugar *)
+  let ets = Vlang.Expr.to_string in     (* syntax sugar *)
+  fun f -> begin
+  try Smt.ZSolver.check_validity [(f |> smtexpr_of_vlangformula)] with
+  | Not_Implemented_f f -> Error ((f |> fts) ^ " is not implemented") |> raise
+  | Not_Implemented_e e -> Error ((e |> ets) ^ " is not implemented") |> raise
+  | SMT_Encode_Error_f (f, z3s) -> Error ((f |> fts) ^ " occurs encoding error \"" ^ z3s ^ "\"") |> raise
+  | SMT_Encode_Error_e (e, z3s) -> Error ((e |> ets) ^ " occurs encoding error \"" ^ z3s ^ "\"") |> raise
+end
