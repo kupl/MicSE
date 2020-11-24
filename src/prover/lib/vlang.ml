@@ -660,3 +660,307 @@ end (* module TypeUtil end *)
 (*****************************************************************************)
 
 let string_of_formula : t -> string = fun _ -> "Vlang.string_of_formula.UNIMPLEMENTED_TODO" (* TODO *)
+
+module RecursiveMappingExprTemplate = struct
+  (* it maps expr from outer, if outer data-constructor (e.g. V_some _ ) matched, it ignores inside *)
+  (* WARNING: It maps something in lambda value too *)
+  let rec map_expr_outer : (Expr.t -> bool) -> (Expr.t -> Expr.t) -> Expr.t -> Expr.t
+  = let open Expr in
+    fun is_wanted_constructor_f mapf eee -> begin
+    let rf e = map_expr_outer is_wanted_constructor_f mapf e in (* syntax sugar *)
+    if is_wanted_constructor_f eee then mapf eee else
+    match eee with
+    (*************************************************************************)
+    (* Variable & Polymorphic                                                *)
+    (*************************************************************************)
+    | V_var _ -> eee
+    | V_car e -> V_car (rf e)
+    | V_cdr e -> V_cdr (rf e)
+    | V_unlift_option e -> V_unlift_option (rf e)
+    | V_unlift_left e -> V_unlift_left (rf e)
+    | V_unlift_right e -> V_unlift_right (rf e)
+    | V_hd_l e -> V_hd_l (rf e)
+    | V_hd_s e -> V_hd_s (rf e)
+    | V_exec (e1, e2) -> V_exec (rf e1, rf e2)
+    | V_dup e -> V_dup (rf e)
+    | V_itself e -> V_itself (rf e)
+
+    (*************************************************************************)
+    (* Integer                                                               *)
+    (*************************************************************************)
+    | V_lit_int _ -> eee
+    | V_neg_ni e -> V_neg_ni (rf e)
+    | V_neg_ii e -> V_neg_ii (rf e)
+    | V_not_ni e -> V_not_ni (rf e)
+    | V_not_ii e -> V_not_ii (rf e)
+    | V_add_nii (e1, e2) -> V_add_nii (rf e1, rf e2)
+    | V_add_ini (e1, e2) -> V_add_ini (rf e1, rf e2)
+    | V_add_iii (e1, e2) -> V_add_iii (rf e1, rf e2)
+    | V_sub_nni (e1, e2) -> V_sub_iii (rf e1, rf e2)
+    | V_sub_nii (e1, e2) -> V_sub_nii (rf e1, rf e2)
+    | V_sub_ini (e1, e2) -> V_sub_ini (rf e1, rf e2)
+    | V_sub_iii (e1, e2) -> V_sub_iii (rf e1, rf e2)
+    | V_sub_tti (e1, e2) -> V_sub_tti (rf e1, rf e2)
+    | V_mul_nii (e1, e2) -> V_mul_nii (rf e1, rf e2)
+    | V_mul_ini (e1, e2) -> V_mul_ini (rf e1, rf e2)
+    | V_mul_iii (e1, e2) -> V_mul_iii (rf e1, rf e2)
+    | V_compare (e1, e2) -> V_compare (rf e1, rf e2)
+    | V_int_of_nat e -> V_int_of_nat (rf e)
+
+    (*************************************************************************)
+    (* Natural Number                                                        *)
+    (*************************************************************************)
+    | V_lit_nat _ -> eee
+    | V_abs_in e -> V_abs_in (rf e)
+    | V_add_nnn (e1, e2) -> V_add_nnn (rf e1, rf e2)
+    | V_mul_nnn (e1, e2) -> V_mul_nnn (rf e1, rf e2)    
+    | V_shiftL_nnn (e1, e2) -> V_shiftL_nnn (rf e1, rf e2)
+    | V_shiftR_nnn (e1, e2) -> V_shiftR_nnn (rf e1, rf e2) 
+    | V_and_nnn (e1, e2) -> V_and_nnn (rf e1, rf e2)
+    | V_and_inn (e1, e2) -> V_and_inn (rf e1, rf e2)
+    | V_or_nnn  (e1, e2) -> V_or_nnn (rf e1, rf e2)
+    | V_xor_nnn (e1, e2) -> V_xor_nnn (rf e1, rf e2)
+    | V_size_s e -> V_size_s (rf e)
+    | V_size_m e -> V_size_m (rf e)
+    | V_size_l e -> V_size_l (rf e)
+    | V_size_str e -> V_size_str (rf e)
+    | V_size_b e -> V_size_b (rf e)
+
+    (*************************************************************************)
+    (* String                                                                *)
+    (*************************************************************************)
+    | V_lit_string _ -> eee
+    | V_concat_sss (e1, e2) -> V_concat_sss (rf e1, rf e2)
+    | V_concat_list_s e -> V_concat_list_s (rf e)
+
+    (*************************************************************************)
+    (* Bytes                                                                 *)
+    (*************************************************************************)
+    | V_lit_bytes _ -> eee
+    | V_concat_bbb (e1, e2) -> V_concat_bbb (rf e1, rf e2)
+    | V_concat_list_b e -> V_concat_list_b (rf e)
+    | V_pack    e -> V_pack (rf e)
+    | V_blake2b e -> V_blake2b (rf e)
+    | V_sha256  e -> V_sha256 (rf e)
+    | V_sha512  e -> V_sha512 (rf e)
+
+    (*************************************************************************)
+    (* Mutez                                                                 *)
+    (*************************************************************************)
+    | V_lit_mutez _ -> eee
+    | V_amount      -> eee
+    | V_balance     -> eee
+    | V_add_mmm (e1, e2) -> V_add_mmm (rf e1, rf e2)
+    | V_sub_mmm (e1, e2) -> V_sub_mmm (rf e1, rf e2)
+    | V_mul_mnm (e1, e2) -> V_mul_mnm (rf e1, rf e2)
+    | V_mul_nmm (e1, e2) -> V_mul_nmm (rf e1, rf e2)
+
+    (*************************************************************************)
+    (* Bool                                                                  *)
+    (*************************************************************************)
+    | V_lit_bool  _ -> eee
+    | V_not_bb    e -> V_not_bb (rf e)
+    | V_and_bbb   (e1, e2) -> V_and_bbb (rf e1, rf e2)
+    | V_or_bbb    (e1, e2) -> V_or_bbb (rf e1, rf e2)
+    | V_xor_bbb   (e1, e2) -> V_xor_bbb (rf e1, rf e2)
+    | V_eq_ib     e -> V_eq_ib (rf e)
+    | V_neq_ib    e -> V_neq_ib (rf e)
+    | V_lt_ib     e -> V_lt_ib (rf e)
+    | V_gt_ib     e -> V_gt_ib (rf e)
+    | V_leq_ib    e -> V_leq_ib (rf e)
+    | V_geq_ib    e -> V_geq_ib (rf e)
+    | V_mem_xsb   (e1, e2) -> V_mem_xsb (rf e1, rf e2)
+    | V_mem_xmb   (e1, e2) -> V_mem_xmb (rf e1, rf e2)
+    | V_mem_xbmb  (e1, e2) -> V_mem_xbmb (rf e1, rf e2)
+    | V_check_signature (e1, e2, e3) -> V_check_signature (rf e1, rf e2, rf e3)
+
+    (*************************************************************************)
+    (* Key Hash                                                              *)
+    (*************************************************************************)
+    | V_lit_key_hash  _ -> eee
+    | V_hash_key      e -> V_hash_key (rf e)
+
+    (*************************************************************************)
+    (* Timestamp                                                             *)
+    (*************************************************************************)
+    | V_lit_timestamp_str _ -> eee
+    | V_lit_timestamp_sec _ -> eee
+    | V_now                 -> eee
+    | V_add_tit           (e1, e2) -> V_add_tit (rf e1, rf e2)
+    | V_add_itt           (e1, e2) -> V_add_itt (rf e1, rf e2)
+    | V_sub_tit           (e1, e2) -> V_sub_tit (rf e1, rf e2)
+
+    (*************************************************************************)
+    (* Address                                                               *)
+    (*************************************************************************)
+    | V_lit_address e -> V_lit_address (rf e)
+    | V_source  -> eee
+    | V_sender  -> eee
+    | V_address_of_contract e -> V_address_of_contract (rf e)
+
+    (*************************************************************************)
+    (* Key                                                                   *)
+    (*************************************************************************)
+    | V_lit_key _ -> eee
+
+    (*************************************************************************)
+    (* Unit                                                                  *)
+    (*************************************************************************)
+    (* | V_lit_unit : t_unit t *) (* V_unit has the same feature. *)
+    | V_unit -> eee
+
+    (*************************************************************************)
+    (* Signature                                                             *)
+    (*************************************************************************)
+    | V_lit_signature_str _ -> eee
+    | V_lit_signature_signed (e1, e2) -> V_lit_signature_signed (rf e1, rf e2)
+
+    (*************************************************************************)
+    (* Option                                                                *)
+    (*************************************************************************)
+    (* | V_lit_option : 'a t option -> 'a t_option t *) (* V_some and V_none has the same feature. *)
+    | V_some e -> V_some (rf e)
+    | V_none _ -> eee
+    | V_ediv_nnnn (e1, e2) -> V_ediv_nnnn (rf e1, rf e2)
+    | V_ediv_niin (e1, e2) -> V_ediv_niin (rf e1, rf e2)
+    | V_ediv_inin (e1, e2) -> V_ediv_inin (rf e1, rf e2)
+    | V_ediv_iiin (e1, e2) -> V_ediv_iiin (rf e1, rf e2)
+    | V_ediv_mnmm (e1, e2) -> V_ediv_mnmm (rf e1, rf e2)
+    | V_ediv_mmnm (e1, e2) -> V_ediv_mmnm (rf e1, rf e2)
+    | V_get_xmoy  (e1, e2) -> V_get_xmoy (rf e1, rf e2)
+    | V_get_xbmo  (e1, e2) -> V_get_xbmo (rf e1, rf e2)
+    | V_slice_nnso (e1, e2, e3) -> V_slice_nnso (rf e1, rf e2, rf e3)
+    | V_slice_nnbo (e1, e2, e3) -> V_slice_nnbo (rf e1, rf e2, rf e3)
+    | V_unpack (t, e) -> V_unpack (t, rf e)
+    | V_contract_of_address (t, e) -> V_contract_of_address (t, rf e)
+    | V_isnat e -> V_isnat (rf e)
+
+    (*************************************************************************)
+    (* List                                                                  *)
+    (*************************************************************************)
+    | V_lit_list (t, el) -> V_lit_list (t, (List.map rf el))
+    | V_nil _ -> eee
+    | V_cons (e1, e2) -> V_cons (rf e1, rf e2)
+    | V_tl_l e -> V_tl_l (rf e)
+    | V_append_l (e1, e2) -> V_append_l (rf e1, rf e2)
+
+    (*************************************************************************)
+    (* Set                                                                   *)
+    (*************************************************************************)
+    | V_lit_set (t, es) -> V_lit_set (t, Core.Set.Poly.map es ~f:rf)
+    | V_empty_set _ -> eee
+    | V_update_xbss (e1, e2, e3) -> V_update_xbss (rf e1, rf e2, rf e3)
+    | V_tl_s e -> V_tl_s (rf e)
+
+    (*************************************************************************)
+    (* Operation                                                             *)
+    (*************************************************************************)
+    (* | V_lit_operation of t_operation t *) (* V_create_contract, V_transfer_tokens, V_set_delegate has the same feature. *)
+    | V_create_contract (t1, t2, e1, e2, e3, e4) -> V_create_contract (t1, t2, rf e1, rf e2, rf e3, rf e4)
+    | V_transfer_tokens (e1, e2, e3) -> V_transfer_tokens (rf e1, rf e2, rf e3)
+    | V_set_delegate e -> V_set_delegate (rf e)
+
+    (*************************************************************************)
+    (* Contract                                                              *)
+    (*************************************************************************)
+    | V_lit_contract (e1, e2, e3, e4, e5) -> V_lit_contract (rf e1, rf e2, rf e3, rf e4, rf e5)
+    | V_self _ -> eee
+    | V_implicit_account e -> V_implicit_account (rf e)
+
+    (*************************************************************************)
+    (* Pair                                                                  *)
+    (*************************************************************************)
+    (* | V_lit_pair : 'a t * 'b t -> ('a, 'b) t_pair t *) (* V_pair has the same feature *)
+    | V_pair (e1, e2) -> V_pair (rf e1, rf e2)
+    | V_hd_m e -> V_hd_m (rf e)
+    | V_hd_bm e -> V_hd_bm (rf e)
+    | V_hdtl_l e -> V_hdtl_l (rf e)
+    | V_hdtl_s e -> V_hdtl_s (rf e)
+    | V_hdtl_m e -> V_hdtl_m (rf e)
+
+    (*************************************************************************)
+    (* Or                                                                    *)
+    (*************************************************************************)
+    (* | V_lit_or *) (* It cannot construct any value, use V_left or V_right instead *)
+    | V_left (t, e) -> V_left (t, rf e)
+    | V_right (t, e) -> V_right (t, rf e)
+
+    (*************************************************************************)
+    (* Lambda                                                                *)
+    (*************************************************************************)
+    | V_lit_program _ -> eee
+    | V_lambda_id _ -> eee
+    | V_lit_lambda _ -> eee
+    | V_lambda_unknown _ -> eee
+    | V_lambda_closure (e1, e2) -> V_lambda_closure (rf e1, rf e2)
+    (*************************************************************************)
+    (* Map                                                                   *)
+    (*************************************************************************)
+    | V_lit_map (kt, vt, em) -> V_lit_map (kt, vt, Core.Map.Poly.map em ~f:rf)
+    | V_empty_map _ -> eee
+    | V_update_xomm (e1, e2, e3) -> V_update_xomm (rf e1, rf e2, rf e3)
+    | V_tl_m e -> V_tl_m (rf e)
+
+    (*************************************************************************)
+    (* Big Map                                                               *)
+    (*************************************************************************)
+    | V_lit_big_map (kt, vt, em) -> V_lit_big_map (kt, vt, Core.Map.Poly.map em ~f:rf)
+    | V_empty_big_map _ -> eee
+    | V_update_xobmbm (e1, e2, e3) -> V_update_xobmbm (rf e1, rf e2, rf e3)
+    | V_tl_bm e -> V_tl_bm (rf e)
+    
+    (*************************************************************************)
+    (* Chain Id                                                              *)
+    (*************************************************************************)
+    | V_lit_chain_id _ -> eee
+    | V_chain_id -> eee
+  end (* function map_expr_outer end *)
+
+  let rec map_formula_outer : (Expr.t -> bool) -> (Expr.t -> Expr.t) -> t -> t
+  = let open Formula in
+    fun is_wanted_constructor_f mapf eee -> begin
+    let rf f = map_formula_outer is_wanted_constructor_f mapf f in (* syntax sugar *)
+    let re e = map_expr_outer is_wanted_constructor_f mapf e in (* syntax sugar *)
+    match eee with
+    | VF_true -> eee
+    | VF_false -> eee
+    | VF_not f -> VF_not (rf f)
+    | VF_and fl -> VF_and (List.map rf fl)
+    | VF_or fl -> VF_or (List.map rf fl)
+    | VF_eq (e1, e2) -> VF_eq (re e1, re e2)
+    | VF_imply (f1, f2) -> VF_imply (rf f1, rf f2)
+    (* MicSE-Cfg Specific Boolean *)  
+    | VF_mich_if e -> VF_mich_if (re e)
+    | VF_mich_if_none e -> VF_mich_if_none (re e)
+    | VF_mich_if_left e -> VF_mich_if_left (re e)
+    | VF_mich_if_cons e -> VF_mich_if_cons (re e)
+    | VF_mich_loop e -> VF_mich_loop (re e)
+    | VF_mich_loop_left e -> VF_mich_loop_left (re e)
+    | VF_mich_map_l e -> VF_mich_map_l (re e)
+    | VF_mich_map_m e -> VF_mich_map_m (re e)
+    | VF_mich_iter_l e -> VF_mich_iter_l (re e)
+    | VF_mich_iter_s e -> VF_mich_iter_s (re e)
+    | VF_mich_iter_m e -> VF_mich_iter_m (re e)
+    | VF_mich_micse_check_value e -> VF_mich_micse_check_value (re e)
+  end (* function map_formula_outer end *)
+
+end (* module RecursiveMappingExprTemplate end *)
+
+
+module Renaming = struct
+  
+  let is_var : Expr.t -> bool = (function | Expr.V_var _ -> true | _ -> false)
+
+  let var_in_expr : Expr.var -> Expr.var -> Expr.t -> Expr.t
+  =fun old_var new_var e -> begin
+    let rename_var : Expr.t -> Expr.t = (fun e -> match e with | Expr.V_var (t, s) when s = old_var -> Expr.V_var (t, new_var) | _ -> e) in
+    RecursiveMappingExprTemplate.map_expr_outer is_var rename_var e
+  end (* function var_in_expr end *)
+
+  let var_in_expr_formula : Expr.var -> Expr.var -> t -> t
+  =fun old_var new_var f -> begin
+    let rename_var : Expr.t -> Expr.t = (fun e -> match e with | Expr.V_var (t, s) when s = old_var -> Expr.V_var (t, new_var) | _ -> e) in
+    RecursiveMappingExprTemplate.map_formula_outer is_var rename_var f
+  end (* function var_in_expr_formula end *) 
+
+end (* module Renaming end *)
