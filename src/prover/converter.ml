@@ -65,7 +65,7 @@ let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.
     match (vtyp, michdata) with 
     | T_int, D_int zn -> V_lit_int zn
     | T_nat, D_int zn -> V_lit_int zn
-    | T_mutez, D_int zn -> V_lit_int zn
+    | T_mutez, D_int zn -> V_lit_mutez zn
     | T_timestamp, D_int zn -> V_lit_timestamp_sec zn
     | T_string, D_string s -> V_lit_string s
     | T_key_hash, D_string s -> V_lit_key_hash s
