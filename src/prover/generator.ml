@@ -1,4 +1,3 @@
-(*
 open ProverLib
 
 (*****************************************************************************)
@@ -20,42 +19,32 @@ end
 (*****************************************************************************)
 
 module Stg = struct
-  type t = Vlang.v_obj
+  type t = Vlang.Expr.t
   type data = Pre.Lib.Mich.data Pre.Lib.Mich.t
   type cfg = Pre.Lib.Cfg.t
 
-  let read_typt : cfg:cfg -> Vlang.typ
+  let read_typt : cfg:cfg -> Vlang.Ty.t
   =fun ~cfg -> begin
-    let param_stg_typt = Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) (Pre.Lib.Cfg.param_storage_name) in
-    match param_stg_typt.d with
+    let param_stg_typt = Pre.Lib.Cfg.param_storage_name |> Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |> Vlang.TypeUtil.ty_of_mty in
+    match param_stg_typt with
     | T_pair (_, stg_typt) -> stg_typt
     | _ -> raise (Failure "Generator.Stg.read_typt: Type conflict on storage")
   end
 
   let create : cfg:cfg -> t
-  =fun ~cfg -> Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_var "stg") ~typ:(read_typt ~cfg:cfg)
+  =fun ~cfg -> Vlang.Expr.V_var ((read_typt ~cfg:cfg), "stg")
 
   let create_comp : cfg:cfg -> Comps.t
   =fun ~cfg -> Comps.read_components (create ~cfg:cfg) (Comps.empty)
 
-  let equal_to_obj : obj:t -> cfg:cfg -> Vlang.t
-  =fun ~obj ~cfg -> begin
-    let obj_t = create ~cfg:cfg in
-    let f = Vlang.create_formula_eq obj obj_t in
-    f
-  end
+  let equal_to_expr : expr:t -> cfg:cfg -> Vlang.t
+  =fun ~expr ~cfg -> Vlang.Formula.VF_eq (expr, (create ~cfg:cfg))
 
   let equal_to_data : data:data -> cfg:cfg -> Vlang.t
-  =fun ~data ~cfg -> equal_to_obj ~obj:(Converter.create_convert_data data (read_typt ~cfg:cfg)) ~cfg:cfg
+  =fun ~data ~cfg -> equal_to_expr ~expr:(Converter.create_expr_of_michdata data (read_typt ~cfg:cfg)) ~cfg:cfg
 
   let equal_to_ps_or_os : ps_os:Vlang.var -> cfg:cfg -> Vlang.t
-  =fun ~ps_os ~cfg -> begin
-    let typt_ps_os = Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) ps_os in
-    let obj_ps_os = Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_var ps_os) ~typ:typt_ps_os in
-    let obj_stg = Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_uni_op_cdr obj_ps_os) ~typ:(read_typt ~cfg:cfg) in
-    let f = equal_to_obj ~obj:obj_stg ~cfg:cfg in
-    f
-  end
+  =fun ~ps_os ~cfg -> equal_to_expr ~expr:(Vlang.Expr.V_car (Vlang.Expr.V_var ((read_typt ~cfg:cfg), ps_os))) ~cfg:cfg
 end
 
 module TrxInv = struct
@@ -65,11 +54,11 @@ module TrxInv = struct
 
   let formula_mutez_equal : comp:Comps.t -> formula list
   =fun ~comp -> begin
-    let fs, _ = Core.List.fold_left comp.mutez ~f:(fun (fs, comps) (a_obj, a_app) -> begin
+    let fs, _ = Core.List.fold_left comp.mutez ~f:(fun (fs, comps) (a_expr, a_app) -> begin
       let comps' = Core.List.tl_exn comps in
-      let fs' = Core.List.map comps' ~f:(fun (b_obj, b_app) -> begin
+      let fs' = Core.List.map comps' ~f:(fun (b_expr, b_app) -> begin
         let app = a_app@b_app in
-        let equal = Vlang.create_formula_eq a_obj b_obj in
+        let equal = Vlang.Formula.VF_eq (a_expr, b_expr) in
         Core.List.fold_right app ~f:(fun app f -> app f) ~init:equal
       end) in
       (fs'@fs, comps')
@@ -85,8 +74,8 @@ module TrxInv = struct
     let wrapper : f:(comp:Comps.t -> formula list) -> (formula * formula) list
     =fun ~f -> begin
       Core.List.map (f ~comp:comp) ~f:(fun f -> begin
-        let entry_f = Converter.create_rewrite_formula "stg" "pre_stg" (Vlang.create_formula_and [entry_equal; f]) in
-        let exit_f = Converter.create_rewrite_formula "stg" "post_stg" (Vlang.create_formula_imply exit_equal f) in
+        let entry_f = Vlang.Renaming.var_in_expr_formula "stg" "pre_stg" (Vlang.Formula.VF_and [entry_equal; f]) in
+        let exit_f = Vlang.Renaming.var_in_expr_formula "stg" "post_stg" (Vlang.Formula.VF_imply (exit_equal, f)) in
         (entry_f, exit_f)
       end)
     end in
@@ -154,4 +143,3 @@ module W = struct
   let last_worklist : wlst:t -> t
   =fun ~wlst -> Inv.WorkList.push_force wlst (wlst.current)
 end
-*)

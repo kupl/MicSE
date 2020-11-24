@@ -1,24 +1,22 @@
-(*
 (*****************************************************************************)
 (*****************************************************************************)
 (* Components                                                                *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-type typ = Vlang.typ
+type typ = Vlang.Ty.t
 and formula = Vlang.v_formula
-and obj = Vlang.v_obj
+and expr = Vlang.Expr.t
 
 type t = {
     mutez : component list;
     mutez_map : component list;
   }
-and component = obj * approach list
+and component = expr * approach list
 and approach = (formula -> formula)
 
 val empty : t
 
-val read_components : obj -> t -> t
+val read_components : expr -> t -> t
 
 val append_approach : t -> approach -> t
-*)

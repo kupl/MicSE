@@ -1,4 +1,3 @@
-(*
 open ProverLib
 
 (************************************************)
@@ -14,7 +13,7 @@ val apply : Inv.Map.t -> Bp.t list -> Bp.t list
 (*****************************************************************************)
 
 module Stg : sig
-  type t = Vlang.v_obj
+  type t = Vlang.Expr.t
   type data = Pre.Lib.Mich.data Pre.Lib.Mich.t
   type cfg = Pre.Lib.Cfg.t
 
@@ -24,7 +23,7 @@ module Stg : sig
 
   val create_comp : cfg:cfg -> Comps.t
 
-  val equal_to_obj : obj:t -> cfg:cfg -> Vlang.t
+  val equal_to_expr : expr:t -> cfg:cfg -> Vlang.t
 
   val equal_to_data : data:data -> cfg:cfg -> Vlang.t
 
@@ -67,4 +66,3 @@ module W : sig
 
   val last_worklist : wlst:t -> t
 end
-*)
