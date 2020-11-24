@@ -36,19 +36,22 @@ let collect_queries : PreLib.Cfg.t -> (Prover.Lib.Bp.t list) -> (Prover.Lib.Quer
 end
 
 (* It depends on newly created parameter/storage variable names in "Refuter.Extractor.concat_basicpath" *)
-let get_param_stg_from_model : PreLib.Cfg.t -> ProverLib.Smt.model option -> ((string * ProverLib.Smt.z_expr) list) option
+let get_param_stg_from_model : PreLib.Cfg.t -> ProverLib.Smt.ZModel.t option -> ((string * ProverLib.Smt.ZExpr.t) list) option
 =fun cfg modelopt -> begin
   match modelopt with
   | None -> None
   | Some model -> (
-      let rec append_template : (int -> string) -> int -> ((string * ProverLib.Smt.z_expr) list) -> ((string * ProverLib.Smt.z_expr) list)
+      let rec append_template : (int -> string) -> int -> ((string * ProverLib.Smt.ZExpr.t) list) -> ((string * ProverLib.Smt.ZExpr.t) list)
       =fun vargen i_now acc_l -> begin
         try
           let varname = vargen i_now in
-          let varsort = Prover.Verifier.sort_of_typt (PreLib.Cfg.CPMap.find_exn cfg.type_info varname) in
-          let varexpr_1 = ProverLib.Smt.read_var (ProverLib.Smt.create_symbol varname) varsort in
-          let varexpr_2 = ProverLib.Smt.create_evaluation model varexpr_1 |> Option.get in
-          append_template vargen (i_now + 1) ((varname, varexpr_2) :: acc_l)
+          let varexpr = varname |>
+                        PreLib.Cfg.CPMap.find_exn cfg.type_info |>
+                        Prover.Verifier.sort_of_typt |> 
+                        ProverLib.Smt.ZExpr.create_var ~name:varname |>
+                        ProverLib.Smt.ZModel.eval ~model:model |>
+                        Option.get in
+          append_template vargen (i_now + 1) ((varname, varexpr) :: acc_l)
         with
         | Core.Not_found_s _ -> acc_l (* Not_found from CPMap.find_exn *)
         | Stdlib.Invalid_argument _ -> Stdlib.failwith "Refuter : runner.ml : get_param_stg_from_model : append_template" (* Invalid_argument from Option.get *)
@@ -63,28 +66,19 @@ end
 
 (* Recieve one query(formula), and if refutable, return true and parameter/storages. else, return false and None. *)
 (* this function repeats "Prover.Verifier.verify" function in refuter's way. *)
-let refute_unit : PreLib.Cfg.t -> ProverLib.Query.t -> Z3.Solver.status * ((string * ProverLib.Smt.z_expr) list) option
+let refute_unit : PreLib.Cfg.t -> ProverLib.Query.t -> ProverLib.Smt.ZSolver.validity * ((string * ProverLib.Smt.ZExpr.t) list) option
 =fun cfg query -> begin
   let open Prover in
   let open ProverLib in 
-  let zexp_of_vc = Verifier.smtexpr_of_vlangformula (Vlang.Formula.VF_not query.query) in
-  let solver = Smt.create_solver() in
-  let result = Z3.Solver.check solver [zexp_of_vc] in
-  let model_opt = Z3.Solver.get_model solver in
+  let result, model_opt = Smt.ZSolver.check_validity [(query.query |> Verifier.smtexpr_of_vlangformula)] in
   (result, get_param_stg_from_model cfg model_opt)
 end
 
-let string_of_refute_result : Z3.Solver.status * ((string * ProverLib.Smt.z_expr) list) option -> string
+let string_of_refute_result : ProverLib.Smt.ZSolver.validity * ((string * ProverLib.Smt.ZExpr.t) list) option -> string
 =fun (b, ropt) -> begin
-  let statusstr : string = (
-    match b with
-    | Z3.Solver.SATISFIABLE -> "SAT"
-    | Z3.Solver.UNKNOWN -> "UNKNOWN"
-    | Z3.Solver.UNSATISFIABLE -> "UNSAT"
-  ) in
   let bodystr : string =
     match ropt with
     | None -> ""
-    | Some lst -> List.fold_right (fun (varname, zexpr) accstr -> (varname ^ " : " ^ (ProverLib.Smt.string_of_expr zexpr)) ^ "\n" ^ accstr) lst ""
-  in statusstr ^ ("{\n" ^ bodystr ^ "}")
+    | Some lst -> List.fold_right (fun (varname, zexpr) accstr -> (varname ^ " : " ^ (ProverLib.Smt.ZExpr.to_string zexpr)) ^ "\n" ^ accstr) lst ""
+  in (b |> ProverLib.Smt.ZSolver.string_of_validity) ^ ("{\n" ^ bodystr ^ "}")
 end

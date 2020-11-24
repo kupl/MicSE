@@ -1,17 +1,43 @@
-type typ = Pre.Lib.Adt.typ
-and data = Pre.Lib.Adt.data
-and operation = Pre.Lib.Cfg.operation
+exception ZError of string
 
-type var = Pre.Lib.Cfg.ident
-and exp = Pre.Lib.Cfg.expr
+module CONST : sig
+  val _name_dummy : string
+  val _name_unit : string
+  val _name_map : string
 
-type v_formula = Vlang.v_formula
-and v_exp = Vlang.v_exp
+  val _sort_unit : string
+  val _sort_operation : string
+  val _sort_contract : string
+  val _sort_lambda : string
+  val _sort_option : string
+  val _sort_pair : string
+  val _sort_or : string
+  val _sort_list : string
 
-exception Z3Error of string
+  val _const_option_none : string
+  val _const_option_some : string
+  val _const_pair : string
+  val _const_or_left : string
+  val _const_or_right : string
+  val _const_list_nil : string
+  val _const_list_cons : string
 
-val get_field : 'a list -> int -> 'a
+  val _recog_option_none : string
+  val _recog_option_some : string
+  val _recog_pair : string
+  val _recog_or_left : string
+  val _recog_or_right : string
+  val _recog_list_nil : string
+  val _recog_list_cons : string
 
+  val _field_content : string
+  val _field_pair_fst : string
+  val _field_pair_snd : string
+  val _field_list_head : string
+  val _field_list_tail : string
+
+  val _bit_mutez : int
+end
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -19,17 +45,16 @@ val get_field : 'a list -> int -> 'a
 (*****************************************************************************)
 (*****************************************************************************)
 
-module Ctx : sig
+module ZCtx : sig
+  type body = (string * string)
   type t = Z3.context
-  type component = (string * string)
+  type t_ref = t option ref
 
-  val obj : t ref
+  val _obj : t_ref
 
-  val create_timeout : unit -> component
-
+  val body_timeout : unit -> body
   val create : unit -> unit
-  
-  val read : t
+  val read : unit -> t
 end
 
 
@@ -39,25 +64,17 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-type z_symbol = Z3.Symbol.symbol
+module ZSym : sig
+  type t = Z3.Symbol.symbol
 
-val dummy_tmp : int ref
-val create_dummy_symbol : unit -> z_symbol
+  val _name_dummy : string
+  val _count_dummy : int ref
 
-val create_symbol : string -> z_symbol
-
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Constructors                                                              *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-type z_const = Z3.Datatype.Constructor.constructor
-
-val option_none_const : z_const
-
-val list_nil_const : z_const
+  val create : string -> t
+  val create_dummy : unit -> t
+  
+  val to_string : t -> string
+end
 
 
 (*****************************************************************************)
@@ -66,61 +83,14 @@ val list_nil_const : z_const
 (*****************************************************************************)
 (*****************************************************************************)
 
-type z_sort = Z3.Sort.sort
+module ZSort : sig
+  type t = Z3.Sort.sort
 
+  val create_dummy : unit -> t
+  val create : name:string -> t
 
-val read_constructor_domain_sort : z_sort -> const_idx:int -> sort_idx:int -> z_sort
-
-
-val string_of_sort : z_sort -> string
-
-val create_option_symbol : z_sort -> z_symbol
-
-val create_pair_symbol : z_sort -> z_sort -> z_symbol
-
-val create_or_symbol : z_sort -> z_sort -> z_symbol
-
-val create_list_symbol : z_sort -> z_symbol
-
-
-val create_elt_symbol : key_sort:z_sort -> value_sort:z_sort -> z_symbol
-
-val create_map_symbol : key_sort:z_sort -> value_sort:z_sort -> z_symbol
-
-
-val create_unit_sort : z_sort
-
-val create_operation_sort : z_sort
-
-val create_contract_sort : z_sort
-
-val create_lambda_sort : z_sort
-
-
-val create_bool_sort : z_sort
-
-val create_int_sort : z_sort
-
-val create_string_sort : z_sort
-
-val create_mutez_sort : z_sort
-
-
-val create_option_sort : z_sort -> z_sort
-
-
-val create_pair_sort : z_sort -> z_sort -> z_sort
-
-
-val create_or_sort : z_sort -> z_sort -> z_sort
-
-
-val create_list_sort : z_sort -> z_sort
-
-
-val create_elt_sort : key_sort:z_sort -> value_sort:z_sort -> z_sort
-
-val create_map_sort : elt_sort:z_sort -> z_sort
+  val to_string : t -> string
+end
 
 
 (*****************************************************************************)
@@ -129,189 +99,417 @@ val create_map_sort : elt_sort:z_sort -> z_sort
 (*****************************************************************************)
 (*****************************************************************************)
 
-type ('a, 'b) or_type = | Left of 'a | Right of 'b
+module ZExpr : sig
+  type t = Z3.Expr.expr
 
-type z_expr = Z3.Expr.expr
-and z_func = Z3.FuncDecl.func_decl
+  val create_dummy : ZSort.t -> t
+  val create_var : ZSort.t -> name:string -> t
 
-val string_of_expr : z_expr -> string
+  val create_ite : cond:t -> t:t -> f:t -> t
 
-val string_of_func : z_func -> string
+  val read_sort : t -> ZSort.t
 
-
-val create_dummy_expr : z_sort -> z_expr
-
-val read_sort_of_expr : z_expr -> z_sort
-
-val read_var : z_symbol -> z_sort -> z_expr
-
-
-val create_ite : z_expr -> z_expr -> z_expr -> z_expr
-
-
-val create_unit : z_expr
-
-
-val create_forall : z_expr list -> z_expr -> z_expr
-
-
-val create_bool_true : z_expr
-
-val create_bool_false : z_expr
-
-val create_bool_not : z_expr -> z_expr
-
-val create_bool_and : z_expr list -> z_expr
-
-val create_bool_or : z_expr list -> z_expr
-
-val create_bool_xor : z_expr -> z_expr -> z_expr
-
-val create_bool_eq : z_expr -> z_expr -> z_expr
-
-val create_bool_imply : z_expr -> z_expr -> z_expr
-
-val create_bool_iff : z_expr -> z_expr -> z_expr
-
-val create_bool_list_is_nil : z_expr -> z_expr
-
-val create_bool_list_is_cons : z_expr -> z_expr
-
-val create_bool_int_lt : z_expr -> z_expr -> z_expr
-
-val create_bool_int_le : z_expr -> z_expr -> z_expr
-
-val create_bool_int_gt : z_expr -> z_expr -> z_expr
-
-val create_bool_int_ge : z_expr -> z_expr -> z_expr
-
-val create_bool_mutez_lt : v1:z_expr -> v2:z_expr -> z_expr (* v1 < v2 *)
-
-val create_bool_mutez_le : v1:z_expr -> v2:z_expr -> z_expr (* v1 ≦ v2 *)
-
-val create_bool_mutez_gt : v1:z_expr -> v2:z_expr -> z_expr (* v1 > v2 *)
-
-val create_bool_mutez_ge : v1:z_expr -> v2:z_expr -> z_expr (* v1 ≧ v2 *)
-
-val create_bool_option_is_none : z_expr -> z_expr
-
-val create_bool_option_is_some : z_expr -> z_expr
-
-val create_bool_option_is_left : z_expr -> z_expr
-
-val create_bool_option_is_right : z_expr -> z_expr
-
-
-val create_int_from_zarith : Z.t -> z_expr
-
-val create_int : int -> z_expr
-
-val create_int_neg : z_expr -> z_expr
-
-val create_int_add : z_expr list -> z_expr
-
-val create_int_sub : z_expr list -> z_expr
-
-val create_int_mul : z_expr list -> z_expr
-
-val create_int_div : z_expr -> z_expr -> z_expr
-
-val create_int_mod : z_expr -> z_expr -> z_expr
-
-val create_int_power : z_expr -> z_expr -> z_expr
-
-
-val create_string : string -> z_expr
-
-val create_string_concat : z_expr list -> z_expr
-
-val create_string_slice : z_expr -> z_expr -> z_expr -> z_expr
-
-
-val create_mutez_from_zarith : value:Z.t -> z_expr
-
-val create_mutez : value:int -> z_expr
-
-val create_mutez_add : v1:z_expr -> v2:z_expr -> z_expr
-
-val create_mutez_sub : v1:z_expr -> v2:z_expr -> z_expr
-
-val create_mutez_mul : v1:z_expr -> v2:z_expr -> z_expr
-
-val create_mutez_div : v1:z_expr -> v2:z_expr -> z_expr
-
-val create_mutez_mod : v1:z_expr -> v2:z_expr -> z_expr
-
-
-val create_option : z_sort -> z_expr option -> z_expr
-
-val read_option_content : z_expr -> z_expr
-
-
-val create_pair : z_expr -> z_expr -> z_expr
-
-val read_pair_fst : z_expr -> z_expr
-
-val read_pair_snd : z_expr -> z_expr
-
-
-val create_or : z_sort -> (z_expr, z_expr) or_type -> z_expr
-
-val read_or_left_content : z_expr -> z_expr
-
-val read_or_right_content : z_expr -> z_expr
-
-
-val create_list : z_sort -> z_expr
-
-val read_list_head : z_expr -> z_expr
-
-val read_list_tail : z_expr -> z_expr
-
-val update_list_cons : z_expr -> z_expr -> z_expr
-
-
-val create_elt : key:z_expr -> value:z_expr -> z_expr
-
-val read_elt_key : elt:z_expr -> z_expr
-
-val read_elt_value : elt:z_expr -> z_expr
-
-
-val create_map : key_sort:z_sort -> value_sort:z_sort -> z_expr
-
-val read_map_elt_content : key:z_expr -> map:z_expr -> z_expr
-
-val read_map_elt_exists : key:z_expr -> map:z_expr -> z_expr
-
-val read_map_sigma : map:z_expr -> z_expr
-
-val update_map : key:z_expr -> value_opt:z_expr -> map:z_expr -> z_expr
-
-
-val create_int_cmp : v1:z_expr -> v2:z_expr -> z_expr
-
-val create_mutez_cmp : v1:z_expr -> v2:z_expr -> z_expr
-
-val create_string_cmp : v1:z_expr -> v2:z_expr -> z_expr
+  val to_string : t -> string
+end
 
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Solver                                                                    *)
+(* FuncDecls                                                                 *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-type solver = Z3.Solver.solver
-and model = Z3.Model.model
+module ZFunc : sig
+  type t = Z3.FuncDecl.func_decl
 
-val create_solver : unit -> solver
+  val get_field : 'a list -> idx:int -> 'a
 
-val update_solver_add : solver -> z_expr list -> unit
+  val apply : t -> params:ZExpr.t list -> ZExpr.t
 
-val create_check : solver -> (bool * model option)
+  val sort_of_domain : t -> idx:int -> ZSort.t
+end
 
-val string_of_solver : solver -> string
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Datatypes                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZDatatype : sig
+  type const = Z3.Datatype.Constructor.constructor
+
+  val get_field : 'a list -> idx:int -> 'a
+
+  val create_const : name:string -> recog_func_name:string -> field_names:string list -> field_sorts:ZSort.t option list -> field_sort_refs:int list -> const
+  val create_sort : name:string -> const_list:const list -> ZSort.t
+  val create_const_func : ZSort.t -> const_idx:int -> ZFunc.t
+  val create_recog_func : ZSort.t -> const_idx:int -> ZFunc.t
+  val create_access_func : ZSort.t -> const_idx:int -> field_idx:int -> ZFunc.t
+  val read_field_sort : ZSort.t -> const_idx:int -> field_idx:int -> ZSort.t
+
+  val create : ZSort.t -> const_idx:int -> expr_list:ZExpr.t list -> ZExpr.t
+  val read : ZExpr.t -> const_idx:int -> field_idx:int -> ZExpr.t
+
+  val is_field : ZExpr.t -> const_idx:int -> ZExpr.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Formulae                                                                  *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZFormula : sig
+  type t = ZExpr.t
+
+  val sort : ZSort.t
+  
+  val true_ : t
+  val false_ : t
+  val uninterpreted_ : t
+
+  val create_not : t -> t
+  val create_and : t list -> t
+  val create_or : t list -> t
+  val create_xor : t -> t -> t
+  val create_eq : t -> t -> t
+  val create_neq : t -> t -> t
+  val create_imply : t -> t -> t
+  val create_iff : t -> t -> t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Unit                                                                      *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZUnit : sig
+  type t = ZExpr.t
+
+  val sort : ZSort.t
+
+  val create : t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Booleans                                                                  *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZBool : sig
+  type t = ZExpr.t
+
+  val sort : ZSort.t
+
+  val of_bool : bool -> t
+  
+  val true_ : t
+  val false_ : t
+
+  val create_not : t -> t
+  val create_and : t -> t -> t
+  val create_or : t -> t -> t
+  val create_xor : t -> t -> t
+
+  val create_eq : t -> t -> t
+  val create_neq : t -> t -> t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Integers                                                                  *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZInt : sig
+  type t = ZExpr.t
+
+  val sort : ZSort.t
+
+  val of_zarith : Z.t -> t
+  val of_int : int -> t
+
+  val minus_one_ : t
+  val zero_ : t
+  val one_ : t
+
+  val create_neg : t -> t
+  val create_add : t list -> t
+  val create_sub : t list -> t
+  val create_mul : t list -> t
+  val create_div : t -> t -> t
+  val create_mod : t -> t -> t
+  val create_power : t -> t -> t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+  val create_lt : t -> t -> ZBool.t
+  val create_le : t -> t -> ZBool.t
+  val create_gt : t -> t -> ZBool.t
+  val create_ge : t -> t -> ZBool.t
+
+  val create_cmp : t -> t -> t
+  val create_abs : t -> t
+
+  val to_zmutez : t -> ZExpr.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Mutez                                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZMutez : sig
+  type t = ZExpr.t
+
+  val sort : ZSort.t
+
+  val of_zarith : Z.t -> t
+  val of_int : int -> t
+
+  val zero_ : t
+
+  val create_add : t -> t -> t
+  val create_sub : t -> t -> t
+  val create_mul : t -> t -> t
+  val create_div : t -> t -> t
+  val create_mod : t -> t -> t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+  val create_lt : t -> t -> ZBool.t
+  val create_le : t -> t -> ZBool.t
+  val create_gt : t -> t -> ZBool.t
+  val create_ge : t -> t -> ZBool.t
+
+  val create_cmp : t -> t -> ZInt.t
+
+  val to_zint : t -> ZInt.t
+
+  val check_add_no_overflow : t -> t -> ZBool.t
+  val check_mul_no_overflow : t -> t -> ZBool.t
+  val check_sub_no_underflow : t -> t -> ZBool.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Strings                                                                   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZStr : sig
+  type t = ZExpr.t
+
+  val sort : ZSort.t
+
+  val of_string : string -> t
+
+  val create_concat : t list -> t
+  val create_slice : t -> low:ZInt.t -> high:ZInt.t -> t
+  val create_length : t -> ZInt.t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+
+  val create_cmp : t -> t -> ZInt.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Options                                                                   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZOption : sig
+  type t = ZExpr.t
+
+  val _create_const_of_none : ZDatatype.const
+  val _create_const_of_some : content_sort:ZSort.t -> ZDatatype.const
+  val _create_sort_name : content_sort:ZSort.t -> string
+
+  val create_sort : content_sort:ZSort.t -> ZSort.t
+
+  val create_none : content_sort:ZSort.t -> t
+  val create_some : content:ZExpr.t -> t
+  val read : t -> ZExpr.t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+
+  val is_none : t -> ZBool.t
+  val is_some : t -> ZBool.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Pairs                                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZPair : sig
+  type t = ZExpr.t
+
+  val _create_const_of_pair : fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZDatatype.const
+  val _create_sort_name : fst_sort:ZSort.t -> snd_sort:ZSort.t -> string
+
+  val create_sort : fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZSort.t
+
+  val create : fst:ZExpr.t -> snd:ZExpr.t -> t
+  val read_fst : t -> ZExpr.t
+  val read_snd : t -> ZExpr.t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Ors                                                                       *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZOr : sig
+  type t = ZExpr.t
+
+  val _create_const_of_left : left_sort:ZSort.t -> ZDatatype.const
+  val _create_const_of_right : right_sort:ZSort.t -> ZDatatype.const
+  val _create_sort_name : left_sort:ZSort.t -> right_sort:ZSort.t -> string
+
+  val create_sort : left_sort:ZSort.t -> right_sort:ZSort.t -> ZSort.t
+
+  val create_left : left_content:ZExpr.t -> right_sort:ZSort.t -> t
+  val create_right : left_sort:ZSort.t -> right_content:ZExpr.t -> t
+  val read_left : t -> ZExpr.t
+  val read_right : t -> ZExpr.t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+
+  val is_left : t -> ZBool.t
+  val is_right : t -> ZBool.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Lists                                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZList : sig
+  type t = ZExpr.t
+
+  val _create_const_of_nil : ZDatatype.const
+  val _create_const_of_cons : content_sort:ZSort.t -> ZDatatype.const
+  val _create_sort_name : content_sort:ZSort.t -> string
+
+  val create_sort : content_sort:ZSort.t -> ZSort.t
+
+  val create : content_sort:ZSort.t -> t
+  val read_head : t -> ZExpr.t
+  val read_tail : t -> t
+  val update : t -> content:ZExpr.t -> t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+
+  val is_nil : t -> ZBool.t
+  val is_cons : t -> ZBool.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Maps                                                                      *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZMap : sig
+  type t = ZExpr.t
+
+  val _count_map : int ref
+  val _create_name : key_sort:ZSort.t -> value_sort:ZSort.t -> string
+
+  val create_sort : key_sort:ZSort.t -> value_sort:ZSort.t -> ZSort.t
+
+  val read_default_value : t -> ZExpr.t
+
+  val create : key_sort:ZSort.t -> value_sort:ZSort.t -> t
+  val read_value : key:ZExpr.t -> map:t -> ZExpr.t
+  val read_exist : key:ZExpr.t -> map:t -> ZBool.t
+  val update : key:ZExpr.t -> value:ZExpr.t -> map:t -> t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Sets                                                                      *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Operations                                                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZOperation : sig
+  type t = ZExpr.t
+  
+  val sort : ZSort.t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Contracts                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZContract : sig
+  type t = ZExpr.t
+  
+  val sort : ZSort.t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Lambdas                                                                   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZLambda : sig
+  type t = ZExpr.t
+  
+  val sort : ZSort.t
+
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+end
 
 
 (*****************************************************************************)
@@ -320,6 +518,40 @@ val string_of_solver : solver -> string
 (*****************************************************************************)
 (*****************************************************************************)
 
-val create_evaluation : model -> z_expr -> z_expr option
+module ZModel : sig
+  type t = Z3.Model.model
 
-val string_of_model : model -> string
+  val eval : ZExpr.t -> model:t -> ZExpr.t option
+
+  val to_string : t -> string
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Solver                                                                    *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZSolver : sig
+  type t = Z3.Solver.solver
+  type validity = VAL | INVAL | UNKNOWN
+  type satisfiability = SAT | UNSAT | UNKNOWN
+
+  val _create : unit -> t
+  val _formula_add : t -> ZFormula.t list -> unit
+  
+  val check_satisfiability : ZFormula.t list -> (satisfiability * ZModel.t option)
+  val check_validity : ZFormula.t list -> (validity * ZModel.t option)
+
+  val is_unknown_sat : satisfiability -> bool
+  val is_sat : satisfiability -> bool
+  val is_unsat : satisfiability -> bool
+  val is_unknown_val : validity -> bool
+  val is_valid : validity -> bool
+  val is_invalid : validity -> bool
+
+  val to_string : t -> string
+  val string_of_satisfiability : satisfiability -> string
+  val string_of_validity : validity -> string
+end

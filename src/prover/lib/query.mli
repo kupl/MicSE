@@ -24,7 +24,7 @@ type t = {
 and status =
   | Q_proven
   | Q_nonproven
-  | Q_unproven of (Smt.z_expr * Smt.z_expr) option
+  | Q_unproven of Smt.ZModel.t option
 
 val compare_query : t -> t -> int
 
@@ -32,12 +32,6 @@ val query_id : int ref
 
 val create_query_id : unit -> int
 
-val create_status_proven : status
-
-val create_status_nonproven : status
-
-val create_status_unproven : (Smt.z_expr * Smt.z_expr) option -> status
-
-val create_new_query : formula -> loc -> category -> t
+val create_new_query : formula -> loc:loc -> category:category -> t
 
 val update_status : t -> status -> t

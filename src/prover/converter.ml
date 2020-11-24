@@ -365,7 +365,7 @@ let sp : convert_env -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vl
       (f', qs)
   | BI_assert (c, loc, ctg) ->
       let formula = Vlang.Formula.VF_imply (f, (convert_cond cenv c)) in
-      let query = Query.create_new_query formula loc ctg in
+      let query = Query.create_new_query formula ~loc:loc ~category:ctg in
       (f, (query::qs))
   | BI_assign (v, e) ->
       let e_f = create_expr_of_cfgexpr cenv e in
