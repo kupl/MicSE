@@ -339,7 +339,7 @@ module Expr = struct
       (*************************************************************************)
       (* Integer                                                               *)
       (*************************************************************************)
-      | V_lit_int zn        -> ""     ^ (zn |> Z.to_string)
+      | V_lit_int zn        -> "I_"   ^ (zn |> Z.to_string)
       | V_neg_ni e1         -> "NEG(" ^ (e1 |> ts) ^ ")"
       | V_neg_ii e1         -> "NEG(" ^ (e1 |> ts) ^ ")"
       | V_not_ni e1         -> "NOT(" ^ (e1 |> ts) ^ ")"
@@ -361,7 +361,7 @@ module Expr = struct
       (*************************************************************************)
       (* Natural Number                                                        *)
       (*************************************************************************)
-      | V_lit_nat zn          -> ""         ^ (zn |> Z.to_string)
+      | V_lit_nat zn          -> "N_"       ^ (zn |> Z.to_string)
       | V_abs_in e1           -> "ABS("     ^ (e1 |> ts) ^ ")"
       | V_add_nnn (e1, e2)    -> "ADD("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_mul_nnn (e1, e2)    -> "MUL("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
@@ -380,14 +380,14 @@ module Expr = struct
       (*************************************************************************)
       (* String                                                                *)
       (*************************************************************************)
-      | V_lit_string str      -> ""         ^ str
+      | V_lit_string str      -> "S_"       ^ str
       | V_concat_sss (e1, e2) -> "CONCAT("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_concat_list_s e1    -> "CONCAT("  ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
       (* Bytes                                                                 *)
       (*************************************************************************)
-      | V_lit_bytes str       -> ""         ^ str
+      | V_lit_bytes str       -> "B_"       ^ str
       | V_concat_bbb (e1, e2) -> "CONCAT("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_concat_list_b e1    -> "CONCAT("  ^ (e1 |> ts) ^ ")"
       | V_pack e1             -> "PACK("    ^ (e1 |> ts) ^ ")"
@@ -398,7 +398,7 @@ module Expr = struct
       (*************************************************************************)
       (* Mutez                                                                 *)
       (*************************************************************************)
-      | V_lit_mutez zn      -> ""         ^ (zn |> Z.to_string)
+      | V_lit_mutez zn      -> "M_"       ^ (zn |> Z.to_string)
       | V_amount            -> "AMOUNT"
       | V_balance           -> "BALANCE"
       | V_add_mmm (e1, e2)  -> "ADD("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
@@ -409,7 +409,7 @@ module Expr = struct
       (*************************************************************************)
       (* Bool                                                                  *)
       (*************************************************************************)
-      | V_lit_bool b                    -> ""                 ^ (b |> string_of_bool)
+      | V_lit_bool b                    -> "B_"               ^ (b |> string_of_bool)
       | V_not_bb e1                     -> "NOT("             ^ (e1 |> ts) ^ ")"
       | V_and_bbb (e1, e2)              -> "AND("             ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_or_bbb (e1, e2)               -> "OR("              ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
@@ -428,14 +428,14 @@ module Expr = struct
       (*************************************************************************)
       (* Key Hash                                                              *)
       (*************************************************************************)
-      | V_lit_key_hash str  -> ""           ^ str
+      | V_lit_key_hash str  -> "K_"         ^ str
       | V_hash_key e1       -> "HASH_KEY("  ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
       (* Timestamp                                                             *)
       (*************************************************************************)
-      | V_lit_timestamp_str str -> ""     ^ str
-      | V_lit_timestamp_sec zn  -> "T"    ^ (zn |> Z.to_string)
+      | V_lit_timestamp_str str -> "T_"   ^ str
+      | V_lit_timestamp_sec zn  -> "T_"   ^ (zn |> Z.to_string)
       | V_now                   -> "NOW"
       | V_add_tit (e1, e2)      -> "ADD(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_add_itt (e1, e2)      -> "ADD(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
@@ -452,7 +452,7 @@ module Expr = struct
       (*************************************************************************)
       (* Key                                                                   *)
       (*************************************************************************)
-      | V_lit_key str -> str
+      | V_lit_key str -> "K_" ^ str
   
       (*************************************************************************)
       (* Unit                                                                  *)
@@ -463,7 +463,7 @@ module Expr = struct
       (*************************************************************************)
       (* Signature                                                             *)
       (*************************************************************************)
-      | V_lit_signature_str str         -> ""           ^ str
+      | V_lit_signature_str str         -> "S_"         ^ str
       | V_lit_signature_signed (e1, e2) -> "SIGNATURE(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
   
       (*************************************************************************)
@@ -489,8 +489,8 @@ module Expr = struct
       (*************************************************************************)
       (* List                                                                  *)
       (*************************************************************************)
-      | V_lit_list (_, el)  -> "["        ^ (el |> Core.List.map ~f:ts |> Core.String.concat ~sep: "; ") ^ "]"
-      | V_nil _             -> "[]"
+      | V_lit_list (_, el)  -> "L_["      ^ (el |> Core.List.map ~f:ts |> Core.String.concat ~sep: "; ") ^ "]"
+      | V_nil _             -> "L_[]"
       | V_cons (e1, e2)     -> "CONS("    ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_tl_l e1           -> "TL("      ^ (e1 |> ts) ^ ")"
       | V_append_l (e1, e2) -> "APPEND("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
@@ -498,8 +498,8 @@ module Expr = struct
       (*************************************************************************)
       (* Set                                                                   *)
       (*************************************************************************)
-      | V_lit_set (_, es)           -> "SET{"     ^ (es |> Core.Set.Poly.to_list |> Core.List.map ~f:ts |> Core.String.concat ~sep: "; ") ^ "}"
-      | V_empty_set _               -> "SET{}"
+      | V_lit_set (_, es)           -> "S_{"      ^ (es |> Core.Set.Poly.to_list |> Core.List.map ~f:ts |> Core.String.concat ~sep: "; ") ^ "}"
+      | V_empty_set _               -> "S_{}"
       | V_update_xbss (e1, e2, e3)  -> "UPDATE("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
       | V_tl_s e1                   -> "TL("      ^ (e1 |> ts) ^ ")"
   
@@ -545,23 +545,23 @@ module Expr = struct
       (*************************************************************************)
       (* Map                                                                   *)
       (*************************************************************************)
-      | V_lit_map (_, _, em)        -> "MAP{"   ^ (em |> Core.Map.Poly.to_alist |> Core.List.map ~f:(fun (k, v) -> (k |> ts) ^ "|->" ^ (v |> ts)) |> Core.String.concat ~sep:"; ") ^ "}"
-      | V_empty_map (_, _)          -> "MAP{}"
+      | V_lit_map (_, _, em)        -> "M_{"    ^ (em |> Core.Map.Poly.to_alist |> Core.List.map ~f:(fun (k, v) -> (k |> ts) ^ "|->" ^ (v |> ts)) |> Core.String.concat ~sep:"; ") ^ "}"
+      | V_empty_map (_, _)          -> "M_{}"
       | V_update_xomm (e1, e2, e3)  -> "UPDATE" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
       | V_tl_m e1                   -> "TL("    ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
       (* Big Map                                                               *)
       (*************************************************************************)
-      | V_lit_big_map  (_, _, em)    -> "MAP{"    ^ (em |> Core.Map.Poly.to_alist |> Core.List.map ~f:(fun (k, v) -> (k |> ts) ^ "|->" ^ (v |> ts)) |> Core.String.concat ~sep:"; ") ^ "}"
-      | V_empty_big_map (_, _)       -> "MAP{}"
+      | V_lit_big_map  (_, _, em)    -> "M_{"     ^ (em |> Core.Map.Poly.to_alist |> Core.List.map ~f:(fun (k, v) -> (k |> ts) ^ "|->" ^ (v |> ts)) |> Core.String.concat ~sep:"; ") ^ "}"
+      | V_empty_big_map (_, _)       -> "M_{}"
       | V_update_xobmbm (e1, e2, e3) -> "UPDATE"  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
       | V_tl_bm e1                   -> "TL("     ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
       (* Chain Id                                                              *)
       (*************************************************************************)
-      | V_lit_chain_id str  -> ""         ^ str
+      | V_lit_chain_id str  -> "C_"       ^ str
       | V_chain_id          -> "CHAIN_ID"
     end
 end (* module Expr end *)
@@ -605,18 +605,18 @@ module Formula = struct
       | VF_eq (e1, e2)    -> "("      ^ (e1 |> Expr.to_string) ^ "=" ^ (e2 |> Expr.to_string) ^ ")"
       | VF_imply (e1, e2) -> "("      ^ (e1 |> ts) ^ "->" ^ (e2 |> ts) ^ ")"
       (* MicSE-Cfg Specific Boolean *)  
-      | VF_mich_if e1                 -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "True" ^ ")"
-      | VF_mich_if_none e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "NONE" ^ ")"
-      | VF_mich_if_left e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "LEFT(_)" ^ ")"
-      | VF_mich_if_cons e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "CONS(_,_)" ^ ")"
-      | VF_mich_loop e1               -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "True" ^ ")"
-      | VF_mich_loop_left e1          -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "LEFT(_)" ^ ")"
-      | VF_mich_map_l e1              -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "[]" ^ ")"
-      | VF_mich_map_m e1              -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "MAP{}" ^ ")"
-      | VF_mich_iter_l e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "[]" ^ ")"
-      | VF_mich_iter_s e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "SET{}" ^ ")"
-      | VF_mich_iter_m e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "MAP{}" ^ ")"
-      | VF_mich_micse_check_value e1  -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "True" ^ ")"
+      | VF_mich_if e1                 -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "B_True"     ^ ")"
+      | VF_mich_if_none e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "NONE"       ^ ")"
+      | VF_mich_if_left e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "LEFT(_)"    ^ ")"
+      | VF_mich_if_cons e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "CONS(_,_)"  ^ ")"
+      | VF_mich_loop e1               -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "B_True"     ^ ")"
+      | VF_mich_loop_left e1          -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "LEFT(_)"    ^ ")"
+      | VF_mich_map_l e1              -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "L_[]"       ^ ")"
+      | VF_mich_map_m e1              -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "M_{}"       ^ ")"
+      | VF_mich_iter_l e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "L_[]"       ^ ")"
+      | VF_mich_iter_s e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "S_{}"       ^ ")"
+      | VF_mich_iter_m e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "M_{}"       ^ ")"
+      | VF_mich_micse_check_value e1  -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "True"       ^ ")"
     end
 end (* module Formula end *)
 
