@@ -29,6 +29,35 @@ module Ty = struct
     | T_map       of t * t
     | T_big_map   of t * t
     | T_chain_id
+
+  let rec to_string : t -> string
+  = let ts = to_string in (* syntax sugar *)
+    fun t -> begin
+    match t with
+    | T_int               -> "Int"
+    | T_nat               -> "Nat"
+    | T_string            -> "String"
+    | T_bytes             -> "Bytes"
+    | T_mutez             -> "Mutez"
+    | T_bool              -> "Bool"
+    | T_key_hash          -> "Key_Hash"
+    | T_timestamp         -> "Timestamp"
+    | T_address           -> "Address"
+    | T_key               -> "Key"
+    | T_unit              -> "Unit"
+    | T_signature         -> "Signature"
+    | T_option t1         -> "Option("    ^ (t1 |> ts) ^ ")"
+    | T_list t1           -> "List("      ^ (t1 |> ts) ^ ")"
+    | T_set t1            -> "Set("       ^ (t1 |> ts) ^ ")"
+    | T_operation         -> "Operation"
+    | T_contract t1       -> "Contract("  ^ (t1 |> ts) ^ ")"
+    | T_pair (t1, t2)     -> "Pair("      ^ (t1 |> ts) ^ "," ^ (t2 |> ts) ^ ")"
+    | T_or (t1, t2)       -> "Or("        ^ (t1 |> ts) ^ "," ^ (t2 |> ts) ^ ")"
+    | T_lambda (t1, t2)   -> "Lambda("    ^ (t1 |> ts) ^ "," ^ (t2 |> ts) ^ ")"
+    | T_map (t1, t2)      -> "Map("       ^ (t1 |> ts) ^ "," ^ (t2 |> ts) ^ ")"
+    | T_big_map (t1, t2)  -> "Big_Map("   ^ (t1 |> ts) ^ "," ^ (t2 |> ts) ^ ")"
+    | T_chain_id          -> "Chain_Id"
+  end
 end
 
 
@@ -288,6 +317,253 @@ module Expr = struct
     | V_lit_chain_id of string
     | V_chain_id
 
+  let rec to_string : t -> string
+  = let ts = to_string in (* syntax sugar *)
+    fun e -> begin
+      match e with
+      (*************************************************************************)
+      (* Variable & Polymorphic                                                *)
+      (*************************************************************************)
+      | V_var (_, v)        -> ""           ^ v
+      | V_car e1            -> "CAR("       ^ (e1 |> ts) ^ ")"
+      | V_cdr e1            -> "CDR("       ^ (e1 |> ts) ^ ")"
+      | V_unlift_option e1  -> "UNOPTION("  ^ (e1 |> ts) ^ ")"
+      | V_unlift_left e1    -> "UNLEFT("    ^ (e1 |> ts) ^ ")"
+      | V_unlift_right e1   -> "UNRIGHT("   ^ (e1 |> ts) ^ ")"
+      | V_hd_l e1           -> "HD"         ^ (e1 |> ts) ^ ")"
+      | V_hd_s e1           -> "HD"         ^ (e1 |> ts) ^ ")"
+      | V_exec (e1, e2)     -> "EXEC"       ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_dup e1            -> ""           ^ (e1 |> ts)
+      | V_itself e1         -> ""           ^ (e1 |> ts)
+  
+      (*************************************************************************)
+      (* Integer                                                               *)
+      (*************************************************************************)
+      | V_lit_int zn        -> ""     ^ (zn |> Z.to_string)
+      | V_neg_ni e1         -> "NEG(" ^ (e1 |> ts) ^ ")"
+      | V_neg_ii e1         -> "NEG(" ^ (e1 |> ts) ^ ")"
+      | V_not_ni e1         -> "NOT(" ^ (e1 |> ts) ^ ")"
+      | V_not_ii e1         -> "NOT(" ^ (e1 |> ts) ^ ")"
+      | V_add_nii (e1, e2)  -> "ADD(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_add_ini (e1, e2)  -> "ADD(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_add_iii (e1, e2)  -> "ADD(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_sub_nni (e1, e2)  -> "SUB(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_sub_nii (e1, e2)  -> "SUB(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_sub_ini (e1, e2)  -> "SUB(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_sub_iii (e1, e2)  -> "SUB(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_sub_tti (e1, e2)  -> "SUB(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_mul_nii (e1, e2)  -> "MUL(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_mul_ini (e1, e2)  -> "MUL(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_mul_iii (e1, e2)  -> "MUL(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_compare (e1, e2)  -> "CMP(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_int_of_nat e1     -> "NAT(" ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Natural Number                                                        *)
+      (*************************************************************************)
+      | V_lit_nat zn          -> ""         ^ (zn |> Z.to_string)
+      | V_abs_in e1           -> "ABS("     ^ (e1 |> ts) ^ ")"
+      | V_add_nnn (e1, e2)    -> "ADD("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_mul_nnn (e1, e2)    -> "MUL("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_shiftL_nnn (e1, e2) -> "SHIFTL("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_shiftR_nnn (e1, e2) -> "SHIFTR("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_and_nnn (e1, e2)    -> "AND("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_and_inn (e1, e2)    -> "AND("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_or_nnn (e1, e2)     -> "OR("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_xor_nnn (e1, e2)    -> "XOR("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_size_s e1           -> "SIZE("    ^ (e1 |> ts) ^ ")"
+      | V_size_m e1           -> "SIZE("    ^ (e1 |> ts) ^ ")"
+      | V_size_l e1           -> "SIZE("    ^ (e1 |> ts) ^ ")"
+      | V_size_str e1         -> "SIZE("    ^ (e1 |> ts) ^ ")"
+      | V_size_b e1           -> "SIZE("    ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* String                                                                *)
+      (*************************************************************************)
+      | V_lit_string str      -> ""         ^ str
+      | V_concat_sss (e1, e2) -> "CONCAT("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_concat_list_s e1    -> "CONCAT("  ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Bytes                                                                 *)
+      (*************************************************************************)
+      | V_lit_bytes str       -> ""         ^ str
+      | V_concat_bbb (e1, e2) -> "CONCAT("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_concat_list_b e1    -> "CONCAT("  ^ (e1 |> ts) ^ ")"
+      | V_pack e1             -> "PACK("    ^ (e1 |> ts) ^ ")"
+      | V_blake2b e1          -> "BLAKE2B(" ^ (e1 |> ts) ^ ")"
+      | V_sha256 e1           -> "SHA256("  ^ (e1 |> ts) ^ ")"
+      | V_sha512 e1           -> "SHA512("  ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Mutez                                                                 *)
+      (*************************************************************************)
+      | V_lit_mutez zn      -> ""         ^ (zn |> Z.to_string)
+      | V_amount            -> "AMOUNT"
+      | V_balance           -> "BALANCE"
+      | V_add_mmm (e1, e2)  -> "ADD("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_sub_mmm (e1, e2)  -> "SUB("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_mul_mnm (e1, e2)  -> "MUL("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_mul_nmm (e1, e2)  -> "MUL("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Bool                                                                  *)
+      (*************************************************************************)
+      | V_lit_bool b                    -> ""                 ^ (b |> string_of_bool)
+      | V_not_bb e1                     -> "NOT("             ^ (e1 |> ts) ^ ")"
+      | V_and_bbb (e1, e2)              -> "AND("             ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_or_bbb (e1, e2)               -> "OR("              ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_xor_bbb (e1, e2)              -> "XOR("             ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_eq_ib e1                      -> "EQ("              ^ (e1 |> ts) ^ ")"
+      | V_neq_ib e1                     -> "NEQ("             ^ (e1 |> ts) ^ ")"
+      | V_lt_ib e1                      -> "LT("              ^ (e1 |> ts) ^ ")"
+      | V_gt_ib e1                      -> "GT("              ^ (e1 |> ts) ^ ")"
+      | V_leq_ib e1                     -> "LEQ("             ^ (e1 |> ts) ^ ")"
+      | V_geq_ib e1                     -> "GEQ("             ^ (e1 |> ts) ^ ")"
+      | V_mem_xsb (e1, e2)              -> "MEM("             ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_mem_xmb (e1, e2)              -> "MEM("             ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_mem_xbmb (e1, e2)             -> "MEM("             ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_check_signature (e1, e2, e3)  -> "CHECK_SIGNATURE(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Key Hash                                                              *)
+      (*************************************************************************)
+      | V_lit_key_hash str  -> ""           ^ str
+      | V_hash_key e1       -> "HASH_KEY("  ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Timestamp                                                             *)
+      (*************************************************************************)
+      | V_lit_timestamp_str str -> ""     ^ str
+      | V_lit_timestamp_sec zn  -> "T"    ^ (zn |> Z.to_string)
+      | V_now                   -> "NOW"
+      | V_add_tit (e1, e2)      -> "ADD(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_add_itt (e1, e2)      -> "ADD(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_sub_tit (e1, e2)      -> "SUB(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Address                                                               *)
+      (*************************************************************************)
+      | V_lit_address e1          -> "ADDRESS(" ^ (e1 |> ts) ^ ")"
+      | V_source                  -> "SOURCE"
+      | V_sender                  -> "SENDER"
+      | V_address_of_contract e1  -> "ADDRESS(" ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Key                                                                   *)
+      (*************************************************************************)
+      | V_lit_key str -> str
+  
+      (*************************************************************************)
+      (* Unit                                                                  *)
+      (*************************************************************************)
+      (* | V_lit_unit : t_unit t *) (* V_unit has the same feature. *)
+      | V_unit -> "UNIT"
+  
+      (*************************************************************************)
+      (* Signature                                                             *)
+      (*************************************************************************)
+      | V_lit_signature_str str         -> ""           ^ str
+      | V_lit_signature_signed (e1, e2) -> "SIGNATURE(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Option                                                                *)
+      (*************************************************************************)
+      (* | V_lit_option : 'a t option -> 'a t_option t *) (* V_some and V_none has the same feature. *)
+      | V_some e1                     -> "SOME("      ^ (e1 |> ts) ^ ")"
+      | V_none _                      -> "NONE"
+      | V_ediv_nnnn (e1, e2)          -> "EDIV("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_ediv_niin (e1, e2)          -> "EDIV("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_ediv_inin (e1, e2)          -> "EDIV("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_ediv_iiin (e1, e2)          -> "EDIV("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_ediv_mnmm (e1, e2)          -> "EDIV("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_ediv_mmnm (e1, e2)          -> "EDIV("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_get_xmoy (e1, e2)           -> "GET("       ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_get_xbmo (e1, e2)           -> "GET("       ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_slice_nnso (e1, e2, e3)     -> "SLICE("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
+      | V_slice_nnbo (e1, e2, e3)     -> "SLICE("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
+      | V_unpack (_, e1)              -> "UNPACK("    ^ (e1 |> ts) ^ ")"
+      | V_contract_of_address (_, e1) -> "CONTRACT("  ^ (e1 |> ts) ^ ")"
+      | V_isnat e1                    -> "ISNAT("     ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* List                                                                  *)
+      (*************************************************************************)
+      | V_lit_list (_, el)  -> "["        ^ (el |> Core.List.map ~f:ts |> Core.String.concat ~sep: "; ") ^ "]"
+      | V_nil _             -> "[]"
+      | V_cons (e1, e2)     -> "CONS("    ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_tl_l e1           -> "TL("      ^ (e1 |> ts) ^ ")"
+      | V_append_l (e1, e2) -> "APPEND("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Set                                                                   *)
+      (*************************************************************************)
+      | V_lit_set (_, es)           -> "SET{"     ^ (es |> Core.Set.Poly.to_list |> Core.List.map ~f:ts |> Core.String.concat ~sep: "; ") ^ "}"
+      | V_empty_set _               -> "SET{}"
+      | V_update_xbss (e1, e2, e3)  -> "UPDATE("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
+      | V_tl_s e1                   -> "TL("      ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Operation                                                             *)
+      (*************************************************************************)
+      | V_create_contract (_, _, e1, e2, e3, e4)  -> "CREATE_CONTRACT(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ "," ^ (e4 |> ts) ^ ")"
+      | V_transfer_tokens (e1, e2, e3)            -> "TRANSFER_TOKEN("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
+      | V_set_delegate e1                         -> "SET_DELEGATE"     ^ (e1 |> ts)
+  
+      (*************************************************************************)
+      (* Contract                                                              *)
+      (*************************************************************************)
+      | V_lit_contract (e1, e2, e3, e4, e5) -> "CONTRACT("        ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ "," ^ (e4 |> ts) ^ "," ^ (e5 |> ts) ^ ")"
+      | V_self _                            -> "SELF"
+      | V_implicit_account e1               -> "IMPLICIT_ACCOUNT" ^ (e1 |> ts)
+  
+      (*************************************************************************)
+      (* Pair                                                                  *)
+      (*************************************************************************)
+      | V_pair (e1, e2) -> "PAIR("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_hd_m e1       -> "HD("    ^ (e1 |> ts) ^ ")"
+      | V_hd_bm e1      -> "HD("    ^ (e1 |> ts) ^ ")"
+      | V_hdtl_l e1     -> "HDTL("  ^ (e1 |> ts) ^ ")"
+      | V_hdtl_s e1     -> "HDTL("  ^ (e1 |> ts) ^ ")"
+      | V_hdtl_m e1     -> "HDTL("  ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Or                                                                    *)
+      (*************************************************************************)
+      | V_left (_, e1)  -> "LEFT("  ^ (e1 |> ts) ^ ")"
+      | V_right (_, e1) -> "RIGHT(" ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Lambda                                                                *)
+      (*************************************************************************)
+      | V_lit_program pgm         -> "LAMBDA("          ^ (pgm |> PreLib.Mich.string_of_pgm_ol) ^ ")"
+      | V_lambda_id (_, _, id)    -> "LAMBDA("          ^ (id |> string_of_int) ^ ")"
+      | V_lit_lambda (_, _, code) -> "LAMBDA("          ^ (code |> PreLib.Mich.string_of_instt_ol) ^ ")"
+      | V_lambda_unknown (_, _)   -> "LAMBDA(UNKNOWN)"
+      | V_lambda_closure (e1, e2) -> "LAMBDA("          ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Map                                                                   *)
+      (*************************************************************************)
+      | V_lit_map (_, _, em)        -> "MAP{"   ^ (em |> Core.Map.Poly.to_alist |> Core.List.map ~f:(fun (k, v) -> (k |> ts) ^ "|->" ^ (v |> ts)) |> Core.String.concat ~sep:"; ") ^ "}"
+      | V_empty_map (_, _)          -> "MAP{}"
+      | V_update_xomm (e1, e2, e3)  -> "UPDATE" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
+      | V_tl_m e1                   -> "TL("    ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Big Map                                                               *)
+      (*************************************************************************)
+      | V_lit_big_map  (_, _, em)    -> "MAP{"    ^ (em |> Core.Map.Poly.to_alist |> Core.List.map ~f:(fun (k, v) -> (k |> ts) ^ "|->" ^ (v |> ts)) |> Core.String.concat ~sep:"; ") ^ "}"
+      | V_empty_big_map (_, _)       -> "MAP{}"
+      | V_update_xobmbm (e1, e2, e3) -> "UPDATE"  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
+      | V_tl_bm e1                   -> "TL("     ^ (e1 |> ts) ^ ")"
+  
+      (*************************************************************************)
+      (* Chain Id                                                              *)
+      (*************************************************************************)
+      | V_lit_chain_id str  -> ""         ^ str
+      | V_chain_id          -> "CHAIN_ID"
+    end
 end (* module Expr end *)
 
 
@@ -316,6 +592,32 @@ module Formula = struct
   | VF_mich_iter_m of Expr.t (* ('k, 'v) map -> formula *)
   | VF_mich_micse_check_value of Expr.t (* bool -> formula *)
 
+  let rec to_string : t -> string
+  = let ts = to_string in (* syntax sugar *)
+    fun f -> begin
+      match f with
+      (* Logical Formula *)
+      | VF_true           -> "True"
+      | VF_false          -> "False"
+      | VF_not f1         -> "!"      ^ (f1 |> ts) ^ ""
+      | VF_and fl         -> ""       ^ (fl |> Core.List.map ~f:ts |> Core.String.concat ~sep:"/\\")
+      | VF_or fl          -> ""       ^ (fl |> Core.List.map ~f:ts |> Core.String.concat ~sep:"\\/")
+      | VF_eq (e1, e2)    -> "("      ^ (e1 |> Expr.to_string) ^ "=" ^ (e2 |> Expr.to_string) ^ ")"
+      | VF_imply (e1, e2) -> "("      ^ (e1 |> ts) ^ "->" ^ (e2 |> ts) ^ ")"
+      (* MicSE-Cfg Specific Boolean *)  
+      | VF_mich_if e1                 -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "True" ^ ")"
+      | VF_mich_if_none e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "NONE" ^ ")"
+      | VF_mich_if_left e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "LEFT(_)" ^ ")"
+      | VF_mich_if_cons e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "CONS(_,_)" ^ ")"
+      | VF_mich_loop e1               -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "True" ^ ")"
+      | VF_mich_loop_left e1          -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "LEFT(_)" ^ ")"
+      | VF_mich_map_l e1              -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "[]" ^ ")"
+      | VF_mich_map_m e1              -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "MAP{}" ^ ")"
+      | VF_mich_iter_l e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "[]" ^ ")"
+      | VF_mich_iter_s e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "SET{}" ^ ")"
+      | VF_mich_iter_m e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "MAP{}" ^ ")"
+      | VF_mich_micse_check_value e1  -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "True" ^ ")"
+    end
 end (* module Formula end *)
 
 

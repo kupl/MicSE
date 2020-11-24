@@ -5,30 +5,32 @@
 (*****************************************************************************)
 
 module Ty : sig
-    type t =
-      | T_int
-      | T_nat
-      | T_string
-      | T_bytes
-      | T_mutez
-      | T_bool
-      | T_key_hash
-      | T_timestamp
-      | T_address
-      | T_key
-      | T_unit
-      | T_signature
-      | T_option    of t
-      | T_list      of t
-      | T_set       of t
-      | T_operation
-      | T_contract  of t
-      | T_pair      of t * t
-      | T_or        of t * t
-      | T_lambda    of t * t
-      | T_map       of t * t
-      | T_big_map   of t * t
-      | T_chain_id
+  type t =
+    | T_int
+    | T_nat
+    | T_string
+    | T_bytes
+    | T_mutez
+    | T_bool
+    | T_key_hash
+    | T_timestamp
+    | T_address
+    | T_key
+    | T_unit
+    | T_signature
+    | T_option    of t
+    | T_list      of t
+    | T_set       of t
+    | T_operation
+    | T_contract  of t
+    | T_pair      of t * t
+    | T_or        of t * t
+    | T_lambda    of t * t
+    | T_map       of t * t
+    | T_big_map   of t * t
+    | T_chain_id
+    
+  val to_string : t -> string
 end
 
 
@@ -288,6 +290,7 @@ module Expr : sig
     | V_lit_chain_id of string
     | V_chain_id (* chain_id -> chain_id *)
 
+  val to_string : t -> string
 end (* module Expr end *)
 
 
@@ -316,6 +319,7 @@ module Formula : sig
   | VF_mich_iter_m of Expr.t (* ('k, 'v) map -> formula *)
   | VF_mich_micse_check_value of Expr.t (* bool -> formula *)
 
+  val to_string : t -> string
 end (* module Formula end *)
 
 
