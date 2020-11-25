@@ -51,6 +51,20 @@ module ProverUtil = struct
     | Some param, Some stg -> ((param |> Smt.ZExpr.to_string), (stg |> Smt.ZExpr.to_string))
     | _, _ -> raise (Failure "Prover.ProverUtil.read_param_storage: wrong evaluation of parameter and storage")
   end
+
+  let read_post_storage : Smt.ZModel.t -> bp_list:Bp.lst -> cfg:Pre.Lib.Cfg.t -> string
+  =fun model ~bp_list ~cfg -> begin
+    let operation_stg = bp_list.exit.var |>
+                        Option.get |>
+                        Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |>
+                        Vlang.TypeUtil.ty_of_mty |>
+                        Verifier.smtsort_of_vlangtyp |>
+                        Smt.ZExpr.create_var ~name:(bp_list.exit.var |> Option.get) in
+    let _ = print_endline (Smt.ZExpr.to_string operation_stg) in
+    match (operation_stg |> Smt.ZPair.read_snd |> Smt.ZModel.eval ~model:model) with
+    | Some stg -> stg |> Smt.ZExpr.to_string
+    | _ -> raise (Failure "Prover.ProverUtil.read_post_storage: wrong evaluation of post storage")
+  end
 end
 
 let rec work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> timer -> Query.t list
@@ -122,7 +136,7 @@ let prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
     | Q_proven -> begin
         let _ = print_endline ("\t- Status: Proven") in
         let _ = if !Utils.Options.flag_vc_print
-                then print_endline ("\t- VC: " ^ (Vlang.string_of_formula q.query)) in
+                then print_endline ("\t- VC: " ^ (Vlang.Formula.to_string q.query)) in
         ()
       end
     | Q_unproven model_opt -> begin

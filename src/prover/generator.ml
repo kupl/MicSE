@@ -44,7 +44,14 @@ module Stg = struct
   =fun ~data ~cfg -> equal_to_expr ~expr:(Converter.create_expr_of_michdata data (read_typt ~cfg:cfg)) ~cfg:cfg
 
   let equal_to_ps_or_os : ps_os:Vlang.var -> cfg:cfg -> Vlang.t
-  =fun ~ps_os ~cfg -> equal_to_expr ~expr:(Vlang.Expr.V_car (Vlang.Expr.V_var ((read_typt ~cfg:cfg), ps_os))) ~cfg:cfg
+  =fun ~ps_os ~cfg -> begin
+    equal_to_expr
+      ~expr:(Vlang.Expr.V_cdr (Vlang.Expr.V_var (
+          (Pre.Lib.Cfg.param_storage_name |> Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |> Vlang.TypeUtil.ty_of_mty),
+          ps_os
+        )))
+      ~cfg:cfg
+  end
 end
 
 module TrxInv = struct

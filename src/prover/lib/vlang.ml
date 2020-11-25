@@ -606,10 +606,10 @@ module Formula = struct
       | VF_true           -> "True"
       | VF_false          -> "False"
       | VF_not f1         -> "!"      ^ (f1 |> ts) ^ ""
-      | VF_and fl         -> ""       ^ (fl |> Core.List.map ~f:ts |> Core.String.concat ~sep:"/\\")
-      | VF_or fl          -> ""       ^ (fl |> Core.List.map ~f:ts |> Core.String.concat ~sep:"\\/")
+      | VF_and fl         -> ""       ^ (fl |> Core.List.map ~f:ts |> Core.String.concat ~sep:" /\\ ")
+      | VF_or fl          -> ""       ^ (fl |> Core.List.map ~f:ts |> Core.String.concat ~sep:" \\/ ")
       | VF_eq (e1, e2)    -> "("      ^ (e1 |> ets) ^ "=" ^ (e2 |> ets) ^ ")"
-      | VF_imply (e1, e2) -> "("      ^ (e1 |> ts) ^ "->" ^ (e2 |> ts) ^ ")"
+      | VF_imply (e1, e2) -> "("      ^ (e1 |> ts) ^ " -> " ^ (e2 |> ts) ^ ")"
       (* MicSE-Cfg Specific Boolean *)  
       | VF_mich_if e1                 -> "("  ^ (e1 |> ets) ^ "=" ^ "B_True"     ^ ")"
       | VF_mich_if_none e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "NONE"       ^ ")"
@@ -972,7 +972,7 @@ end (* module TypeUtil end *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-let string_of_formula : t -> string = fun _ -> "Vlang.string_of_formula.UNIMPLEMENTED_TODO" (* TODO *)
+let string_of_formula : t -> string = Formula.to_string
 
 module RecursiveMappingExprTemplate = struct
   (* it maps expr from outer, if outer data-constructor (e.g. V_some _ ) matched, it ignores inside *)
