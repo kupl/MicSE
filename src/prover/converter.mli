@@ -1,4 +1,5 @@
-exception InvalidSituation of PreLib.Cfg.expr
+exception InvalidConversion_Expr of PreLib.Cfg.expr
+exception InvalidConversion_Cond of ProverLib.Bp.cond
 
 val newvar_prefix : string
 val gen_nv : string -> string

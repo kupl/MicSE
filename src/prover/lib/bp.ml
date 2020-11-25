@@ -16,8 +16,8 @@ type cond =
   | BC_is_none of var
   | BC_is_left of var
   | BC_is_cons of var
-  | BC_no_overflow of exp * typ
-  | BC_no_underflow of exp * typ
+  | BC_no_overflow of exp
+  | BC_no_underflow of exp
   | BC_not of cond
 
 let create_cond_is_true : var -> cond
@@ -32,12 +32,6 @@ let create_cond_is_left : var -> cond
 let create_cond_is_cons : var -> cond
 =fun v -> BC_is_cons v
 
-let create_cond_no_overflow : exp -> typ -> cond
-=fun e t -> BC_no_overflow (e, t)
-
-let create_cond_no_underflow : exp -> typ -> cond
-=fun e t -> BC_no_underflow (e, t)
-
 let create_cond_not : cond -> cond
 =fun c -> BC_not c
 
@@ -48,8 +42,8 @@ let rec string_of_cond : cond -> string
   | BC_is_none v -> v ^ "= None"
   | BC_is_left v -> v ^ "= Left x"
   | BC_is_cons v -> v ^ "= Cons (hd tl)"
-  | BC_no_overflow (e, _) -> "(" ^ (Pre.Lib.Cfg.expr_to_str e) ^ ")_no_overflow"
-  | BC_no_underflow (e, _) -> "(" ^ (Pre.Lib.Cfg.expr_to_str e) ^ ")_no_underflow"
+  | BC_no_overflow e -> "(" ^ (Pre.Lib.Cfg.expr_to_str e) ^ ")_no_overflow"
+  | BC_no_underflow e -> "(" ^ (Pre.Lib.Cfg.expr_to_str e) ^ ")_no_underflow"
   | BC_not c -> "!(" ^ (string_of_cond c) ^ ")"
 end
 
@@ -69,9 +63,9 @@ type inst =
 and loc = { entry: vertex; exit: vertex; }
 
 and category = 
-  | Q_mutez_overflow
-  | Q_shift_overflow
-  | Q_assert
+  | Q_mutez_arith_safety
+  | Q_int_nat_shift_safety
+  | Q_assertion
 
 let compare_loc : loc -> loc -> int
 =fun l1 l2 -> begin
@@ -97,15 +91,6 @@ let create_inst_skip : inst
 let create_loc : vertex -> vertex -> loc
 =fun etr ext -> { entry=etr; exit=ext }
 
-let create_category_mutez_overflow : category
-=Q_mutez_overflow
-
-let create_category_shift_overflow : category
-=Q_shift_overflow
-
-let create_category_assertion : category
-=Q_assert
-
 let string_of_inst : inst -> string
 =fun inst -> begin
   match inst with
@@ -118,9 +103,9 @@ end
 let string_of_category : category -> string
 =fun c -> begin
   match c with
-  | Q_mutez_overflow -> "Mutez overflow or underflow"
-  | Q_shift_overflow -> "Logical shift overflow and underflow"
-  | Q_assert -> "Assertion"
+  | Q_mutez_arith_safety -> "Mutez overflow or underflow"
+  | Q_int_nat_shift_safety -> "Logical shift overflow and underflow"
+  | Q_assertion -> "Assertion"
 end
 
 

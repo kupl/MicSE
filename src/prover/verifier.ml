@@ -394,6 +394,11 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
       | VF_mich_iter_s _ -> err vf (* check whether set's size is not 0 *)
       | VF_mich_iter_m _ -> err vf (* check whether map's size is not 0 *)
       | VF_mich_micse_check_value e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
+      (* Custom Formula for verifiying *)
+      | VF_add_mmm_no_overflow (e1, e2) -> Smt.ZMutez.check_add_no_overflow (e1 |> soe) (e2 |> soe)
+      | VF_sub_mmm_no_underflow (e1, e2) -> Smt.ZMutez.check_sub_no_underflow (e1 |> soe) (e2 |> soe)
+      | VF_mul_mnm_no_overflow (e1, e2) -> Smt.ZMutez.check_mul_no_overflow (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
+      | VF_mul_nmm_no_overflow (e1, e2) -> Smt.ZMutez.check_mul_no_overflow (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe)
     with
     | Smt.ZError s -> SMT_Encode_Error_f (vf, s) |> raise
     | e -> e |> raise

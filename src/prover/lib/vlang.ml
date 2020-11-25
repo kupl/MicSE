@@ -591,9 +591,15 @@ module Formula = struct
   | VF_mich_iter_s of Expr.t (* 'a set -> formula *)
   | VF_mich_iter_m of Expr.t (* ('k, 'v) map -> formula *)
   | VF_mich_micse_check_value of Expr.t (* bool -> formula *)
+  (* Custom Formula for verifiying *)
+  | VF_add_mmm_no_overflow of (Expr.t * Expr.t)
+  | VF_sub_mmm_no_underflow of (Expr.t * Expr.t)
+  | VF_mul_mnm_no_overflow of (Expr.t * Expr.t)
+  | VF_mul_nmm_no_overflow of (Expr.t * Expr.t)
 
   let rec to_string : t -> string
-  = let ts = to_string in (* syntax sugar *)
+  = let ts = to_string in   (* syntax sugar *)
+    let ets = Expr.to_string in  (* syntax sugar *)
     fun f -> begin
       match f with
       (* Logical Formula *)
@@ -602,21 +608,26 @@ module Formula = struct
       | VF_not f1         -> "!"      ^ (f1 |> ts) ^ ""
       | VF_and fl         -> ""       ^ (fl |> Core.List.map ~f:ts |> Core.String.concat ~sep:"/\\")
       | VF_or fl          -> ""       ^ (fl |> Core.List.map ~f:ts |> Core.String.concat ~sep:"\\/")
-      | VF_eq (e1, e2)    -> "("      ^ (e1 |> Expr.to_string) ^ "=" ^ (e2 |> Expr.to_string) ^ ")"
+      | VF_eq (e1, e2)    -> "("      ^ (e1 |> ets) ^ "=" ^ (e2 |> ets) ^ ")"
       | VF_imply (e1, e2) -> "("      ^ (e1 |> ts) ^ "->" ^ (e2 |> ts) ^ ")"
       (* MicSE-Cfg Specific Boolean *)  
-      | VF_mich_if e1                 -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "B_True"     ^ ")"
-      | VF_mich_if_none e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "NONE"       ^ ")"
-      | VF_mich_if_left e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "LEFT(_)"    ^ ")"
-      | VF_mich_if_cons e1            -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "CONS(_,_)"  ^ ")"
-      | VF_mich_loop e1               -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "B_True"     ^ ")"
-      | VF_mich_loop_left e1          -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "LEFT(_)"    ^ ")"
-      | VF_mich_map_l e1              -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "L_[]"       ^ ")"
-      | VF_mich_map_m e1              -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "M_{}"       ^ ")"
-      | VF_mich_iter_l e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "L_[]"       ^ ")"
-      | VF_mich_iter_s e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "S_{}"       ^ ")"
-      | VF_mich_iter_m e1             -> "!(" ^ (e1 |> Expr.to_string) ^ "=" ^ "M_{}"       ^ ")"
-      | VF_mich_micse_check_value e1  -> "("  ^ (e1 |> Expr.to_string) ^ "=" ^ "True"       ^ ")"
+      | VF_mich_if e1                 -> "("  ^ (e1 |> ets) ^ "=" ^ "B_True"     ^ ")"
+      | VF_mich_if_none e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "NONE"       ^ ")"
+      | VF_mich_if_left e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "LEFT(_)"    ^ ")"
+      | VF_mich_if_cons e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "CONS(_,_)"  ^ ")"
+      | VF_mich_loop e1               -> "("  ^ (e1 |> ets) ^ "=" ^ "B_True"     ^ ")"
+      | VF_mich_loop_left e1          -> "("  ^ (e1 |> ets) ^ "=" ^ "LEFT(_)"    ^ ")"
+      | VF_mich_map_l e1              -> "!(" ^ (e1 |> ets) ^ "=" ^ "L_[]"       ^ ")"
+      | VF_mich_map_m e1              -> "!(" ^ (e1 |> ets) ^ "=" ^ "M_{}"       ^ ")"
+      | VF_mich_iter_l e1             -> "!(" ^ (e1 |> ets) ^ "=" ^ "L_[]"       ^ ")"
+      | VF_mich_iter_s e1             -> "!(" ^ (e1 |> ets) ^ "=" ^ "S_{}"       ^ ")"
+      | VF_mich_iter_m e1             -> "!(" ^ (e1 |> ets) ^ "=" ^ "M_{}"       ^ ")"
+      | VF_mich_micse_check_value e1  -> "("  ^ (e1 |> ets) ^ "=" ^ "True"       ^ ")"
+      (* Custom Formula for verifiying *)
+      | VF_add_mmm_no_overflow (e1, e2)   -> "NoOverflow_ADD("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_sub_mmm_no_underflow (e1, e2)  -> "NoOUnderflow_ADD("  ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_mul_mnm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_mul_nmm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
     end
 end (* module Formula end *)
 
@@ -1244,6 +1255,11 @@ module RecursiveMappingExprTemplate = struct
     | VF_mich_iter_s e -> VF_mich_iter_s (re e)
     | VF_mich_iter_m e -> VF_mich_iter_m (re e)
     | VF_mich_micse_check_value e -> VF_mich_micse_check_value (re e)
+    (* Custom Formula for verifiying *)
+    | VF_add_mmm_no_overflow (e1, e2) -> VF_add_mmm_no_overflow ((re e1), (re e2))
+    | VF_sub_mmm_no_underflow (e1, e2) -> VF_sub_mmm_no_underflow ((re e1), (re e2))
+    | VF_mul_mnm_no_overflow (e1, e2) -> VF_mul_mnm_no_overflow ((re e1), (re e2))
+    | VF_mul_nmm_no_overflow (e1, e2) -> VF_mul_nmm_no_overflow ((re e1), (re e2))
   end (* function map_formula_outer end *)
 
 end (* module RecursiveMappingExprTemplate end *)

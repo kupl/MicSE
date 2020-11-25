@@ -318,6 +318,11 @@ module Formula : sig
   | VF_mich_iter_s of Expr.t (* 'a set -> formula *)
   | VF_mich_iter_m of Expr.t (* ('k, 'v) map -> formula *)
   | VF_mich_micse_check_value of Expr.t (* bool -> formula *)
+  (* Custom Formula for verifiying *)
+  | VF_add_mmm_no_overflow of (Expr.t * Expr.t)
+  | VF_sub_mmm_no_underflow of (Expr.t * Expr.t)
+  | VF_mul_mnm_no_overflow of (Expr.t * Expr.t)
+  | VF_mul_nmm_no_overflow of (Expr.t * Expr.t)
 
   val to_string : t -> string
 end (* module Formula end *)

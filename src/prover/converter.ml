@@ -1,6 +1,7 @@
 open ProverLib
 
-exception InvalidSituation of PreLib.Cfg.expr
+exception InvalidConversion_Expr of PreLib.Cfg.expr
+exception InvalidConversion_Cond of Bp.cond
 
 let newvar_prefix : string = "#"
 let gen_nv x : string = newvar_prefix ^ x
@@ -105,7 +106,7 @@ let create_expr_of_cfgexpr : convert_env -> PreLib.Cfg.expr -> Vlang.Expr.t
   fun cenv cfgexpr -> begin
   let cvt : PreLib.Cfg.ident -> Vlang.typ = read_type_cfgvar cenv in (* syntax sugar *)
   let cvf : PreLib.Cfg.ident -> Vlang.Expr.t = fun v -> create_var_of_cfgvar cenv (get_cur_varname cenv v) in (* syntax sugar *) (* TODO : reduce redundant procedure, if it is bottleneck : cvf calls cvt *)
-  let err (): 'a = Stdlib.raise (InvalidSituation cfgexpr) in
+  let err (): 'a = Stdlib.raise (InvalidConversion_Expr cfgexpr) in
   match cfgexpr with 
   | E_push (d, t) -> create_expr_of_michdata d (convert_type t)
   | E_car v -> (match cvt v with | T_pair _ -> V_car (cvf v) | _ -> err ())
@@ -363,13 +364,41 @@ let rec convert_cond : convert_env -> Bp.cond -> Vlang.v_formula
 = let open Vlang.Formula in
   let open Bp in
   fun cenv c -> begin
+  let cvt : PreLib.Cfg.ident -> Vlang.typ = read_type_cfgvar cenv in (* syntax sugar *)
+  let cvf : PreLib.Cfg.ident -> Vlang.Expr.t = fun v -> create_var_of_cfgvar cenv (get_cur_varname cenv v) in (* syntax sugar *) (* TODO : reduce redundant procedure, if it is bottleneck : cvf calls cvt *)
+  let err (): 'a = Stdlib.raise (InvalidConversion_Cond c) in
   match c with
     | BC_is_true v -> VF_mich_if (create_var_in_convert_cond cenv v)
     | BC_is_none v -> VF_mich_if_none (create_var_in_convert_cond cenv v)
     | BC_is_left v -> VF_mich_if_left (create_var_in_convert_cond cenv v)
     | BC_is_cons v -> VF_mich_if_cons (create_var_in_convert_cond cenv v)
-    | BC_no_overflow (e, _) -> create_formula_no_overflow (create_expr_of_cfgexpr cenv e)
-    | BC_no_underflow (_, _) -> Stdlib.failwith "Prover.Converter.convert_cond : BC_no_underflow : not implemented"
+    | BC_no_overflow e -> (
+        match e with
+        | E_add (v1, v2) -> (
+            let vv1, vv2 = cvf v1, cvf v2 in
+            match cvt v1, cvt v2 with 
+            | T_mutez, T_mutez -> VF_add_mmm_no_overflow (vv1, vv2)
+            | _ -> err ()
+          )
+        | E_mul (v1, v2) -> (
+            let vv1, vv2 = cvf v1, cvf v2 in
+            match cvt v1, cvt v2 with 
+            | T_mutez, T_nat -> VF_mul_mnm_no_overflow (vv1, vv2)
+            | T_nat, T_mutez -> VF_mul_nmm_no_overflow (vv1, vv2)
+            | _ -> err ()
+          )
+        | _ -> err () 
+      )
+    | BC_no_underflow e -> (
+        match e with
+        | E_sub (v1, v2) -> (
+            let vv1, vv2 = cvf v1, cvf v2 in
+            match cvt v1, cvt v2 with 
+            | T_mutez, T_mutez -> VF_sub_mmm_no_underflow (vv1, vv2)
+            | _ -> err ()
+          )
+        | _ -> err () 
+      )
     | BC_not c -> VF_not (convert_cond cenv c)
 end
 
