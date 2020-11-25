@@ -545,17 +545,17 @@ module Expr = struct
       (*************************************************************************)
       (* Map                                                                   *)
       (*************************************************************************)
-      | V_lit_map (_, _, em)        -> "M_{"    ^ (em |> Core.Map.Poly.to_alist |> Core.List.map ~f:(fun (k, v) -> (k |> ts) ^ "|->" ^ (v |> ts)) |> Core.String.concat ~sep:"; ") ^ "}"
+      | V_lit_map (_, _, em)        -> "M_{"      ^ (em |> Core.Map.Poly.to_alist |> Core.List.map ~f:(fun (k, v) -> (k |> ts) ^ "|->" ^ (v |> ts)) |> Core.String.concat ~sep:"; ") ^ "}"
       | V_empty_map (_, _)          -> "M_{}"
-      | V_update_xomm (e1, e2, e3)  -> "UPDATE" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
-      | V_tl_m e1                   -> "TL("    ^ (e1 |> ts) ^ ")"
+      | V_update_xomm (e1, e2, e3)  -> "UPDATE("  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
+      | V_tl_m e1                   -> "TL("      ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
       (* Big Map                                                               *)
       (*************************************************************************)
       | V_lit_big_map  (_, _, em)    -> "M_{"     ^ (em |> Core.Map.Poly.to_alist |> Core.List.map ~f:(fun (k, v) -> (k |> ts) ^ "|->" ^ (v |> ts)) |> Core.String.concat ~sep:"; ") ^ "}"
       | V_empty_big_map (_, _)       -> "M_{}"
-      | V_update_xobmbm (e1, e2, e3) -> "UPDATE"  ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
+      | V_update_xobmbm (e1, e2, e3) -> "UPDATE(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
       | V_tl_bm e1                   -> "TL("     ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
