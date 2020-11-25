@@ -339,7 +339,7 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
             ~f:(fun ~key ~data acc_zm -> Smt.ZMap.update ~key:(key |> soe) ~value:(Smt.ZOption.create_some ~content:(data |> soe)) ~map:acc_zm)
         end
       | V_empty_map (kt, vt) -> Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp)
-      | V_update_xomm (e1, e2, e3) -> Smt.ZMap.update ~key:(e1 |> soe) ~value:(Smt.ZOption.create_some ~content:(e2 |> soe)) ~map:(e3 |> soe)
+      | V_update_xomm (e1, e2, e3) -> Smt.ZMap.update ~key:(e1 |> soe) ~value:(e2 |> soe) ~map:(e3 |> soe)
       | V_tl_m _ -> err ve  (* not supported *)
 
       (*************************************************************************)
@@ -351,7 +351,7 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
             ~f:(fun ~key ~data acc_zm -> Smt.ZMap.update ~key:(key |> soe) ~value:(Smt.ZOption.create_some ~content:(data |> soe)) ~map:acc_zm)
         end
       | V_empty_big_map (kt, vt) -> Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp)
-      | V_update_xobmbm (e1, e2, e3) -> Smt.ZMap.update ~key:(e1 |> soe) ~value:(Smt.ZOption.create_some ~content:(e2 |> soe)) ~map:(e3 |> soe)
+      | V_update_xobmbm (e1, e2, e3) -> Smt.ZMap.update ~key:(e1 |> soe) ~value:(e2 |> soe) ~map:(e3 |> soe)
       | V_tl_bm _ -> err ve  (* not supported *)
       
       (*************************************************************************)
