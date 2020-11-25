@@ -190,7 +190,7 @@ module ZDatatype = struct
   let create_recog_func : ZSort.t -> const_idx:int -> ZFunc.t
   =fun sort ~const_idx -> sort |> Z3.Datatype.get_recognizers |> get_field ~idx:const_idx
   let create_access_func : ZSort.t -> const_idx:int -> field_idx:int -> ZFunc.t
-  =fun sort ~const_idx ~field_idx -> sort |> Z3.Datatype.get_accessors |> get_field ~idx:field_idx |> get_field ~idx:const_idx
+  =fun sort ~const_idx ~field_idx -> sort |> Z3.Datatype.get_accessors |> get_field ~idx:const_idx |> get_field ~idx:field_idx
   let read_field_sort : ZSort.t -> const_idx:int -> field_idx:int -> ZSort.t
   =fun sort ~const_idx ~field_idx -> sort |> create_const_func ~const_idx:const_idx |> ZFunc.sort_of_domain ~idx:field_idx
 
