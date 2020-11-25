@@ -122,7 +122,7 @@ end
 module ZFunc : sig
   type t = Z3.FuncDecl.func_decl
 
-  val get_field : 'a list -> idx:int -> 'a
+  val get_idx : 'a list -> idx:int -> 'a
 
   val apply : t -> params:ZExpr.t list -> ZExpr.t
 
@@ -139,7 +139,7 @@ end
 module ZDatatype : sig
   type const = Z3.Datatype.Constructor.constructor
 
-  val get_field : 'a list -> idx:int -> 'a
+  val get_idx : 'a list -> idx:int -> 'a
 
   val create_const : name:string -> recog_func_name:string -> field_names:string list -> field_sorts:ZSort.t option list -> field_sort_refs:int list -> const
   val create_sort : name:string -> const_list:const list -> ZSort.t

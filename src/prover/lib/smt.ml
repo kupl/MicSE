@@ -151,14 +151,14 @@ end
 module ZFunc = struct
   type t = Z3.FuncDecl.func_decl
 
-  let get_field : 'a list -> idx:int -> 'a
-  =fun l ~idx -> idx |> (l |> Core.List.nth_exn)
+  let get_idx : 'a list -> idx:int -> 'a
+  =fun l ~idx -> try idx |> (l |> Core.List.nth_exn) with |_ -> ZError ("get_idx " ^ (idx |> string_of_int) ^ " called on list of length " ^ (l |> Core.List.length |> string_of_int)) |> raise
 
   let apply : t -> params:ZExpr.t list -> ZExpr.t
   =fun f ~params -> params |> (f |> Z3.FuncDecl.apply)
 
   let sort_of_domain : t -> idx:int -> ZSort.t
-  =fun f ~idx -> f |> Z3.FuncDecl.get_domain |> get_field ~idx:idx
+  =fun f ~idx -> f |> Z3.FuncDecl.get_domain |> get_idx ~idx:idx
 end
 
 
@@ -171,8 +171,8 @@ end
 module ZDatatype = struct
   type const = Z3.Datatype.Constructor.constructor
 
-  let get_field : 'a list -> idx:int -> 'a
-  =fun l ~idx -> idx |> (l |> Core.List.nth_exn)
+  let get_idx : 'a list -> idx:int -> 'a
+  =fun l ~idx -> try idx |> (l |> Core.List.nth_exn) with |_ -> ZError ("get_idx " ^ (idx |> string_of_int) ^ " called on list of length " ^ (l |> Core.List.length |> string_of_int)) |> raise
 
   let create_const : name:string -> recog_func_name:string -> field_names:string list -> field_sorts:ZSort.t option list -> field_sort_refs:int list -> const
   =fun ~name ~recog_func_name ~field_names ~field_sorts ~field_sort_refs -> begin
@@ -186,11 +186,11 @@ module ZDatatype = struct
   let create_sort : name:string -> const_list:const list -> ZSort.t
   =fun ~name ~const_list -> const_list |> (name |> ZSym.create |> Z3.Datatype.mk_sort (ZCtx.read ()))
   let create_const_func : ZSort.t -> const_idx:int -> ZFunc.t
-  =fun sort ~const_idx -> sort |> Z3.Datatype.get_constructors |> get_field ~idx:const_idx
+  =fun sort ~const_idx -> sort |> Z3.Datatype.get_constructors |> get_idx ~idx:const_idx
   let create_recog_func : ZSort.t -> const_idx:int -> ZFunc.t
-  =fun sort ~const_idx -> sort |> Z3.Datatype.get_recognizers |> get_field ~idx:const_idx
+  =fun sort ~const_idx -> sort |> Z3.Datatype.get_recognizers |> get_idx ~idx:const_idx
   let create_access_func : ZSort.t -> const_idx:int -> field_idx:int -> ZFunc.t
-  =fun sort ~const_idx ~field_idx -> sort |> Z3.Datatype.get_accessors |> get_field ~idx:const_idx |> get_field ~idx:field_idx
+  =fun sort ~const_idx ~field_idx -> sort |> Z3.Datatype.get_accessors |> get_idx ~idx:const_idx |> get_idx ~idx:field_idx
   let read_field_sort : ZSort.t -> const_idx:int -> field_idx:int -> ZSort.t
   =fun sort ~const_idx ~field_idx -> sort |> create_const_func ~const_idx:const_idx |> ZFunc.sort_of_domain ~idx:field_idx
 
