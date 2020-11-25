@@ -47,7 +47,7 @@ module Stg = struct
   =fun ~ps_os ~cfg -> begin
     equal_to_expr
       ~expr:(Vlang.Expr.V_cdr (Vlang.Expr.V_var (
-          (Pre.Lib.Cfg.param_storage_name |> Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |> Vlang.TypeUtil.ty_of_mty),
+          (ps_os |> Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |> Vlang.TypeUtil.ty_of_mty),
           ps_os
         )))
       ~cfg:cfg

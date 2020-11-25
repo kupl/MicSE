@@ -23,12 +23,11 @@ val create_var_of_cfgvar : convert_env -> PreLib.Cfg.ident -> ProverLib.Vlang.Ex
 val create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t
 val create_expr_of_cfgexpr : convert_env -> PreLib.Cfg.expr -> ProverLib.Vlang.Expr.t
 
-(* special case *)
-val create_formula_no_overflow : ProverLib.Vlang.Expr.t -> ProverLib.Vlang.t
-
 (* deal with convert_cond *)
 val create_var_in_convert_cond : convert_env -> PreLib.Cfg.ident -> ProverLib.Vlang.Expr.t
 val convert_cond : convert_env -> ProverLib.Bp.cond -> ProverLib.Vlang.v_formula
+
+val rename_formula : ProverLib.Vlang.t -> cenv:convert_env -> ProverLib.Vlang.t
 
 (* convert differently for each basicpaths *)
 val sp : convert_env -> (ProverLib.Vlang.t * ProverLib.Query.t list) -> (ProverLib.Bp.vertex * ProverLib.Bp.inst) -> (ProverLib.Vlang.t * ProverLib.Query.t list)

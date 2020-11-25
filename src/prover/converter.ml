@@ -343,15 +343,6 @@ let create_expr_of_cfgexpr : convert_env -> PreLib.Cfg.expr -> Vlang.Expr.t
 
 end (* function create_expr_of_cfgexpr end *)
 
-let create_formula_no_overflow : Vlang.Expr.t -> Vlang.t
-=fun e -> begin
-  let two_mutez_ge e1 e2 = Vlang.Formula.VF_not (Vlang.Formula.VF_eq (Vlang.Expr.V_compare (e1, e2), Vlang.Expr.V_lit_int (Z.minus_one))) in (* (e1 >= e2) === (!(cmp(e1, e2) == (-1))) *)
-  match e with
-  | V_add_mmm (_, e2) -> two_mutez_ge e e2
-  | V_mul_mnm (_, _) -> Stdlib.failwith "Prover.Converter.create_formula_no_overflow : no-overflow formula for multiplication not supported yet"
-  | _ -> Stdlib.failwith "Prover.Converter.create_formula_no_overflow : match failed"
-end
-
 let create_var_in_convert_cond : convert_env -> PreLib.Cfg.ident -> Vlang.Expr.t 
 =fun cenv v -> begin
   let tt = PreLib.Cfg.t_map_find ~errtrace:("Prover.Converter.create_var_in_convert_cond : " ^ v) !cenv.cfg.type_info v |> convert_type in
@@ -402,6 +393,17 @@ let rec convert_cond : convert_env -> Bp.cond -> Vlang.v_formula
     | BC_not c -> VF_not (convert_cond cenv c)
 end
 
+let rename_formula : Vlang.t -> cenv:convert_env -> Vlang.t
+=fun fmla ~cenv -> begin
+  let is_var : Vlang.Expr.t -> bool = (function | Vlang.Expr.V_var _ -> true | _ -> false) in
+  let rename_var : Vlang.Expr.t -> Vlang.Expr.t = fun e -> (
+    match e with
+    | Vlang.Expr.V_var (t, s) -> Vlang.Expr.V_var (t, (get_cur_varname cenv s))
+    | _ -> e
+  ) in
+  Vlang.RecursiveMappingExprTemplate.map_formula_outer is_var rename_var fmla
+end
+
 
 let sp : convert_env -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t * Query.t list)
 =fun cenv (f, qs) (_, s) -> begin
@@ -424,8 +426,8 @@ end
 let convert : Bp.t -> PreLib.Cfg.t -> (Vlang.t * Query.t list)
 =fun bp cfg -> begin
   let cv_env : convert_env = ref {cfg=cfg; varname=Core.Map.Poly.empty} in
-  let (f, g) = (Inv.T.read_formula (bp.pre), Inv.T.read_formula (bp.post)) in
+  let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
   let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
-  let inductive = Vlang.Formula.VF_imply (f', g) in
+  let inductive = Vlang.Formula.VF_imply (f', (g |> rename_formula ~cenv:cv_env)) in
   (inductive, qs)
 end
