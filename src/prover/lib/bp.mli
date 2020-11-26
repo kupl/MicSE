@@ -107,24 +107,15 @@ type cond =
   | BC_is_none of var
   | BC_is_left of var
   | BC_is_cons of var
-  | BC_no_overflow of exp * typ
-  | BC_no_underflow of exp * typ
+  | BC_no_overflow of exp
+  | BC_no_underflow of exp
   | BC_not of cond
 
 val create_cond_is_true : var -> cond
-
 val create_cond_is_none : var -> cond
-
 val create_cond_is_left : var -> cond
-
 val create_cond_is_cons : var -> cond
-
-val create_cond_no_overflow : exp -> typ -> cond
-
-val create_cond_no_underflow : exp -> typ -> cond
-
 val create_cond_not : cond -> cond
-
 val string_of_cond : cond -> string
 
 
@@ -143,30 +134,20 @@ type inst =
 and loc = { entry: vertex; exit: vertex; }
 
 and category = 
-  | Q_mutez_overflow
-  | Q_shift_overflow
-  | Q_assert
+  | Q_mutez_arith_safety
+  | Q_int_nat_shift_safety
+  | Q_assertion
 
 val compare_loc : loc -> loc -> int
 
 val create_inst_assume : cond -> inst
-
 val create_inst_assert : cond -> loc -> category -> inst
-
 val create_inst_assign : var -> exp -> inst
-
 val create_inst_skip : inst
 
 val create_loc : vertex -> vertex -> loc
 
-val create_category_mutez_overflow : category
-
-val create_category_shift_overflow : category
-
-val create_category_assertion : category
-
 val string_of_inst : inst -> string
-
 val string_of_category : category -> string
 
 

@@ -1,226 +1,433 @@
 open ProverLib
 
-type object_typ =
-  | Mutez_Map
-  | Mutez
+exception InvalidConversion_Expr of PreLib.Cfg.expr
+exception InvalidConversion_Cond of Bp.cond
 
-(************************************************)
-(************************************************)
+let newvar_prefix : string = "#"
+let gen_nv x : string = newvar_prefix ^ x
 
-let type_map = ref Pre.Lib.Cfg.CPMap.empty
+type convert_env_body = {
+  cfg : PreLib.Cfg.t;
+  varname : (string, string) Core.Map.Poly.t; (* original-var-string -> latest-used-var-string *)
+}
+type convert_env = convert_env_body ref
 
-let rec convert : Bp.t -> Pre.Lib.Cfg.t -> (Vlang.t * Query.t list)
-=fun bp cfg -> begin
-  let _ = type_map := cfg.type_info in
-  let (f, g) = (Inv.T.read_formula (bp.pre), Inv.T.read_formula (bp.post)) in
-  let f', qs = Core.List.fold_left bp.body ~init:(f, []) ~f:sp in
-  let inductive = Vlang.create_formula_imply f' g in
-  (inductive, qs)
+let get_cur_varname : convert_env -> string -> string 
+=fun cenv v -> begin
+  let m = !cenv.varname in  (* map *)
+  (match Core.Map.Poly.find m v with  (* find v in map *)
+  | None -> 
+      let nm = Core.Map.Poly.add m ~key:v ~data:v |> (function | `Ok mm -> mm | `Duplicate -> Stdlib.failwith "Prover.Converter.get_cur_varname : duplicate") in
+      (cenv := {!cenv with varname=nm}; v) (* update map & apply at convert_env *)
+  | Some vv -> vv
+  )
 end
 
-and sp : (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t * Query.t list)
-=fun (f, qs) (_, s) -> begin
+(* WARNING: "get_new_varname" will change the given convert_env data *)
+let get_new_varname : convert_env -> string -> string
+=fun cenv v -> begin
+  let m = !cenv.varname in (* map *)
+  (match Core.Map.Poly.find m v with (* find v in map *)
+  | None ->
+      let nv = gen_nv v in
+      let nm = Core.Map.Poly.add m ~key:v ~data:nv |> (function | `Ok mm -> mm | `Duplicate -> Stdlib.failwith "Prover.Converter.get_new_varname : None : duplicate") in
+      (cenv := {!cenv with varname=nm}; nv)
+  | Some cv ->
+      let nv = gen_nv cv in
+      let nm = Core.Map.Poly.add m ~key:v ~data:nv |> (function | `Ok mm -> mm | `Duplicate -> Stdlib.failwith "Prover.Converter.get_new_varname : Some : duplicate") in
+      (cenv := {!cenv with varname=nm}; nv)
+  )
+end
+
+(* "get_original_varname" just removes continuous "newvar_prefix"es in front of the given string *)
+let get_original_varname : string -> string
+=fun v -> begin
+  let idx : int ref = ref 0 in
+  let flag : bool ref = ref true in
+  let _ : unit = String.iter (fun c -> if !flag && (String.make 1 c = newvar_prefix) then Stdlib.incr idx else flag := false) v in
+  String.sub v !idx (String.length v - !idx)
+end
+
+let read_type_cfgvar : convert_env -> PreLib.Cfg.ident -> Vlang.typ
+=fun cenv v -> begin Pre.Lib.Cfg.CPMap.find !cenv.cfg.type_info v |> (function Some x -> Vlang.TypeUtil.ty_of_mty x | None -> Stdlib.failwith "Prover.Converter.read_type_cfgvar : None") end
+
+(*let read_type : Vlang.Expr.t -> Vlang.typ = Vlang.TypeUtil.ty_of_expr*)
+let convert_type : PreLib.Cfg.typ -> Vlang.typ = Vlang.TypeUtil.ty_of_mty
+
+let create_var_of_cfgvar : convert_env -> PreLib.Cfg.ident -> Vlang.Expr.t
+= fun cenv v -> Vlang.Expr.V_var ((read_type_cfgvar cenv (get_original_varname v)), v)
+
+let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.t = 
+  let open PreLib.Mich in
+  let open Vlang.Ty in
+  let open Vlang.Expr in
+  let cem = create_expr_of_michdata in (* syntax sugar *)
+  (fun michdata vtyp ->
+    match (vtyp, michdata) with 
+    | T_int, D_int zn -> V_lit_int zn
+    | T_nat, D_int zn -> V_lit_int zn
+    | T_mutez, D_int zn -> V_lit_mutez zn
+    | T_timestamp, D_int zn -> V_lit_timestamp_sec zn
+    | T_string, D_string s -> V_lit_string s
+    | T_key_hash, D_string s -> V_lit_key_hash s
+    | T_timestamp, D_string s -> V_lit_timestamp_str s
+    | T_address, D_string s -> V_lit_address (V_lit_key_hash s)
+    | T_key, D_string s -> V_lit_key s
+    | T_bytes, D_bytes s -> V_lit_bytes s
+    | T_chain_id, D_bytes s -> V_lit_chain_id s
+    | T_unit, D_unit -> V_unit
+    | T_bool, D_bool b -> V_lit_bool b
+    | T_pair (t1, t2), D_pair (d1, d2) -> V_pair (cem d1 t1, cem d2 t2)
+    | T_or (t1, _), D_left d -> V_left (vtyp, cem d t1)
+    | T_or (_, t2), D_right d -> V_right (vtyp, cem d t2)
+    | T_option t, D_some d -> V_some (cem d t)
+    | T_option t, D_none -> V_none t
+    | T_list elt, D_list dlist -> V_lit_list (elt, List.map (fun x -> cem x elt) dlist)
+    | T_set elt, D_list dlist -> V_lit_set (elt, List.fold_left (fun acc x -> Core.Set.Poly.add acc (cem x elt)) Core.Set.Poly.empty dlist)
+    | T_map (kt, vt), D_list dlist -> 
+      let errmsg : string = "Prover.Converter.create_expr_of_michdata_i : (T_map, D_list)" in
+      V_lit_map (kt, vt, (List.fold_left (fun acc x -> (match (PreLib.Mich.get_d x) with | D_elt (k, v) -> (Core.Map.Poly.add acc ~key:(cem k kt) ~data:(cem v vt) |> (function | `Ok m -> m | `Duplicate -> acc)) | _ -> Stdlib.failwith errmsg)) Core.Map.Poly.empty dlist))
+    | T_big_map (kt, vt), D_list dlist -> 
+      let errmsg : string = "Prover.Converter.create_expr_of_michdata_i : (T_map, D_list)" in
+      V_lit_big_map (kt, vt, (List.fold_left (fun acc x -> (match (PreLib.Mich.get_d x) with | D_elt (k, v) -> (Core.Map.Poly.add acc ~key:(cem k kt) ~data:(cem v vt) |> (function | `Ok m -> m | `Duplicate -> acc)) | _ -> Stdlib.failwith errmsg)) Core.Map.Poly.empty dlist))
+    | _, D_elt _ -> Stdlib.failwith "Prover.Converter.create_expr_of_michdata_i : (_, D_elt)"
+    | T_lambda (t1, t2), D_lambda it -> V_lit_lambda (t1, t2, it)
+    | _ -> Stdlib.failwith "Prover.Converter.create_expr_of_michdata_i : match failed"
+  )
+and create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> Vlang.typ -> Vlang.Expr.t
+= fun michdata_t vtyp -> begin
+  create_expr_of_michdata_i (PreLib.Mich.get_d michdata_t) vtyp
+end
+
+(* TODO (plan) : make this function transaction-specific / amount, balance, source, sender, ... *)
+let create_expr_of_cfgexpr : convert_env -> PreLib.Cfg.expr -> Vlang.Expr.t
+= let open PreLib.Cfg in
+  let open Vlang.Expr in
+  fun cenv cfgexpr -> begin
+  let cvt : PreLib.Cfg.ident -> Vlang.typ = read_type_cfgvar cenv in (* syntax sugar *)
+  let cvf : PreLib.Cfg.ident -> Vlang.Expr.t = fun v -> create_var_of_cfgvar cenv (get_cur_varname cenv v) in (* syntax sugar *) (* TODO : reduce redundant procedure, if it is bottleneck : cvf calls cvt *)
+  let err (): 'a = Stdlib.raise (InvalidConversion_Expr cfgexpr) in
+  match cfgexpr with 
+  | E_push (d, t) -> create_expr_of_michdata d (convert_type t)
+  | E_car v -> (match cvt v with | T_pair _ -> V_car (cvf v) | _ -> err ())
+  | E_cdr v -> (match cvt v with | T_pair _ -> V_cdr (cvf v) | _ -> err ())
+  | E_abs v -> (match cvt v with | T_int -> V_abs_in (cvf v) | _ -> err ())
+  | E_neg v -> (match cvt v with | T_nat -> V_neg_ni (cvf v) | T_int -> V_neg_ii (cvf v) | _ -> err ())
+  | E_not v -> (match cvt v with | T_nat -> V_not_ni (cvf v) | T_int -> V_not_ii (cvf v) | T_bool -> V_not_bb (cvf v) | _ -> err ())
+  | E_add (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in
+      match cvt v1, cvt v2 with 
+      | T_nat, T_int -> V_add_nii (vv1, vv2)
+      | T_int, T_nat -> V_add_ini (vv1, vv2)
+      | T_int, T_int -> V_add_iii (vv1, vv2)
+      | T_nat, T_nat -> V_add_nnn (vv1, vv2)
+      | T_mutez, T_mutez -> V_add_mmm (vv1, vv2)
+      | T_timestamp, T_int -> V_add_tit (vv1, vv2)
+      | T_int, T_timestamp -> V_add_itt (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_sub (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in
+      match cvt v1, cvt v2 with
+      | T_nat, T_nat -> V_sub_nni (vv1, vv2)
+      | T_nat, T_int -> V_sub_nii (vv1, vv2)
+      | T_int, T_nat -> V_sub_ini (vv1, vv2)
+      | T_int, T_int -> V_sub_iii (vv1, vv2)
+      | T_timestamp, T_timestamp -> V_sub_tti (vv1, vv2)
+      | T_mutez, T_mutez -> V_sub_mmm (vv1, vv2)
+      | T_timestamp, T_int -> V_sub_tit (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_mul (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in
+      match cvt v1, cvt v2 with
+      | T_nat, T_int -> V_mul_nii (vv1, vv2)
+      | T_int, T_nat -> V_mul_ini (vv1, vv2)
+      | T_int, T_int -> V_mul_iii (vv1, vv2)
+      | T_nat, T_nat -> V_mul_nnn (vv1, vv2)
+      | T_mutez, T_nat -> V_mul_mnm (vv1, vv2)
+      | T_nat, T_mutez -> V_mul_nmm (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_ediv (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in
+      match cvt v1, cvt v2 with
+      | T_nat, T_nat -> V_ediv_nnnn (vv1, vv2)
+      | T_nat, T_int -> V_ediv_niin (vv1, vv2)
+      | T_int, T_nat -> V_ediv_inin (vv1, vv2)
+      | T_int, T_int -> V_ediv_iiin (vv1, vv2)
+      | T_mutez, T_nat -> V_ediv_mnmm (vv1, vv2)
+      | T_mutez, T_mutez -> V_ediv_mmnm (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_shiftL (v1, v2) -> (match cvt v1, cvt v2 with | T_nat, T_nat -> V_shiftL_nnn (cvf v1, cvf v2) | _ -> err ())
+  | E_shiftR (v1, v2) -> (match cvt v1, cvt v2 with | T_nat, T_nat -> V_shiftR_nnn (cvf v1, cvf v2) | _ -> err ())
+  | E_and (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in
+      match cvt v1, cvt v2 with
+      | T_nat, T_nat -> V_and_nnn (vv1, vv2)
+      | T_int, T_nat -> V_and_inn (vv1, vv2)
+      | T_bool, T_bool -> V_and_bbb (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_or (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in
+      match cvt v1, cvt v2 with
+      | T_nat, T_nat -> V_or_nnn (vv1, vv2)
+      | T_bool, T_bool -> V_or_bbb (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_xor (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in
+      match cvt v1, cvt v2 with
+      | T_nat, T_nat -> V_xor_nnn (vv1, vv2)
+      | T_bool, T_bool -> V_xor_bbb (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_eq v -> (match cvt v with | T_int -> V_eq_ib (cvf v) | _ -> err ())
+  | E_neq v -> (match cvt v with | T_int -> V_neq_ib (cvf v) | _ -> err ())
+  | E_lt v -> (match cvt v with | T_int -> V_lt_ib (cvf v) | _ -> err ())
+  | E_gt v -> (match cvt v with | T_int -> V_gt_ib (cvf v) | _ -> err ())
+  | E_leq v -> (match cvt v with | T_int -> V_leq_ib (cvf v) | _ -> err ())
+  | E_geq v -> (match cvt v with | T_int -> V_geq_ib (cvf v) | _ -> err ())
+  | E_compare (v1, v2) -> (if cvt v1 = cvt v2 then V_compare (cvf v1, cvf v2) else err ())
+  | E_cons (v1, v2) -> (match cvt v1, cvt v2 with | elt1, T_list elt2 when elt1 = elt2 -> V_cons (cvf v1, cvf v2) | _ -> err ())
+  | E_operation op -> (
+      (* TODO : check variable types! *)
+      match op with
+      | O_create_contract (p, v1, v2, v3) -> V_create_contract ((convert_type p.PreLib.Mich.param), (convert_type p.PreLib.Mich.storage), V_lit_program (p), cvf v1, cvf v2, cvf v3)
+      | O_transfer_tokens (v1, v2, v3) -> V_transfer_tokens (cvf v1, cvf v2, cvf v3)
+      | O_set_delegate v -> V_set_delegate (cvf v)
+      | O_create_account _ -> err () (* deprecated operation *)
+    )
+  | E_unit -> V_unit
+  | E_pair (v1, v2) -> V_pair (cvf v1, cvf v2)
+  | E_left (v, t) -> let tt = convert_type t in (match tt, cvt v with | T_or (lt1, _), lt2 when lt1 = lt2 -> V_left (tt, cvf v) | _ -> err ())
+  | E_right (v, t) -> let tt = convert_type t in (match tt, cvt v with | T_or (_, lt1), lt2 when lt1 = lt2 -> V_right (tt, cvf v) | _ -> err ())
+  | E_some v -> V_some (cvf v)
+  | E_none t -> V_none (convert_type t)
+  | E_mem (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in
+      match cvt v1, cvt v2 with
+      | elt1, T_set elt2 when elt1 = elt2 -> V_mem_xsb (vv1, vv2)
+      | kt1, T_map (kt2, _) when kt1 = kt2 -> V_mem_xmb (vv1, vv2)
+      | kt1, T_big_map (kt2, _) when kt1 = kt2 -> V_mem_xbmb (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_get (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in
+      match cvt v1, cvt v2 with
+      | kt1, T_map (kt2, _) when kt1 = kt2 -> V_get_xmoy (vv1, vv2)
+      | kt1, T_map (kt2, _) when kt1 = kt2 -> V_get_xbmo (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_update (v1, v2, v3) -> (
+      let vv1, vv2, vv3 = cvf v1, cvf v2, cvf v3 in
+      match cvt v1, cvt v2, cvt v3 with
+      | t1, T_bool, T_set t2 when t1 = t2 -> V_update_xbss (vv1, vv2, vv3)
+      | kt1, T_option vt1, T_map (kt2, vt2) when kt1 = kt2 && vt1 = vt2 -> V_update_xomm (vv1, vv2, vv3)
+      | kt1, T_option vt1, T_big_map (kt2, vt2) when kt1 = kt2 && vt1 = vt2 -> V_update_xobmbm (vv1, vv2, vv3)
+      | _ -> err ()
+    )
+  
+  | E_concat (v1, v2) -> (
+      let vv1, vv2 = cvf v1, cvf v2 in 
+      match cvt v1, cvt v2 with 
+      | T_string, T_string -> V_concat_sss (vv1, vv2)
+      | T_bytes, T_bytes -> V_concat_bbb (vv1, vv2)
+      | _ -> err ()
+    )
+  | E_concat_list v -> (match cvt v with | T_list T_string -> V_concat_list_s (cvf v) | T_list T_bytes -> V_concat_list_b (cvf v) | _ -> err ())
+  | E_slice (v1, v2, v3) -> (
+      let vv1, vv2, vv3 = cvf v1, cvf v2, cvf v3 in
+      match cvt v1, cvt v2, cvt v3 with
+      | T_nat, T_nat, T_string -> V_slice_nnso (vv1, vv2, vv3)
+      | T_nat, T_nat, T_bytes -> V_slice_nnbo (vv1, vv2, vv3)
+      | _ -> err ()
+    )
+  | E_pack v ->  V_pack (cvf v)
+  | E_unpack (t, v) -> V_unpack (convert_type t, cvf v)
+  | E_self -> (
+      let paramstoragetyp = PreLib.Cfg.t_map_find ~errtrace:"Prover.Converter.create_expr_of_cfgexpr : E_self" !cenv.cfg.type_info PreLib.Cfg.param_storage_name in
+      match convert_type paramstoragetyp with | T_pair (pt, _) -> V_self pt | _ -> err ()
+    )
+  | E_contract_of_address (t, v) -> (match cvt v with | T_address -> V_contract_of_address (convert_type t, cvf v) | _ -> err ())
+  | E_implicit_account v -> (match cvt v with | T_key_hash -> V_implicit_account (cvf v) | _ -> err ())
+  | E_now -> V_now
+  | E_amount -> V_amount
+  | E_balance -> V_balance
+  | E_check_signature (v1, v2, v3) -> (match cvt v1, cvt v2, cvt v3 with | T_key, T_signature, T_bytes -> V_check_signature (cvf v1, cvf v2, cvf v3) | _ -> err ())
+  | E_blake2b v -> (match cvt v with | T_bytes -> V_blake2b (cvf v) | _ -> err ())
+  | E_sha256 v -> (match cvt v with | T_bytes -> V_sha256 (cvf v) | _ -> err ())
+  | E_sha512 v -> (match cvt v with | T_bytes -> V_sha512 (cvf v) | _ -> err ())
+  | E_hash_key v -> (match cvt v with | T_key -> V_hash_key (cvf v) | _ -> err ())
+  | E_source -> V_source
+  | E_sender -> V_sender
+  | E_address_of_contract v -> (match cvt v with | T_contract _ -> V_address_of_contract (cvf v) | _ -> err ())
+  | E_unlift_option v -> (match cvt v with | T_option _ -> V_unlift_option (cvf v) | _ -> err ())
+  | E_unlift_left v -> (match cvt v with | T_or _ -> V_unlift_left (cvf v) | _ -> err ())
+  | E_unlift_right v -> (match cvt v with | T_or _ -> V_unlift_right (cvf v) | _ -> err ())
+  | E_hd v -> (
+      let vv = cvf v in
+      match cvt v with
+      | T_list _ -> V_hd_l vv
+      | T_set _ -> V_hd_s vv
+      | T_map _ -> V_hd_m vv
+      | T_big_map _ -> V_hd_bm vv
+      | _ -> err ()
+    )
+  | E_tl v -> (
+      let vv = cvf v in
+      match cvt v with
+      | T_list _ -> V_tl_l vv
+      | T_set _ -> V_tl_s vv
+      | T_map _ -> V_tl_m vv
+      | T_big_map _ -> V_tl_bm vv
+      | _ -> err ()
+    )
+  | E_hdtl v -> (
+      let vv = cvf v in
+      match cvt v with
+      | T_list _ -> V_hdtl_l vv
+      | T_set _ -> V_hdtl_s vv
+      | T_map _ -> V_hdtl_m vv
+      | _ -> err ()
+    )
+  | E_size v -> (
+      let vv = cvf v in
+      match cvt v with 
+      | T_set _ -> V_size_s vv
+      | T_map _ -> V_size_m vv
+      | T_list _ -> V_size_l vv
+      | T_string -> V_size_str vv
+      | T_bytes -> V_size_b vv
+      | _ -> err ()
+    )
+  | E_isnat v -> (match cvt v with | T_int -> V_isnat (cvf v) | _ -> err ())
+  | E_int_of_nat v -> (match cvt v with | T_nat -> V_int_of_nat (cvf v) | _ -> err ())
+  | E_chain_id -> V_chain_id
+  | E_lambda_id n -> (
+      let (_, _, pt, rett) = (t_map_find ~errtrace:"Prover.Converter.create_expr_of_cfgexpr" !cenv.cfg.lambda_id_map n) in
+      V_lambda_id (convert_type pt, convert_type rett, n)
+    )
+  | E_exec (v1, v2) -> (
+      match cvt v1, cvt v2 with
+      | pt1, T_lambda (pt2, _) when pt1 = pt2 -> V_exec (cvf v1, cvf v2)
+      | _ -> err ()
+    )
+  | E_dup v -> V_dup (cvf v)
+  | E_nil t -> V_nil (convert_type t)
+  | E_empty_set t -> V_empty_set (convert_type t)
+  | E_empty_map (t1, t2) -> V_empty_map (convert_type t1, convert_type t2)
+  | E_empty_big_map (t1, t2) -> V_empty_big_map (convert_type t1, convert_type t2)
+  | E_itself v -> V_itself (cvf v)
+  | E_append (v1, v2) -> (
+      match cvt v1, cvt v2 with
+      | elt1, T_list elt2 when elt1 = elt2 -> V_append_l (cvf v1, cvf v2)
+      | _ -> err ()
+    )
+
+  (* TODOs *)
+  | E_cast _ -> err () (* TODO : vlang-unimplemented *)
+  | E_steps_to_quota -> err () (* deprecated instruction *)
+  
+  (* Deprecated from Cfg *)
+  | E_div _ -> err ()
+  | E_mod _ -> err ()
+  | E_create_contract_address _ -> err ()
+  | E_create_account_address _ -> err ()
+  | E_lambda _ -> err ()
+  | E_special_nil_list -> err ()
+  | E_phi _ -> err ()
+  | E_unlift_or _ -> err ()
+
+end (* function create_expr_of_cfgexpr end *)
+
+let create_var_in_convert_cond : convert_env -> PreLib.Cfg.ident -> Vlang.Expr.t 
+=fun cenv v -> begin
+  let tt = PreLib.Cfg.t_map_find ~errtrace:("Prover.Converter.create_var_in_convert_cond : " ^ v) !cenv.cfg.type_info v |> convert_type in
+  let vv = get_cur_varname cenv v in
+  Vlang.Expr.V_var (tt, vv)
+end
+
+
+let rec convert_cond : convert_env -> Bp.cond -> Vlang.v_formula
+= let open Vlang.Formula in
+  let open Bp in
+  fun cenv c -> begin
+  let cvt : PreLib.Cfg.ident -> Vlang.typ = read_type_cfgvar cenv in (* syntax sugar *)
+  let cvf : PreLib.Cfg.ident -> Vlang.Expr.t = fun v -> create_var_of_cfgvar cenv (get_cur_varname cenv v) in (* syntax sugar *) (* TODO : reduce redundant procedure, if it is bottleneck : cvf calls cvt *)
+  let err (): 'a = Stdlib.raise (InvalidConversion_Cond c) in
+  match c with
+    | BC_is_true v -> VF_mich_if (create_var_in_convert_cond cenv v)
+    | BC_is_none v -> VF_mich_if_none (create_var_in_convert_cond cenv v)
+    | BC_is_left v -> VF_mich_if_left (create_var_in_convert_cond cenv v)
+    | BC_is_cons v -> VF_mich_if_cons (create_var_in_convert_cond cenv v)
+    | BC_no_overflow e -> (
+        match e with
+        | E_add (v1, v2) -> (
+            let vv1, vv2 = cvf v1, cvf v2 in
+            match cvt v1, cvt v2 with 
+            | T_mutez, T_mutez -> VF_add_mmm_no_overflow (vv1, vv2)
+            | _ -> err ()
+          )
+        | E_mul (v1, v2) -> (
+            let vv1, vv2 = cvf v1, cvf v2 in
+            match cvt v1, cvt v2 with 
+            | T_mutez, T_nat -> VF_mul_mnm_no_overflow (vv1, vv2)
+            | T_nat, T_mutez -> VF_mul_nmm_no_overflow (vv1, vv2)
+            | _ -> err ()
+          )
+        | _ -> err () 
+      )
+    | BC_no_underflow e -> (
+        match e with
+        | E_sub (v1, v2) -> (
+            let vv1, vv2 = cvf v1, cvf v2 in
+            match cvt v1, cvt v2 with 
+            | T_mutez, T_mutez -> VF_sub_mmm_no_underflow (vv1, vv2)
+            | _ -> err ()
+          )
+        | _ -> err () 
+      )
+    | BC_not c -> VF_not (convert_cond cenv c)
+end
+
+let rename_formula : Vlang.t -> cenv:convert_env -> Vlang.t
+=fun fmla ~cenv -> begin
+  let is_var : Vlang.Expr.t -> bool = (function | Vlang.Expr.V_var _ -> true | _ -> false) in
+  let rename_var : Vlang.Expr.t -> Vlang.Expr.t = fun e -> (
+    match e with
+    | Vlang.Expr.V_var (t, s) -> Vlang.Expr.V_var (t, (get_cur_varname cenv s))
+    | _ -> e
+  ) in
+  Vlang.RecursiveMappingExprTemplate.map_formula_outer is_var rename_var fmla
+end
+
+
+let sp : convert_env -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t * Query.t list)
+=fun cenv (f, qs) (_, s) -> begin
   match s with
-  | BI_assume c -> begin
-      let f' = Vlang.create_formula_and [(create_convert_cond c); f] in
+  | BI_assume c -> 
+      let f' = Vlang.Formula.VF_and [(convert_cond cenv c); f] in
       (f', qs)
-    end
-  | BI_assert (c, loc, ctg) -> begin
-      let formula = Vlang.create_formula_imply f (create_convert_cond c) in
-      let query = Query.create_new_query formula loc ctg in
+  | BI_assert (c, loc, ctg) ->
+      let formula = Vlang.Formula.VF_imply (f, (convert_cond cenv c)) in
+      let query = Query.create_new_query formula ~loc:loc ~category:ctg in
       (f, (query::qs))
-    end
-  | BI_assign (v, e) -> begin
-      let v' = create_rename_var v in
-      let f' = create_rewrite_formula v v' f in
-      let o' = create_rewrite_obj v v' (create_convert_obj e (read_type v)) in
-      let f'' = Vlang.create_formula_and [f'; (Vlang.create_formula_eq (create_var v) o')] in
-      (f'', qs)
-    end
+  | BI_assign (v, e) ->
+      let e_f = create_expr_of_cfgexpr cenv e in
+      let v' = Vlang.Expr.V_var (read_type_cfgvar cenv v, get_new_varname cenv v) in
+      let f' = Vlang.Formula.VF_and [Vlang.Formula.VF_eq (v', e_f); f] in
+      (f', qs)
   | BI_skip -> (f, qs)
 end
 
-and read_type : Vlang.var -> Vlang.typ
-=fun v -> Pre.Lib.Cfg.CPMap.find_exn !type_map v
-
-and update_type : Vlang.var -> Vlang.typ -> unit
-=fun v t -> begin
-  let _ = type_map := Pre.Lib.Cfg.CPMap.add_exn !type_map ~key:v ~data:t in
-  ()
-end
-
-and create_var : Vlang.var -> Vlang.v_obj
-=fun v -> Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_var v) ~typ:(read_type v)
-
-and create_rename_var : Vlang.var -> Vlang.var
-=fun v -> begin
-  let rec rename_label l = if Pre.Lib.Cfg.CPMap.mem !type_map (l ^ v) then rename_label ("#" ^ l) else l in
-  let v' = (rename_label "#") ^ v in
-  let _ = update_type v' (read_type v) in
-  v'
-end
-
-and create_rewrite_formula : Vlang.var -> Vlang.var -> Vlang.v_formula -> Vlang.v_formula
-=fun v v' f -> begin
-  let nested_rewrite vf = create_rewrite_formula v v' vf in
-  let obj_rewrite vo = create_rewrite_obj v v' vo in
-  match f with
-  | VF_true | VF_false -> f
-  | VF_not vf -> Vlang.create_formula_not (nested_rewrite vf)
-  | VF_and fl -> Vlang.create_formula_and (Core.List.map fl ~f:nested_rewrite)
-  | VF_or fl -> Vlang.create_formula_or (Core.List.map fl ~f:nested_rewrite)
-  | VF_uni_rel (vr, vo) -> Vlang.create_formula_uni_rel ~rel:vr ~o1:(obj_rewrite vo)
-  | VF_bin_rel (vr, o1, o2) -> Vlang.create_formula_bin_rel ~rel:vr ~o1:(obj_rewrite o1) ~o2:(obj_rewrite o2)
-  | VF_imply (vf1, vf2) -> Vlang.create_formula_imply (nested_rewrite vf1) (nested_rewrite vf2)
-  | VF_iff (vf1, vf2) -> Vlang.create_formula_iff (nested_rewrite vf1) (nested_rewrite vf2)
-  | VF_forall (vol, vf) -> Vlang.create_formula_forall ~bnd:(Core.List.map vol ~f:obj_rewrite) ~formula:(nested_rewrite vf)
-  | VF_sigma_equal (o1, o2) -> Vlang.create_formula_sigma_equal ~map:(obj_rewrite o1) ~mutez:(obj_rewrite o2) 
-end
-
-and create_rewrite_exp : Vlang.var -> Vlang.var -> Vlang.v_exp -> Vlang.v_exp
-=fun v v' e -> begin
-  let nested_rewrite vobj = create_rewrite_obj v v' vobj in
-  let formula_rewrite vf = create_rewrite_formula v v' vf in
-  match e with
-  | VE_int _ | VE_string _ | VE_unit | VE_none
-  | VE_uni_cont (_, _) | VE_bin_cont (_, _, _) | VE_list _
-  | VE_nul_op _ | VE_lambda | VE_operation _ -> e
-  | VE_bool f -> Vlang.create_exp_bool (formula_rewrite f)
-  | VE_var vv -> begin
-      if vv = v then Vlang.create_exp_var v'
-      else e
-    end
-  | VE_uni_op (vop, vobj1) -> Vlang.create_exp_uni_op ~op:vop ~o1:(nested_rewrite vobj1)
-  | VE_bin_op (vop, vobj1, vobj2) -> Vlang.create_exp_bin_op ~op:vop ~o1:(nested_rewrite vobj1) ~o2:(nested_rewrite vobj2)
-  | VE_ter_op (vop, vobj1, vobj2, vobj3) -> Vlang.create_exp_ter_op ~op:vop ~o1:(nested_rewrite vobj1) ~o2:(nested_rewrite vobj2) ~o3:(nested_rewrite vobj3)
-end
-
-and create_rewrite_obj : Vlang.var -> Vlang.var -> Vlang.v_obj -> Vlang.v_obj
-=fun v v' o -> { o with exp=(create_rewrite_exp v v' o.exp) }
-
-and create_convert_data : Vlang.data -> Vlang.typ -> Vlang.v_obj
-=fun d t -> begin
-  let make_obj e = Vlang.create_obj_of_exp ~exp:e ~typ:t in
-  match (d.d, t.d) with
-  | D_int x, (T_int | T_nat | T_mutez) -> make_obj (Vlang.create_exp_int x)
-  | D_string x, (T_string | T_key | T_key_hash | T_signature | T_address | T_timestamp) -> make_obj (Vlang.create_exp_string x)
-  | D_bytes x, T_bytes -> make_obj (Vlang.create_exp_string x)
-  | D_unit, T_unit -> make_obj (Vlang.create_exp_unit)
-  | D_bool b, T_bool -> begin
-      if b then make_obj (Vlang.create_exp_bool_true)
-      else make_obj (Vlang.create_exp_bool_false)
-    end
-  | D_pair (c1, c2), T_pair (t1, t2) -> make_obj (Vlang.create_exp_bin_cont_pair (create_convert_data c1 t1) (create_convert_data c2 t2))
-  | D_left c, T_or(t', _) -> make_obj (Vlang.create_exp_uni_cont_left (create_convert_data c t'))
-  | D_right c, T_or(_, t') -> make_obj (Vlang.create_exp_uni_cont_right (create_convert_data c t'))
-  | D_some c, T_option t' -> make_obj (Vlang.create_exp_uni_cont_some (create_convert_data c t'))
-  | D_none, T_option _ -> make_obj (Vlang.create_exp_none)
-  | D_elt (c1, c2), T_big_map (t1, t2) | D_elt (c1, c2), T_map (t1, t2) -> make_obj (Vlang.create_exp_bin_cont_elt (create_convert_data c1 t1) (create_convert_data c2 t2))
-  | D_list cl, T_map _ -> make_obj (Vlang.create_exp_list (Core.List.map cl ~f:(fun c -> (create_convert_data c t))))
-  | D_list cl, T_list t' -> make_obj (Vlang.create_exp_list (Core.List.map cl ~f:(fun c -> (create_convert_data c t'))))
-  | _ -> raise (Failure ("Converter.create_convert_data: Wrong data (" ^ (Pre.Lib.Mich.string_of_datat_ol d) ^ ") and type (" ^ (Pre.Lib.Mich.string_of_typt t) ^ ")"))
-end
-
-and create_convert_cond : Bp.cond -> Vlang.v_formula
-=fun c -> begin
-  match c with
-  | BC_is_true v -> Vlang.create_formula_is_true (create_var v)
-  | BC_is_none v -> Vlang.create_formula_is_none (create_var v) 
-  | BC_is_left v -> Vlang.create_formula_is_left (create_var v)
-  | BC_is_cons v -> Vlang.create_formula_is_cons (create_var v)
-  | BC_no_overflow (e, t) -> Vlang.create_formula_no_overflow (create_convert_obj e t)
-  | BC_no_underflow (e, t) -> Vlang.create_formula_no_underflow (create_convert_obj e t)
-  | BC_not c -> Vlang.create_formula_not (create_convert_cond c)
-end
-
-and create_convert_obj : Vlang.exp -> Vlang.typ -> Vlang.v_obj
-=fun e t -> begin
-  let make_obj e = Vlang.create_obj_of_exp ~exp:e ~typ:t in
-  match e with
-  | E_itself v -> create_var v
-  | E_push (d, t') -> create_convert_data d t'
-  | E_car v -> make_obj (Vlang.create_exp_uni_op_car (create_var v))
-  | E_cdr v -> make_obj (Vlang.create_exp_uni_op_cdr (create_var v))
-  | E_abs v -> make_obj (Vlang.create_exp_uni_op_abs (create_var v))
-  | E_neg v -> make_obj (Vlang.create_exp_uni_op_neg (create_var v))
-  | E_not v -> make_obj (Vlang.create_exp_uni_op_not (create_var v))
-  | E_add (v1, v2) -> make_obj (Vlang.create_exp_bin_op_add (create_var v1) (create_var v2))
-  | E_sub (v1, v2) -> make_obj (Vlang.create_exp_bin_op_sub (create_var v1) (create_var v2))
-  | E_mul (v1, v2) -> make_obj (Vlang.create_exp_bin_op_mul (create_var v1) (create_var v2))
-  | E_ediv (v1, v2) -> make_obj (Vlang.create_exp_bin_op_ediv (create_var v1) (create_var v2))
-  | E_div (v1, v2) -> make_obj (Vlang.create_exp_bin_op_div (create_var v1) (create_var v2))
-  | E_mod (v1, v2) -> make_obj (Vlang.create_exp_bin_op_mod (create_var v1) (create_var v2))
-  | E_shiftL (v1, v2) -> make_obj (Vlang.create_exp_bin_op_lsl (create_var v1) (create_var v2))
-  | E_shiftR (v1, v2) -> make_obj (Vlang.create_exp_bin_op_lsr (create_var v1) (create_var v2))
-  | E_and (v1, v2) -> make_obj (Vlang.create_exp_bin_op_and (create_var v1) (create_var v2))
-  | E_or (v1, v2) -> make_obj (Vlang.create_exp_bin_op_or (create_var v1) (create_var v2))
-  | E_xor (v1, v2) -> make_obj (Vlang.create_exp_bin_op_xor (create_var v1) (create_var v2))
-  | E_eq v -> make_obj (Vlang.create_exp_uni_op_eq (create_var v))
-  | E_neq v -> make_obj (Vlang.create_exp_uni_op_neq (create_var v))
-  | E_lt v -> make_obj (Vlang.create_exp_uni_op_lt (create_var v))
-  | E_gt v -> make_obj (Vlang.create_exp_uni_op_gt (create_var v))
-  | E_leq v -> make_obj (Vlang.create_exp_uni_op_leq (create_var v))
-  | E_geq v -> make_obj (Vlang.create_exp_uni_op_geq (create_var v))
-  | E_compare (v1, v2) -> make_obj (Vlang.create_exp_bin_op_cmp (create_var v1) (create_var v2))
-  | E_cons (v1, v2) -> make_obj (Vlang.create_exp_bin_op_cons (create_var v1) (create_var v2))
-  | E_operation o -> begin
-      match o with
-      | O_create_contract (_, _, _, _) -> make_obj (Vlang.create_exp_operation_origination)
-      | O_transfer_tokens (_, _, _) -> make_obj (Vlang.create_exp_operation_transaction)
-      | O_set_delegate _ -> make_obj (Vlang.create_exp_operation_delegation)
-      | O_create_account (_, _, _, _) -> make_obj (Vlang.create_exp_operation_origination)
-    end
-  | E_unit -> make_obj (Vlang.create_exp_unit)
-  | E_pair (v1, v2) -> make_obj (Vlang.create_exp_bin_cont_pair (create_var v1) (create_var v2))
-  | E_left (v, _) -> make_obj (Vlang.create_exp_uni_cont_left (create_var v))
-  | E_right (v, _) -> make_obj (Vlang.create_exp_uni_cont_right (create_var v))
-  | E_some v -> make_obj (Vlang.create_exp_uni_cont_some (create_var v))
-  | E_none _ -> make_obj (Vlang.create_exp_none)
-  | E_mem (v1, v2) -> make_obj (Vlang.create_exp_bin_op_mem (create_var v1) (create_var v2))
-  | E_get (v1, v2) -> make_obj (Vlang.create_exp_bin_op_get (create_var v1) (create_var v2))
-  | E_update (v1, v2, v3) -> make_obj (Vlang.create_exp_ter_op_update (create_var v1) (create_var v2) (create_var v3))
-  | E_cast v -> make_obj (Vlang.create_exp_uni_op_cast (create_var v))
-  | E_concat (v1, v2) -> make_obj (Vlang.create_exp_bin_op_concat (create_var v1) (create_var v2))
-  | E_concat_list v -> make_obj (Vlang.create_exp_uni_op_concat (create_var v))
-  | E_slice (v1, v2, v3) -> make_obj (Vlang.create_exp_ter_op_slice (create_var v1) (create_var v2) (create_var v3))
-  | E_pack v -> make_obj (Vlang.create_exp_uni_op_pack (create_var v))
-  | E_unpack (_, v) -> make_obj (Vlang.create_exp_uni_op_unpack (create_var v))
-  | E_self -> make_obj (Vlang.create_exp_nul_op_self)
-  | E_contract_of_address (_, v) -> make_obj (Vlang.create_exp_uni_op_contract (create_var v))
-  | E_implicit_account v -> make_obj (Vlang.create_exp_uni_op_account (create_var v))
-  | E_now -> make_obj (Vlang.create_exp_nul_op_now)
-  | E_amount -> make_obj (Vlang.create_exp_nul_op_amount)
-  | E_balance -> make_obj (Vlang.create_exp_nul_op_balance)
-  | E_check_signature (v1, v2, v3) -> make_obj (Vlang.create_exp_ter_op_check_signature (create_var v1) (create_var v2) (create_var v3))
-  | E_blake2b v -> make_obj (Vlang.create_exp_uni_op_blake2b (create_var v))
-  | E_sha256 v -> make_obj (Vlang.create_exp_uni_op_sha256 (create_var v))
-  | E_sha512 v -> make_obj (Vlang.create_exp_uni_op_sha512 (create_var v))
-  | E_hash_key v -> make_obj (Vlang.create_exp_uni_op_hash_key (create_var v))
-  | E_steps_to_quota -> make_obj (Vlang.create_exp_nul_op_steps_to_quota)
-  | E_source -> make_obj (Vlang.create_exp_nul_op_source)
-  | E_sender -> make_obj (Vlang.create_exp_nul_op_sender)
-  | E_address_of_contract v -> make_obj (Vlang.create_exp_uni_op_address (create_var v))
-  | E_create_contract_address _ -> make_obj (Vlang.create_exp_operation_origination)
-  | E_unlift_option v -> make_obj (Vlang.create_exp_uni_op_un_opt (create_var v))
-  | E_unlift_left v -> make_obj (Vlang.create_exp_uni_op_un_left (create_var v))
-  | E_unlift_right v -> make_obj (Vlang.create_exp_uni_op_un_right (create_var v))
-  | E_hd v -> make_obj (Vlang.create_exp_uni_op_hd (create_var v))
-  | E_tl v -> make_obj (Vlang.create_exp_uni_op_tl (create_var v))
-  | E_size v -> make_obj (Vlang.create_exp_uni_op_size (create_var v))
-  | E_isnat v -> make_obj (Vlang.create_exp_uni_op_isnat (create_var v))
-  | E_int_of_nat v -> make_obj (Vlang.create_exp_uni_op_int (create_var v))
-  | E_chain_id -> make_obj (Vlang.create_exp_nul_op_chain_id)
-  | E_create_account_address _ -> make_obj (Vlang.create_exp_operation_origination)
-  | E_lambda (_, _, _) -> make_obj (Vlang.create_exp_lambda)
-  | E_lambda_id id -> make_obj (Vlang.create_exp_int_of_small_int id)
-  | E_exec (v1, v2) -> make_obj (Vlang.create_exp_bin_op_exec (create_var v1) (create_var v2))
-  | E_dup v -> create_var v
-  | E_nil _ -> make_obj (Vlang.create_exp_list [])
-  | E_empty_set _ -> make_obj (Vlang.create_exp_list [])
-  | E_empty_map _ -> make_obj (Vlang.create_exp_list [])
-  | E_empty_big_map _ -> make_obj (Vlang.create_exp_list [])
-  | E_append (v1, v2) -> make_obj (Vlang.create_exp_bin_op_append (create_var v1) (create_var v2))
-  | E_special_nil_list -> make_obj (Vlang.create_exp_list [])
-  | E_phi (_, _) -> raise (Failure "Converter.create_convert_exp: Deprecated Phi Function")
-  | E_unlift_or _ -> raise (Failure "Converter.create_convert_exp: Deprecated Unlift or")
+let convert : Bp.t -> PreLib.Cfg.t -> (Vlang.t * Query.t list)
+=fun bp cfg -> begin
+  let cv_env : convert_env = ref {cfg=cfg; varname=Core.Map.Poly.empty} in
+  let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
+  let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
+  let inductive = Vlang.Formula.VF_imply (f', (g |> rename_formula ~cenv:cv_env)) in
+  (inductive, qs)
 end

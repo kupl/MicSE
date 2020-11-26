@@ -4,50 +4,51 @@
 (*****************************************************************************)
 (*****************************************************************************)
 
-type typ = Vlang.typ
+type typ = Vlang.Ty.t
 and formula = Vlang.v_formula
-and obj = Vlang.v_obj
+and expr = Vlang.Expr.t
 
 type t = {
     mutez : component list;
     mutez_map : component list;
   }
-and component = obj * approach list
+and component = expr * approach list
 and approach = (formula -> formula)
 
 let empty : t
 ={ mutez=[]; mutez_map=[] }
 
-let rec read_components : obj -> t -> t
-=fun o cur_comps -> begin
-  let option_app = (Vlang.create_formula_imply (Vlang.create_formula_is_some o)) in
-  let or_left_app = (Vlang.create_formula_imply (Vlang.create_formula_is_left o)) in
-  let or_right_app = (Vlang.create_formula_imply (Vlang.create_formula_is_right o)) in
-  match o.typ.d with
-  | T_option ty' -> begin
-      let o' = Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_uni_op_un_opt o) ~typ:ty' in
-      append_approach (read_components o' cur_comps) option_app
+let rec read_components : expr -> t -> t
+=fun e cur_comps -> begin
+  let imply_func f1 f2 = Vlang.Formula.VF_imply (f1, f2) in
+  let option_app = (imply_func (VF_not (VF_mich_if_none e))) in
+  let or_left_app = (imply_func (VF_mich_if_left e)) in
+  let or_right_app = (imply_func (VF_not (VF_mich_if_left e))) in
+  match (e |> Vlang.TypeUtil.ty_of_expr) with
+  | T_option _ -> begin
+      let e' = Vlang.Expr.V_unlift_option e in
+      append_approach (read_components e' cur_comps) option_app
     end
-  | T_pair (ty1', ty2') -> begin
-      let o1' = Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_uni_op_car o) ~typ:ty1' in
-      let cur_comps' = read_components o1' cur_comps in
-      let o2' = Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_uni_op_cdr o) ~typ:ty2' in
-      let cur_comps'' = read_components o2' cur_comps' in
+  | T_pair _ -> begin
+      let e1' = Vlang.Expr.V_car e in
+      let cur_comps' = read_components e1' cur_comps in
+      let e2' = Vlang.Expr.V_cdr e in
+      let cur_comps'' = read_components e2' cur_comps' in
       cur_comps''
     end
-  | T_or (ty1', ty2') -> begin
-      let o1' = Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_uni_op_un_left o) ~typ:ty1' in
-      let cur_comps' = append_approach (read_components o1' cur_comps) or_left_app in
-      let o2' = Vlang.create_obj_of_exp ~exp:(Vlang.create_exp_uni_op_un_right o) ~typ:ty2' in
-      let cur_comps'' = append_approach (read_components o2' cur_comps') or_right_app in
+  | T_or _ -> begin
+      let e1' = Vlang.Expr.V_unlift_left e in
+      let cur_comps' = append_approach (read_components e1' cur_comps) or_left_app in
+      let e2' = Vlang.Expr.V_unlift_right e in
+      let cur_comps'' = append_approach (read_components e2' cur_comps') or_right_app in
       cur_comps''
     end
   | T_map (_, ty2') -> begin
-      match ty2'.d with
-      | T_mutez -> { cur_comps with mutez_map=((o, [])::cur_comps.mutez_map)}
+      match ty2' with
+      | T_mutez -> { cur_comps with mutez_map=((e, [])::cur_comps.mutez_map)}
       | _ -> cur_comps
     end
-  | T_mutez -> { cur_comps with mutez=((o, [])::cur_comps.mutez)}
+  | T_mutez -> { cur_comps with mutez=((e, [])::cur_comps.mutez)}
   | _ -> cur_comps
 end
 

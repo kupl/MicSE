@@ -1,16 +1,10 @@
-open ProverLib
+exception Not_Implemented_f of ProverLib.Vlang.t
+exception Not_Implemented_e of ProverLib.Vlang.Expr.t
 
-(************************************************)
-(************************************************)
+val smtsort_of_vlangtyp : ProverLib.Vlang.Ty.t -> ProverLib.Smt.ZSort.t
+val sort_of_typt : Pre.Lib.Adt.typ -> ProverLib.Smt.ZSort.t
+val smtexpr_of_compare : ProverLib.Vlang.Expr.t -> ProverLib.Vlang.Expr.t -> ProverLib.Smt.ZExpr.t
+val smtexpr_of_vlangexpr : ProverLib.Vlang.Expr.t -> ProverLib.Smt.ZExpr.t
+val smtexpr_of_vlangformula : ProverLib.Vlang.t -> ProverLib.Smt.ZExpr.t
 
-val verify : Vlang.t -> Pre.Lib.Cfg.t -> bool * (Smt.z_expr * Smt.z_expr) option
-
-val sort_of_typt : Smt.typ -> Smt.z_sort
-
-val sort_of_inner_type : Smt.typ -> Smt.z_sort list
-
-val create_convert_vformula : Vlang.v_formula -> Smt.z_expr
-
-val create_convert_vobj : Vlang.v_obj -> Smt.z_expr
-
-val create_param_storage_from_model : Smt.model -> Pre.Lib.Cfg.t -> (Smt.z_expr * Smt.z_expr) option
+val verify : ProverLib.Vlang.Formula.t -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option

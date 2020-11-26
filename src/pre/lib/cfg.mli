@@ -82,6 +82,7 @@ type expr =
   | E_unlift_right of var
   | E_hd of var
   | E_tl of var
+  | E_hdtl of var (* "E_hdtl v" returns pair(head, tail) for any container value v. It is useful to extract any value from container than "E_hd" or "E_tl" *)
   | E_size of var
   | E_isnat of var
   | E_int_of_nat of var
@@ -93,7 +94,7 @@ type expr =
   | E_empty_set of typ
   | E_empty_map of typ * typ
   | E_empty_big_map of typ * typ
-  | E_append of var * var
+  | E_append of var * var (* It is created for I_map translation issue. "E_append (v1, v2)" appends the element v1 at the end of the list v2 ("E_cons" appends value to the front of the list). If v2 is map and v1 is pair(key,value), it just adds v1 to v2 *)
   | E_itself of var
   (* DEPRECATED & UNUSED EXPRESSIONS. They can be erased anytime. *)
   | E_div of var * var

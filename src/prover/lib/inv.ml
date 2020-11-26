@@ -21,8 +21,8 @@ module T = struct
   let read_formula : t -> formula
   =fun inv -> begin
     if CPSet.is_empty (inv.formula)
-    then Vlang.create_formula_true
-    else Vlang.create_formula_and (CPSet.to_list (inv.formula))
+    then Vlang.Formula.VF_true
+    else Vlang.Formula.VF_and (CPSet.to_list (inv.formula))
   end
 
   let update : t -> f:formula -> t
