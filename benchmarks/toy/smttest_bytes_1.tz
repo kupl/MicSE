@@ -1,0 +1,10 @@
+parameter unit;
+storage bytes;
+code {
+    CDR;
+    SHA512;
+    PUSH bytes 0x1234;
+    CONCAT;
+    NIL operation;
+    PAIR;
+}

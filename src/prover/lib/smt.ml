@@ -9,11 +9,19 @@ module CONST = struct
   let _sort_operation : string = "Operation"
   let _sort_contract : string = "Contract"
   let _sort_lambda : string = "Lambda"
+  let _sort_bytes : string = "Bytes"
   let _sort_option : string = "Option"
   let _sort_pair : string = "Pair"
   let _sort_or : string = "Or"
   let _sort_list : string = "List"
 
+  let _const_bytes_bytstr : string = "BytStr"
+  let _const_bytes_pack : string = "Pack"
+  let _const_bytes_concatenated : string = "BytConcat"
+  let _const_bytes_sliced : string = "BytSlice"
+  let _const_bytes_blake2b : string = "Blake2b"
+  let _const_bytes_sha256 : string = "Sha256"
+  let _const_bytes_sha512 : string = "Sha512"
   let _const_option_none : string = "None"
   let _const_option_some : string = "Some"
   let _const_pair : string = "Pair"
@@ -22,6 +30,13 @@ module CONST = struct
   let _const_list_nil : string = "Nil"
   let _const_list_cons : string = "Cons"
 
+  let _recog_bytes_bytstr : string = "is_bytstr"
+  let _recog_bytes_pack : string = "is_pack"
+  let _recog_bytes_concatenated : string = "is_bytes_concatenated"
+  let _recog_bytes_sliced : string = "is_bytes_sliced"
+  let _recog_bytes_blake2b : string = "is_blake2b"
+  let _recog_bytes_sha256 : string = "is_sha256"
+  let _recog_bytes_sha512 : string = "is_sha512"
   let _recog_option_none : string = "is_none"
   let _recog_option_some : string = "is_some"
   let _recog_pair : string = "is_pair"
@@ -372,6 +387,17 @@ end
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Natural Number                                                            *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZNat = struct
+  (* TODO *)
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Mutez                                                                     *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -575,6 +601,106 @@ module ZPair = struct
   =ZBool.create_eq
   let create_neq : t -> t -> ZBool.t
   =ZBool.create_neq
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Bytes                                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZBytes = struct
+  type t = ZExpr.t
+
+  let _create_const_of_bytstr : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_bytes_bytstr
+      ~recog_func_name:CONST._recog_bytes_bytstr
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[(Some ZStr.sort)]
+      ~field_sort_refs:[1]
+  let _create_const_of_pack : content_sort:ZSort.t -> ZDatatype.const
+  =fun ~content_sort -> begin
+    ZDatatype.create_const
+      ~name:CONST._const_bytes_pack
+      ~recog_func_name:CONST._recog_bytes_pack
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[(Some content_sort)]
+      ~field_sort_refs:[1]
+  end
+  let _create_const_of_concatenated : bytes_pair_sort:ZSort.t -> ZDatatype.const
+  =fun ~bytes_pair_sort -> begin
+    ZDatatype.create_const
+      ~name:CONST._const_bytes_concatenated
+      ~recog_func_name:CONST._recog_bytes_concatenated
+      ~field_names:[CONST._field_content]
+      ~field_sorts:[Some bytes_pair_sort]
+      ~field_sort_refs:[1]
+  end
+  (* let _create_const_of_sliced : content_sort:ZSort.t -> ZDatatype.const *) (* TODO : after ZNat completed *)
+  let _create_const_of_blake2b : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_bytes_blake2b
+      ~recog_func_name:CONST._recog_bytes_blake2b
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[None]
+      ~field_sort_refs:[0]
+  let _create_const_of_sha256 : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_bytes_sha256
+      ~recog_func_name:CONST._recog_bytes_sha256
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[None]
+      ~field_sort_refs:[0]
+  let _create_const_of_sha512 : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_bytes_sha512
+      ~recog_func_name:CONST._recog_bytes_sha512
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[None]
+      ~field_sort_refs:[0]
+
+  (* let _create_sort_name : content_sort:ZSort.t -> string
+  =fun ~content_sort -> (CONST._sort_bytes) ^ "(" ^ (ZSort.to_string content_sort) ^ ")" *)
+
+  let create_sort : content_sort:ZSort.t -> ZSort.t
+  =fun ~content_sort -> begin
+    ZDatatype.create_sort
+    ~name:CONST._sort_bytes
+    ~const_list:[ _create_const_of_bytstr;
+                  _create_const_of_pack ~content_sort:content_sort;
+                  _create_const_of_concatenated ~bytes_pair_sort:content_sort;
+                  _create_const_of_blake2b;
+                  _create_const_of_sha256;
+                  _create_const_of_sha512;
+                ]
+  end
+
+  let of_string : string -> t
+  =fun s -> create_sort ~content_sort:ZStr.sort |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string s]
+  let create_bytstr : ZExpr.t -> t
+  =fun content -> create_sort ~content_sort:ZStr.sort |> ZDatatype.create ~const_idx:0 ~expr_list:[content]
+
+  let create_pack : ZExpr.t -> t
+  =fun content -> create_sort ~content_sort:(ZExpr.read_sort content) |> ZDatatype.create ~const_idx:1 ~expr_list:[content]
+
+  (* it does not check that the ~fst_bytes and ~snd_bytes has real bytes type expression *)
+  let create_concatenated : fst_bytes:ZExpr.t -> snd_bytes:ZExpr.t -> t
+  =fun ~fst_bytes ~snd_bytes -> begin
+    let bpair = ZPair.create ~fst:fst_bytes ~snd:snd_bytes in
+    create_sort ~content_sort:(ZExpr.read_sort bpair) |> ZDatatype.create ~const_idx:2 ~expr_list:[bpair]
+  end
+
+  (* let create_sliced : ZExpr.t -> t *) (* TODO : after _create_const_of_sliced finished *)
+
+  let create_blake2b : ZExpr.t -> t
+  =fun content -> create_sort ~content_sort:(ZExpr.read_sort content) |> ZDatatype.create ~const_idx:3 ~expr_list:[content]
+  let create_sha256 : ZExpr.t -> t
+  =fun content -> create_sort ~content_sort:(ZExpr.read_sort content) |> ZDatatype.create ~const_idx:4 ~expr_list:[content]
+  let create_sha512 : ZExpr.t -> t
+  =fun content -> create_sort ~content_sort:(ZExpr.read_sort content) |> ZDatatype.create ~const_idx:5 ~expr_list:[content]
+
 end
 
 

@@ -9,11 +9,19 @@ module CONST : sig
   val _sort_operation : string
   val _sort_contract : string
   val _sort_lambda : string
+  val _sort_bytes : string
   val _sort_option : string
   val _sort_pair : string
   val _sort_or : string
   val _sort_list : string
 
+  val _const_bytes_bytstr : string
+  val _const_bytes_pack : string
+  val _const_bytes_concatenated : string
+  val _const_bytes_sliced : string
+  val _const_bytes_blake2b : string
+  val _const_bytes_sha256 : string
+  val _const_bytes_sha512 : string
   val _const_option_none : string
   val _const_option_some : string
   val _const_pair : string
@@ -22,6 +30,13 @@ module CONST : sig
   val _const_list_nil : string
   val _const_list_cons : string
 
+  val _recog_bytes_bytstr : string
+  val _recog_bytes_pack : string
+  val _recog_bytes_concatenated : string
+  val _recog_bytes_sliced : string
+  val _recog_bytes_blake2b : string
+  val _recog_bytes_sha256 : string
+  val _recog_bytes_sha512 : string
   val _recog_option_none : string
   val _recog_option_some : string
   val _recog_pair : string
@@ -372,6 +387,40 @@ module ZPair : sig
 
   val create_eq : t -> t -> ZBool.t
   val create_neq : t -> t -> ZBool.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Bytes                                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZBytes : sig
+  type t = ZExpr.t
+
+  val _create_const_of_bytstr : ZDatatype.const
+  val _create_const_of_pack : content_sort:ZSort.t -> ZDatatype.const
+  val _create_const_of_concatenated : bytes_pair_sort:ZSort.t -> ZDatatype.const
+  (* let _create_const_of_sliced : content_sort:ZSort.t -> ZDatatype.const *) (* TODO : after ZNat completed *)
+  val _create_const_of_blake2b : ZDatatype.const
+  val _create_const_of_sha256 : ZDatatype.const
+  val _create_const_of_sha512 : ZDatatype.const
+
+  val create_sort : content_sort:ZSort.t -> ZSort.t
+
+  val of_string : string -> t
+  val create_bytstr : ZExpr.t -> t
+  val create_pack : ZExpr.t -> t
+
+  (* "create_concatenated" does not check that the ~fst_bytes and ~snd_bytes has real bytes type expression *)
+  val create_concatenated : fst_bytes:ZExpr.t -> snd_bytes:ZExpr.t -> t
+
+  (* val create_sliced : ZExpr.t -> t *) (* TODO : after _create_const_of_sliced finished *)
+
+  val create_blake2b : ZExpr.t -> t
+  val create_sha256 : ZExpr.t -> t
+  val create_sha512 : ZExpr.t -> t
 end
 
 

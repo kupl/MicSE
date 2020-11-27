@@ -31,7 +31,7 @@ let rec smtsort_of_vlangtyp : Vlang.Ty.t -> Smt.ZSort.t
   | T_int -> Smt.ZInt.sort
   | T_nat -> Smt.ZInt.sort
   | T_string -> Smt.ZStr.sort
-  | T_bytes -> Smt.ZStr.sort
+  | T_bytes -> Smt.ZBytes.create_sort ~content_sort:(Smt.ZStr.sort)
   | T_mutez -> Smt.ZMutez.sort
   | T_bool -> Smt.ZBool.sort
   | T_key_hash -> Smt.ZStr.sort
@@ -139,13 +139,13 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (*************************************************************************)
       (* Bytes                                                                 *)
       (*************************************************************************)
-      | V_lit_bytes _ -> err ve
-      | V_concat_bbb (_, _) -> err ve
+      | V_lit_bytes s -> Smt.ZBytes.create_bytstr (Smt.ZStr.of_string s)
+      | V_concat_bbb (e1, e2) -> Smt.ZBytes.create_concatenated ~fst_bytes:(soe e1) ~snd_bytes:(soe e2)
       | V_concat_list_b _ -> err ve (* same error reason as "V_concat_list_s" *)
-      | V_pack _ -> err ve      (* uninterpreted function needed *)
-      | V_blake2b _ -> err ve   (* uninterpreted function needed *)
-      | V_sha256 _ -> err ve    (* uninterpreted function needed *)
-      | V_sha512 _ -> err ve    (* uninterpreted function needed *)
+      | V_pack e -> Smt.ZBytes.create_pack (soe e)
+      | V_blake2b e -> Smt.ZBytes.create_blake2b (soe e)
+      | V_sha256 e -> Smt.ZBytes.create_sha256 (soe e)
+      | V_sha512 e -> Smt.ZBytes.create_sha512 (soe e)
 
       (*************************************************************************)
       (* Mutez                                                                 *)
