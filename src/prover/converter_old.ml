@@ -1,181 +1,114 @@
 open ProverLib
 
-exception Error of string
-
 exception InvalidConversion_Expr of PreLib.Cfg.expr
 exception InvalidConversion_Cond of Bp.cond
 
-module VarComparable = struct
-  module Key = struct
-    type t = ProverLib.Bp.var
-    let compare : t -> t -> int
-    =Core.String.compare
-    let sexp_of_t : t -> Core.Sexp.t
-    =Core.String.sexp_of_t
-    let t_of_sexp : Core.Sexp.t -> t
-    =Core.String.t_of_sexp
-  end
+let newvar_prefix : string = "#"
+let gen_nv x : string = newvar_prefix ^ x
 
-  include Key
-  include Core.Comparable.Make (Key)
+type convert_env_body = {
+  cfg : PreLib.Cfg.t;
+  varname : (string, string) Core.Map.Poly.t; (* original-var-string -> latest-used-var-string *)
+}
+type convert_env = convert_env_body ref
+
+let get_cur_varname : convert_env -> string -> string 
+=fun cenv v -> begin
+  let m = !cenv.varname in  (* map *)
+  (match Core.Map.Poly.find m v with  (* find v in map *)
+  | None -> 
+      let nm = Core.Map.Poly.add m ~key:v ~data:v |> (function | `Ok mm -> mm | `Duplicate -> Stdlib.failwith "Prover.Converter.get_cur_varname : duplicate") in
+      (cenv := {!cenv with varname=nm}; v) (* update map & apply at convert_env *)
+  | Some vv -> vv
+  )
 end
 
-
-module CvUtils = struct
-  let to_vtyp : PreLib.Cfg.typ -> Vlang.typ
-  =Vlang.TypeUtil.ty_of_mty
-
-  let read_type : Vlang.Expr.t -> Vlang.typ
-  =Vlang.TypeUtil.ty_of_expr
+(* WARNING: "get_new_varname" will change the given convert_env data *)
+let get_new_varname : convert_env -> string -> string
+=fun cenv v -> begin
+  let m = !cenv.varname in (* map *)
+  (match Core.Map.Poly.find m v with (* find v in map *)
+  | None ->
+      let nv = gen_nv v in
+      let nm = Core.Map.Poly.add m ~key:v ~data:nv |> (function | `Ok mm -> mm | `Duplicate -> Stdlib.failwith "Prover.Converter.get_new_varname : None : duplicate") in
+      (cenv := {!cenv with varname=nm}; nv)
+  | Some cv ->
+      let nv = gen_nv cv in
+      let nm = Core.Map.Poly.add m ~key:v ~data:nv |> (function | `Ok mm -> mm | `Duplicate -> Stdlib.failwith "Prover.Converter.get_new_varname : Some : duplicate") in
+      (cenv := {!cenv with varname=nm}; nv)
+  )
 end
 
-module Env = struct
-  exception Error of string
-
-  module VarMap = VarComparable.Map   (* Core.Map *)
-  type body = {
-    cfg : PreLib.Cfg.t;
-    varname : Bp.var VarMap.t;        (* Variable-name Map          : Original Variable-name  -> Latest Variable-name *)
-    varexpr : Vlang.Expr.t VarMap.t;  (* Variable to Expression Map : Variable-name           -> Expression of Verification Language *)
-  }
-  type t = body ref
-  
-  let newvar_prefix : string
-  ="#"
-  let gen_nv : Bp.var -> Bp.var
-  =fun v -> newvar_prefix ^ v
-  let get_ov : Bp.var -> Bp.var (* "get_ov" just removes continuous "newvar_prefix"es in front of the given string *)
-  =fun v -> begin (* get_original_varname *)
-    let idx : int ref = ref 0 in
-    let flag : bool ref = ref true in
-    let _ : unit = String.iter (fun c -> if !flag && (String.make 1 c = newvar_prefix) then Stdlib.incr idx else flag := false) v in
-    String.sub v !idx (String.length v - !idx)
-  end
-
-  let create : Pre.Lib.Cfg.t -> t
-  =fun cfg -> ref { cfg=cfg; varname=VarMap.empty; varexpr=VarMap.empty; }
-
-  let read_vartype : PreLib.Cfg.ident -> env:t -> Vlang.typ
-  =fun v ~env -> begin (* read_type_cfgvar *)
-    let m = !env.cfg.type_info in (* cfg type info map *)
-    match Pre.Lib.Cfg.CPMap.find m v with (* find v in cfg type info map *)
-    | None -> Error "read_vartype: Cannot find the variable" |> raise
-    | Some x -> CvUtils.to_vtyp x
-  end
-
-  let read_varname : Bp.var -> env:t -> Bp.var
-  =fun v ~env -> begin (* get_cur_varname *)
-    let m = !env.varname in (* varname map *)
-    match VarMap.find m v with (* find v in varname map *)
-    | None -> begin
-        let nm = VarMap.add m ~key:v ~data:v |> (function | `Ok mm -> mm | `Duplicate -> Error "read_varname: Duplicate variable name" |> raise) in (* make new map with adding the current variable *)
-        let _ = env := { !env with varname=nm } in
-        v
-      end
-    | Some vv -> vv
-  end
-  let update_varname : Bp.var -> env:t -> Bp.var (* WARNING: "update_varname" will change the given env data *)
-  =fun v ~env -> begin (* get_new_varname *)
-    let m = !env.varname in (* varname map *)
-    match VarMap.find m v with (* find v in varname map *)
-    | None -> begin
-        let nv = gen_nv v in
-        let nm = VarMap.add m ~key:v ~data:nv |> (function | `Ok mm -> mm | `Duplicate -> Error "read_varname: Duplicate variable name" |> raise) in (* make new map with adding the current variable *)
-        let _ = env := { !env with varname=nm } in
-        nv
-      end
-    | Some cv -> begin
-        let nv = gen_nv cv in
-        let nm = VarMap.add m ~key:v ~data:nv |> (function | `Ok mm -> mm | `Duplicate -> Error "read_varname: Duplicate variable name" |> raise) in (* make new map with adding the current variable *)
-        let _ = env := { !env with varname=nm } in
-        nv
-      end
-  end
-
-  let read_expr_of_cfgvar : Pre.Lib.Cfg.ident -> env:t -> Vlang.Expr.t
-  =fun v ~env -> begin (* create_var_of_cfgvar *)
-    let m = !env.varexpr in (* variable to expression map *)
-    let cv = v |> read_varname ~env:env in (* current variable name of input variable *)
-    if v = Pre.Lib.Cfg.param_storage_name
-    then Vlang.Expr.V_var ((v |> read_vartype ~env:env), v)
-    else match VarMap.find m cv with
-    | None -> Error ("read_expr_of_cfgvar: Variable " ^ v ^ " is not defined with any expression") |> raise
-    | Some ce -> ce
-  end
-  let update_expr_of_cfgvar : Pre.Lib.Cfg.ident -> Vlang.Expr.t -> env:t -> unit
-  =fun v e ~env -> begin
-    let m = !env.varexpr in (* variable to expression map *)
-    let cv = v |> read_varname ~env:env in
-    let nm = VarMap.add m ~key:cv ~data:e |> (function | `Ok mm -> mm | `Duplicate -> Error "update_expr_of_cfgvar: Duplicate variable name" |> raise) in (* make new map with adding the expression to current variable *)
-    let _ = env := { !env with varexpr=nm } in
-    ()
-  end
+(* "get_original_varname" just removes continuous "newvar_prefix"es in front of the given string *)
+let get_original_varname : string -> string
+=fun v -> begin
+  let idx : int ref = ref 0 in
+  let flag : bool ref = ref true in
+  let _ : unit = String.iter (fun c -> if !flag && (String.make 1 c = newvar_prefix) then Stdlib.incr idx else flag := false) v in
+  String.sub v !idx (String.length v - !idx)
 end
 
+let read_type_cfgvar : convert_env -> PreLib.Cfg.ident -> Vlang.typ
+=fun cenv v -> begin Pre.Lib.Cfg.CPMap.find !cenv.cfg.type_info v |> (function Some x -> Vlang.TypeUtil.ty_of_mty x | None -> Stdlib.failwith "Prover.Converter.read_type_cfgvar : None") end
 
-let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.t
-= let open PreLib.Mich in
+(*let read_type : Vlang.Expr.t -> Vlang.typ = Vlang.TypeUtil.ty_of_expr*)
+let convert_type : PreLib.Cfg.typ -> Vlang.typ = Vlang.TypeUtil.ty_of_mty
+
+let create_var_of_cfgvar : convert_env -> PreLib.Cfg.ident -> Vlang.Expr.t
+= fun cenv v -> Vlang.Expr.V_var ((read_type_cfgvar cenv (get_original_varname v)), v)
+
+let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.t = 
+  let open PreLib.Mich in
   let open Vlang.Ty in
   let open Vlang.Expr in
   let cem = create_expr_of_michdata in (* syntax sugar *)
-  let set_func ~elt acc x = Core.Set.Poly.add acc (cem x elt) in
-  let map_func ~kt ~vt acc x = begin
-    match (Pre.Lib.Mich.get_d x) with
-    | D_elt (k, v) -> acc |> Core.Map.Poly.add ~key:(cem k kt) ~data:(cem v vt) |> (function | `Ok m -> m | `Duplicate -> acc)
-    | _ -> Error "create_expr_of_michdata_i: Invalid data in elt list" |> raise
-  end in
-  fun michdata vtyp -> begin
+  (fun michdata vtyp ->
     match (vtyp, michdata) with 
-    | T_int, D_int zn                   -> V_lit_int zn
-    | T_nat, D_int zn                   -> V_lit_int zn
-    | T_mutez, D_int zn                 -> V_lit_mutez zn
-    | T_timestamp, D_int zn             -> V_lit_timestamp_sec zn
-    | T_string, D_string s              -> V_lit_string s
-    | T_key_hash, D_string s            -> V_lit_key_hash s
-    | T_timestamp, D_string s           -> V_lit_timestamp_str s
-    | T_address, D_string s             -> V_lit_address (V_lit_key_hash s)
-    | T_key, D_string s                 -> V_lit_key s
-    | T_bytes, D_bytes s                -> V_lit_bytes s
-    | T_chain_id, D_bytes s             -> V_lit_chain_id s
-    | T_unit, D_unit                    -> V_unit
-    | T_bool, D_bool b                  -> V_lit_bool b
-    | T_pair (t1, t2), D_pair (d1, d2)  -> V_pair (cem d1 t1, cem d2 t2)
-    | T_or (t1, _), D_left d            -> V_left (vtyp, cem d t1)
-    | T_or (_, t2), D_right d           -> V_right (vtyp, cem d t2)
-    | T_option t, D_some d              -> V_some (cem d t)
-    | T_option t, D_none                -> V_none t
-    | T_list elt, D_list dlist          -> V_lit_list (elt, List.map (fun x -> cem x elt) dlist)
-    | T_set elt, D_list dlist           -> V_lit_set (elt, dlist |> 
-                                                           Core.List.fold_left
-                                                              ~init:Core.Set.Poly.empty
-                                                              ~f:(set_func ~elt:elt))
-    | T_map (kt, vt), D_list dlist      -> V_lit_map (kt, vt, dlist |>
-                                                              Core.List.fold_left 
-                                                                ~init:Core.Map.Poly.empty
-                                                                ~f:(map_func ~kt:kt ~vt:vt))
-    | T_big_map (kt, vt), D_list dlist  -> V_lit_big_map (kt, vt, dlist |>
-                                                                  Core.List.fold_left
-                                                                    ~init:Core.Map.Poly.empty
-                                                                    ~f:(map_func ~kt:kt ~vt:vt))
-    | T_lambda (t1, t2), D_lambda it    -> V_lit_lambda (t1, t2, it)
-    | _, D_elt _                        -> Error "create_expr_of_michdata_i : Invalid data D_elt" |> raise
-    | _                                 -> Error "create_expr_of_michdata_i : Invalid match" |> raise
-end
+    | T_int, D_int zn -> V_lit_int zn
+    | T_nat, D_int zn -> V_lit_int zn
+    | T_mutez, D_int zn -> V_lit_mutez zn
+    | T_timestamp, D_int zn -> V_lit_timestamp_sec zn
+    | T_string, D_string s -> V_lit_string s
+    | T_key_hash, D_string s -> V_lit_key_hash s
+    | T_timestamp, D_string s -> V_lit_timestamp_str s
+    | T_address, D_string s -> V_lit_address (V_lit_key_hash s)
+    | T_key, D_string s -> V_lit_key s
+    | T_bytes, D_bytes s -> V_lit_bytes s
+    | T_chain_id, D_bytes s -> V_lit_chain_id s
+    | T_unit, D_unit -> V_unit
+    | T_bool, D_bool b -> V_lit_bool b
+    | T_pair (t1, t2), D_pair (d1, d2) -> V_pair (cem d1 t1, cem d2 t2)
+    | T_or (t1, _), D_left d -> V_left (vtyp, cem d t1)
+    | T_or (_, t2), D_right d -> V_right (vtyp, cem d t2)
+    | T_option t, D_some d -> V_some (cem d t)
+    | T_option t, D_none -> V_none t
+    | T_list elt, D_list dlist -> V_lit_list (elt, List.map (fun x -> cem x elt) dlist)
+    | T_set elt, D_list dlist -> V_lit_set (elt, List.fold_left (fun acc x -> Core.Set.Poly.add acc (cem x elt)) Core.Set.Poly.empty dlist)
+    | T_map (kt, vt), D_list dlist -> 
+      let errmsg : string = "Prover.Converter.create_expr_of_michdata_i : (T_map, D_list)" in
+      V_lit_map (kt, vt, (List.fold_left (fun acc x -> (match (PreLib.Mich.get_d x) with | D_elt (k, v) -> (Core.Map.Poly.add acc ~key:(cem k kt) ~data:(cem v vt) |> (function | `Ok m -> m | `Duplicate -> acc)) | _ -> Stdlib.failwith errmsg)) Core.Map.Poly.empty dlist))
+    | T_big_map (kt, vt), D_list dlist -> 
+      let errmsg : string = "Prover.Converter.create_expr_of_michdata_i : (T_map, D_list)" in
+      V_lit_big_map (kt, vt, (List.fold_left (fun acc x -> (match (PreLib.Mich.get_d x) with | D_elt (k, v) -> (Core.Map.Poly.add acc ~key:(cem k kt) ~data:(cem v vt) |> (function | `Ok m -> m | `Duplicate -> acc)) | _ -> Stdlib.failwith errmsg)) Core.Map.Poly.empty dlist))
+    | _, D_elt _ -> Stdlib.failwith "Prover.Converter.create_expr_of_michdata_i : (_, D_elt)"
+    | T_lambda (t1, t2), D_lambda it -> V_lit_lambda (t1, t2, it)
+    | _ -> Stdlib.failwith "Prover.Converter.create_expr_of_michdata_i : match failed"
+  )
 and create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> Vlang.typ -> Vlang.Expr.t
-= fun michdata_t vtyp -> begin (* Wrapping function for create_expr_of_michdata_i *)
+= fun michdata_t vtyp -> begin
   create_expr_of_michdata_i (PreLib.Mich.get_d michdata_t) vtyp
 end
 
 (* TODO (plan) : make this function transaction-specific / amount, balance, source, sender, ... *)
-let create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> Vlang.Expr.t
+let create_expr_of_cfgexpr : convert_env -> PreLib.Cfg.expr -> Vlang.Expr.t
 = let open PreLib.Cfg in
   let open Vlang.Expr in
   fun cenv cfgexpr -> begin
-  let cvt : PreLib.Cfg.ident -> Vlang.typ = Env.read_vartype ~env:cenv in (* syntax sugar *)
-  let cvf : PreLib.Cfg.ident -> Vlang.Expr.t = fun v -> v |> Env.read_varname ~env:cenv |> Env.read_expr_of_cfgvar ~env:cenv in (* syntax sugar *)
-  let err (): 'a = InvalidConversion_Expr cfgexpr |> raise in
+  let cvt : PreLib.Cfg.ident -> Vlang.typ = read_type_cfgvar cenv in (* syntax sugar *)
+  let cvf : PreLib.Cfg.ident -> Vlang.Expr.t = fun v -> create_var_of_cfgvar cenv (get_cur_varname cenv v) in (* syntax sugar *) (* TODO : reduce redundant procedure, if it is bottleneck : cvf calls cvt *)
+  let err (): 'a = Stdlib.raise (InvalidConversion_Expr cfgexpr) in
   match cfgexpr with 
-  | E_push (d, t) -> create_expr_of_michdata d (CvUtils.to_vtyp t)
+  | E_push (d, t) -> create_expr_of_michdata d (convert_type t)
   | E_car v -> (match cvt v with | T_pair _ -> V_car (cvf v) | _ -> err ())
   | E_cdr v -> (match cvt v with | T_pair _ -> V_cdr (cvf v) | _ -> err ())
   | E_abs v -> (match cvt v with | T_int -> V_abs_in (cvf v) | _ -> err ())
@@ -262,17 +195,17 @@ let create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> Vlang.Expr.t
   | E_operation op -> (
       (* TODO : check variable types! *)
       match op with
-      | O_create_contract (p, v1, v2, v3) -> V_create_contract ((CvUtils.to_vtyp p.PreLib.Mich.param), (CvUtils.to_vtyp p.PreLib.Mich.storage), V_lit_program (p), cvf v1, cvf v2, cvf v3)
+      | O_create_contract (p, v1, v2, v3) -> V_create_contract ((convert_type p.PreLib.Mich.param), (convert_type p.PreLib.Mich.storage), V_lit_program (p), cvf v1, cvf v2, cvf v3)
       | O_transfer_tokens (v1, v2, v3) -> V_transfer_tokens (cvf v1, cvf v2, cvf v3)
       | O_set_delegate v -> V_set_delegate (cvf v)
       | O_create_account _ -> err () (* deprecated operation *)
     )
   | E_unit -> V_unit
   | E_pair (v1, v2) -> V_pair (cvf v1, cvf v2)
-  | E_left (v, t) -> let tt = CvUtils.to_vtyp t in (match tt, cvt v with | T_or (lt1, _), lt2 when lt1 = lt2 -> V_left (tt, cvf v) | _ -> err ())
-  | E_right (v, t) -> let tt = CvUtils.to_vtyp t in (match tt, cvt v with | T_or (_, lt1), lt2 when lt1 = lt2 -> V_right (tt, cvf v) | _ -> err ())
+  | E_left (v, t) -> let tt = convert_type t in (match tt, cvt v with | T_or (lt1, _), lt2 when lt1 = lt2 -> V_left (tt, cvf v) | _ -> err ())
+  | E_right (v, t) -> let tt = convert_type t in (match tt, cvt v with | T_or (_, lt1), lt2 when lt1 = lt2 -> V_right (tt, cvf v) | _ -> err ())
   | E_some v -> V_some (cvf v)
-  | E_none t -> V_none (CvUtils.to_vtyp t)
+  | E_none t -> V_none (convert_type t)
   | E_mem (v1, v2) -> (
       let vv1, vv2 = cvf v1, cvf v2 in
       match cvt v1, cvt v2 with
@@ -313,12 +246,12 @@ let create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> Vlang.Expr.t
       | _ -> err ()
     )
   | E_pack v ->  V_pack (cvf v)
-  | E_unpack (t, v) -> V_unpack (CvUtils.to_vtyp t, cvf v)
+  | E_unpack (t, v) -> V_unpack (convert_type t, cvf v)
   | E_self -> (
       let paramstoragetyp = PreLib.Cfg.t_map_find ~errtrace:"Prover.Converter.create_expr_of_cfgexpr : E_self" !cenv.cfg.type_info PreLib.Cfg.param_storage_name in
-      match CvUtils.to_vtyp paramstoragetyp with | T_pair (pt, _) -> V_self pt | _ -> err ()
+      match convert_type paramstoragetyp with | T_pair (pt, _) -> V_self pt | _ -> err ()
     )
-  | E_contract_of_address (t, v) -> (match cvt v with | T_address -> V_contract_of_address (CvUtils.to_vtyp t, cvf v) | _ -> err ())
+  | E_contract_of_address (t, v) -> (match cvt v with | T_address -> V_contract_of_address (convert_type t, cvf v) | _ -> err ())
   | E_implicit_account v -> (match cvt v with | T_key_hash -> V_implicit_account (cvf v) | _ -> err ())
   | E_now -> V_now
   | E_amount -> V_amount
@@ -375,7 +308,7 @@ let create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> Vlang.Expr.t
   | E_chain_id -> V_chain_id
   | E_lambda_id n -> (
       let (_, _, pt, rett) = (t_map_find ~errtrace:"Prover.Converter.create_expr_of_cfgexpr" !cenv.cfg.lambda_id_map n) in
-      V_lambda_id (CvUtils.to_vtyp pt, CvUtils.to_vtyp rett, n)
+      V_lambda_id (convert_type pt, convert_type rett, n)
     )
   | E_exec (v1, v2) -> (
       match cvt v1, cvt v2 with
@@ -383,10 +316,10 @@ let create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> Vlang.Expr.t
       | _ -> err ()
     )
   | E_dup v -> V_dup (cvf v)
-  | E_nil t -> V_nil (CvUtils.to_vtyp t)
-  | E_empty_set t -> V_empty_set (CvUtils.to_vtyp t)
-  | E_empty_map (t1, t2) -> V_empty_map (CvUtils.to_vtyp t1, CvUtils.to_vtyp t2)
-  | E_empty_big_map (t1, t2) -> V_empty_big_map (CvUtils.to_vtyp t1, CvUtils.to_vtyp t2)
+  | E_nil t -> V_nil (convert_type t)
+  | E_empty_set t -> V_empty_set (convert_type t)
+  | E_empty_map (t1, t2) -> V_empty_map (convert_type t1, convert_type t2)
+  | E_empty_big_map (t1, t2) -> V_empty_big_map (convert_type t1, convert_type t2)
   | E_itself v -> V_itself (cvf v)
   | E_append (v1, v2) -> (
       match cvt v1, cvt v2 with
@@ -407,20 +340,29 @@ let create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> Vlang.Expr.t
   | E_special_nil_list -> err ()
   | E_phi _ -> err ()
   | E_unlift_or _ -> err ()
+
 end (* function create_expr_of_cfgexpr end *)
 
-let rec create_formula_of_cond : Env.t -> Bp.cond -> Vlang.v_formula
+let create_var_in_convert_cond : convert_env -> PreLib.Cfg.ident -> Vlang.Expr.t 
+=fun cenv v -> begin
+  let tt = PreLib.Cfg.t_map_find ~errtrace:("Prover.Converter.create_var_in_convert_cond : " ^ v) !cenv.cfg.type_info v |> convert_type in
+  let vv = get_cur_varname cenv v in
+  Vlang.Expr.V_var (tt, vv)
+end
+
+
+let rec convert_cond : convert_env -> Bp.cond -> Vlang.v_formula
 = let open Vlang.Formula in
   let open Bp in
   fun cenv c -> begin
-  let cvt : PreLib.Cfg.ident -> Vlang.typ = Env.read_vartype ~env:cenv in (* syntax sugar *)
-  let cvf : PreLib.Cfg.ident -> Vlang.Expr.t = fun v -> v |> Env.read_varname ~env:cenv |> Env.read_expr_of_cfgvar ~env:cenv in (* syntax sugar *)
+  let cvt : PreLib.Cfg.ident -> Vlang.typ = read_type_cfgvar cenv in (* syntax sugar *)
+  let cvf : PreLib.Cfg.ident -> Vlang.Expr.t = fun v -> create_var_of_cfgvar cenv (get_cur_varname cenv v) in (* syntax sugar *) (* TODO : reduce redundant procedure, if it is bottleneck : cvf calls cvt *)
   let err (): 'a = Stdlib.raise (InvalidConversion_Cond c) in
   match c with
-    | BC_is_true v -> VF_mich_if (v |> Env.read_expr_of_cfgvar ~env:cenv)
-    | BC_is_none v -> VF_mich_if_none (v |> Env.read_expr_of_cfgvar ~env:cenv)
-    | BC_is_left v -> VF_mich_if_left (v |> Env.read_expr_of_cfgvar ~env:cenv)
-    | BC_is_cons v -> VF_mich_if_cons (v |> Env.read_expr_of_cfgvar ~env:cenv)
+    | BC_is_true v -> VF_mich_if (create_var_in_convert_cond cenv v)
+    | BC_is_none v -> VF_mich_if_none (create_var_in_convert_cond cenv v)
+    | BC_is_left v -> VF_mich_if_left (create_var_in_convert_cond cenv v)
+    | BC_is_cons v -> VF_mich_if_cons (create_var_in_convert_cond cenv v)
     | BC_no_overflow e -> (
         match e with
         | E_add (v1, v2) -> (
@@ -448,41 +390,42 @@ let rec create_formula_of_cond : Env.t -> Bp.cond -> Vlang.v_formula
           )
         | _ -> err () 
       )
-    | BC_not c -> VF_not (create_formula_of_cond cenv c)
+    | BC_not c -> VF_not (convert_cond cenv c)
 end
 
-let rename_formula : Vlang.t -> cenv:Env.t -> Vlang.t
+let rename_formula : Vlang.t -> cenv:convert_env -> Vlang.t
 =fun fmla ~cenv -> begin
   let is_var : Vlang.Expr.t -> bool = (function | Vlang.Expr.V_var _ -> true | _ -> false) in
   let rename_var : Vlang.Expr.t -> Vlang.Expr.t = fun e -> (
     match e with
-    | Vlang.Expr.V_var (t, s) -> Vlang.Expr.V_var (t, (s |> Env.read_varname ~env:cenv))
+    | Vlang.Expr.V_var (t, s) -> Vlang.Expr.V_var (t, (get_cur_varname cenv s))
     | _ -> e
   ) in
   Vlang.RecursiveMappingExprTemplate.map_formula_outer is_var rename_var fmla
 end
 
 
-let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t * Query.t list)
+let sp : convert_env -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t * Query.t list)
 =fun cenv (f, qs) (_, s) -> begin
   match s with
   | BI_assume c -> 
-      let f' = Vlang.Formula.VF_and [(create_formula_of_cond cenv c); f] in
+      let f' = Vlang.Formula.VF_and [(convert_cond cenv c); f] in
       (f', qs)
   | BI_assert (c, loc, ctg) ->
-      let formula = Vlang.Formula.VF_imply (f, (create_formula_of_cond cenv c)) in
+      let formula = Vlang.Formula.VF_imply (f, (convert_cond cenv c)) in
       let query = Query.create_new_query formula ~loc:loc ~category:ctg in
       (f, (query::qs))
   | BI_assign (v, e) ->
       let e_f = create_expr_of_cfgexpr cenv e in
-      let _ = Env.update_expr_of_cfgvar v e_f ~env:cenv in
-      (f, qs)
+      let v' = Vlang.Expr.V_var (read_type_cfgvar cenv v, get_new_varname cenv v) in
+      let f' = Vlang.Formula.VF_and [Vlang.Formula.VF_eq (v', e_f); f] in
+      (f', qs)
   | BI_skip -> (f, qs)
 end
 
 let convert : Bp.t -> PreLib.Cfg.t -> (Vlang.t * Query.t list)
 =fun bp cfg -> begin
-  let cv_env : Env.t = cfg |> Env.create in
+  let cv_env : convert_env = ref {cfg=cfg; varname=Core.Map.Poly.empty} in
   let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
   let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
   let inductive = Vlang.Formula.VF_imply (f', (g |> rename_formula ~cenv:cv_env)) in
