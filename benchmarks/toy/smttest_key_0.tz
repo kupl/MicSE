@@ -1,0 +1,10 @@
+parameter unit;
+storage key;
+code {
+    CDR;
+    PUSH key "asdf";
+    DROP;
+
+    NIL operation;
+    PAIR;
+}

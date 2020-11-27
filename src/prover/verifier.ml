@@ -14,7 +14,7 @@ let rec smtsort_of_vlangtyp : Vlang.Ty.t -> Smt.ZSort.t
   let sot = smtsort_of_vlangtyp in (* syntax sugar *)
   fun vt -> begin
   match vt with
-  | T_key -> Smt.ZStr.sort
+  | T_key -> Smt.ZKey.sort
   | T_unit -> Smt.ZUnit.sort
   | T_signature -> Smt.ZStr.sort
   | T_option t -> Smt.ZOption.create_sort ~content_sort:(sot t)
@@ -204,7 +204,7 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (*************************************************************************)
       (* Key                                                                   *)
       (*************************************************************************)
-      | V_lit_key _ -> err ve
+      | V_lit_key s -> Smt.ZKey.create_keystr (Smt.ZStr.of_string s)
 
       (*************************************************************************)
       (* Unit                                                                  *)

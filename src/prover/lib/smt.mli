@@ -5,6 +5,7 @@ module CONST : sig
   val _name_unit : string
   val _name_map : string
 
+  val _sort_key : string
   val _sort_unit : string
   val _sort_operation : string
   val _sort_contract : string
@@ -15,6 +16,7 @@ module CONST : sig
   val _sort_or : string
   val _sort_list : string
 
+  val _const_key_keystr : string
   val _const_bytes_bytstr : string
   val _const_bytes_pack : string
   val _const_bytes_concatenated : string
@@ -30,6 +32,7 @@ module CONST : sig
   val _const_list_nil : string
   val _const_list_cons : string
 
+  val _recog_key_keystr : string
   val _recog_bytes_bytstr : string
   val _recog_bytes_pack : string
   val _recog_bytes_concatenated : string
@@ -337,6 +340,24 @@ module ZStr : sig
   val create_neq : t -> t -> ZBool.t
 
   val create_cmp : t -> t -> ZInt.t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Key                                                                       *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZKey : sig
+  type t = ZExpr.t
+
+  val _create_const_of_keystr : ZDatatype.const
+
+  val sort : ZSort.t
+
+  val of_string : string -> t
+  val create_keystr : ZExpr.t -> t
 end
 
 

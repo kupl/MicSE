@@ -5,6 +5,7 @@ module CONST = struct
   let _name_unit : string = "UNIT"
   let _name_map : string = "MAP"
 
+  let _sort_key : string = "Key"
   let _sort_unit : string = "Unit"
   let _sort_operation : string = "Operation"
   let _sort_contract : string = "Contract"
@@ -15,6 +16,7 @@ module CONST = struct
   let _sort_or : string = "Or"
   let _sort_list : string = "List"
 
+  let _const_key_keystr : string = "KeyStr"
   let _const_bytes_bytstr : string = "BytStr"
   let _const_bytes_pack : string = "Pack"
   let _const_bytes_concatenated : string = "BytConcat"
@@ -30,6 +32,7 @@ module CONST = struct
   let _const_list_nil : string = "Nil"
   let _const_list_cons : string = "Cons"
 
+  let _recog_key_keystr : string = "is_keystr"
   let _recog_bytes_bytstr : string = "is_bytstr"
   let _recog_bytes_pack : string = "is_pack"
   let _recog_bytes_concatenated : string = "is_bytes_concatenated"
@@ -500,6 +503,35 @@ module ZStr = struct
             ~t:(ZInt.minus_one_)
             ~f:(ZInt.one_))
   end
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Key                                                                       *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZKey = struct
+  type t = ZExpr.t
+
+  let _create_const_of_keystr : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_key_keystr
+      ~recog_func_name:CONST._recog_key_keystr
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[(Some ZStr.sort)]
+      ~field_sort_refs:[1]
+
+  let sort : ZSort.t
+  =ZDatatype.create_sort
+      ~name:CONST._sort_key
+      ~const_list:[_create_const_of_keystr]
+
+  let of_string : string -> t
+  =fun s -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string s]
+  let create_keystr : ZExpr.t -> t
+  =fun content -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[content]
 end
 
 
