@@ -110,6 +110,8 @@ module Env = struct
     let _ = env := { !env with varexpr=nm } in
     ()
   end
+  let is_expressed_var : Bp.var -> env:t -> bool
+  =fun v ~env -> VarMap.mem !env.varexpr v
   let string_of_var_expr_map : t -> string
   =fun env -> begin
     let m = !env.varexpr in (* variable to expression map *)
@@ -466,7 +468,11 @@ let rename_formula : Vlang.t -> cenv:Env.t -> Vlang.t
   let is_var : Vlang.Expr.t -> bool = (function | Vlang.Expr.V_var _ -> true | _ -> false) in
   let rename_var : Vlang.Expr.t -> Vlang.Expr.t = fun e -> (
     match e with
-    | Vlang.Expr.V_var (t, s) -> Vlang.Expr.V_var (t, (s |> Env.read_varname ~env:cenv))
+    | Vlang.Expr.V_var (t, v) -> begin
+        if Env.is_expressed_var v ~env:cenv
+        then v |> Env.read_expr_of_cfgvar ~env:cenv
+        else Vlang.Expr.V_var (t, (v |> Env.read_varname ~env:cenv))
+      end
     | _ -> e
   ) in
   Vlang.RecursiveMappingExprTemplate.map_formula_outer is_var rename_var fmla
@@ -480,7 +486,7 @@ let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t 
       let f' = Vlang.Formula.VF_and [(create_formula_of_cond cenv c); f] in
       (f', qs)
   | BI_assert (c, loc, ctg) ->
-      let formula = Vlang.Formula.VF_imply (f, (create_formula_of_cond cenv c)) in
+      let formula = Vlang.Formula.VF_imply (f, (create_formula_of_cond cenv c)) |> rename_formula ~cenv:cenv in
       let query = Query.create_new_query formula ~loc:loc ~category:ctg in
       (f, (query::qs))
   | BI_assign (v, e) ->
@@ -495,6 +501,6 @@ let convert : Bp.t -> PreLib.Cfg.t -> (Vlang.t * Query.t list)
   let cv_env : Env.t = cfg |> Env.create in
   let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
   let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
-  let inductive = Vlang.Formula.VF_imply (f', (g |> rename_formula ~cenv:cv_env)) in
+  let inductive = Vlang.Formula.VF_imply (f', g) |> rename_formula ~cenv:cv_env in
   (inductive, qs)
 end
