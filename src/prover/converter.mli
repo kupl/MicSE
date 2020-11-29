@@ -45,6 +45,7 @@ module Env : sig
 
   val read_expr_of_cfgvar : Pre.Lib.Cfg.ident -> env:t -> ProverLib.Vlang.Expr.t
   val update_expr_of_cfgvar : Pre.Lib.Cfg.ident -> ProverLib.Vlang.Expr.t -> env:t -> unit
+  val string_of_var_expr_map : t -> string
 end
 
 (* main convert functions - variable, michelson datas(literal), and cfg-expressions *)

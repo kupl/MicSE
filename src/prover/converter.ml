@@ -110,6 +110,16 @@ module Env = struct
     let _ = env := { !env with varexpr=nm } in
     ()
   end
+  let string_of_var_expr_map : t -> string
+  =fun env -> begin
+    let m = !env.varexpr in (* variable to expression map *)
+    "{\n" ^ 
+    VarMap.fold m ~init:"" ~f:(fun ~key ~data str -> begin
+      str ^
+      "\t" ^ key ^ " |-> " ^ (Vlang.Expr.to_string data) ^ "\n"
+    end) ^
+    "}"
+  end
 end
 
 
