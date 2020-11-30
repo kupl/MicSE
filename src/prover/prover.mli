@@ -6,7 +6,11 @@ module Verifier = Verifier
 
 type timer = Utils.Timer.t ref
 
+exception Error of string
+
 module ProverUtil : sig
+  exception Error of string
+
   val read_line_of_file : in_channel -> int -> string
   val read_query_location : Pre.Lib.Cfg.t -> ProverLib.Query.t -> string
   val read_param_storage : ProverLib.Smt.ZModel.t -> cfg:Pre.Lib.Cfg.t -> (string * string)
