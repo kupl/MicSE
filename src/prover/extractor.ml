@@ -82,7 +82,7 @@ let rec translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
     | Cfg_assign (id, e) -> begin
         let typ = (match Core.Map.Poly.find cfg.type_info id with 
                   | Some typ -> typ
-                  | None -> InvalidExtraction (stmt, ("Type of" ^ id ^ "is invalid")) |> raise
+                  | None -> InvalidExtraction (stmt, ("Type of " ^ id ^ " is invalid")) |> raise
         ) in
         let assert_inst = create_basic_safety_property cur_vtx e typ in
         let new_bp = update_current_bp cur_bp assert_inst in
