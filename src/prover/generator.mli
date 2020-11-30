@@ -17,6 +17,8 @@ module Stg : sig
   type data = Pre.Lib.Mich.data Pre.Lib.Mich.t
   type cfg = Pre.Lib.Cfg.t
 
+  exception Error of string
+
   val read_typt : cfg:cfg -> Vlang.typ
 
   val create : cfg:cfg -> t
@@ -34,6 +36,8 @@ module TrxInv : sig
   type m = Inv.Map.t
   type formula = Vlang.t
   type cfg = Pre.Lib.Cfg.t
+
+  exception Error of string
 
   val formula_mutez_equal : comp:Comps.t -> formula list
 
@@ -57,6 +61,8 @@ module W : sig
   type t = Inv.WorkList.t
   type m = Inv.Map.t
   type cfg = Pre.Lib.Cfg.t
+
+  exception Error of string
 
   val create : bp_list:Bp.lst -> t
 

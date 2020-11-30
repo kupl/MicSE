@@ -5,10 +5,13 @@ open ProverLib
 
 let apply : Inv.Map.t -> Bp.t list -> Bp.t list
 =fun inv_map raw_bps -> begin
-  let bps = Core.List.map raw_bps ~f:(fun raw_bp -> begin
-    Bp.update_inv raw_bp ~pre:(Inv.Map.find_empty inv_map (raw_bp.pre.id)) ~post:(Inv.Map.find_empty inv_map (raw_bp.post.id))
-  end) in
-  bps
+  try
+    let bps = Core.List.map raw_bps ~f:(fun raw_bp -> begin
+      Bp.update_inv raw_bp ~pre:(Inv.Map.find_empty inv_map (raw_bp.pre.id)) ~post:(Inv.Map.find_empty inv_map (raw_bp.post.id))
+    end) in
+    bps
+  with
+  | e -> e |> raise
 end
 
 
@@ -23,12 +26,18 @@ module Stg = struct
   type data = Pre.Lib.Mich.data Pre.Lib.Mich.t
   type cfg = Pre.Lib.Cfg.t
 
+  exception Error of string
+
   let read_typt : cfg:cfg -> Vlang.Ty.t
   =fun ~cfg -> begin
-    let param_stg_typt = Pre.Lib.Cfg.param_storage_name |> Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |> Vlang.TypeUtil.ty_of_mty in
-    match param_stg_typt with
-    | T_pair (_, stg_typt) -> stg_typt
-    | _ -> raise (Failure "Generator.Stg.read_typt: Type conflict on storage")
+    try
+      let param_stg_typt = Pre.Lib.Cfg.param_storage_name |> Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |> Vlang.TypeUtil.ty_of_mty in
+      match param_stg_typt with
+      | T_pair (_, stg_typt) -> stg_typt
+      | _ -> Error "read_typt: Type conflict on storage" |> raise
+    with
+    | Not_found -> Error "read_typt: Type of param_storage is not found" |> raise
+    | e -> e |> raise
   end
 
   let create : cfg:cfg -> t
@@ -45,12 +54,16 @@ module Stg = struct
 
   let equal_to_ps_or_os : ps_os:Vlang.var -> cfg:cfg -> Vlang.t
   =fun ~ps_os ~cfg -> begin
-    equal_to_expr
-      ~expr:(Vlang.Expr.V_cdr (Vlang.Expr.V_var (
-          (ps_os |> Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |> Vlang.TypeUtil.ty_of_mty),
-          ps_os
-        )))
-      ~cfg:cfg
+    try
+      equal_to_expr
+        ~expr:(Vlang.Expr.V_cdr (Vlang.Expr.V_var (
+            (ps_os |> Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |> Vlang.TypeUtil.ty_of_mty),
+            ps_os
+          )))
+        ~cfg:cfg
+    with
+    | Not_found -> Error "read_typt: Type of entry or exit variable is not found" |> raise
+    | e -> e |> raise
   end
 end
 
@@ -58,6 +71,8 @@ module TrxInv = struct
   type m = Inv.Map.t
   type formula = Vlang.t
   type cfg = Pre.Lib.Cfg.t
+
+  exception Error of string
 
   let formula_mutez_equal : comp:Comps.t -> formula list
   =fun ~comp -> begin
@@ -120,6 +135,8 @@ module W = struct
   type t = Inv.WorkList.t
   type m = Inv.Map.t
   type cfg = Pre.Lib.Cfg.t
+
+  exception Error of string
 
   let create : bp_list:Bp.lst -> t
   =fun ~bp_list -> begin
