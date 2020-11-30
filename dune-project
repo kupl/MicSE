@@ -4,7 +4,7 @@
 
 (version 0.0.0)
 
-(generate_opam_files false)
+(generate_opam_files true)
 
 (source
  (uri "git+https://github.com/kupl/MicSE.git"))
@@ -21,6 +21,6 @@
 
 (package
   (name micse)
-  (synopsis "Michelson Symbolic vErifier, for verifying and testing the integrity of smart contracts in the Tezos blockchain")
+  (synopsis "the Michelson Symbolic vErifier, for verifying and testing the integrity of smart contracts in the Tezos blockchain")
 )
 (using menhir 2.1)
