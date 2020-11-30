@@ -498,9 +498,14 @@ end
 
 let convert : Bp.t -> PreLib.Cfg.t -> (Vlang.t * Query.t list)
 =fun bp cfg -> begin
-  let cv_env : Env.t = cfg |> Env.create in
-  let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
-  let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
-  let inductive = Vlang.Formula.VF_imply (f', g) |> rename_formula ~cenv:cv_env in
-  (inductive, qs)
+  try
+    let cv_env : Env.t = cfg |> Env.create in
+    let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
+    let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
+    let inductive = Vlang.Formula.VF_imply (f', g) |> rename_formula ~cenv:cv_env in
+    (inductive, qs)
+  with
+  | InvalidConversion_Expr ce -> Error ("Invalid Expression Conversion on [" ^ (Pre.Lib.Cfg.expr_to_str ce) ^ "].") |> raise
+  | InvalidConversion_Cond bc -> Error ("Invalid Condition Conversion on [" ^ (Bp.string_of_cond bc) ^ "].") |> raise
+  | e -> e |> raise
 end
