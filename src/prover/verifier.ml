@@ -413,4 +413,5 @@ let verify : Vlang.Formula.t -> Smt.ZSolver.validity * Smt.ZModel.t option
   | Not_Implemented_e e -> Error ((e |> ets) ^ " is not implemented") |> raise
   | SMT_Encode_Error_f (f, z3s) -> Error ((f |> fts) ^ " occurs encoding error \"" ^ z3s ^ "\"") |> raise
   | SMT_Encode_Error_e (e, z3s) -> Error ((e |> ets) ^ " occurs encoding error \"" ^ z3s ^ "\"") |> raise
+  | e -> e |> raise
 end
