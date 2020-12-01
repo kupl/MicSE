@@ -86,7 +86,7 @@ module Env = struct
       end
     | Some cv -> begin
         let nv = gen_nv cv in
-        let nm = VarMap.add_exn m ~key:v ~data:nv in (* make new map with adding the current variable *)
+        let nm = VarMap.update m v ~f:(fun _ -> nv) in (* make new map with adding the current variable *)
         let _ = env := { !env with varname=nm } in
         nv
       end
