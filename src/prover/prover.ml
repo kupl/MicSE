@@ -76,7 +76,7 @@ module ProverUtil = struct
       | _ -> Error "read_post_storage: wrong evaluation of post storage" |> raise
     with
     | Core.Not_found_s _
-    | Not_found -> Error "read_param_storage: Type of param_storage is not found" |> raise
+    | Not_found -> Error "read_post_storage: Type of param_storage is not found" |> raise
     | e -> e |> raise
   end
 end
