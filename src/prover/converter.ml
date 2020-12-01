@@ -68,7 +68,7 @@ module Env = struct
     let m = !env.varname in (* varname map *)
     match VarMap.find m v with (* find v in varname map *)
     | None -> begin
-        let nm = VarMap.add m ~key:v ~data:v |> (function | `Ok mm -> mm | `Duplicate -> Error "read_varname: Duplicate variable name" |> raise) in (* make new map with adding the current variable *)
+        let nm = VarMap.add m ~key:v ~data:v |> (function | `Ok mm -> mm | `Duplicate -> Error ("read_varname: Duplicate variable name " ^ v) |> raise) in (* make new map with adding the current variable *)
         let _ = env := { !env with varname=nm } in
         v
       end
@@ -80,13 +80,13 @@ module Env = struct
     match VarMap.find m v with (* find v in varname map *)
     | None -> begin
         let nv = gen_nv v in
-        let nm = VarMap.add m ~key:v ~data:nv |> (function | `Ok mm -> mm | `Duplicate -> Error "read_varname: Duplicate variable name" |> raise) in (* make new map with adding the current variable *)
+        let nm = VarMap.add m ~key:v ~data:nv |> (function | `Ok mm -> mm | `Duplicate -> Error ("update_varname: Duplicate variable name " ^ v) |> raise) in (* make new map with adding the current variable *)
         let _ = env := { !env with varname=nm } in
         nv
       end
     | Some cv -> begin
         let nv = gen_nv cv in
-        let nm = VarMap.add m ~key:v ~data:nv |> (function | `Ok mm -> mm | `Duplicate -> Error "read_varname: Duplicate variable name" |> raise) in (* make new map with adding the current variable *)
+        let nm = VarMap.add_exn m ~key:v ~data:nv in (* make new map with adding the current variable *)
         let _ = env := { !env with varname=nm } in
         nv
       end
