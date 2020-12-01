@@ -51,7 +51,8 @@ end
 
 module FormulaUtils : sig
   val optimize_var : ProverLib.Vlang.Expr.t -> ProverLib.Vlang.Expr.t
-  val rename_formula : ProverLib.Vlang.t -> cenv:Env.t -> ProverLib.Vlang.t
+  val rename_var : ProverLib.Vlang.Expr.t -> cenv:Env.t -> ProverLib.Vlang.Expr.t
+  val finalize_formula : ProverLib.Vlang.t -> cenv:Env.t -> ProverLib.Vlang.t
 end
 
 (* main convert functions - variable, michelson datas(literal), and cfg-expressions *)

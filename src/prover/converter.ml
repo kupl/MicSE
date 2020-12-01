@@ -173,10 +173,8 @@ module FormulaUtils = struct
     | _ -> e
   end
 
-  let rename_formula : Vlang.t -> cenv:Env.t -> Vlang.t
-  =fun fmla ~cenv -> begin
-    let is_var : Vlang.Expr.t -> bool = (function | Vlang.Expr.V_var _ -> true | _ -> false) in
-    let rename_var : Vlang.Expr.t -> Vlang.Expr.t = fun e -> (
+  let rename_var : Vlang.Expr.t -> cenv:Env.t -> Vlang.Expr.t
+  =fun e ~cenv -> begin
       match e with
       | Vlang.Expr.V_var (t, v) -> begin
           let vv = v |> Env.read_varname ~env:cenv in
@@ -185,8 +183,13 @@ module FormulaUtils = struct
           else Vlang.Expr.V_var (t, (vv |> Env.read_varname ~env:cenv))
         end
       | _ -> e
-    ) in
-    Vlang.RecursiveMappingExprTemplate.map_formula_outer is_var rename_var fmla
+  end
+
+  let finalize_formula : Vlang.t -> cenv:Env.t -> Vlang.t
+  =fun fmla ~cenv -> begin
+    let expr_f = fun e -> e |> rename_var ~cenv:cenv |> optimize_var in
+    fmla |>
+    Vlang.RecursiveMappingExprTemplate.map_formula_inner ~expr_f:expr_f
   end
 end
 
@@ -536,7 +539,7 @@ let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t 
       let f' = Vlang.Formula.VF_and [(create_formula_of_cond cenv c); f] in
       (f', qs)
   | BI_assert (c, loc, ctg) ->
-      let formula = Vlang.Formula.VF_imply (f, (create_formula_of_cond cenv c)) |> FormulaUtils.rename_formula ~cenv:cenv in
+      let formula = Vlang.Formula.VF_imply (f, (create_formula_of_cond cenv c)) |> FormulaUtils.finalize_formula ~cenv:cenv in
       let query = Query.create_new_query formula ~loc:loc ~category:ctg in
       (f, (query::qs))
   | BI_assign (v, e) ->
@@ -553,8 +556,7 @@ let convert : Bp.t -> PreLib.Cfg.t -> (Vlang.t * Query.t list)
     let cv_env : Env.t = cfg |> Env.create in
     let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
     let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
-    let inductive = Vlang.Formula.VF_imply (f', g) |> FormulaUtils.rename_formula ~cenv:cv_env in
-    let _ = print_endline (Env.string_of_var_expr_map cv_env) in
+    let inductive = Vlang.Formula.VF_imply (f', g) |> FormulaUtils.finalize_formula ~cenv:cv_env in
     (inductive, qs)
   with
   | InvalidConversion_Expr ce -> Error ("Invalid Expression Conversion on [" ^ (Pre.Lib.Cfg.expr_to_str ce) ^ "].") |> raise
