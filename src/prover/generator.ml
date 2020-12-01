@@ -36,6 +36,7 @@ module Stg = struct
       | T_pair (_, stg_typt) -> stg_typt
       | _ -> Error "read_typt: Type conflict on storage" |> raise
     with
+    | Core.Not_found_s _
     | Not_found -> Error "read_typt: Type of param_storage is not found" |> raise
     | e -> e |> raise
   end
