@@ -469,9 +469,10 @@ let rename_formula : Vlang.t -> cenv:Env.t -> Vlang.t
   let rename_var : Vlang.Expr.t -> Vlang.Expr.t = fun e -> (
     match e with
     | Vlang.Expr.V_var (t, v) -> begin
-        if Env.is_expressed_var v ~env:cenv
-        then v |> Env.read_expr_of_cfgvar ~env:cenv
-        else Vlang.Expr.V_var (t, (v |> Env.read_varname ~env:cenv))
+        let vv = v |> Env.read_varname ~env:cenv in
+        if Env.is_expressed_var vv ~env:cenv
+        then vv |> Env.read_expr_of_cfgvar ~env:cenv
+        else Vlang.Expr.V_var (t, (vv |> Env.read_varname ~env:cenv))
       end
     | _ -> e
   ) in
