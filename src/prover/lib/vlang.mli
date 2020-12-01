@@ -374,7 +374,9 @@ module RecursiveMappingExprTemplate : sig
   (* it maps expr from outer, if outer data-constructor (e.g. V_some _ ) matched, it ignores inside *)
     (* WARNING: It maps something in lambda value too *)
   val map_expr_outer : (Expr.t -> bool) -> (Expr.t -> Expr.t) -> Expr.t -> Expr.t
+  val map_expr_inner : expr_f:(Expr.t -> Expr.t) -> Expr.t -> Expr.t
   val map_formula_outer : (Expr.t -> bool) -> (Expr.t -> Expr.t) -> t -> t
+  val map_formula_inner : ?formula_f:(Formula.t -> Formula.t) -> ?expr_f:(Expr.t -> Expr.t) -> t -> t
 end (* module RecursiveMappingExprTemplate end *)
 
 module Renaming : sig
