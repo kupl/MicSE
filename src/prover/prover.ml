@@ -55,6 +55,7 @@ module ProverUtil = struct
       | Some param, Some stg -> ((param |> Smt.ZExpr.to_string), (stg |> Smt.ZExpr.to_string))
       | _, _ -> Error "read_param_storage: Wrong evaluation of parameter and storage" |> raise
     with
+    | Core.Not_found_s _
     | Not_found -> Error "read_param_storage: Type of param_storage is not found" |> raise
     | e -> e |> raise
   end
@@ -73,6 +74,7 @@ module ProverUtil = struct
       | Some stg -> stg |> Smt.ZExpr.to_string
       | _ -> Error "read_post_storage: wrong evaluation of post storage" |> raise
     with
+    | Core.Not_found_s _
     | Not_found -> Error "read_param_storage: Type of param_storage is not found" |> raise
     | e -> e |> raise
   end
