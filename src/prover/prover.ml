@@ -36,6 +36,7 @@ module ProverUtil = struct
         end
       | _ -> Error "read_query_location: Wrong query location information." |> raise
     with
+    | Core.Not_found_s _
     | Not_found -> "?: Cannot Find Query Location"
     | e -> e |> raise
   end
