@@ -63,6 +63,7 @@ module Stg = struct
           )))
         ~cfg:cfg
     with
+    | Core.Not_found_s _
     | Not_found -> Error "read_typt: Type of entry or exit variable is not found" |> raise
     | e -> e |> raise
   end
