@@ -491,7 +491,8 @@ let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t 
       (f, (query::qs))
   | BI_assign (v, e) ->
       let e_f = create_expr_of_cfgexpr cenv e in
-      let _ = Env.update_expr_of_cfgvar v e_f ~env:cenv in
+      let nv = v |> Env.update_varname ~env:cenv in
+      let _ = Env.update_expr_of_cfgvar nv e_f ~env:cenv in
       (f, qs)
   | BI_skip -> (f, qs)
 end
