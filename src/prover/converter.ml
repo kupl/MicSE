@@ -124,6 +124,72 @@ module Env = struct
   end
 end
 
+module FormulaUtils = struct
+  let optimize_var : Vlang.Expr.t -> Vlang.Expr.t
+  =fun e -> begin
+    match e with
+    (*************************************************************************)
+    (* Pair                                                                  *)
+    (*************************************************************************)
+    | V_car (V_pair (v1, _)) -> v1
+    | V_cdr (V_pair (_, v2)) -> v2
+    (*************************************************************************)
+    (* Or                                                                    *)
+    (*************************************************************************)
+    | V_unlift_left (V_left (_, v)) -> v
+    | V_unlift_right (V_right (_, v)) -> v
+    (*************************************************************************)
+    (* Option                                                                *)
+    (*************************************************************************)
+    | V_unlift_option (V_some v) -> v
+    (*************************************************************************)
+    (* List                                                                  *)
+    (*************************************************************************)
+    | V_hd_l (V_cons (v1, _)) -> v1
+    | V_tl_l (V_cons (_, v2)) -> v2
+    | V_hdtl_l (V_cons (v1, v2)) -> V_pair(v1, v2)
+    (*************************************************************************)
+    (* Set                                                                   *)
+    (*************************************************************************)
+    | V_hd_s _ -> e (* TODO *)
+    | V_tl_s _ -> e (* TODO *)
+    | V_hdtl_s _ -> e (* TODO *)
+    (*************************************************************************)
+    (* Map                                                                   *)
+    (*************************************************************************)
+    | V_hd_m _ -> e (* TODO *)
+    | V_tl_m _ -> e (* TODO *)
+    | V_hdtl_m _ -> e (* TODO *)
+    (*************************************************************************)
+    (* Big Map                                                               *)
+    (*************************************************************************)
+    | V_hd_bm _ -> e (* TODO *)
+    | V_tl_bm _ -> e (* TODO *)
+    (*************************************************************************)
+    (* Variable & Others                                                     *)
+    (*************************************************************************)
+    | V_itself v -> v
+    | V_dup v -> v
+    | _ -> e
+  end
+
+  let rename_formula : Vlang.t -> cenv:Env.t -> Vlang.t
+  =fun fmla ~cenv -> begin
+    let is_var : Vlang.Expr.t -> bool = (function | Vlang.Expr.V_var _ -> true | _ -> false) in
+    let rename_var : Vlang.Expr.t -> Vlang.Expr.t = fun e -> (
+      match e with
+      | Vlang.Expr.V_var (t, v) -> begin
+          let vv = v |> Env.read_varname ~env:cenv in
+          if Env.is_expressed_var vv ~env:cenv
+          then vv |> Env.read_expr_of_cfgvar ~env:cenv
+          else Vlang.Expr.V_var (t, (vv |> Env.read_varname ~env:cenv))
+        end
+      | _ -> e
+    ) in
+    Vlang.RecursiveMappingExprTemplate.map_formula_outer is_var rename_var fmla
+  end
+end
+
 
 let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.t
 = let open PreLib.Mich in
@@ -186,7 +252,7 @@ let create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> Vlang.Expr.t
   let cvt : PreLib.Cfg.ident -> Vlang.typ = Env.read_vartype ~env:cenv in (* syntax sugar *)
   let cvf : PreLib.Cfg.ident -> Vlang.Expr.t = fun v -> v |> Env.read_varname ~env:cenv |> Env.read_expr_of_cfgvar ~env:cenv in (* syntax sugar *)
   let err (): 'a = InvalidConversion_Expr cfgexpr |> raise in
-  match cfgexpr with 
+  (match cfgexpr with 
   | E_push (d, t) -> create_expr_of_michdata d (CvUtils.to_vtyp t)
   | E_car v -> (match cvt v with | T_pair _ -> V_car (cvf v) | _ -> err ())
   | E_cdr v -> (match cvt v with | T_pair _ -> V_cdr (cvf v) | _ -> err ())
@@ -418,7 +484,7 @@ let create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> Vlang.Expr.t
   | E_lambda _ -> err ()
   | E_special_nil_list -> err ()
   | E_phi _ -> err ()
-  | E_unlift_or _ -> err ()
+  | E_unlift_or _ -> err ()) |> FormulaUtils.optimize_var
 end (* function create_expr_of_cfgexpr end *)
 
 let rec create_formula_of_cond : Env.t -> Bp.cond -> Vlang.v_formula
@@ -463,23 +529,6 @@ let rec create_formula_of_cond : Env.t -> Bp.cond -> Vlang.v_formula
     | BC_not c -> VF_not (create_formula_of_cond cenv c)
 end
 
-let rename_formula : Vlang.t -> cenv:Env.t -> Vlang.t
-=fun fmla ~cenv -> begin
-  let is_var : Vlang.Expr.t -> bool = (function | Vlang.Expr.V_var _ -> true | _ -> false) in
-  let rename_var : Vlang.Expr.t -> Vlang.Expr.t = fun e -> (
-    match e with
-    | Vlang.Expr.V_var (t, v) -> begin
-        let vv = v |> Env.read_varname ~env:cenv in
-        if Env.is_expressed_var vv ~env:cenv
-        then vv |> Env.read_expr_of_cfgvar ~env:cenv
-        else Vlang.Expr.V_var (t, (vv |> Env.read_varname ~env:cenv))
-      end
-    | _ -> e
-  ) in
-  Vlang.RecursiveMappingExprTemplate.map_formula_outer is_var rename_var fmla
-end
-
-
 let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t * Query.t list)
 =fun cenv (f, qs) (_, s) -> begin
   match s with
@@ -487,7 +536,7 @@ let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t 
       let f' = Vlang.Formula.VF_and [(create_formula_of_cond cenv c); f] in
       (f', qs)
   | BI_assert (c, loc, ctg) ->
-      let formula = Vlang.Formula.VF_imply (f, (create_formula_of_cond cenv c)) |> rename_formula ~cenv:cenv in
+      let formula = Vlang.Formula.VF_imply (f, (create_formula_of_cond cenv c)) |> FormulaUtils.rename_formula ~cenv:cenv in
       let query = Query.create_new_query formula ~loc:loc ~category:ctg in
       (f, (query::qs))
   | BI_assign (v, e) ->
@@ -504,7 +553,8 @@ let convert : Bp.t -> PreLib.Cfg.t -> (Vlang.t * Query.t list)
     let cv_env : Env.t = cfg |> Env.create in
     let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
     let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
-    let inductive = Vlang.Formula.VF_imply (f', g) |> rename_formula ~cenv:cv_env in
+    let inductive = Vlang.Formula.VF_imply (f', g) |> FormulaUtils.rename_formula ~cenv:cv_env in
+    let _ = print_endline (Env.string_of_var_expr_map cv_env) in
     (inductive, qs)
   with
   | InvalidConversion_Expr ce -> Error ("Invalid Expression Conversion on [" ^ (Pre.Lib.Cfg.expr_to_str ce) ^ "].") |> raise

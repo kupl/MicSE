@@ -49,13 +49,16 @@ module Env : sig
   val string_of_var_expr_map : t -> string
 end
 
+module FormulaUtils : sig
+  val optimize_var : ProverLib.Vlang.Expr.t -> ProverLib.Vlang.Expr.t
+  val rename_formula : ProverLib.Vlang.t -> cenv:Env.t -> ProverLib.Vlang.t
+end
+
 (* main convert functions - variable, michelson datas(literal), and cfg-expressions *)
 val create_expr_of_michdata_i : PreLib.Mich.data -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t
 val create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t
 val create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> ProverLib.Vlang.Expr.t
 val create_formula_of_cond : Env.t -> ProverLib.Bp.cond -> ProverLib.Vlang.v_formula
-
-val rename_formula : ProverLib.Vlang.t -> cenv:Env.t -> ProverLib.Vlang.t
 
 (* convert differently for each basicpaths *)
 val sp : Env.t -> (ProverLib.Vlang.t * ProverLib.Query.t list) -> (ProverLib.Bp.vertex * ProverLib.Bp.inst) -> (ProverLib.Vlang.t * ProverLib.Query.t list)
