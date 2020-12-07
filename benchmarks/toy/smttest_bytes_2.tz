@@ -1,0 +1,13 @@
+parameter int;
+storage bytes;
+code {
+    CAR;
+    DUP;
+    PACK;
+    SWAP;
+    PACK;
+    DROP;
+
+    NIL operation;
+    PAIR;
+}

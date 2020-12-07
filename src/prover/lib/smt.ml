@@ -11,6 +11,7 @@ module CONST = struct
   let _sort_contract : string = "Contract"
   let _sort_lambda : string = "Lambda"
   let _sort_bytes : string = "Bytes"
+  let _sort_signature : string = "Signature"
   let _sort_option : string = "Option"
   let _sort_pair : string = "Pair"
   let _sort_or : string = "Or"
@@ -24,6 +25,8 @@ module CONST = struct
   let _const_bytes_blake2b : string = "Blake2b"
   let _const_bytes_sha256 : string = "Sha256"
   let _const_bytes_sha512 : string = "Sha512"
+  let _const_signature_sigstr : string = "SigStr"
+  let _const_signature_signed : string = "Signed"
   let _const_option_none : string = "None"
   let _const_option_some : string = "Some"
   let _const_pair : string = "Pair"
@@ -40,6 +43,8 @@ module CONST = struct
   let _recog_bytes_blake2b : string = "is_blake2b"
   let _recog_bytes_sha256 : string = "is_sha256"
   let _recog_bytes_sha512 : string = "is_sha512"
+  let _recog_signature_sigstr : string = "is_sigstr"
+  let _recog_signature_signed : string = "is_signed"
   let _recog_option_none : string = "is_none"
   let _recog_option_some : string = "is_some"
   let _recog_pair : string = "is_pair"
@@ -645,6 +650,13 @@ end
 module ZBytes = struct
   type t = ZExpr.t
 
+  let _create_const_of_bytnil : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:"TODO: BYTENIL"
+      ~recog_func_name:"TODO: RECOG_BYTENIL"
+      ~field_names:[]
+      ~field_sorts:[]
+      ~field_sort_refs:[]
   let _create_const_of_bytstr : ZDatatype.const
   =ZDatatype.create_const
       ~name:CONST._const_bytes_bytstr
@@ -652,25 +664,13 @@ module ZBytes = struct
       ~field_names:[(CONST._field_content)]
       ~field_sorts:[(Some ZStr.sort)]
       ~field_sort_refs:[1]
-  let _create_const_of_pack : content_sort:ZSort.t -> ZDatatype.const
-  =fun ~content_sort -> begin
-    ZDatatype.create_const
-      ~name:CONST._const_bytes_pack
-      ~recog_func_name:CONST._recog_bytes_pack
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some content_sort)]
-      ~field_sort_refs:[1]
-  end
-  let _create_const_of_concatenated : bytes_pair_sort:ZSort.t -> ZDatatype.const
-  =fun ~bytes_pair_sort -> begin
-    ZDatatype.create_const
+  let _create_const_of_concatenated : ZDatatype.const
+  =ZDatatype.create_const
       ~name:CONST._const_bytes_concatenated
       ~recog_func_name:CONST._recog_bytes_concatenated
-      ~field_names:[CONST._field_content]
-      ~field_sorts:[Some bytes_pair_sort]
-      ~field_sort_refs:[1]
-  end
-  (* let _create_const_of_sliced : content_sort:ZSort.t -> ZDatatype.const *) (* TODO : after ZNat completed *)
+      ~field_names:[(CONST._field_pair_fst); (CONST._field_pair_snd)]
+      ~field_sorts:[None; None]
+      ~field_sort_refs:[0; 0]
   let _create_const_of_blake2b : ZDatatype.const
   =ZDatatype.create_const
       ~name:CONST._const_bytes_blake2b
@@ -693,46 +693,83 @@ module ZBytes = struct
       ~field_sorts:[None]
       ~field_sort_refs:[0]
 
-  (* let _create_sort_name : content_sort:ZSort.t -> string
-  =fun ~content_sort -> (CONST._sort_bytes) ^ "(" ^ (ZSort.to_string content_sort) ^ ")" *)
-
-  let create_sort : content_sort:ZSort.t -> ZSort.t
-  =fun ~content_sort -> begin
-    ZDatatype.create_sort
+  let sort : ZSort.t
+  =ZDatatype.create_sort
     ~name:CONST._sort_bytes
-    ~const_list:[ _create_const_of_bytstr;
-                  _create_const_of_pack ~content_sort:content_sort;
-                  _create_const_of_concatenated ~bytes_pair_sort:content_sort;
+    ~const_list:[ _create_const_of_bytnil;
+                  _create_const_of_bytstr;
+                  _create_const_of_concatenated;
                   _create_const_of_blake2b;
                   _create_const_of_sha256;
                   _create_const_of_sha512;
                 ]
-  end
+ 
+  let bytnil : t
+  =ZDatatype.create ~const_idx:0 ~expr_list:[] sort
 
   let of_string : string -> t
-  =fun s -> create_sort ~content_sort:ZStr.sort |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string s]
+  =fun s -> sort |> ZDatatype.create ~const_idx:1 ~expr_list:[ZStr.of_string s; bytnil]
   let create_bytstr : ZExpr.t -> t
-  =fun content -> create_sort ~content_sort:ZStr.sort |> ZDatatype.create ~const_idx:0 ~expr_list:[content]
+  =fun content -> sort |> ZDatatype.create ~const_idx:1 ~expr_list:[content; bytnil]
 
-  let create_pack : ZExpr.t -> t
-  =fun content -> create_sort ~content_sort:(ZExpr.read_sort content) |> ZDatatype.create ~const_idx:1 ~expr_list:[content]
+  let create_pack : unit -> t
+  =fun () -> create_bytstr (ZExpr.create_dummy ZStr.sort)
 
-  (* it does not check that the ~fst_bytes and ~snd_bytes has real bytes type expression *)
-  let create_concatenated : fst_bytes:ZExpr.t -> snd_bytes:ZExpr.t -> t
-  =fun ~fst_bytes ~snd_bytes -> begin
-    let bpair = ZPair.create ~fst:fst_bytes ~snd:snd_bytes in
-    create_sort ~content_sort:(ZExpr.read_sort bpair) |> ZDatatype.create ~const_idx:2 ~expr_list:[bpair]
-  end
+  let create_concatenated : fst_bytes:t -> snd_bytes:t -> t
+  =fun ~fst_bytes ~snd_bytes -> sort |> ZDatatype.create ~const_idx:2 ~expr_list:[fst_bytes; snd_bytes]
 
   (* let create_sliced : ZExpr.t -> t *) (* TODO : after _create_const_of_sliced finished *)
 
   let create_blake2b : ZExpr.t -> t
-  =fun content -> create_sort ~content_sort:(ZExpr.read_sort content) |> ZDatatype.create ~const_idx:3 ~expr_list:[content]
+  =fun content -> sort |> ZDatatype.create ~const_idx:3 ~expr_list:[content]
   let create_sha256 : ZExpr.t -> t
-  =fun content -> create_sort ~content_sort:(ZExpr.read_sort content) |> ZDatatype.create ~const_idx:4 ~expr_list:[content]
+  =fun content -> sort |> ZDatatype.create ~const_idx:4 ~expr_list:[content]
   let create_sha512 : ZExpr.t -> t
-  =fun content -> create_sort ~content_sort:(ZExpr.read_sort content) |> ZDatatype.create ~const_idx:5 ~expr_list:[content]
+  =fun content -> sort |> ZDatatype.create ~const_idx:5 ~expr_list:[content]
 
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Signature                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZSignature = struct
+  type t = ZExpr.t
+
+  let _create_const_of_sigstr : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_signature_sigstr
+      ~recog_func_name:CONST._recog_signature_sigstr
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[(Some ZStr.sort)]
+      ~field_sort_refs:[1]
+  let _create_const_of_signed : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_signature_signed
+      ~recog_func_name:CONST._recog_signature_signed
+      ~field_names:[(CONST._field_pair_fst); (CONST._field_pair_snd)]
+      ~field_sorts:[(Some ZKey.sort); (Some ZBytes.sort)]
+      ~field_sort_refs:[1; 2]
+
+  let sort : ZSort.t
+  =ZDatatype.create_sort
+    ~name:CONST._sort_signature
+    ~const_list:[ _create_const_of_sigstr;
+                  _create_const_of_signed;
+                ]
+
+  let of_string : string -> t
+  =fun s -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string s]
+  let create_sigstr : ZExpr.t -> t
+  =fun content -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[content]
+
+  let create_signed : key_data:ZExpr.t -> bytes_data:ZExpr.t -> t
+  =fun ~key_data ~bytes_data -> begin
+    sort |> ZDatatype.create ~const_idx:1 ~expr_list:[key_data; bytes_data]
+  end
 end
 
 
