@@ -65,6 +65,8 @@ module CONST = struct
   let _field_list_tail : string = "tail"
 
   let _bit_mutez : int = 63
+
+  let _int2bv_precision : int = 128
 end
 
 (*****************************************************************************)
@@ -375,6 +377,58 @@ module ZInt = struct
   let create_ge : t -> t -> ZBool.t
   =Z3.Arithmetic.mk_ge (ZCtx.read ())
 
+  (* bitwise operations *)
+  let _to_finite_bv : t -> ZExpr.t
+  =Z3.Arithmetic.Integer.mk_int2bv (ZCtx.read ()) (CONST._int2bv_precision)
+  let _create_finite_bv_expressible : t -> ZBool.t
+  =fun x -> create_lt x (create_power (of_int 2) (of_int CONST._int2bv_precision))
+    
+  let create_shiftL : t -> t -> t
+  =fun x1 x2 -> create_mul [x1; create_power (of_int 2) x2]
+  let create_shiftR : t -> t -> t
+  =fun x1 x2 -> create_div x1 (create_power (of_int 2) x2)
+  let create_not : t -> t
+  =fun x -> create_sub [create_neg x; one_] (* bitwise not is always (fun x -> -x-1) regardless of sign *)
+  let create_and : t -> t -> t
+  =fun e1 e2 -> begin
+    let is_expressible = ZFormula.create_and [_create_finite_bv_expressible e1; _create_finite_bv_expressible e2] in 
+    ZExpr.create_ite 
+      ~cond:is_expressible
+      ~t:(
+        let e1_bv, e2_bv = _to_finite_bv e1, _to_finite_bv e2 in
+        let ret_bv = Z3.BitVector.mk_and (ZCtx.read ()) e1_bv e2_bv in
+        Z3.BitVector.mk_bv2int (ZCtx.read ()) ret_bv false
+        (* last arg, "false" indicates that the bitvector will be interpreted as unsigned integer (nat-number) *)
+      )
+      ~f:(ZExpr.create_dummy sort)
+  end
+  let create_or : t -> t -> t
+  =fun e1 e2 -> begin
+    let is_expressible = ZFormula.create_and [_create_finite_bv_expressible e1; _create_finite_bv_expressible e2] in 
+    ZExpr.create_ite 
+      ~cond:is_expressible
+      ~t:(
+        let e1_bv, e2_bv = _to_finite_bv e1, _to_finite_bv e2 in
+        let ret_bv = Z3.BitVector.mk_or (ZCtx.read ()) e1_bv e2_bv in
+        Z3.BitVector.mk_bv2int (ZCtx.read ()) ret_bv false
+        (* last arg, "false" indicates that the bitvector will be interpreted as unsigned integer (nat-number) *)
+      )
+      ~f:(ZExpr.create_dummy sort)
+  end
+  let create_xor : t -> t -> t
+  =fun e1 e2 -> begin
+    let is_expressible = ZFormula.create_and [_create_finite_bv_expressible e1; _create_finite_bv_expressible e2] in 
+    ZExpr.create_ite 
+      ~cond:is_expressible
+      ~t:(
+        let e1_bv, e2_bv = _to_finite_bv e1, _to_finite_bv e2 in
+        let ret_bv = Z3.BitVector.mk_xor (ZCtx.read ()) e1_bv e2_bv in
+        Z3.BitVector.mk_bv2int (ZCtx.read ()) ret_bv false
+        (* last arg, "false" indicates that the bitvector will be interpreted as unsigned integer (nat-number) *)
+      )
+      ~f:(ZExpr.create_dummy sort)
+  end
+
   let create_cmp : t -> t -> t
   =fun e1 e2 -> begin
     ZExpr.create_ite
@@ -404,9 +458,7 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-module ZNat = struct
-  (* TODO *)
-end
+module ZNat = ZInt
 
 
 (*****************************************************************************)

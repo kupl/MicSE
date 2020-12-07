@@ -29,7 +29,7 @@ let rec smtsort_of_vlangtyp : Vlang.Ty.t -> Smt.ZSort.t
   | T_big_map (t1, t2) -> Smt.ZMap.create_sort ~key_sort:(sot t1) ~value_sort:(sot t2)
   | T_chain_id -> Smt.ZStr.sort
   | T_int -> Smt.ZInt.sort
-  | T_nat -> Smt.ZInt.sort
+  | T_nat -> Smt.ZNat.sort
   | T_string -> Smt.ZStr.sort
   | T_bytes -> Smt.ZBytes.sort
   | T_mutez -> Smt.ZMutez.sort
@@ -94,8 +94,8 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_lit_int zn -> zn |> Smt.ZInt.of_zarith
       | V_neg_ni e -> Smt.ZInt.create_neg (e |> soe)
       | V_neg_ii e -> Smt.ZInt.create_neg (e |> soe)
-      | V_not_ni _ -> err ve  (* not supported yet *)
-      | V_not_ii _ -> err ve  (* not supported *)
+      | V_not_ni e -> Smt.ZInt.create_not (e |> soe)
+      | V_not_ii e -> Smt.ZInt.create_not (e |> soe)
       | V_add_nii (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
       | V_add_ini (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
       | V_add_iii (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
@@ -108,21 +108,26 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_mul_ini (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
       | V_mul_iii (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
       | V_compare (e1, e2) -> smtexpr_of_compare e1 e2
-      | V_int_of_nat  _ -> err ve (* not supported *)
+      | V_int_of_nat e -> begin
+          Smt.ZExpr.create_ite
+            ~cond:(Smt.ZInt.create_ge (soe e) Smt.ZInt.zero_)
+            ~t:(Smt.ZOption.create_some ~content:(soe e))
+            ~f:(Smt.ZOption.create_none ~content_sort:(Smt.ZNat.sort))
+        end
 
       (*************************************************************************)
       (* Natural Number                                                        *)
       (*************************************************************************)
-      | V_lit_nat zn -> Smt.ZInt.of_zarith zn
-      | V_abs_in e -> Smt.ZInt.create_abs (e |> soe)
-      | V_add_nnn (e1, e2) -> Smt.ZInt.create_add [(e1 |> soe); (e2 |> soe);]
-      | V_mul_nnn (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
-      | V_shiftL_nnn (_, _) -> err ve   (* not supported *)
-      | V_shiftR_nnn (_, _) -> err ve   (* not supported *)
-      | V_and_nnn (_, _) -> err ve      (* not supported *)
-      | V_and_inn (_, _) -> err ve      (* not supported *)
-      | V_or_nnn (_, _) -> err ve       (* not supported *)
-      | V_xor_nnn (_, _) -> err ve      (* not supported *)
+      | V_lit_nat zn -> Smt.ZNat.of_zarith zn
+      | V_abs_in e -> Smt.ZNat.create_abs (e |> soe)
+      | V_add_nnn (e1, e2) -> Smt.ZNat.create_add [(e1 |> soe); (e2 |> soe);]
+      | V_mul_nnn (e1, e2) -> Smt.ZNat.create_mul [(e1 |> soe); (e2 |> soe);]
+      | V_shiftL_nnn (e1, e2) -> Smt.ZNat.create_shiftL (soe e1) (soe e2)
+      | V_shiftR_nnn (e1, e2) -> Smt.ZNat.create_shiftR (soe e1) (soe e2)
+      | V_and_nnn (e1, e2) -> Smt.ZNat.create_and (soe e1) (soe e2)
+      | V_and_inn (e1, e2) -> Smt.ZNat.create_and (soe e1) (soe e2)
+      | V_or_nnn (e1, e2) -> Smt.ZNat.create_or (soe e1) (soe e2)
+      | V_xor_nnn (e1, e2) -> Smt.ZNat.create_xor (soe e1) (soe e2)
       | V_size_s _ -> err ve            (* not supported *)
       | V_size_m _ -> err ve            (* not supported *)
       | V_size_l _ -> err ve            (* not supported *)

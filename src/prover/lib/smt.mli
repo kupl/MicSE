@@ -57,6 +57,8 @@ module CONST : sig
   val _field_list_tail : string
 
   val _bit_mutez : int
+
+  val _int2bv_precision : int
 end
 
 (*****************************************************************************)
@@ -275,11 +277,30 @@ module ZInt : sig
   val create_gt : t -> t -> ZBool.t
   val create_ge : t -> t -> ZBool.t
 
+  (* bitwise operations *)
+  val _to_finite_bv : t -> ZExpr.t
+  val _create_finite_bv_expressible : t -> ZBool.t
+  val create_shiftL : t -> t -> t
+  val create_shiftR : t -> t -> t
+  val create_not : t -> t
+  val create_and : t -> t -> t
+  val create_or : t -> t -> t
+  val create_xor : t -> t -> t
+
   val create_cmp : t -> t -> t
   val create_abs : t -> t
 
   val to_zmutez : t -> ZExpr.t
 end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Natural Number                                                            *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZNat = ZInt
 
 
 (*****************************************************************************)
