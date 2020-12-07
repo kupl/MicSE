@@ -627,7 +627,7 @@ module Formula = struct
       | VF_mich_micse_check_value e1  -> "("  ^ (e1 |> ets) ^ "=" ^ "True"       ^ ")"
       (* Custom Formula for verifiying *)
       | VF_add_mmm_no_overflow (e1, e2)   -> "NoOverflow_ADD("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
-      | VF_sub_mmm_no_underflow (e1, e2)  -> "NoOUnderflow_ADD("  ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_sub_mmm_no_underflow (e1, e2)  -> "NoUnderflow_SUB("  ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_mul_mnm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_mul_nmm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       (* Custom Domain Formula for Invariant Generation *)
