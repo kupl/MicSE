@@ -180,8 +180,8 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (*************************************************************************)
       (* Key Hash                                                              *)
       (*************************************************************************)
-      | V_lit_key_hash _ -> err ve
-      | V_hash_key _ -> err ve (* not supported *)
+      | V_lit_key_hash s -> Smt.ZKeyHash.of_string s
+      | V_hash_key k -> Smt.ZKeyHash.create_hashkey (soe k)
 
       (*************************************************************************)
       (* Timestamp                                                             *)

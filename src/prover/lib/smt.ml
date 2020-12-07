@@ -6,6 +6,7 @@ module CONST = struct
   let _name_map : string = "MAP"
 
   let _sort_key : string = "Key"
+  let _sort_keyhash : string = "KeyHash"
   let _sort_unit : string = "Unit"
   let _sort_operation : string = "Operation"
   let _sort_contract : string = "Contract"
@@ -18,6 +19,8 @@ module CONST = struct
   let _sort_list : string = "List"
 
   let _const_key_keystr : string = "KeyStr"
+  let _const_keyhash_str : string = "KeyHashStr"
+  let _const_keyhash_hashkey : string = "KeyHashKey"
   let _const_bytes_bytstr : string = "BytStr"
   let _const_bytes_pack : string = "Pack"
   let _const_bytes_concatenated : string = "BytConcat"
@@ -36,6 +39,8 @@ module CONST = struct
   let _const_list_cons : string = "Cons"
 
   let _recog_key_keystr : string = "is_keystr"
+  let _recog_keyhash_str : string = "is_keyhashStr"
+  let _recog_keyhash_hashkey : string = "is_keyhashKey"
   let _recog_bytes_bytstr : string = "is_bytstr"
   let _recog_bytes_pack : string = "is_pack"
   let _recog_bytes_concatenated : string = "is_bytes_concatenated"
@@ -537,6 +542,44 @@ module ZKey = struct
   =fun s -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string s]
   let create_keystr : ZExpr.t -> t
   =fun content -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[content]
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Key Hash                                                                  *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZKeyHash = struct
+  type t = ZExpr.t
+
+  let _create_const_of_str : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_keyhash_str
+      ~recog_func_name:CONST._recog_keyhash_str
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[(Some ZStr.sort)]
+      ~field_sort_refs:[1]
+  let _create_const_of_hashkey : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_keyhash_hashkey
+      ~recog_func_name:CONST._recog_keyhash_hashkey
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[(Some ZKey.sort)]
+      ~field_sort_refs:[1]
+  
+  let sort : ZSort.t
+  =ZDatatype.create_sort
+      ~name:CONST._sort_keyhash
+      ~const_list:[ _create_const_of_str;
+                    _create_const_of_hashkey;
+                  ]
+
+  let of_string : string -> t
+  =fun s -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string s]
+  let create_hashkey : ZExpr.t -> t
+  =fun key -> sort |> ZDatatype.create ~const_idx:1 ~expr_list:[key]
 end
 
 

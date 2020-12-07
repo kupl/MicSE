@@ -1,0 +1,9 @@
+parameter key;
+storage key_hash;
+code {
+    CAR;
+    HASH_KEY;
+    
+    NIL operation;
+    PAIR;
+}
