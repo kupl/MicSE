@@ -57,7 +57,7 @@ let rec smtexpr_of_compare : Vlang.Expr.t -> Vlang.Expr.t -> Smt.ZExpr.t
     | T_mutez, T_mutez -> Smt.ZMutez.create_cmp (e1 |> soe) (e2 |> soe)
     | T_bool, T_bool -> err e1  (* True is larger than False, like OCaml *)
     | T_key_hash, T_key_hash -> err e1
-    | T_timestamp, T_timestamp -> err e1
+    | T_timestamp, T_timestamp -> Smt.ZInt.create_cmp (e1 |> soe) (e2 |> soe)
     | T_address, T_address -> err e1
     | T_pair (_, _), T_pair (_, _) -> err e1
     | t1, t2 when t1 = t2 -> Stdlib.failwith ("Prover.Verifier.smtexpr_of_compare : expression like this cannot be compared")
@@ -103,7 +103,7 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_sub_nii (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
       | V_sub_ini (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
       | V_sub_iii (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
-      | V_sub_tti _ -> err ve (* not supported *)
+      | V_sub_tti (e1, e2) -> Smt.ZInt.create_sub [(e1 |> soe); (e2 |> soe);]
       | V_mul_nii (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
       | V_mul_ini (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
       | V_mul_iii (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
@@ -191,12 +191,25 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (*************************************************************************)
       (* Timestamp                                                             *)
       (*************************************************************************)
-      | V_lit_timestamp_str _ -> err ve
-      | V_lit_timestamp_sec _ -> err ve (* not supproted *)
+      | V_lit_timestamp_str s -> begin
+          (* About Ptime: see https://erratique.ch/software/ptime
+              or https://github.com/dbuenzli/ptime
+          *)
+          Ptime.of_rfc3339 ~strict:false ~sub:true ~start:0 s 
+          |> Result.get_ok  (* It might raise "Invalid_argument" *)
+          |> (fun (pt, _, _) -> pt)
+          |> Ptime.to_span
+          |> Ptime.Span.to_int_s
+          |> Option.get   (* It might raise "Invalid_argument" *)
+          |> Smt.ZInt.of_int
+        end
+      | V_lit_timestamp_sec n -> begin
+          Smt.ZInt.of_int (Z.to_int n)
+        end
       | V_now -> err ve (* native & uninterpreted symbol needed *)
-      | V_add_tit (_, _) -> err ve (* not supported *)
-      | V_add_itt (_, _) -> err ve (* not supported *)
-      | V_sub_tit (_, _) -> err ve (* not supported *)
+      | V_add_tit (e1, e2) -> Smt.ZInt.create_add [soe e1; soe e2]
+      | V_add_itt (e1, e2) -> Smt.ZInt.create_add [soe e1; soe e2]
+      | V_sub_tit (e1, e2) -> Smt.ZInt.create_sub [soe e1; soe e2]
 
       (*************************************************************************)
       (* Address                                                               *)

@@ -1,0 +1,13 @@
+parameter int;
+storage timestamp;
+code {
+    UNPAIR;
+    PUSH timestamp "2019-09-26T10:59:51Z";
+    PUSH timestamp 1571659294; # these timestamp values are introduced at "https://michelson.nomadic-labs.com/#type-timestamp"
+    SUB; # timestamp - timestamp = int
+    ADD; # int + int = int
+    ADD; # int + timestamp = int
+
+    NIL operation;
+    PAIR;
+}
