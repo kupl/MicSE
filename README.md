@@ -31,6 +31,7 @@ MicSE provides two tools, Prover and Tester for Michelson.
 - Core (v0.14.0)
 - Dune (v2.2.0): We use Dune to manage build system of OCaml project.
 - Menhir
+- Ptime
 - Ocamlgraph
 - Z3
 - Zarith
