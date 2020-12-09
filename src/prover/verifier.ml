@@ -36,7 +36,7 @@ let rec smtsort_of_vlangtyp : Vlang.Ty.t -> Smt.ZSort.t
   | T_bool -> Smt.ZBool.sort
   | T_key_hash -> Smt.ZStr.sort
   | T_timestamp -> Smt.ZInt.sort
-  | T_address -> Smt.ZStr.sort
+  | T_address -> Smt.ZAddress.sort
 end (* function smttyp_of_vlangtyp end *)
 
 let sort_of_typt : Pre.Lib.Adt.typ -> Smt.ZSort.t
@@ -56,9 +56,9 @@ let rec smtexpr_of_compare : Vlang.Expr.t -> Vlang.Expr.t -> Smt.ZExpr.t
     | T_bytes, T_bytes -> Smt.ZStr.create_cmp (e1 |> soe) (e2 |> soe)
     | T_mutez, T_mutez -> Smt.ZMutez.create_cmp (e1 |> soe) (e2 |> soe)
     | T_bool, T_bool -> err e1  (* True is larger than False, like OCaml *)
-    | T_key_hash, T_key_hash -> err e1
+    | T_key_hash, T_key_hash -> Smt.ZKeyHash.create_cmp (e1 |> soe) (e2 |> soe)
     | T_timestamp, T_timestamp -> Smt.ZInt.create_cmp (e1 |> soe) (e2 |> soe)
-    | T_address, T_address -> err e1
+    | T_address, T_address -> Smt.ZAddress.create_cmp (e1 |> soe) (e2 |> soe)
     | T_pair (_, _), T_pair (_, _) -> err e1
     | t1, t2 when t1 = t2 -> Stdlib.failwith ("Prover.Verifier.smtexpr_of_compare : expression like this cannot be compared")
     | _ -> Stdlib.failwith ("Prover.Verifier.smtexpr_of_compare : two expressions have different types")
@@ -214,9 +214,9 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (*************************************************************************)
       (* Address                                                               *)
       (*************************************************************************)
-      | V_lit_address _ -> err ve (* not supported *)
-      | V_source -> err ve (* native & uninterpreted symbol needed *)
-      | V_sender -> err ve (* native & uninterpreted symbol needed *)
+      | V_lit_address kh -> Smt.ZAddress.create_addrkh (soe kh)
+      | V_source -> Smt.ZAddress.of_string Smt.CONST._tmpname_source
+      | V_sender -> Smt.ZAddress.of_string Smt.CONST._tmpname_sender
       | V_address_of_contract _ -> err ve (* not supported *)
 
       (*************************************************************************)

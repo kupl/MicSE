@@ -4,6 +4,9 @@ module CONST : sig
   val _name_dummy : string
   val _name_unit : string
   val _name_map : string
+  
+  val _tmpname_source : string
+  val _tmpname_sender : string
 
   val _sort_key : string
   val _sort_unit : string
@@ -25,6 +28,7 @@ module CONST : sig
   val _const_bytes_sha512 : string
   val _const_signature_sigstr : string
   val _const_signature_signed : string
+  val _const_address_addrkh : string
   val _const_option_none : string
   val _const_option_some : string
   val _const_pair : string
@@ -42,6 +46,7 @@ module CONST : sig
   val _recog_bytes_sha512 : string
   val _recog_signature_sigstr : string
   val _recog_signature_signed : string
+  val _recog_address_addrkh : string
   val _recog_option_none : string
   val _recog_option_some : string
   val _recog_pair : string
@@ -381,6 +386,11 @@ module ZKey : sig
 
   val of_string : string -> t
   val create_keystr : ZExpr.t -> t
+
+  val _read_innerstr : t -> ZStr.t
+
+  val create_cmp : t -> t -> ZInt.t
+  val create_eq : t -> t -> ZBool.t
 end
 
 
@@ -400,6 +410,12 @@ module ZKeyHash : sig
 
   val of_string : string -> t
   val create_hashkey : ZExpr.t -> t
+
+  val _read_innerstr : t -> ZStr.t
+  val _read_innerkey : t -> ZKey.t
+
+  val create_cmp : t -> t -> ZInt.t
+  val create_eq : t -> t -> ZBool.t
 end
 
 
@@ -507,6 +523,30 @@ module ZSignature : sig
   val create_sigstr : ZExpr.t -> t
   
   val create_signed : key_data:ZExpr.t -> bytes_data:ZExpr.t -> t
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Address                                                                   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZAddress : sig
+  type t = ZExpr.t
+
+  val _create_const_of_addrkh : ZDatatype.const
+
+  val sort : ZSort.t
+
+  val of_string : string -> t
+
+  val create_addrkh : ZKeyHash.t -> t
+
+  val _read_innerkh : t -> ZKeyHash.t
+  
+  val create_cmp : t -> t -> ZInt.t
+  val create_eq : t -> t -> ZBool.t
 end
 
 

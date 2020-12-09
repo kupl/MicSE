@@ -4,6 +4,9 @@ module CONST = struct
   let _name_dummy : string = "DUMMY"
   let _name_unit : string = "UNIT"
   let _name_map : string = "MAP"
+  
+  let _tmpname_source : string = "SOURCE"
+  let _tmpname_sender : string = "SENDER"
 
   let _sort_key : string = "Key"
   let _sort_keyhash : string = "KeyHash"
@@ -13,6 +16,7 @@ module CONST = struct
   let _sort_lambda : string = "Lambda"
   let _sort_bytes : string = "Bytes"
   let _sort_signature : string = "Signature"
+  let _sort_address : string = "Address"
   let _sort_option : string = "Option"
   let _sort_pair : string = "Pair"
   let _sort_or : string = "Or"
@@ -30,6 +34,7 @@ module CONST = struct
   let _const_bytes_sha512 : string = "Sha512"
   let _const_signature_sigstr : string = "SigStr"
   let _const_signature_signed : string = "Signed"
+  let _const_address_addrkh : string = "AddrKh"
   let _const_option_none : string = "None"
   let _const_option_some : string = "Some"
   let _const_pair : string = "Pair"
@@ -50,6 +55,7 @@ module CONST = struct
   let _recog_bytes_sha512 : string = "is_sha512"
   let _recog_signature_sigstr : string = "is_sigstr"
   let _recog_signature_signed : string = "is_signed"
+  let _recog_address_addrkh : string = "is_addrkh"
   let _recog_option_none : string = "is_none"
   let _recog_option_some : string = "is_some"
   let _recog_pair : string = "is_pair"
@@ -594,6 +600,15 @@ module ZKey = struct
   =fun s -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string s]
   let create_keystr : ZExpr.t -> t
   =fun content -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[content]
+
+
+  let _read_innerstr : t -> ZStr.t
+  =fun t -> ZDatatype.read t ~const_idx:0 ~field_idx:0
+
+  let create_cmp : t -> t -> ZInt.t
+  =fun t1 t2 -> ZStr.create_cmp (_read_innerstr t1) (_read_innerstr t2)
+  let create_eq : t -> t -> ZBool.t
+  =fun t1 t2 -> ZStr.create_eq (_read_innerstr t1) (_read_innerstr t2) 
 end
 
 
@@ -632,6 +647,30 @@ module ZKeyHash = struct
   =fun s -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string s]
   let create_hashkey : ZExpr.t -> t
   =fun key -> sort |> ZDatatype.create ~const_idx:1 ~expr_list:[key]
+
+  let _read_innerstr : t -> ZStr.t
+  =fun t -> ZDatatype.read t ~const_idx:0 ~field_idx:0
+  let _read_innerkey : t -> ZKey.t
+  =fun t -> ZDatatype.read t ~const_idx:1 ~field_idx:0
+
+  (* custom order 
+    str(s) > hashkey(k)
+  *)
+  let create_cmp : t -> t -> ZInt.t
+  =fun t1 t2 -> begin
+    ZExpr.create_ite ~cond:(ZDatatype.is_field t1 ~const_idx:0)
+    ~t:(ZExpr.create_ite ~cond:(ZDatatype.is_field t2 ~const_idx:0)
+        ~t:(ZStr.create_cmp (_read_innerstr t1) (_read_innerstr t2))
+        ~f:(ZInt.one_)
+    )
+    ~f:(ZExpr.create_ite ~cond:(ZDatatype.is_field t2 ~const_idx:0)
+        ~t:(ZInt.minus_one_)
+        ~f:(ZKey.create_cmp (_read_innerkey t1) (_read_innerkey t2))
+    )
+  end
+
+  let create_eq : t -> t -> ZBool.t
+  =fun t1 t2 -> ZExpr.create_ite ~cond:(ZInt.create_eq (create_cmp t1 t2) (ZInt.zero_)) ~t:(ZBool.true_) ~f:(ZBool.false_)
 end
 
 
@@ -873,6 +912,47 @@ end
 (* Timestamp = Int                                                           *)
 (*****************************************************************************)
 (*****************************************************************************)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Address                                                                   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module ZAddress = struct
+  type t = ZExpr.t
+
+  let _create_const_of_addrkh : ZDatatype.const
+  =ZDatatype.create_const
+      ~name:CONST._const_address_addrkh
+      ~recog_func_name:CONST._recog_address_addrkh
+      ~field_names:[(CONST._field_content)]
+      ~field_sorts:[(Some ZKeyHash.sort)]
+      ~field_sort_refs:[1]
+
+  let sort : ZSort.t
+  =ZDatatype.create_sort
+    ~name:CONST._sort_signature
+    ~const_list:[ _create_const_of_addrkh;
+                ]
+
+  let of_string : string -> t
+  =fun s -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[ZKeyHash.of_string s]
+
+  let create_addrkh : ZKeyHash.t -> t
+  =fun kh -> sort |> ZDatatype.create ~const_idx:0 ~expr_list:[kh]
+
+
+  let _read_innerkh : t -> ZKeyHash.t
+  =fun t -> ZDatatype.read t ~const_idx:0 ~field_idx:0
+
+  let create_cmp : t -> t -> ZInt.t
+  =fun t1 t2 -> ZKeyHash.create_cmp (_read_innerkh t1) (_read_innerkh t2)
+
+  let create_eq : t -> t -> ZBool.t
+  =fun t1 t2 -> ZKeyHash.create_eq (_read_innerkh t1) (_read_innerkh t2)
+end
 
 
 (*****************************************************************************)
