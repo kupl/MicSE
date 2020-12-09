@@ -302,10 +302,20 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (*************************************************************************)
       (* Set                                                                   *)
       (*************************************************************************)
-      | V_lit_set _ -> err ve
-      | V_empty_set _ -> err ve
-      | V_update_xbss _ -> err ve
-      | V_tl_s _ -> err ve
+      | V_lit_set (elt, e) -> begin
+          let kt, vt = elt, Vlang.Ty.T_bool in
+          e |> Core.Set.Poly.fold
+            ~init:(Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp))
+            ~f:(fun acc_set key -> Smt.ZMap.update ~key:(soe key) ~value:(Smt.ZOption.create_some ~content:(soe (V_lit_bool true))) ~map:acc_set)
+        end
+      | V_empty_set elt -> begin
+          let kt, vt = elt, Vlang.Ty.T_bool in
+          Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp)
+        end
+      | V_update_xbss (e1, e2, e3) -> begin
+          Smt.ZMap.update ~key:(e1 |> soe) ~value:(e2 |> soe) ~map:(e3 |> soe)
+        end
+      | V_tl_s _ -> err ve  (* not supported *)
 
       (*************************************************************************)
       (* Operation                                                             *)
