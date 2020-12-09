@@ -39,7 +39,7 @@ let _ =
   let _ = List.length brt_lst.loop_inv_vtx |> Stdlib.string_of_int |> Stdlib.(^) "# of loop invariant vertices : " |> Stdlib.print_endline in
   *)
 
-  let (bplist, bpupdated_cfg) : (Prover.Lib.Bp.t list * PreLib.Cfg.t) = Refuter.Extractor.get_concatenated_basicpaths None cfg transaction_seq_NUM in
+  let (bplist, bpupdated_cfg) : (Prover.Lib.Bp.lst * PreLib.Cfg.t) = Refuter.Extractor.get_concatenated_basicpaths None cfg transaction_seq_NUM in
   (*let _ : unit = List.length bplist |> Stdlib.print_int in*)
   (*let _ : unit = List.iter (fun x -> (Prover.Lib.Bp.to_string x |> Stdlib.print_endline); Stdlib.print_newline ()) bplist in*)
 

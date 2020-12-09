@@ -47,6 +47,8 @@ module Env : sig
   val update_expr_of_cfgvar : Pre.Lib.Cfg.ident -> ProverLib.Vlang.Expr.t -> env:t -> unit
   val is_expressed_var : ProverLib.Bp.var -> env:t -> bool
   val string_of_var_expr_map : t -> string
+
+  val update_stg : t -> stg:[`entry of ProverLib.Bp.var | `exit of ProverLib.Bp.var] -> unit
 end
 
 module FormulaUtils : sig
@@ -65,4 +67,4 @@ val create_formula_of_cond : Env.t -> ProverLib.Bp.cond -> ProverLib.Vlang.v_for
 val sp : Env.t -> (ProverLib.Vlang.t * ProverLib.Query.t list) -> (ProverLib.Bp.vertex * ProverLib.Bp.inst) -> (ProverLib.Vlang.t * ProverLib.Query.t list)
 
 (* main convert function *)
-val convert : ProverLib.Bp.t -> PreLib.Cfg.t -> (ProverLib.Vlang.t * ProverLib.Query.t list)
+val convert : ProverLib.Bp.t -> PreLib.Cfg.t -> entry_var:ProverLib.Bp.var -> exit_var:ProverLib.Bp.var -> (ProverLib.Vlang.t * ProverLib.Query.t list)

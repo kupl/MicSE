@@ -83,13 +83,15 @@ end
 
 let rec work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> timer -> Query.t list
 =fun w bp_list cfg init_stg_opt time -> begin
+  let entry_var, exit_var = ((bp_list.entry.var |> Option.get), (bp_list.exit.var |> Option.get)) in
+
   (* Choose a candidate invariant *)
   let inv_map, cur_wlst = Inv.WorkList.pop w in
 
   (* Verify Queries *)
   let bps = Generator.apply inv_map bp_list.bps in
   let inductiveness, proven, unproven = Core.List.fold_right bps ~f:(fun bp (inductive, proven, unproven) -> (
-    let path_vc, queries = Converter.convert bp cfg in
+    let path_vc, queries = Converter.convert bp cfg ~entry_var:entry_var ~exit_var:exit_var in
     let path_inductive, _ = Verifier.verify path_vc in
     let proven, unproven = Core.List.fold_right queries ~f:(fun q (p, up) -> (
       let result, model = Verifier.verify q.query in

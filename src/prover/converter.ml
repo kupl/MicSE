@@ -122,6 +122,15 @@ module Env = struct
     end) ^
     "}"
   end
+
+  let update_stg : t -> stg:[`entry of Bp.var | `exit of Bp.var] -> unit
+  =fun env ~stg -> begin
+    let to_vlang_var = fun v -> v |> read_expr_of_cfgvar ~env:env in (* syntax sugar *)
+    let to_vlang_cdr = fun v -> Vlang.Expr.V_cdr v in (* syntax sugar *)
+    match stg with
+    | `entry vv -> vv |> to_vlang_var |> to_vlang_cdr |> update_expr_of_cfgvar Generator.Stg.pre ~env:env
+    | `exit vv -> vv |> to_vlang_var |> to_vlang_cdr |> update_expr_of_cfgvar Generator.Stg.post ~env:env
+  end
 end
 
 module FormulaUtils = struct
@@ -550,12 +559,14 @@ let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t 
   | BI_skip -> (f, qs)
 end
 
-let convert : Bp.t -> PreLib.Cfg.t -> (Vlang.t * Query.t list)
-=fun bp cfg -> begin
+let convert : Bp.t -> PreLib.Cfg.t -> entry_var:Bp.var -> exit_var:Bp.var -> (Vlang.t * Query.t list)
+=fun bp cfg ~entry_var ~exit_var -> begin
   try
     let cv_env : Env.t = cfg |> Env.create in
+    let _ = cv_env |> Env.update_stg ~stg:(`entry entry_var) in
     let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
     let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
+    let _ = cv_env |> Env.update_stg ~stg:(`exit exit_var) in
     let inductive = Vlang.Formula.VF_imply (f', g) |> FormulaUtils.finalize_formula ~cenv:cv_env in
     (inductive, qs)
   with

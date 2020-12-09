@@ -28,6 +28,12 @@ module Stg = struct
 
   exception Error of string
 
+  let pre : string
+  ="pre_stg"
+
+  let post : string
+  ="post_stg"
+
   let read_typt : cfg:cfg -> Vlang.Ty.t
   =fun ~cfg -> begin
     try
@@ -46,27 +52,6 @@ module Stg = struct
 
   let create_comp : cfg:cfg -> Comps.t
   =fun ~cfg -> Comps.read_components (create ~cfg:cfg) (Comps.empty)
-
-  let equal_to_expr : expr:t -> cfg:cfg -> Vlang.t
-  =fun ~expr ~cfg -> Vlang.Formula.VF_eq (expr, (create ~cfg:cfg))
-
-  let equal_to_data : data:data -> cfg:cfg -> Vlang.t
-  =fun ~data ~cfg -> equal_to_expr ~expr:(Converter.create_expr_of_michdata data (read_typt ~cfg:cfg)) ~cfg:cfg
-
-  let equal_to_ps_or_os : ps_os:Vlang.var -> cfg:cfg -> Vlang.t
-  =fun ~ps_os ~cfg -> begin
-    try
-      equal_to_expr
-        ~expr:(Vlang.Expr.V_cdr (Vlang.Expr.V_var (
-            (ps_os |> Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |> Vlang.TypeUtil.ty_of_mty),
-            ps_os
-          )))
-        ~cfg:cfg
-    with
-    | Core.Not_found_s _
-    | Not_found -> Error "read_typt: Type of entry or exit variable is not found" |> raise
-    | e -> e |> raise
-  end
 end
 
 module TrxInv = struct
@@ -90,16 +75,27 @@ module TrxInv = struct
     fs
   end
 
-  let wrap_formula : bp_list:Bp.lst -> cfg:cfg -> (f:(comp:Comps.t -> formula list) -> (formula * formula) list)
-  =fun ~bp_list ~cfg -> begin
+  let formula_sigma_equal : comp:Comps.t -> formula list
+  =fun ~comp -> begin
+    let mutez_fs = Core.List.fold_left comp.mutez_map ~f:(fun fs (a_expr, a_app) -> begin
+      let fs' = Core.List.map comp.mutez ~f:(fun (b_expr, b_app) -> begin
+        let app = a_app@b_app in
+        let sigma_equal = Vlang.Formula.VF_sigma_equal (a_expr, b_expr) in
+        Core.List.fold_right app ~f:(fun app f -> app f) ~init:sigma_equal
+      end) in
+      (fs'@fs)
+    end) ~init:[] in
+    mutez_fs
+  end
+
+  let wrap_formula : cfg:cfg -> (f:(comp:Comps.t -> formula list) -> (formula * formula) list)
+  =fun ~cfg -> begin
     let comp = Stg.create_comp ~cfg:cfg in
-    let entry_equal = Stg.equal_to_ps_or_os ~ps_os:(Option.get bp_list.entry.var) ~cfg:cfg in
-    let exit_equal = Stg.equal_to_ps_or_os ~ps_os:(Option.get bp_list.exit.var) ~cfg:cfg in
     let wrapper : f:(comp:Comps.t -> formula list) -> (formula * formula) list
     =fun ~f -> begin
       Core.List.map (f ~comp:comp) ~f:(fun f -> begin
-        let entry_f = Vlang.Renaming.var_in_expr_formula "stg" "pre_stg" (Vlang.Formula.VF_and [entry_equal; f]) in
-        let exit_f = Vlang.Renaming.var_in_expr_formula "stg" "post_stg" (Vlang.Formula.VF_imply (exit_equal, f)) in
+        let entry_f = Vlang.Renaming.var_in_expr_formula "stg" Stg.pre (f) in
+        let exit_f = Vlang.Renaming.var_in_expr_formula "stg" Stg.post (f) in
         (entry_f, exit_f)
       end)
     end in
@@ -108,9 +104,10 @@ module TrxInv = struct
 
   let create : bp_list:Bp.lst -> cfg:cfg -> m list
   =fun ~bp_list ~cfg -> begin
-    let wrapper = wrap_formula ~bp_list:bp_list ~cfg:cfg in
-    let fs = (wrapper ~f:formula_mutez_equal) in
-    Core.List.map fs ~f:(fun (entry_f, exit_f) -> begin 
+    let wrapper = wrap_formula ~cfg:cfg in
+    let fs1 = (wrapper ~f:formula_mutez_equal) in
+    let fs2 = (wrapper ~f:formula_sigma_equal) in
+    Core.List.map (fs1@fs2) ~f:(fun (entry_f, exit_f) -> begin 
       let entry_inv = Inv.T.create_with_formulae ~vtx:(bp_list.entry.vtx) ~fl:[entry_f] in
       let exit_inv = Inv.T.create_with_formulae ~vtx:(bp_list.exit.vtx) ~fl:[exit_f] in
       let empty_map = Inv.Map.empty in

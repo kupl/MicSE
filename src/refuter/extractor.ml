@@ -178,7 +178,7 @@ let concat_basicpath : initial_storage_typ -> Pre.Lib.Cfg.t -> Prover.Lib.Bp.t l
 input : initial starge, unrolled cfg, maximum length of transaction sequence
 output : transaction sequences (from length N)
 *)
-let get_concatenated_basicpaths : initial_storage_typ -> Pre.Lib.Cfg.t -> int -> (Prover.Lib.Bp.t list * PreLib.Cfg.t)
+let get_concatenated_basicpaths : initial_storage_typ -> Pre.Lib.Cfg.t -> int -> (Prover.Lib.Bp.lst * PreLib.Cfg.t)
 = let open Prover.Lib in
   fun initStgOpt unrolled_cfg n -> begin
   let basicpaths : Bp.lst = extract_basicpaths unrolled_cfg in
@@ -189,5 +189,6 @@ let get_concatenated_basicpaths : initial_storage_typ -> Pre.Lib.Cfg.t -> int ->
   let (_, bpll) : int * (Bp.t list list) = basicpath_sequences_N (n, wrapped_filtered_basicpaths) filtered_basicpaths in
   let _ : unit = Stdlib.print_string "# of basicpath_sequences : "; List.length bpll |> Stdlib.print_int; Stdlib.print_newline () in
   let typeinfo_updated_cfg : PreLib.Cfg.t = add_trxseq_var_types unrolled_cfg n in
-  ((List.map (fun bpl -> concat_basicpath initStgOpt unrolled_cfg bpl) bpll), typeinfo_updated_cfg)
+  let newBp : Bp.lst = { basicpaths with bps = (List.map (fun bpl -> concat_basicpath initStgOpt unrolled_cfg bpl) bpll) } in
+  (newBp, typeinfo_updated_cfg)
 end
