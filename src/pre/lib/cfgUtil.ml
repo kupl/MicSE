@@ -148,7 +148,7 @@ let cfg_to_dotformat : t -> string
   =fun (in_v, e_label, out_v) acc -> begin
     let body_s = (string_of_int in_v) ^ " -> " ^ (string_of_int out_v) in
     (* edge label and style *)
-    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" | Failed -> "[label=\"Failed\", style=dotted]" | Check_skip -> "[label=\"Check_skip\", style=dotted]" in
+    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" | Failed -> "[label=\"Failed\", style=dotted]" | If_skip -> "[label=\"If_skip\", style=dotted]" | Loop_skip -> "[label=\"Loop_skip\", style=dotted]" | Check_skip -> "[label=\"Check_skip\", style=dotted]" in
     (body_s ^ " " ^ edge_s ^ ";") :: acc
   end in
   let flow_s = begin
