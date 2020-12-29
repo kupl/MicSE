@@ -37,6 +37,7 @@ module Env = struct
     cfg : PreLib.Cfg.t;
     varname : Bp.var VarMap.t;        (* Variable-name Map          : Original Variable-name  -> Latest Variable-name *)
     varexpr : Vlang.Expr.t VarMap.t;  (* Variable to Expression Map : Variable-name           -> Expression of Verification Language *)
+    whitelist_mem : (Pre.Lib.Cfg.ident -> bool);
   }
   type t = body ref
   
@@ -52,8 +53,8 @@ module Env = struct
     String.sub v !idx (String.length v - !idx)
   end
 
-  let create : Pre.Lib.Cfg.t -> t
-  =fun cfg -> ref { cfg=cfg; varname=VarMap.empty; varexpr=VarMap.empty; }
+  let create : Pre.Lib.Cfg.t -> whitelist_mem:(Pre.Lib.Cfg.ident -> bool) -> t
+  =fun cfg ~whitelist_mem -> ref { cfg=cfg; varname=VarMap.empty; varexpr=VarMap.empty; whitelist_mem=whitelist_mem}
 
   let read_vartype : PreLib.Cfg.ident -> env:t -> Vlang.typ
   =fun v ~env -> begin (* read_type_cfgvar *)
@@ -93,10 +94,11 @@ module Env = struct
   end
 
   let read_expr_of_cfgvar : Pre.Lib.Cfg.ident -> env:t -> Vlang.Expr.t
-  =fun v ~env -> begin (* create_var_of_cfgvar *)
+  =fun  v ~env -> begin (* create_var_of_cfgvar *)
     let m = !env.varexpr in (* variable to expression map *)
     let cv = v |> read_varname ~env:env in (* current variable name of input variable *)
-    if v = Pre.Lib.Cfg.param_storage_name
+    if !env.whitelist_mem v
+    (* if v = Pre.Lib.Cfg.param_storage_name *)
     then Vlang.Expr.V_var ((v |> read_vartype ~env:env), v)
     else match VarMap.find m cv with
     | None -> Error ("read_expr_of_cfgvar: Variable " ^ v ^ " is not defined with any expression") |> raise
@@ -559,10 +561,10 @@ let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t 
   | BI_skip -> (f, qs)
 end
 
-let convert : Bp.t -> PreLib.Cfg.t -> entry_var:Bp.var -> exit_var:Bp.var -> (Vlang.t * Query.t list)
-=fun bp cfg ~entry_var ~exit_var -> begin
+let convert : ?whitelist_mem:(Pre.Lib.Cfg.ident -> bool) -> Bp.t -> PreLib.Cfg.t -> entry_var:Bp.var -> exit_var:Bp.var -> (Vlang.t * Query.t list)
+=fun ?(whitelist_mem=(fun x -> x = Pre.Lib.Cfg.param_storage_name)) bp cfg ~entry_var ~exit_var -> begin
   try
-    let cv_env : Env.t = cfg |> Env.create in
+    let cv_env : Env.t = Env.create cfg ~whitelist_mem:(whitelist_mem) in
     let _ = cv_env |> Env.update_stg ~stg:(`entry entry_var) in
     let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
     let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in

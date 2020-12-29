@@ -29,6 +29,7 @@ module Env : sig
     cfg : PreLib.Cfg.t;
     varname : ProverLib.Bp.var VarMap.t;        (* Variable-name Map          : Original Variable-name  -> Latest Variable-name *)
     varexpr : ProverLib.Vlang.Expr.t VarMap.t;  (* Variable to Expression Map : Variable-name           -> Expression of Verification Language *)
+    whitelist_mem : (Pre.Lib.Cfg.ident -> bool);
   }
   type t = body ref
 
@@ -36,7 +37,7 @@ module Env : sig
   val gen_nv : ProverLib.Bp.var -> ProverLib.Bp.var
   val get_ov : ProverLib.Bp.var -> ProverLib.Bp.var (* "get_ov" just removes continuous "newvar_prefix"es in front of the given string *)
 
-  val create : Pre.Lib.Cfg.t -> t
+  val create : Pre.Lib.Cfg.t -> whitelist_mem:(Pre.Lib.Cfg.ident -> bool) -> t
 
   val read_vartype : PreLib.Cfg.ident -> env:t -> ProverLib.Vlang.typ
 
@@ -67,4 +68,4 @@ val create_formula_of_cond : Env.t -> ProverLib.Bp.cond -> ProverLib.Vlang.v_for
 val sp : Env.t -> (ProverLib.Vlang.t * ProverLib.Query.t list) -> (ProverLib.Bp.vertex * ProverLib.Bp.inst) -> (ProverLib.Vlang.t * ProverLib.Query.t list)
 
 (* main convert function *)
-val convert : ProverLib.Bp.t -> PreLib.Cfg.t -> entry_var:ProverLib.Bp.var -> exit_var:ProverLib.Bp.var -> (ProverLib.Vlang.t * ProverLib.Query.t list)
+val convert : ?whitelist_mem:(Pre.Lib.Cfg.ident -> bool) -> ProverLib.Bp.t -> PreLib.Cfg.t -> entry_var:ProverLib.Bp.var -> exit_var:ProverLib.Bp.var -> (ProverLib.Vlang.t * ProverLib.Query.t list)

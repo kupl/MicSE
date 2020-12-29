@@ -55,6 +55,10 @@ let trx_seq_storage_name : int -> string = fun i -> ("trxStorage-" ^ (Stdlib.str
 (* operation-list name for each transactions in transaction sequence. magic-string generator *)
 let trx_seq_operation_name : int -> string = fun i -> ("trxOper-" ^ (Stdlib.string_of_int i))
 
+let is_trx_seq_param_name : string -> bool = fun s -> (Core.String.is_prefix s ~prefix:"trxParam-")
+let is_trx_seq_storage_name : string -> bool = fun s -> (Core.String.is_prefix s ~prefix:"trxStorage-")
+let is_trx_seq_operation_name : string -> bool = fun s -> (Core.String.is_prefix s ~prefix:"trxOper-")
+
 (* add_trxseq_var_types adds transaction-related variables' type information *)
 (* It heavily depends on the implementation of "initial_storage_typ" and some "trx_seq_" ... strings *)
 let add_trxseq_var_types : PreLib.Cfg.t -> int -> PreLib.Cfg.t
