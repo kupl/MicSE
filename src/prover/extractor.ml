@@ -76,8 +76,21 @@ let rec translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
 =fun cur_bp cur_vtx cfg -> begin
   let stmt = Pre.Lib.Cfg.read_stmt_from_vtx cfg cur_vtx in
   let succ = Pre.Lib.Cfg.read_succ_from_vtx cfg cur_vtx in
-  if Pre.Lib.Cfg.is_main_exit cfg cur_vtx then [cur_bp]
-  else begin
+  if Pre.Lib.Cfg.is_main_exit cfg cur_vtx then begin
+    match stmt with
+    | Cfg_assign (id, e) -> begin 
+        let typ = (match Core.Map.Poly.find cfg.type_info id with 
+                  | Some typ -> typ
+                  | None -> InvalidExtraction (stmt, ("Type of " ^ id ^ " is invalid")) |> raise
+        ) in
+        let assert_inst = create_basic_safety_property cur_vtx e typ in
+        let new_bp = update_current_bp cur_bp assert_inst in
+        let inst = Bp.create_inst_assign id e in
+        let new_bp' = update_current_bp new_bp (Some (cur_vtx, inst)) in
+        [new_bp']
+      end
+    | _ -> Error "translate: main-exit vertex error" |> raise
+  end else begin
     match stmt with
     | Cfg_assign (id, e) -> begin
         let typ = (match Core.Map.Poly.find cfg.type_info id with 
