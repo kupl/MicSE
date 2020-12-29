@@ -313,7 +313,13 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
           Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp)
         end
       | V_update_xbss (e1, e2, e3) -> begin
-          Smt.ZMap.update ~key:(e1 |> soe) ~value:(e2 |> soe) ~map:(e3 |> soe)
+          let elem = begin
+            Smt.ZExpr.create_ite
+            ~cond:(soe e2)
+            ~t:(Smt.ZOption.create_some ~content:(Smt.ZBool.true_))
+            ~f:(Smt.ZOption.create_none ~content_sort:(Smt.ZBool.sort))
+          end in
+          Smt.ZMap.update ~key:(e1 |> soe) ~value:(elem) ~map:(e3 |> soe)
         end
       | V_tl_s _ -> err ve  (* not supported *)
 
