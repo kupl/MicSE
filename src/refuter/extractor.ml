@@ -47,17 +47,19 @@ let rec basicpath_sequences_N : (int * (Prover.Lib.Bp.t list) list) -> Prover.Li
 end
 
 
-
+let trx_seq_param_prefix : string = "trxParam-"
+let trx_seq_storage_prefix : string = "trxStorage-"
+let trx_seq_operation_prefix : string = "trxOper-"
 (* parameter name for each transactions in transaction sequence. magic-string generator *)
-let trx_seq_param_name : int -> string = fun i -> ("trxParam-" ^ (Stdlib.string_of_int i))
+let trx_seq_param_name : int -> string = fun i -> (trx_seq_param_prefix ^ (Stdlib.string_of_int i))
 (* storage name for each transactions in transaction sequence. magic-string generator *)
-let trx_seq_storage_name : int -> string = fun i -> ("trxStorage-" ^ (Stdlib.string_of_int i))
+let trx_seq_storage_name : int -> string = fun i -> (trx_seq_storage_prefix ^ (Stdlib.string_of_int i))
 (* operation-list name for each transactions in transaction sequence. magic-string generator *)
-let trx_seq_operation_name : int -> string = fun i -> ("trxOper-" ^ (Stdlib.string_of_int i))
+let trx_seq_operation_name : int -> string = fun i -> (trx_seq_operation_prefix ^ (Stdlib.string_of_int i))
 
-let is_trx_seq_param_name : string -> bool = fun s -> (Core.String.is_prefix s ~prefix:"trxParam-")
-let is_trx_seq_storage_name : string -> bool = fun s -> (Core.String.is_prefix s ~prefix:"trxStorage-")
-let is_trx_seq_operation_name : string -> bool = fun s -> (Core.String.is_prefix s ~prefix:"trxOper-")
+let is_trx_seq_param_name : string -> bool = fun s -> (Core.String.is_prefix s ~prefix:trx_seq_param_prefix)
+let is_trx_seq_storage_name : string -> bool = fun s -> (Core.String.is_prefix s ~prefix:trx_seq_storage_prefix)
+let is_trx_seq_operation_name : string -> bool = fun s -> (Core.String.is_prefix s ~prefix:trx_seq_operation_prefix)
 
 (* add_trxseq_var_types adds transaction-related variables' type information *)
 (* It heavily depends on the implementation of "initial_storage_typ" and some "trx_seq_" ... strings *)
