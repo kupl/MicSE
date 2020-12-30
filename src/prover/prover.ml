@@ -69,8 +69,7 @@ module ProverUtil = struct
                           Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |>
                           Vlang.TypeUtil.ty_of_mty |>
                           Verifier.smtsort_of_vlangtyp |>
-                          Smt.ZExpr.create_var ~name:(bp_list.exit.var |> Option.get) in
-      let _ = print_endline (Smt.ZExpr.to_string operation_stg) in
+                          Smt.ZExpr.create_var ~name:("operation_storage") in
       match (operation_stg |> Smt.ZPair.read_snd |> Smt.ZModel.eval ~model:model) with
       | Some stg -> stg |> Smt.ZExpr.to_string
       | _ -> Error "read_post_storage: wrong evaluation of post storage" |> raise
