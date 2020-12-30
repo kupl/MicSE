@@ -558,7 +558,7 @@ let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t 
       let f' = Vlang.Formula.VF_and [(create_formula_of_cond cenv c); f] in
       (f', qs)
   | BI_assert (c, loc, ctg) ->
-      let formula = Vlang.Formula.VF_imply (f, (create_formula_of_cond cenv c)) |> FormulaUtils.finalize_formula ~cenv:cenv in
+      let formula = Vlang.Formula.VF_imply (f, (create_formula_of_cond cenv c)) in
       let query = Query.create_new_query formula ~loc:loc ~category:ctg in
       (f, (query::qs))
   | BI_assign (v, e) ->
@@ -581,7 +581,8 @@ let convert : ?whitelist_mem:(Pre.Lib.Cfg.ident -> bool) -> Bp.t -> PreLib.Cfg.t
     let _ = cv_env |> Env.update_stg ~stg:(`exit exit_var) in
     let f'' = VF_and [f'; (VF_eq (V_var ((exit_var |> Env.read_vartype ~env:cv_env), "operation_storage"), V_var ((exit_var |> Env.read_vartype ~env:cv_env), exit_var)))] in
     let inductive = VF_imply (f'', g) |> FormulaUtils.finalize_formula ~cenv:cv_env in
-    (inductive, qs)
+    let qs' = qs |> Core.List.map ~f:(fun q -> { q with Query.query=(q.Query.query |> FormulaUtils.finalize_formula ~cenv:cv_env) } ) in
+    (inductive, qs')
   with
   | InvalidConversion_Expr ce -> Error ("Invalid Expression Conversion on [" ^ (Pre.Lib.Cfg.expr_to_str ce) ^ "].") |> raise
   | InvalidConversion_Cond bc -> Error ("Invalid Condition Conversion on [" ^ (Bp.string_of_cond bc) ^ "].") |> raise
