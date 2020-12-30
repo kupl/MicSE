@@ -136,6 +136,18 @@ module Env = struct
 end
 
 module FormulaUtils = struct
+  let rename_var : Vlang.Expr.t -> cenv:Env.t -> Vlang.Expr.t
+  =fun e ~cenv -> begin
+      match e with
+      | Vlang.Expr.V_var (t, v) -> begin
+          let vv = v |> Env.read_varname ~env:cenv in
+          if Env.is_expressed_var vv ~env:cenv
+          then vv |> Env.read_expr_of_cfgvar ~env:cenv
+          else Vlang.Expr.V_var (t, (vv |> Env.read_varname ~env:cenv))
+        end
+      | _ -> e
+  end
+
   let optimize_var : Vlang.Expr.t -> Vlang.Expr.t
   =fun e -> begin
     match e with
@@ -184,23 +196,19 @@ module FormulaUtils = struct
     | _ -> e
   end
 
-  let rename_var : Vlang.Expr.t -> cenv:Env.t -> Vlang.Expr.t
-  =fun e ~cenv -> begin
-      match e with
-      | Vlang.Expr.V_var (t, v) -> begin
-          let vv = v |> Env.read_varname ~env:cenv in
-          if Env.is_expressed_var vv ~env:cenv
-          then vv |> Env.read_expr_of_cfgvar ~env:cenv
-          else Vlang.Expr.V_var (t, (vv |> Env.read_varname ~env:cenv))
-        end
-      | _ -> e
+  let apply_formula_template : Vlang.t -> Vlang.t
+  = fun fmla -> begin
+    match fmla with
+    | VF_sigma_equal _ -> Ftmp.Tmp.sigma_equal_template fmla
+    | _ -> fmla
   end
 
   let finalize_formula : Vlang.t -> cenv:Env.t -> Vlang.t
   =fun fmla ~cenv -> begin
     let expr_f = fun e -> e |> rename_var ~cenv:cenv |> optimize_var in
+    let fmla_f = fun f -> f |> apply_formula_template in
     fmla |>
-    Vlang.RecursiveMappingExprTemplate.map_formula_inner ~expr_f:expr_f
+    Vlang.RecursiveMappingExprTemplate.map_formula_inner ~expr_f:expr_f ~formula_f:fmla_f
   end
 end
 
@@ -562,14 +570,17 @@ let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t 
 end
 
 let convert : ?whitelist_mem:(Pre.Lib.Cfg.ident -> bool) -> Bp.t -> PreLib.Cfg.t -> entry_var:Bp.var -> exit_var:Bp.var -> (Vlang.t * Query.t list)
-=fun ?(whitelist_mem=(fun x -> x = Pre.Lib.Cfg.param_storage_name)) bp cfg ~entry_var ~exit_var -> begin
+= let open Vlang.Formula in
+  let open Vlang.Expr in
+  fun ?(whitelist_mem=(fun x -> x = Pre.Lib.Cfg.param_storage_name)) bp cfg ~entry_var ~exit_var -> begin
   try
     let cv_env : Env.t = Env.create cfg ~whitelist_mem:(whitelist_mem) in
     let _ = cv_env |> Env.update_stg ~stg:(`entry entry_var) in
     let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
     let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
     let _ = cv_env |> Env.update_stg ~stg:(`exit exit_var) in
-    let inductive = Vlang.Formula.VF_imply (f', g) |> FormulaUtils.finalize_formula ~cenv:cv_env in
+    let f'' = VF_and [f'; (VF_eq (V_var ((exit_var |> Env.read_vartype ~env:cv_env), "operation_storage"), V_var ((exit_var |> Env.read_vartype ~env:cv_env), exit_var)))] in
+    let inductive = VF_imply (f'', g) |> FormulaUtils.finalize_formula ~cenv:cv_env in
     (inductive, qs)
   with
   | InvalidConversion_Expr ce -> Error ("Invalid Expression Conversion on [" ^ (Pre.Lib.Cfg.expr_to_str ce) ^ "].") |> raise

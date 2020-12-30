@@ -53,8 +53,9 @@ module Env : sig
 end
 
 module FormulaUtils : sig
-  val optimize_var : ProverLib.Vlang.Expr.t -> ProverLib.Vlang.Expr.t
   val rename_var : ProverLib.Vlang.Expr.t -> cenv:Env.t -> ProverLib.Vlang.Expr.t
+  val optimize_var : ProverLib.Vlang.Expr.t -> ProverLib.Vlang.Expr.t
+  val apply_formula_template : ProverLib.Vlang.t -> ProverLib.Vlang.t
   val finalize_formula : ProverLib.Vlang.t -> cenv:Env.t -> ProverLib.Vlang.t
 end
 
