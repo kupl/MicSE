@@ -9,3 +9,5 @@ module Smt = Smt
 module Inv = Inv
 
 module Comps = Comps
+
+module Ftmp = Ftmp
