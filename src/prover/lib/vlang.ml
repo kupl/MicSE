@@ -597,7 +597,7 @@ module Formula = struct
   | VF_mul_mnm_no_overflow of (Expr.t * Expr.t)
   | VF_mul_nmm_no_overflow of (Expr.t * Expr.t)
   (* Custom Domain Formula for Invariant Generation *)
-  | VF_sigma_equal of (Expr.t * Expr.t)
+  | VF_sigma_equal of ([`Pre | `Post] * Expr.t * Expr.t)
 
   let rec to_string : t -> string
   = let ts = to_string in   (* syntax sugar *)
@@ -631,7 +631,7 @@ module Formula = struct
       | VF_mul_mnm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_mul_nmm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       (* Custom Domain Formula for Invariant Generation *)
-      | VF_sigma_equal (e1, e2) -> "Sigma(" ^ (e1 |> ets) ^ ")=(" ^ (e2 |> ets) ^ ")"
+      | VF_sigma_equal (pos, e1, e2) -> (match pos with `Pre -> "Pre_" | `Post -> "Post_") ^ "Sigma(" ^ (e1 |> ets) ^ ")=(" ^ (e2 |> ets) ^ ")"
     end
 end (* module Formula end *)
 
@@ -1516,7 +1516,7 @@ module RecursiveMappingExprTemplate = struct
     | VF_mul_mnm_no_overflow (e1, e2) -> VF_mul_mnm_no_overflow ((re e1), (re e2))
     | VF_mul_nmm_no_overflow (e1, e2) -> VF_mul_nmm_no_overflow ((re e1), (re e2))
     (* Custom Domain Formula for Invariant Generation *)
-    | VF_sigma_equal (e1, e2) -> VF_sigma_equal ((re e1), (re e2))
+    | VF_sigma_equal (pos, e1, e2) -> VF_sigma_equal (pos, (re e1), (re e2))
   end (* function map_formula_outer end *)
 
 
@@ -1553,7 +1553,7 @@ module RecursiveMappingExprTemplate = struct
     | VF_mul_mnm_no_overflow (e1, e2) -> VF_mul_mnm_no_overflow ((re e1), (re e2))
     | VF_mul_nmm_no_overflow (e1, e2) -> VF_mul_nmm_no_overflow ((re e1), (re e2))
     (* Custom Domain Formula for Invariant Generation *)
-    | VF_sigma_equal (e1, e2) -> VF_sigma_equal ((re e1), (re e2))
+    | VF_sigma_equal (pos, e1, e2) -> VF_sigma_equal (pos, (re e1), (re e2))
     ) |> formula_f
   end (* function map_formula_outer end *)
 

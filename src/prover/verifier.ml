@@ -434,7 +434,7 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
       | VF_mul_mnm_no_overflow (e1, e2) -> Smt.ZMutez.check_mul_no_overflow (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
       | VF_mul_nmm_no_overflow (e1, e2) -> Smt.ZMutez.check_mul_no_overflow (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe)
       (* Custom Domain Formula for Invariant Generation *)
-      | VF_sigma_equal (_, _) -> Smt.ZBool.true_ (* TODO *)
+      | VF_sigma_equal (_, _, _) -> Smt.ZBool.true_ (* TODO *)
     with
     | Smt.ZError s -> SMT_Encode_Error_f (vf, s) |> raise
     | e -> e |> raise

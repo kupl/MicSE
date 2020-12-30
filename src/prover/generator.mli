@@ -31,13 +31,12 @@ module TrxInv : sig
   type m = Inv.Map.t
   type formula = Vlang.t
   type cfg = Pre.Lib.Cfg.t
+  type t = { pre: formula; post: formula }
 
   exception Error of string
 
-  val formula_mutez_equal : comp:Comps.t -> formula list
-  val formula_sigma_equal : comp:Comps.t -> formula list
-
-  val wrap_formula : cfg:cfg -> (f:(comp:Comps.t -> formula list) -> (formula * formula) list)
+  val formula_mutez_equal : comp:Comps.t -> t list
+  val formula_sigma_equal : comp:Comps.t -> t list
   
   val create : bp_list:Bp.lst -> cfg:cfg -> m list
 end

@@ -324,7 +324,7 @@ module Formula : sig
   | VF_mul_mnm_no_overflow of (Expr.t * Expr.t)
   | VF_mul_nmm_no_overflow of (Expr.t * Expr.t)
   (* Custom Domain Formula for Invariant Generation *)
-  | VF_sigma_equal of (Expr.t * Expr.t)
+  | VF_sigma_equal of ([`Pre | `Post] * Expr.t * Expr.t)
 
   val to_string : t -> string
 end (* module Formula end *)

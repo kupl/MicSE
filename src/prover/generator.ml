@@ -58,11 +58,12 @@ module TrxInv = struct
   type m = Inv.Map.t
   type formula = Vlang.t
   type cfg = Pre.Lib.Cfg.t
+  type t = { pre: formula; post: formula }
 
   exception Error of string
 
-  let formula_mutez_equal : comp:Comps.t -> formula list
-  =fun ~comp -> begin
+  let formula_mutez_equal : comp:Comps.t -> t list
+  = fun ~comp -> begin
     let fs, _ = Core.List.fold_left comp.mutez ~f:(fun (fs, comps) (a_expr, a_app) -> begin
       let comps' = Core.List.tl_exn comps in
       let fs' = Core.List.map comps' ~f:(fun (b_expr, b_app) -> begin
@@ -72,44 +73,42 @@ module TrxInv = struct
       end) in
       (fs'@fs, comps')
     end) ~init:([], comp.mutez) in
-    fs
+    Core.List.map fs ~f:(fun fs -> { pre=fs; post=fs })
   end
 
-  let formula_sigma_equal : comp:Comps.t -> formula list
-  =fun ~comp -> begin
-    let mutez_fs = Core.List.fold_left comp.mutez_map ~f:(fun fs (a_expr, a_app) -> begin
-      let fs' = Core.List.map comp.mutez ~f:(fun (b_expr, b_app) -> begin
+  let formula_sigma_equal : comp:Comps.t -> t list
+  = fun ~comp -> begin
+    let ts = Core.List.fold_left comp.mutez_map ~f:(fun ts (a_expr, a_app) -> begin
+      let ts' = Core.List.map comp.mutez ~f:(fun (b_expr, b_app) -> begin
         let app = a_app@b_app in
-        let sigma_equal = Vlang.Formula.VF_sigma_equal (a_expr, b_expr) in
-        Core.List.fold_right app ~f:(fun app f -> app f) ~init:sigma_equal
+        let pre_sigma_equal = Vlang.Formula.VF_sigma_equal (`Pre, a_expr, b_expr) in
+        let post_sigma_equal = Vlang.Formula.VF_sigma_equal (`Post, a_expr, b_expr) in
+        let pre_formula = Core.List.fold_right app ~f:(fun app f -> app f) ~init:pre_sigma_equal in
+        let post_formula = Core.List.fold_right app ~f:(fun app f -> app f) ~init:post_sigma_equal in
+        { pre=pre_formula; post=post_formula }
       end) in
-      (fs'@fs)
+      (ts'@ts)
     end) ~init:[] in
-    mutez_fs
+    ts
   end
 
-  let wrap_formula : cfg:cfg -> (f:(comp:Comps.t -> formula list) -> (formula * formula) list)
-  =fun ~cfg -> begin
+    let create : bp_list:Bp.lst -> cfg:cfg -> m list
+  = fun ~bp_list ~cfg -> begin
     let comp = Stg.create_comp ~cfg:cfg in
-    let wrapper : f:(comp:Comps.t -> formula list) -> (formula * formula) list
-    =fun ~f -> begin
-      Core.List.map (f ~comp:comp) ~f:(fun f -> begin
-        let entry_f = Vlang.Renaming.var_in_expr_formula "stg" Stg.pre (f) in
-        let exit_f = Vlang.Renaming.var_in_expr_formula "stg" Stg.post (f) in
-        (entry_f, exit_f)
+    let wrapper (mode: [`Both | `Pre | `Post]) (f:(comp:Comps.t -> t list)) = begin
+      let pre_var = match mode with `Post -> Stg.post | _ -> Stg.pre in
+      let post_var = match mode with `Pre -> Stg.pre | _ -> Stg.post in
+      Core.List.map (f ~comp:comp) ~f:(fun fmla -> begin
+        let entry_f = Vlang.Renaming.var_in_expr_formula "stg" pre_var fmla.pre in
+        let exit_f = Vlang.Renaming.var_in_expr_formula "stg" post_var fmla.post in
+        { pre=entry_f; post=exit_f }
       end)
     end in
-    wrapper
-  end
-
-  let create : bp_list:Bp.lst -> cfg:cfg -> m list
-  =fun ~bp_list ~cfg -> begin
-    let wrapper = wrap_formula ~cfg:cfg in
-    let fs1 = (wrapper ~f:formula_mutez_equal) in
-    let fs2 = (wrapper ~f:formula_sigma_equal) in
-    Core.List.map (fs1@fs2) ~f:(fun (entry_f, exit_f) -> begin 
-      let entry_inv = Inv.T.create_with_formulae ~vtx:(bp_list.entry.vtx) ~fl:[entry_f] in
-      let exit_inv = Inv.T.create_with_formulae ~vtx:(bp_list.exit.vtx) ~fl:[exit_f] in
+    let fs1 = (wrapper `Both formula_mutez_equal) in
+    let fs2 = (wrapper `Post formula_sigma_equal) in
+    Core.List.map (fs1@fs2) ~f:(fun fmla -> begin 
+      let entry_inv = Inv.T.create_with_formulae ~vtx:(bp_list.entry.vtx) ~fl:[fmla.pre] in
+      let exit_inv = Inv.T.create_with_formulae ~vtx:(bp_list.exit.vtx) ~fl:[fmla.post] in
       let empty_map = Inv.Map.empty in
       let entry_map = Inv.Map.add empty_map ~key:(bp_list.entry.vtx) ~data:entry_inv in
       let exit_map = Inv.Map.add entry_map ~key:(bp_list.exit.vtx) ~data:exit_inv in
