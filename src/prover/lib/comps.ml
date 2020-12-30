@@ -20,10 +20,10 @@ let empty : t
 
 let rec read_components : expr -> t -> t
 =fun e cur_comps -> begin
-  let imply_func f1 f2 = Vlang.Formula.VF_imply (f1, f2) in
-  let option_app = (imply_func (VF_not (VF_mich_if_none e))) in
-  let or_left_app = (imply_func (VF_mich_if_left e)) in
-  let or_right_app = (imply_func (VF_not (VF_mich_if_left e))) in
+  let and_func f1 f2 = Vlang.Formula.VF_and [f1; f2] in
+  let option_app = (and_func (VF_not (VF_mich_if_none e))) in
+  let or_left_app = (and_func (VF_mich_if_left e)) in
+  let or_right_app = (and_func (VF_not (VF_mich_if_left e))) in
   match (e |> Vlang.TypeUtil.ty_of_expr) with
   | T_option _ -> begin
       let e' = Vlang.Expr.V_unlift_option e in
