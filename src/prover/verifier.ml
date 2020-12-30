@@ -160,8 +160,8 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_balance -> err ve   (* native & uninterpreted symbol needed *)
       | V_add_mmm (e1, e2) -> Smt.ZMutez.create_add (e1 |> soe) (e2 |> soe)
       | V_sub_mmm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe) (e2 |> soe)
-      | V_mul_mnm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
-      | V_mul_nmm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe)
+      | V_mul_mnm (e1, e2) -> Smt.ZMutez.create_mul (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
+      | V_mul_nmm (e1, e2) -> Smt.ZMutez.create_mul (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe)
 
       (*************************************************************************)
       (* Bool                                                                  *)
