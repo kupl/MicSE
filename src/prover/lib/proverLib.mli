@@ -1,11 +1,9 @@
-module Query = Query
-
-module Bp = Bp
+module GlVar = GlVar
 
 module Vlang = Vlang
 
-module Smt = Smt
-
 module Inv = Inv
 
-module Comps = Comps
+module Bp = Bp
+
+module Smt = Smt

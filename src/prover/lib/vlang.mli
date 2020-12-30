@@ -122,8 +122,8 @@ module Expr : sig
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez of Z.t
-    | V_amount
-    | V_balance
+    (* | V_amount *)
+    (* | V_balance *)
     | V_add_mmm of t * t  (* mutez * mutez -> mutez *)
     | V_sub_mmm of t * t  (* mutez * mutez -> mutez *)
     | V_mul_mnm of t * t  (* mutez * nat -> mutez *)
@@ -168,8 +168,8 @@ module Expr : sig
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address of t (* key_hash -> address *)
-    | V_source
-    | V_sender
+    (* | V_source *)
+    (* | V_sender *)
     | V_address_of_contract of t (* 'a contract -> address *)
 
     (*************************************************************************)

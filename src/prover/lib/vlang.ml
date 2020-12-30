@@ -149,8 +149,8 @@ module Expr = struct
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez of Z.t
-    | V_amount
-    | V_balance
+    (* | V_amount *)
+    (* | V_balance *)
     | V_add_mmm of t * t  (* mutez * mutez -> mutez *)
     | V_sub_mmm of t * t  (* mutez * mutez -> mutez *)
     | V_mul_mnm of t * t  (* mutez * nat -> mutez *)
@@ -195,8 +195,8 @@ module Expr = struct
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address of t (* key_hash -> address *)
-    | V_source
-    | V_sender
+    (* | V_source *)
+    (* | V_sender *)
     | V_address_of_contract of t (* 'a contract -> address *)
 
     (*************************************************************************)
@@ -399,8 +399,8 @@ module Expr = struct
       (* Mutez                                                                 *)
       (*************************************************************************)
       | V_lit_mutez zn      -> "M_"       ^ (zn |> Z.to_string)
-      | V_amount            -> "AMOUNT"
-      | V_balance           -> "BALANCE"
+      (* | V_amount            -> "AMOUNT" *)
+      (* | V_balance           -> "BALANCE" *)
       | V_add_mmm (e1, e2)  -> "ADD("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_sub_mmm (e1, e2)  -> "SUB("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_mul_mnm (e1, e2)  -> "MUL("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
@@ -445,8 +445,8 @@ module Expr = struct
       (* Address                                                               *)
       (*************************************************************************)
       | V_lit_address e1          -> "ADDRESS(" ^ (e1 |> ts) ^ ")"
-      | V_source                  -> "SOURCE"
-      | V_sender                  -> "SENDER"
+      (* | V_source                  -> "SOURCE" *)
+      (* | V_sender                  -> "SENDER" *)
       | V_address_of_contract e1  -> "ADDRESS(" ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
@@ -776,8 +776,8 @@ module TypeUtil = struct
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez _
-    | V_amount
-    | V_balance
+    (* | V_amount *)
+    (* | V_balance *)
     | V_add_mmm   _
     | V_sub_mmm   _
     | V_mul_mnm   _
@@ -822,8 +822,8 @@ module TypeUtil = struct
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address _
-    | V_source
-    | V_sender
+    (* | V_source *)
+    (* | V_sender *)
     | V_address_of_contract _ -> T_address
 
     (*************************************************************************)
@@ -1065,8 +1065,8 @@ module RecursiveMappingExprTemplate = struct
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez _ -> eee
-    | V_amount      -> eee
-    | V_balance     -> eee
+    (* | V_amount      -> eee *)
+    (* | V_balance     -> eee *)
     | V_add_mmm (e1, e2) -> V_add_mmm (rf e1, rf e2)
     | V_sub_mmm (e1, e2) -> V_sub_mmm (rf e1, rf e2)
     | V_mul_mnm (e1, e2) -> V_mul_mnm (rf e1, rf e2)
@@ -1111,8 +1111,8 @@ module RecursiveMappingExprTemplate = struct
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address e -> V_lit_address (rf e)
-    | V_source  -> eee
-    | V_sender  -> eee
+    (* | V_source  -> eee *)
+    (* | V_sender  -> eee *)
     | V_address_of_contract e -> V_address_of_contract (rf e)
 
     (*************************************************************************)
@@ -1316,8 +1316,8 @@ module RecursiveMappingExprTemplate = struct
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez _ -> eee
-    | V_amount      -> eee
-    | V_balance     -> eee
+    (* | V_amount      -> eee *)
+    (* | V_balance     -> eee *)
     | V_add_mmm (e1, e2) -> V_add_mmm (rf e1, rf e2)
     | V_sub_mmm (e1, e2) -> V_sub_mmm (rf e1, rf e2)
     | V_mul_mnm (e1, e2) -> V_mul_mnm (rf e1, rf e2)
@@ -1362,8 +1362,8 @@ module RecursiveMappingExprTemplate = struct
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address e -> V_lit_address (rf e)
-    | V_source  -> eee
-    | V_sender  -> eee
+    (* | V_source  -> eee *)
+    (* | V_sender  -> eee *)
     | V_address_of_contract e -> V_address_of_contract (rf e)
 
     (*************************************************************************)
