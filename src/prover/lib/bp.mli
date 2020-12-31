@@ -10,7 +10,13 @@ type query_category =
 type inst =
   | BI_assume of Vlang.t
   | BI_assert of Vlang.t * query_category
-  | BI_assign of Pre.Lib.Adt.typ * Pre.Lib.Cfg.ident * Vlang.Expr.t
+  | BI_assign of PreLib.Adt.typ * PreLib.Cfg.ident * Vlang.Expr.t
   | BI_skip
 
-type t = (GlVar.Env.t * Pre.Lib.Cfg.vertex * inst) list
+type basic_node = {
+  glenv_ref : GlVar.Env.t ref;
+  cfgvtx : PreLib.Cfg.vertex;
+  inst : inst;
+}
+
+type t = basic_node list

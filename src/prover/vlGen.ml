@@ -54,11 +54,11 @@ and create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> ProverLib.Vlang.
   create_expr_of_michdata_i (PreLib.Mich.get_d michdata_t) vtyp
 end (* function create_expr_of_michdata end *)
 
-let expr_of_cfgexpr : ProverLib.GlVar.Env.t -> PreLib.Cfg.t -> PreLib.Cfg.expr -> ProverLib.Vlang.Expr.t
+let expr_of_cfgexpr : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> PreLib.Cfg.expr -> ProverLib.Vlang.Expr.t
 = let open PreLib.Cfg in
   let open ProverLib.Vlang.Expr in
   let module CPMap = Core.Map.Poly in
-  fun glenv cfg cfgexpr -> begin
+  fun glenv_ref cfg cfgexpr -> begin
   let cvt : PreLib.Cfg.ident -> ProverLib.Vlang.typ = read_type_cfgvar cfg in
   let cvf : PreLib.Cfg.ident -> ProverLib.Vlang.Expr.t = create_var_of_cfgvar cfg in
   let err (): 'a = InvalidConversion_Expr cfgexpr |> raise in
@@ -209,15 +209,15 @@ let expr_of_cfgexpr : ProverLib.GlVar.Env.t -> PreLib.Cfg.t -> PreLib.Cfg.expr -
   | E_contract_of_address (t, v) -> (match cvt v with | T_address -> V_contract_of_address (ProverLib.Vlang.TypeUtil.ty_of_mty t, cvf v) | _ -> err ())
   | E_implicit_account v -> (match cvt v with | T_key_hash -> V_implicit_account (cvf v) | _ -> err ())
   | E_now -> V_now
-  | E_amount -> ProverLib.Vlang.Expr.V_var (ProverLib.Vlang.Ty.T_mutez, glenv.gv_amount)
-  | E_balance -> ProverLib.Vlang.Expr.V_var (ProverLib.Vlang.Ty.T_mutez, glenv.gv_balance)
+  | E_amount -> ProverLib.Vlang.Expr.V_var (ProverLib.Vlang.Ty.T_mutez, !glenv_ref.gv_amount)
+  | E_balance -> ProverLib.Vlang.Expr.V_var (ProverLib.Vlang.Ty.T_mutez, !glenv_ref.gv_balance)
   | E_check_signature (v1, v2, v3) -> (match cvt v1, cvt v2, cvt v3 with | T_key, T_signature, T_bytes -> V_check_signature (cvf v1, cvf v2, cvf v3) | _ -> err ())
   | E_blake2b v -> (match cvt v with | T_bytes -> V_blake2b (cvf v) | _ -> err ())
   | E_sha256 v -> (match cvt v with | T_bytes -> V_sha256 (cvf v) | _ -> err ())
   | E_sha512 v -> (match cvt v with | T_bytes -> V_sha512 (cvf v) | _ -> err ())
   | E_hash_key v -> (match cvt v with | T_key -> V_hash_key (cvf v) | _ -> err ())
-  | E_source -> ProverLib.Vlang.Expr.V_var (ProverLib.Vlang.Ty.T_address, glenv.gv_source)
-  | E_sender -> ProverLib.Vlang.Expr.V_var (ProverLib.Vlang.Ty.T_address, glenv.gv_sender)
+  | E_source -> ProverLib.Vlang.Expr.V_var (ProverLib.Vlang.Ty.T_address, !glenv_ref.gv_source)
+  | E_sender -> ProverLib.Vlang.Expr.V_var (ProverLib.Vlang.Ty.T_address, !glenv_ref.gv_sender)
   | E_address_of_contract v -> (match cvt v with | T_contract _ -> V_address_of_contract (cvf v) | _ -> err ())
   | E_unlift_option v -> (match cvt v with | T_option _ -> V_unlift_option (cvf v) | _ -> err ())
   | E_unlift_left v -> (match cvt v with | T_or _ -> V_unlift_left (cvf v) | _ -> err ())
