@@ -10,7 +10,7 @@ type query_category =
 type inst =
   | BI_assume of Vlang.t
   | BI_assert of Vlang.t * query_category
-  | BI_assign of PreLib.Adt.typ * PreLib.Cfg.ident * Vlang.Expr.t
+  | BI_assign of Vlang.Ty.t * PreLib.Cfg.ident * Vlang.Expr.t
   | BI_skip
 
 type basic_node = {

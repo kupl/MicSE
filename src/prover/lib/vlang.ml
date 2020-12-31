@@ -596,6 +596,8 @@ module Formula = struct
   | VF_sub_mmm_no_underflow of (Expr.t * Expr.t)
   | VF_mul_mnm_no_overflow of (Expr.t * Expr.t)
   | VF_mul_nmm_no_overflow of (Expr.t * Expr.t)
+  | VF_shiftL_nnn_rhs_in_256 of (Expr.t * Expr.t)
+  | VF_shiftR_nnn_rhs_in_256 of (Expr.t * Expr.t)
   (* Custom Domain Formula for Invariant Generation *)
   | VF_sigma_equal of (Expr.t * Expr.t)
 
@@ -630,6 +632,8 @@ module Formula = struct
       | VF_sub_mmm_no_underflow (e1, e2)  -> "NoUnderflow_SUB("  ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_mul_mnm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_mul_nmm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_shiftL_nnn_rhs_in_256 (e1, e2) -> "ShiftL_RHS256("     ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> "ShiftR_RHS256("     ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       (* Custom Domain Formula for Invariant Generation *)
       | VF_sigma_equal (e1, e2) -> "Sigma(" ^ (e1 |> ets) ^ ")=(" ^ (e2 |> ets) ^ ")"
     end
@@ -1515,6 +1519,8 @@ module RecursiveMappingExprTemplate = struct
     | VF_sub_mmm_no_underflow (e1, e2) -> VF_sub_mmm_no_underflow ((re e1), (re e2))
     | VF_mul_mnm_no_overflow (e1, e2) -> VF_mul_mnm_no_overflow ((re e1), (re e2))
     | VF_mul_nmm_no_overflow (e1, e2) -> VF_mul_nmm_no_overflow ((re e1), (re e2))
+    | VF_shiftL_nnn_rhs_in_256 (e1, e2) -> VF_shiftL_nnn_rhs_in_256 ((re e1), (re e2))
+    | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> VF_shiftR_nnn_rhs_in_256 ((re e1), (re e2))
     (* Custom Domain Formula for Invariant Generation *)
     | VF_sigma_equal (e1, e2) -> VF_sigma_equal ((re e1), (re e2))
   end (* function map_formula_outer end *)
@@ -1552,6 +1558,8 @@ module RecursiveMappingExprTemplate = struct
     | VF_sub_mmm_no_underflow (e1, e2) -> VF_sub_mmm_no_underflow ((re e1), (re e2))
     | VF_mul_mnm_no_overflow (e1, e2) -> VF_mul_mnm_no_overflow ((re e1), (re e2))
     | VF_mul_nmm_no_overflow (e1, e2) -> VF_mul_nmm_no_overflow ((re e1), (re e2))
+    | VF_shiftL_nnn_rhs_in_256 (e1, e2) -> VF_shiftL_nnn_rhs_in_256 ((re e1), (re e2))
+    | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> VF_shiftR_nnn_rhs_in_256 ((re e1), (re e2))
     (* Custom Domain Formula for Invariant Generation *)
     | VF_sigma_equal (e1, e2) -> VF_sigma_equal ((re e1), (re e2))
     ) |> formula_f
