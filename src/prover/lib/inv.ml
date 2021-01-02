@@ -22,15 +22,16 @@ type invgen_info = {
 *)
 let gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_info
 =fun cfg ->
-  let strg_var : string = GlVar.gen_storage 0 in 
+  let glenv : GlVar.Env.t = GlVar.Env.t_for_single_contract_verification in
+  let strg_var : string = glenv.gv_storage in 
   let strg_var_set : string CPSet.t = CPSet.singleton strg_var in
   let basic_var_set : string CPSet.t = CPSet.of_list [
-    GlVar.gen_param 0;
-    GlVar.gen_storage 0;
-    GlVar.gen_amount 0;
-    GlVar.gen_balance 0;
-    GlVar.gen_sender 0;
-    GlVar.gen_source 0;
+    glenv.gv_param;
+    glenv.gv_storage;
+    glenv.gv_amount;
+    glenv.gv_balance;
+    glenv.gv_sender;
+    glenv.gv_source;
   ] in
   let avar_pre_info : Pre.Analyzer.AvailVar.t = Pre.Analyzer.AvailVar.run cfg
   and loopvtx_set : int CPSet.t = begin 

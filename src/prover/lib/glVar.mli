@@ -40,6 +40,7 @@ module Env : sig
   }
 
   val gen : int -> t
+  val t_for_single_contract_verification : t
 
   module JsonRep : sig
     exception ParseErr of Yojson.Basic.t

@@ -41,6 +41,8 @@ module Env = struct
     gv_source = gen_source n;
   }
 
+  let t_for_single_contract_verification : t = gen 0
+
   module JsonRep = struct
     exception ParseErr of Yojson.Basic.t
 

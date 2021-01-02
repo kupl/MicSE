@@ -12,5 +12,5 @@ type v_cond = {
 type v_cond_ingr = ProverLib.Inv.t -> v_cond
 
 (* renaming process performed here *)
-val construct_verifier_vc : ProverLib.Bp.t CPSet.t -> v_cond_ingr
+val construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
 
