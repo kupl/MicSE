@@ -19,7 +19,12 @@ type basic_node = {
   inst : inst;
 }
 
-type t = basic_node list
+type t = {
+  (* entry_vtx and exit_vtx indicates content's first basic_node and last basic_node's cfgvtx value. *)
+  entry_vtx : PreLib.Cfg.vertex;
+  exit_vtx : PreLib.Cfg.vertex;
+  content : basic_node list;
+}
 
 module JsonRep = struct
   exception ParseErr of Yojson.Basic.t
@@ -31,10 +36,13 @@ module JsonRep = struct
     let cname_bi_assume   : string = "BI_assume"
     let cname_bi_assert   : string = "BI_assert"
     let cname_bi_assign   : string = "BI_assign"
-    let cname_bi_skip        : string = "BI_skip"
+    let cname_bi_skip     : string = "BI_skip"
     let fname_glenv_ref   : string = "glenv_ref"
     let fname_cfgvtx      : string = "cfgvtx"
     let fname_inst        : string = "inst"
+    let fname_entry_vtx   : string = "entry_vtx"
+    let fname_exit_vtx    : string = "exit_vtx"
+    let fname_content     : string = "content"
   end (* module JsonRep.Const end *)
 
   let of_query_category : query_category -> Yojson.Basic.t 
@@ -57,6 +65,12 @@ module JsonRep = struct
     ]
   end
   let of_t : t -> Yojson.Basic.t 
-  = fun t -> `List (List.map of_basic_node t)
+  = fun t -> begin
+    `Assoc [
+      Const.fname_entry_vtx, `Int t.entry_vtx;
+      Const.fname_exit_vtx, `Int t.exit_vtx;
+      Const.fname_content, `List (List.map of_basic_node t.content);
+    ]
+  end
 
 end (* module JsonRep end *)

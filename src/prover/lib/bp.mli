@@ -19,7 +19,12 @@ type basic_node = {
   inst : inst;
 }
 
-type t = basic_node list
+type t = {
+  (* entry_vtx and exit_vtx indicates content's first basic_node and last basic_node's cfgvtx value. *)
+  entry_vtx : PreLib.Cfg.vertex;
+  exit_vtx : PreLib.Cfg.vertex;
+  content : basic_node list;
+}
 
 module JsonRep : sig
   exception ParseErr of Yojson.Basic.t
@@ -32,6 +37,9 @@ module JsonRep : sig
     val fname_glenv_ref   : string
     val fname_cfgvtx      : string
     val fname_inst        : string
+    val fname_entry_vtx   : string
+    val fname_exit_vtx    : string
+    val fname_content     : string
   end (* module JsonRep.Const end *)
 
   val of_query_category : query_category -> Yojson.Basic.t

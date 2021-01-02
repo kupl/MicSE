@@ -2,6 +2,7 @@
 (* They are special kinds of variable name in Michelson smart contract. 
   They should not reappeared for other meanings in CFG, BasicPath, or any other contexts.
 *)
+(* Please do not modify this module in user-level customization. *)
 
 val prefix_param : string
 val prefix_storage : string
@@ -25,6 +26,10 @@ val is_sender_var : string -> bool
 val is_source_var : string -> bool
 
 module Env : sig
+  (* Custom construction of Env.t IS NOT ALLOWED. 
+      It may harm some consistency, e.g. "Prover.VlGen.read_type_cfgvar" implementation.
+      Use "gen" function instead.
+  *)
   type t = {
     gv_param : string;
     gv_storage : string;

@@ -5,12 +5,31 @@ exception InvalidConversion_Expr of PreLib.Cfg.expr
 
 let read_type_cfgvar : PreLib.Cfg.t -> PreLib.Cfg.ident -> ProverLib.Vlang.typ
 =fun cfg v -> begin
-  let mich_ty = PreLib.Cfg.t_map_find ~errtrace:("VlGen.read_type_cfgvar : " ^ v) cfg.type_info v in
-  ProverLib.Vlang.TypeUtil.ty_of_mty mich_ty
+  try
+    let mich_ty = PreLib.Cfg.t_map_find ~errtrace:("VlGen.read_type_cfgvar : " ^ v) cfg.type_info v in
+    ProverLib.Vlang.TypeUtil.ty_of_mty mich_ty
+  with 
+  | Stdlib.Failure _ -> (
+      (* check if the variable is global-variable *)
+      let ps_typ = PreLib.Cfg.t_map_find ~errtrace:("VlGen.read_type_cfgvar : pstyp : " ^ v) cfg.type_info PreLib.Cfg.param_storage_name |> ProverLib.Vlang.TypeUtil.ty_of_mty in
+      let (p_typ, s_typ) = ProverLib.Vlang.TypeUtil.get_innertyp2 ps_typ in
+      if ProverLib.GlVar.is_param_var v then p_typ else
+      if ProverLib.GlVar.is_storage_var v then s_typ else
+      if ProverLib.GlVar.is_amount_var v || ProverLib.GlVar.is_balance_var v then ProverLib.Vlang.Ty.T_mutez else
+      if ProverLib.GlVar.is_sender_var v || ProverLib.GlVar.is_source_var v then ProverLib.Vlang.Ty.T_address else
+      Stdlib.failwith ("VlGen.read_type_cfgvar : all-match-failed with variable : " ^ v)
+    )
 end
 
-let create_var_of_cfgvar : PreLib.Cfg.t -> PreLib.Cfg.ident -> ProverLib.Vlang.Expr.t
-= fun cfg v -> ProverLib.Vlang.Expr.V_var (read_type_cfgvar cfg v, v)
+let create_var_of_cfgvar : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> PreLib.Cfg.ident -> ProverLib.Vlang.Expr.t
+= let open ProverLib.Vlang.Expr in
+  fun glenv_ref cfg v -> 
+  if v = PreLib.Cfg.param_storage_name then (
+    (* "param_storage" variable treated specially. *)
+    let (p_typ, s_typ) = ProverLib.Vlang.TypeUtil.get_innertyp2 (read_type_cfgvar cfg v) in
+    V_pair (V_var (p_typ, !glenv_ref.gv_param), V_var (s_typ, !glenv_ref.gv_storage))
+  )
+  else V_var (read_type_cfgvar cfg v, v)
 
 let rec create_expr_of_michdata_i : PreLib.Mich.data -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t = 
   let open PreLib.Mich in
@@ -60,7 +79,7 @@ let expr_of_cfgexpr : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> PreLib.Cfg.ex
   let module CPMap = Core.Map.Poly in
   fun glenv_ref cfg cfgexpr -> begin
   let cvt : PreLib.Cfg.ident -> ProverLib.Vlang.typ = read_type_cfgvar cfg in
-  let cvf : PreLib.Cfg.ident -> ProverLib.Vlang.Expr.t = create_var_of_cfgvar cfg in
+  let cvf : PreLib.Cfg.ident -> ProverLib.Vlang.Expr.t = create_var_of_cfgvar glenv_ref cfg in
   let err (): 'a = InvalidConversion_Expr cfgexpr |> raise in
   (match cfgexpr with 
   | E_push (d, t) -> create_expr_of_michdata d (ProverLib.Vlang.TypeUtil.ty_of_mty t)

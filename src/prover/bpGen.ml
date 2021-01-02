@@ -55,14 +55,16 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
       - In-edge Label : edge_label
       - current-vertex : vertex
       - remain-vertice : vertex list
-      - accum-bp : Bp.t
-      Return: Bp.t
+      - accum-bp : Bp.basic_node list
+      Return: Bp.basic_node list  (* reversed list. It should be reversed after to get normal order. *)
     1. If Assume-cond is (Some _), it means that the previous vertex requires to put assumption (BI_assume)
       - The reason to insert assume-condition "after" conditional vertex appears (not the current vertex is conditional vertex)
         - If Basicpath-vertexlist ends with loop-vertex, there are no reason to put assume-inst in basicpath.
         - If the previous vertex is loop-vertex (basicpath-starts with loop-vertex) or if-vertex,
           it is okay to put BI_assume in front of current vertex's basicpath instruction.
         - It is important to check in-edge's label after conditional vertex (If_true and If_false)
+      - Normal edge-label can appear after BI_assume. In this case, the BI_assume instruction is inserted to force
+        basic safety property. So the normal edge is considered as true-branch.
     2. After assume-cond for previous vertex encoded, "foldf" inspects current-vertex's stmt.
       - Plain Assignment
         - Basic Safety Properties
@@ -88,12 +90,17 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
         - BI_skip
         - Next Assume-Condition : None
   *)
-  let rec foldf : (Cfg.vertex * ProverLib.Vlang.t) option -> Cfg.edge_label -> Cfg.vertex -> Cfg.vertex list -> ProverLib.Bp.t -> ProverLib.Bp.t
-  =fun assume_cond_opt in_edg_lbl cur_vtx remain_vtc acc_bp -> begin
+  let rec foldf : (Cfg.vertex * ProverLib.Vlang.t) option -> Cfg.edge_label -> Cfg.vertex -> Cfg.vertex list -> ProverLib.Bp.basic_node list -> ProverLib.Bp.basic_node list
+  =fun assume_cond_opt in_edg_lbl cur_vtx remain_vtc acc_bnl -> begin
     (* 1 *)
-    let assume_instlst : ProverLib.Bp.t = begin
+    let assume_instlst : ProverLib.Bp.basic_node list = begin
       match assume_cond_opt, in_edg_lbl with
       | None, _ -> []
+      | Some (prev_vtx, prev_cond), Normal -> [{
+          glenv_ref=glenv_ref;
+          cfgvtx=prev_vtx;
+          inst=(BI_assume prev_cond);
+        }]
       | Some (prev_vtx, prev_cond), If_true -> [{
           glenv_ref=glenv_ref;
           cfgvtx=prev_vtx;
@@ -108,11 +115,11 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
     end in
     (* 2 *)
     let cur_stmt = Cfg.t_map_find ~errtrace:("BpGen.bp_of_vtxlst : foldf : cur_stmt : " ^ (Stdlib.string_of_int cur_vtx)) cfg.vertex_info cur_vtx in
-    let (cur_instlst, next_assume_cond) : (ProverLib.Bp.t * (Cfg.vertex * ProverLib.Vlang.t) option) = begin
+    let (cur_instlst, next_assume_cond) : (ProverLib.Bp.basic_node list * (Cfg.vertex * ProverLib.Vlang.t) option) = begin
       let open ProverLib.Vlang.Formula in
       let cstr_bn : ProverLib.Bp.inst -> ProverLib.Bp.basic_node = fun i -> {glenv_ref=glenv_ref; cfgvtx=cur_vtx; inst=i} in  (* sugar *)
       let rtcv = VlGen.read_type_cfgvar cfg in (* "rtcv" : syntax sugar *)
-      let cvoc = VlGen.create_var_of_cfgvar cfg in  (* "cvoc" : syntax sugar *)
+      let cvoc = VlGen.create_var_of_cfgvar glenv_ref cfg in  (* "cvoc" : syntax sugar *)
       let eoce = VlGen.expr_of_cfgexpr glenv_ref cfg in (* "eoce" : syntax sugar *)
       match cur_stmt with
       (* ASSIGNMENT CASE *)
@@ -182,13 +189,20 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
       | Cfg_dug
       | Cfg_micse_check_entry -> ([cstr_bn BI_skip], None)
     end in
-    let new_bp = (cur_instlst @ assume_instlst) @ acc_bp in
+    let new_bp = (cur_instlst @ assume_instlst) @ acc_bnl in
     (* escape cond *)
-    if remain_vtc = [] then List.rev new_bp else
+    if remain_vtc = [] then new_bp else
     (* recursively call fold function - remain_vtc is not empty list, WARNING: PRECONDITION *)
     let next_vtx = List.hd remain_vtc in
     let next_edg_lbl = Cfg.G.find_edge cfg.flow cur_vtx next_vtx |> (fun (_, lbl, _) -> lbl) in
     foldf next_assume_cond next_edg_lbl next_vtx (List.tl remain_vtc) new_bp 
   end in
-  foldf None Normal (List.hd vtxlst) (List.tl vtxlst) []
+  let rev_order_bnl : ProverLib.Bp.basic_node list = foldf None Normal (List.hd vtxlst) (List.tl vtxlst) [] in
+  let exit_vtx : PreLib.Cfg.vertex = try let q = List.hd rev_order_bnl in q.cfgvtx with | _ -> Stdlib.failwith "BpGen : bp_of_vtxlst : exit_vtx" in
+  let normal_order_bnl : ProverLib.Bp.basic_node list = List.rev rev_order_bnl in
+  let entry_vtx : PreLib.Cfg.vertex = try let q = List.hd normal_order_bnl in q.cfgvtx with | _ -> Stdlib.failwith "BpGen : bp_of_vtxlst : entry_vtx" in
+  { entry_vtx = entry_vtx;
+    exit_vtx = exit_vtx;
+    content = normal_order_bnl;
+  }
 end (* function bp_of_vtxlst end *)
