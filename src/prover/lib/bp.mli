@@ -20,3 +20,23 @@ type basic_node = {
 }
 
 type t = basic_node list
+
+module JsonRep : sig
+  exception ParseErr of Yojson.Basic.t
+
+  module Const : sig
+    val cname_bi_assume   : string
+    val cname_bi_assert   : string
+    val cname_bi_assign   : string
+    val cname_bi_skip     : string
+    val fname_glenv_ref   : string
+    val fname_cfgvtx      : string
+    val fname_inst        : string
+  end (* module JsonRep.Const end *)
+
+  val of_query_category : query_category -> Yojson.Basic.t
+  val of_inst : inst -> Yojson.Basic.t
+  val of_basic_node : basic_node -> Yojson.Basic.t
+  val of_t : t -> Yojson.Basic.t
+
+end (* module JsonRep end *)

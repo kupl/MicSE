@@ -35,4 +35,21 @@ module Env : sig
   }
 
   val gen : int -> t
-end
+
+  module JsonRep : sig
+    exception ParseErr of Yojson.Basic.t
+
+    module Const : sig
+      val fname_gv_param    : string
+      val fname_gv_storage  : string
+      val fname_gv_amount   : string
+      val fname_gv_balance  : string
+      val fname_gv_sender   : string
+      val fname_gv_source   : string
+    end (* module Env.JsonRep.Const end *)
+  
+    val of_t : t -> Yojson.Basic.t
+    val to_t : Yojson.Basic.t -> t
+  end (* module Env.JsonRep end *)
+
+end (* module Env end *)

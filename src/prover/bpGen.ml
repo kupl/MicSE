@@ -148,7 +148,7 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
           let assert_bi = BI_assert (rhs_in_256, Q_int_nat_shift_safety) in
           ([cstr_bn assert_bi; cstr_bn assign_bi], Some (cur_vtx, rhs_in_256))
         (* others *)
-        | _ ->  ([cstr_bn assign_bi], None) (* TODO *)
+        | _ ->  ([cstr_bn assign_bi], None)
         )
       (* MICSE-CHECK CASE *)
       | Cfg_micse_check_value v -> ([cstr_bn (BI_assert (VF_mich_micse_check_value (cvoc v), Q_assertion))], None)(*([cstr_bn (BI_assert (VF_eq (cvoc v, ProverLib.Vlang.Expr.V_lit_bool true), Q_assertion))], None)*)
