@@ -1,216 +1,239 @@
 open ProverLib
 
 exception Error of string
-
 exception InvalidExtraction of (Pre.Lib.Cfg.stmt * string)
 
 (************************************************)
 (************************************************)
 
-let loop_inv_vtx = ref []
+module CFGUtils = struct
+  exception Error of string
 
-let exit_var = ref None
+  let read_var_type : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.ident -> Pre.Lib.Mich.typ Pre.Lib.Mich.t
+  = fun cfg var -> begin
+      match var |> Core.Map.find cfg.type_info with
+      | Some typ -> typ
+      | None -> Error ("read_var_type: type of " ^ var ^ " is invalid") |> raise
+  end
 
-let read_exit_var : Pre.Lib.Cfg.t -> unit
-=fun cfg -> begin
-  let stmt = Pre.Lib.Cfg.read_stmt_from_vtx cfg cfg.main_exit in
-  match stmt with
-  | Cfg_assign (id, _) -> begin
-      if (Option.is_none !exit_var)
-      then exit_var := Some (id)
-      else if (Option.get !exit_var) <> id then raise (Error "translator: main-exit var conflict")
-    end
-  | _ -> raise (Error "translate: main-exit vertex error")
-end
-
-(************************************************)
-
-let update_current_bp : Bp.t -> (Bp.vertex * Bp.inst) option -> Bp.t
-=fun cur_bp vtx_inst_opt -> begin
-  match vtx_inst_opt with
-  | None -> cur_bp
-  | Some vtx_inst -> Bp.update_body cur_bp vtx_inst
-end
-
-let create_bp_of_branch : Bp.t -> Bp.vertex -> Bp.cond -> (Bp.t * Bp.t)
-=fun cur_bp cur_vtx f_if -> begin
-  let f_else = Bp.create_cond_not f_if in
-  let inst_if = Bp.create_inst_assume f_if in
-  let inst_else = Bp.create_inst_assume f_else in
-  let new_bp_if = update_current_bp cur_bp (Some (cur_vtx, inst_if)) in
-  let new_bp_else = update_current_bp cur_bp (Some (cur_vtx, inst_else)) in
-  (new_bp_if, new_bp_else)
-end
-
-let create_bp_of_loop : Bp.t -> Bp.vertex -> (Bp.t * Bp.t * Bp.t)
-=fun cur_bp loop -> begin
-  let (terminated_bp, new_bp) = Bp.create_cut_bp cur_bp loop in
-  let loop_bp = Bp.create_new_bp loop loop in
-  (terminated_bp, loop_bp, new_bp)
-end
-
-let create_basic_safety_property : Bp.vertex -> Bp.exp -> Bp.typ -> (Bp.vertex * Bp.inst) option
-=fun vtx e t -> begin
-  let loc = Bp.create_loc vtx vtx in
-  match (e, t.d) with
-  | E_add _, T_mutez -> Some (vtx, (Bp.create_inst_assert (Bp.BC_no_overflow e) loc Bp.Q_mutez_arith_safety))
-  | E_sub _, T_mutez -> Some (vtx, (Bp.create_inst_assert (Bp.BC_no_underflow e) loc Bp.Q_mutez_arith_safety))
-  | E_mul _, T_mutez -> Some (vtx, (Bp.create_inst_assert (Bp.BC_no_overflow e) loc Bp.Q_mutez_arith_safety))
-  | _, _ -> None
-end
-
-let read_loc_of_check : Pre.Lib.Cfg.t -> Bp.vertex -> Bp.loc 
-=fun cfg cur_vtx -> begin
-  let pred = Pre.Lib.Cfg.read_pred_from_vtx cfg cur_vtx in
-  let etr_vtxs = Core.List.filter pred ~f:(fun (edge, _) -> Pre.Lib.Cfg.is_edge_check_skip edge) in
-  if Core.List.length etr_vtxs = 1
-  then begin
-    let (_, etr_vtx) = Core.List.hd_exn etr_vtxs in
-    Bp.create_loc etr_vtx cur_vtx
-  end else Bp.create_loc cur_vtx cur_vtx
-end
-
-(************************************************)
-
-let rec translate : Bp.t -> Bp.vertex -> Pre.Lib.Cfg.t -> Bp.t list
-=fun cur_bp cur_vtx cfg -> begin
-  let stmt = Pre.Lib.Cfg.read_stmt_from_vtx cfg cur_vtx in
-  let succ = Pre.Lib.Cfg.read_succ_from_vtx cfg cur_vtx in
-  if Pre.Lib.Cfg.is_main_exit cfg cur_vtx then begin
-    match stmt with
-    | Cfg_assign (id, e) -> begin 
-        let typ = (match Core.Map.Poly.find cfg.type_info id with 
-                  | Some typ -> typ
-                  | None -> InvalidExtraction (stmt, ("Type of " ^ id ^ " is invalid")) |> raise
-        ) in
-        let assert_inst = create_basic_safety_property cur_vtx e typ in
-        let new_bp = update_current_bp cur_bp assert_inst in
-        let inst = Bp.create_inst_assign id e in
-        let new_bp' = update_current_bp new_bp (Some (cur_vtx, inst)) in
-        [new_bp']
-      end
-    | _ -> Error "translate: main-exit vertex error" |> raise
-  end else begin
-    match stmt with
-    | Cfg_assign (id, e) -> begin
-        let typ = (match Core.Map.Poly.find cfg.type_info id with 
-                  | Some typ -> typ
-                  | None -> InvalidExtraction (stmt, ("Type of " ^ id ^ " is invalid")) |> raise
-        ) in
-        let assert_inst = create_basic_safety_property cur_vtx e typ in
-        let new_bp = update_current_bp cur_bp assert_inst in
-        let inst = Bp.create_inst_assign id e in
-        let new_bp' = update_current_bp new_bp (Some (cur_vtx, inst)) in
-        let search = translate_search_normal cfg new_bp' in
-        let result = Core.List.fold_right succ ~f:search ~init:[] in
-        result
-      end
-    | Cfg_skip | Cfg_drop _ | Cfg_swap | Cfg_dig | Cfg_dug -> begin
-        let inst = Bp.create_inst_skip in
-        let new_bp = update_current_bp cur_bp (Some (cur_vtx, inst)) in
-        let search = translate_search_normal cfg new_bp in
-        let result = Core.List.fold_right succ ~f:search ~init:[] in
-        result
-      end
-    | Cfg_if id -> begin
-        let f_if = Bp.create_cond_is_true id in
-        let bps = create_bp_of_branch cur_bp cur_vtx f_if in
-        let search = translate_search_branch cfg bps in
-        let result = Core.List.fold_right succ ~f:search ~init:[] in
-        result
-      end
-    | Cfg_if_none id -> begin
-        let f_if = Bp.create_cond_is_none id in
-        let bps = create_bp_of_branch cur_bp cur_vtx f_if in
-        let search = translate_search_branch cfg bps in
-        let result = Core.List.fold_right succ ~f:search ~init:[] in
-        result
-      end
-    | Cfg_if_left id -> begin
-        let f_if = Bp.create_cond_is_left id in
-        let bps = create_bp_of_branch cur_bp cur_vtx f_if in
-        let search = translate_search_branch cfg bps in
-        let result = Core.List.fold_right succ ~f:search ~init:[] in
-        result
-      end
-    | Cfg_if_cons id -> begin
-        let f_if = Bp.create_cond_is_cons id in
-        let bps = create_bp_of_branch cur_bp cur_vtx f_if in
-        let search = translate_search_branch cfg bps in
-        let result = Core.List.fold_right succ ~f:search ~init:[] in
-        result
-      end
-    | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _ -> begin
-        let _ = loop_inv_vtx := cur_vtx::!loop_inv_vtx in
-        let (terminated_bp, loop_bp, new_bp) = create_bp_of_loop cur_bp cur_vtx in
-        let search = translate_search_loop cfg (loop_bp, new_bp) in
-        let result = terminated_bp::[] in
-        let result = loop_bp::result in
-        let result = Core.List.fold_right succ ~f:search ~init:result in
-        result
-      end
-    | Cfg_failwith _ -> begin
-        let inst = Bp.create_inst_skip in
-        let _ = update_current_bp cur_bp (Some (cur_vtx, inst)) in
-        [] (* Fail situation must make result with same storage *)
-      end
-    | Cfg_micse_check_entry -> begin
-        let inst = Bp.create_inst_skip in
-        let new_bp = update_current_bp cur_bp (Some (cur_vtx, inst)) in
-        let search = translate_search_normal cfg new_bp in
-        let result = Core.List.fold_right succ ~f:search ~init:[] in
-        result
-      end
-    | Cfg_micse_check_value id -> begin
-        let f_assert = Bp.create_cond_is_true id in
-        let inst = Bp.create_inst_assert f_assert (read_loc_of_check cfg cur_vtx) (Bp.Q_assertion) in
-        let new_bp = update_current_bp cur_bp (Some (cur_vtx, inst)) in
-        let search = translate_search_normal cfg new_bp in
-        let result = Core.List.fold_right succ ~f:search ~init:[] in
-        result
-      end
-    (*| _ -> raise (Error "translate: Not Implemented.")*)
+  let read_exit_var : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.ident
+  = let open Pre.Lib in
+    fun cfg -> begin
+      let stmt = Cfg.read_stmt_from_vtx
+      cfg cfg.main_exit in
+      match stmt with
+      | Cfg_assign (id, _) -> id
+      | _ -> Error "read_exit_var: main-exit vertex error" |> raise
   end
 end
 
-and translate_search_normal : Pre.Lib.Cfg.t -> Bp.t -> (Bp.edge * Bp.vertex) -> Bp.t list -> Bp.t list
-=fun cfg new_bp (edge, vtx) result -> begin
-  match edge with
-  | Normal -> result@(translate new_bp vtx cfg)
-  | If_true | If_false -> raise (Error "translate_search_normal: Wrong edge label")
-  | Check_skip | Failed -> result
+(************************************************)
+
+module BPUtils = struct
+  type foldingType = (Pre.Lib.Cfg.vertex * Bp.inst) option
+
+  exception Error of string
+
+  let create_loop_bp : Bp.t -> Pre.Lib.Cfg.vertex -> (Bp.t * Bp.t * Bp.t)
+  = fun bp loop_vtx -> begin
+    let loop_inv = Inv.T.create ~vtx:loop_vtx in
+    let terminated_bp : Bp.t = { pre=bp.pre; body=bp.body; post=loop_inv } in
+    let loop_bp : Bp.t = { pre=loop_inv; body=[]; post=loop_inv } in
+    let new_bp : Bp.t = { pre=loop_inv; body=[]; post=bp.post } in
+    (terminated_bp, loop_bp, new_bp )
+  end
+
+  let read_loc_of_check : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.vertex -> Bp.loc
+  = let open Pre.Lib in
+    fun cfg cur_vtx -> begin
+    let pred = cur_vtx |> Cfg.read_pred_from_vtx cfg in
+    let entry_vtx_list = pred |> Core.List.filter ~f:(fun (edge, _) -> edge = Cfg.Check_skip) in
+    if Core.List.length entry_vtx_list = 1 then begin
+      let (_, entry_vtx) = entry_vtx_list |> Core.List.hd |> (function | Some vv -> vv | None -> Error "read_loc_of_check: Invalid access to head" |> raise) in
+      { entry=entry_vtx; exit=cur_vtx }
+    end else begin
+      { entry=cur_vtx; exit=cur_vtx }
+    end
+  end
+
+  let update_current_bp : Bp.t -> foldingType -> Bp.t
+  = fun cur_bp vtx_inst_opt -> begin
+      match vtx_inst_opt with
+      | None -> cur_bp
+      | Some vtx_inst -> { cur_bp with body=cur_bp.body@[vtx_inst] }
+  end
 end
 
-and translate_search_branch : Pre.Lib.Cfg.t -> (Bp.t * Bp.t) -> (Bp.edge * Bp.vertex) -> Bp.t list -> Bp.t list
-=fun cfg (new_bp_if, new_bp_else) (edge, vtx) result -> begin
-  match edge with
-  | If_true -> result@(translate new_bp_if vtx cfg)
-  | If_false -> result@(translate new_bp_else vtx cfg)
-  | Normal | Failed -> raise (Error "translate_search_branch: Wrong edge label")
-  | Check_skip -> result
+(************************************************)
+
+module InstUtils = struct
+  let create_inst_assume : Pre.Lib.Cfg.vertex -> Bp.cond -> BPUtils.foldingType
+  = fun vtx c -> Some (vtx, BI_assume c)
+
+  let create_inst_assert : Pre.Lib.Cfg.vertex -> Bp.cond -> Bp.loc -> Bp.category -> BPUtils.foldingType
+  = fun vtx c loc category -> Some (vtx, BI_assert (c, loc, category))
+
+  let create_inst_assert_basic_prop : Pre.Lib.Cfg.vertex -> Pre.Lib.Cfg.expr -> Pre.Lib.Mich.typ Pre.Lib.Mich.t -> BPUtils.foldingType
+  = fun vtx e t -> begin
+      let loc = Bp.create_loc vtx vtx in
+      match (e, t.d) with
+      | E_add _, T_mutez -> create_inst_assert vtx (BC_no_overflow e) loc Q_mutez_arith_safety
+      | E_sub _, T_mutez -> create_inst_assert vtx (BC_no_underflow e) loc Q_mutez_arith_safety
+      | E_mul _, T_mutez -> create_inst_assert vtx (BC_no_overflow e) loc Q_mutez_arith_safety
+      | _, _ -> None
+  end
+
+  let create_inst_assign : Pre.Lib.Cfg.vertex -> Pre.Lib.Cfg.ident -> Pre.Lib.Cfg.expr -> BPUtils.foldingType
+  = fun vtx v e -> Some (vtx, BI_assign (v, e))
+
+  let create_inst_skip : Pre.Lib.Cfg.vertex -> BPUtils.foldingType
+  = fun vtx -> Some (vtx, BI_skip)
 end
 
-and translate_search_loop : Pre.Lib.Cfg.t -> (Bp.t * Bp.t) -> (Bp.edge * Bp.vertex) -> Bp.t list -> Bp.t list
-=fun cfg (_, new_bp_exit) (edge, vtx) result -> begin
-  match edge with
-  | If_true -> result (* Not implemented *)
-  | If_false -> result@(translate new_bp_exit vtx cfg)
-  | Normal | Failed -> raise (Error "translate_search_loop: Wrong edge label")
-  | Check_skip -> result
+(************************************************)
+
+let rec translate : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.vertex -> Bp.t -> (Bp.t list * Pre.Lib.Cfg.vertex list)
+= let open Pre.Lib in
+  fun cfg cur_vtx bp -> begin
+    (*********************************)
+    let search_normal (normal_bp: Bp.t) (succ_edge, succ_vtx: Cfg.edge_label * Cfg.vertex) (acc_bp, acc_loop_vtx: Bp.t list * Cfg.vertex list) = begin
+      match succ_edge with
+      | Normal -> begin
+          let (new_bp, new_loop_vtx) = translate cfg succ_vtx normal_bp in
+          (acc_bp@new_bp, acc_loop_vtx@new_loop_vtx)
+        end
+      | If_true | If_false -> Error "translate.search_normal: Invalid edge label" |> raise
+      | Check_skip | Failed -> (acc_bp, acc_loop_vtx)
+    end in
+    let search_branch (true_bp, false_bp: Bp.t * Bp.t) (succ_edge, succ_vtx: Cfg.edge_label * Cfg.vertex) (acc_bp, acc_loop_vtx: Bp.t list * Cfg.vertex list) = begin
+      match succ_edge with
+      | If_true -> begin
+          let (new_bp, new_loop_vtx) = translate cfg succ_vtx true_bp in
+          (acc_bp@new_bp, acc_loop_vtx@new_loop_vtx)
+        end
+      | If_false -> begin
+          let (new_bp, new_loop_vtx) = translate cfg succ_vtx false_bp in
+          (acc_bp@new_bp, acc_loop_vtx@new_loop_vtx)
+        end
+      | Normal | Failed -> Error "translate.search_branch: Invalid edge label" |> raise
+      | Check_skip -> (acc_bp, acc_loop_vtx)
+    end in
+    (*********************************)
+    let stmt = cur_vtx |> Cfg.read_stmt_from_vtx cfg in
+    let succ = cur_vtx |> Cfg.read_succ_from_vtx cfg in
+    if cur_vtx = bp.post.id then begin (* Current basic path is ended. *)
+      match stmt with
+      | Cfg_assign (id, e) -> begin
+          let assert_inst = InstUtils.create_inst_assert_basic_prop cur_vtx e (id |> CFGUtils.read_var_type cfg) in
+          let bp' = BPUtils.update_current_bp bp assert_inst in
+          let v = if cur_vtx = cfg.main_exit then "operation_storage" else id in
+          let assign_inst = InstUtils.create_inst_assign cur_vtx v e in
+          let bp'' = BPUtils.update_current_bp bp' assign_inst in
+          ([bp''], [])
+        end
+      | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _ -> ([bp], [cur_vtx])
+      | _ -> Error "translate: main-exit vertex error" |> raise
+    end else begin (* Being process *)
+      match stmt with
+      | Cfg_assign (id, e) -> begin
+          let assert_inst = InstUtils.create_inst_assert_basic_prop cur_vtx e (id |> CFGUtils.read_var_type cfg) in
+          let normal_bp' = BPUtils.update_current_bp bp assert_inst in
+          let assign_inst = InstUtils.create_inst_assign cur_vtx id e in
+          let normal_bp'' = BPUtils.update_current_bp normal_bp' assign_inst in
+          succ |> Core.List.fold_right ~f:(normal_bp'' |> search_normal) ~init:([], [])
+        end
+      | Cfg_skip | Cfg_drop _ | Cfg_swap | Cfg_dig | Cfg_dug -> begin
+          let skip_inst = InstUtils.create_inst_skip cur_vtx in
+          let normal_bp' = BPUtils.update_current_bp bp skip_inst in
+          succ |> Core.List.fold_right ~f:(normal_bp' |> search_normal) ~init:([], [])
+        end
+      | Cfg_if id -> begin
+          let true_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_is_true id) in
+          let true_bp' = BPUtils.update_current_bp bp true_assume_inst in
+          let false_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_not (BC_is_true id)) in
+          let false_bp' = BPUtils.update_current_bp bp false_assume_inst in
+          succ |> Core.List.fold_right ~f:((true_bp', false_bp') |> search_branch) ~init:([], [])
+        end
+      | Cfg_if_left id -> begin
+          let true_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_is_left id) in
+          let true_bp' = BPUtils.update_current_bp bp true_assume_inst in
+          let false_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_not (BC_is_left id)) in
+          let false_bp' = BPUtils.update_current_bp bp false_assume_inst in
+          succ |> Core.List.fold_right ~f:((true_bp', false_bp') |> search_branch) ~init:([], [])
+        end
+      | Cfg_if_cons id -> begin
+          let true_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_is_cons id) in
+          let true_bp' = BPUtils.update_current_bp bp true_assume_inst in
+          let false_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_not (BC_is_cons id)) in
+          let false_bp' = BPUtils.update_current_bp bp false_assume_inst in
+          succ |> Core.List.fold_right ~f:((true_bp', false_bp') |> search_branch) ~init:([], [])
+        end
+      | Cfg_if_none id -> begin
+          let true_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_is_none id) in
+          let true_bp' = BPUtils.update_current_bp bp true_assume_inst in
+          let false_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_not (BC_is_none id)) in
+          let false_bp' = BPUtils.update_current_bp bp false_assume_inst in
+          succ |> Core.List.fold_right ~f:((true_bp', false_bp') |> search_branch) ~init:([], [])
+        end
+      | Cfg_loop id -> begin
+          let (terminated_bp, loop_bp, new_bp) = BPUtils.create_loop_bp bp cur_vtx in
+          let true_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_is_true id) in
+          let loop_bp' = BPUtils.update_current_bp loop_bp true_assume_inst in
+          let false_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_not (BC_is_true id)) in
+          let new_bp' = BPUtils.update_current_bp new_bp false_assume_inst in
+          succ |> Core.List.fold_right ~f:((loop_bp', new_bp') |> search_branch) ~init:([terminated_bp], [])
+        end
+      | Cfg_loop_left id -> begin
+          let (terminated_bp, loop_bp, new_bp) = BPUtils.create_loop_bp bp cur_vtx in
+          let true_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_is_left id) in
+          let loop_bp' = BPUtils.update_current_bp loop_bp true_assume_inst in
+          let false_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_not (BC_is_left id)) in
+          let new_bp' = BPUtils.update_current_bp new_bp false_assume_inst in
+          succ |> Core.List.fold_right ~f:((loop_bp', new_bp') |> search_branch) ~init:([terminated_bp], [])
+        end
+      | Cfg_map id -> begin
+          let (terminated_bp, loop_bp, new_bp) = BPUtils.create_loop_bp bp cur_vtx in
+          let true_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_is_cons id) in
+          let loop_bp' = BPUtils.update_current_bp loop_bp true_assume_inst in
+          let false_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_not (BC_is_cons id)) in
+          let new_bp' = BPUtils.update_current_bp new_bp false_assume_inst in
+          succ |> Core.List.fold_right ~f:((loop_bp', new_bp') |> search_branch) ~init:([terminated_bp], [])
+        end
+      | Cfg_iter id -> begin
+          let (terminated_bp, loop_bp, new_bp) = BPUtils.create_loop_bp bp cur_vtx in
+          let true_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_is_cons id) in
+          let loop_bp' = BPUtils.update_current_bp loop_bp true_assume_inst in
+          let false_assume_inst = InstUtils.create_inst_assume cur_vtx (BC_not (BC_is_cons id)) in
+          let new_bp' = BPUtils.update_current_bp new_bp false_assume_inst in
+          succ |> Core.List.fold_right ~f:((loop_bp', new_bp') |> search_branch) ~init:([terminated_bp], [])
+        end
+      | Cfg_failwith _ -> ([], [])
+      | Cfg_micse_check_entry -> begin
+          let skip_inst = InstUtils.create_inst_skip cur_vtx in
+          let normal_bp' = BPUtils.update_current_bp bp skip_inst in
+          succ |> Core.List.fold_right ~f:(normal_bp' |> search_normal) ~init:([], [])
+        end
+      | Cfg_micse_check_value id -> begin
+          let assert_inst = InstUtils.create_inst_assert cur_vtx (BC_is_true id) (cur_vtx |> BPUtils.read_loc_of_check cfg) (Q_assertion) in
+          let normal_bp' = BPUtils.update_current_bp bp assert_inst in
+          succ |> Core.List.fold_right ~f:(normal_bp' |> search_normal) ~init:([], [])
+        end
+      (* | _ -> Error "translate: Not implemented" |> raise *)
+    end
 end
 
 let extract : Pre.Lib.Cfg.t -> Bp.lst
-=fun cfg -> begin
+= let open Pre.Lib in
+  fun cfg -> begin
   try
-    let _ = read_exit_var cfg in
     let entry_bp = Bp.create_new_bp cfg.main_entry cfg.main_exit in
-    let result = translate entry_bp cfg.main_entry cfg in
+    let result, loop_vertices = translate cfg cfg.main_entry entry_bp in
     Bp.create_bp_list
-      ~bps:result
-      ~entry:(Bp.create_inv_point ~vtx:cfg.main_entry ~var_opt:(Some (Pre.Lib.Cfg.param_storage_name)))
-      ~exit:(Bp.create_inv_point ~vtx:cfg.main_exit ~var_opt:(Some (Option.get !exit_var)))
-      ~loop:(Core.List.map !loop_inv_vtx ~f:(fun vtx -> Bp.create_inv_point ~vtx:vtx ~var_opt:None))
+      ~bps: result
+      ~entry:(Bp.create_inv_point ~vtx:cfg.main_entry ~var_opt:(Some (Cfg.param_storage_name)))
+      ~exit:(Bp.create_inv_point ~vtx:cfg.main_exit ~var_opt:(Some (cfg |> CFGUtils.read_exit_var)))
+      ~loop:(loop_vertices |> Core.List.map ~f:(fun vtx -> Bp.create_inv_point ~vtx:vtx ~var_opt:None))
   with
-  | InvalidExtraction (stmt, msg) -> Error ("Invalid extraction of statement [" ^ (stmt |> Pre.Lib.Cfg.stmt_to_str) ^ "]: " ^ msg) |> raise
+  | InvalidExtraction (stmt, msg) -> Error ("invalid extraction of statement [" ^ (stmt |> Cfg.stmt_to_str) ^ "]: " ^ msg) |> raise
   | e -> e |> raise
 end

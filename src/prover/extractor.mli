@@ -1,29 +1,40 @@
 exception Error of string
-
 exception InvalidExtraction of (Pre.Lib.Cfg.stmt * string)
 
 (************************************************)
 (************************************************)
 
-val loop_inv_vtx : (ProverLib.Bp.vertex list) ref
+module CFGUtils : sig
+  exception Error of string
 
-val exit_var : (ProverLib.Bp.var option) ref
-val read_exit_var : Pre.Lib.Cfg.t -> unit
-
-(************************************************)
-
-val update_current_bp : ProverLib.Bp.t -> (ProverLib.Bp.vertex * ProverLib.Bp.inst) option -> ProverLib.Bp.t
-
-val create_bp_of_branch : ProverLib.Bp.t -> ProverLib.Bp.vertex -> ProverLib.Bp.cond -> (ProverLib.Bp.t * ProverLib.Bp.t)
-val create_bp_of_loop : ProverLib.Bp.t -> ProverLib.Bp.vertex -> (ProverLib.Bp.t * ProverLib.Bp.t * ProverLib.Bp.t)
-val create_basic_safety_property : ProverLib.Bp.vertex -> ProverLib.Bp.exp -> ProverLib.Bp.typ -> (ProverLib.Bp.vertex * ProverLib.Bp.inst) option
-
-val read_loc_of_check : Pre.Lib.Cfg.t -> ProverLib.Bp.vertex -> ProverLib.Bp.loc 
+  val read_var_type : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.ident -> Pre.Lib.Mich.typ Pre.Lib.Mich.t
+  val read_exit_var : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.ident
+end
 
 (************************************************)
 
-val translate : ProverLib.Bp.t -> ProverLib.Bp.vertex -> Pre.Lib.Cfg.t -> ProverLib.Bp.t list
-val translate_search_normal : Pre.Lib.Cfg.t -> ProverLib.Bp.t -> (ProverLib.Bp.edge * ProverLib.Bp.vertex) -> ProverLib.Bp.t list -> ProverLib.Bp.t list
-val translate_search_branch : Pre.Lib.Cfg.t -> (ProverLib.Bp.t * ProverLib.Bp.t) -> (ProverLib.Bp.edge * ProverLib.Bp.vertex) -> ProverLib.Bp.t list -> ProverLib.Bp.t list
+module BPUtils : sig
+  type foldingType = (Pre.Lib.Cfg.vertex * ProverLib.Bp.inst) option
+
+  exception Error of string
+
+  val create_loop_bp : ProverLib.Bp.t -> Pre.Lib.Cfg.vertex -> (ProverLib.Bp.t * ProverLib.Bp.t * ProverLib.Bp.t)
+  val read_loc_of_check : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.vertex -> ProverLib.Bp.loc
+  val update_current_bp : ProverLib.Bp.t -> foldingType -> ProverLib.Bp.t
+end
+
+(************************************************)
+
+module InstUtils : sig
+  val create_inst_assume : Pre.Lib.Cfg.vertex -> ProverLib.Bp.cond -> BPUtils.foldingType
+  val create_inst_assert : Pre.Lib.Cfg.vertex -> ProverLib.Bp.cond -> ProverLib.Bp.loc -> ProverLib.Bp.category -> BPUtils.foldingType
+  val create_inst_assert_basic_prop : Pre.Lib.Cfg.vertex -> Pre.Lib.Cfg.expr -> Pre.Lib.Mich.typ Pre.Lib.Mich.t -> BPUtils.foldingType
+  val create_inst_assign : Pre.Lib.Cfg.vertex -> Pre.Lib.Cfg.ident -> Pre.Lib.Cfg.expr -> BPUtils.foldingType
+  val create_inst_skip : Pre.Lib.Cfg.vertex -> BPUtils.foldingType
+end
+
+(************************************************)
+
+val translate : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.vertex -> ProverLib.Bp.t -> (ProverLib.Bp.t list * Pre.Lib.Cfg.vertex list)
 
 val extract : Pre.Lib.Cfg.t -> ProverLib.Bp.lst
