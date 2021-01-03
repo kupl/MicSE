@@ -1558,7 +1558,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
         else begin
           t_add_vtx counter (acc_cfg, ())
           |> t_add_vinfo_now ~errtrace:(errmsg_gen "fold2_func") (Cfg_assign (bstack_var, (E_itself astack_var)))
-          |> t_con_vtx_back acc_in_v
+          |> t_con_vtx_front acc_in_v
         end
       end in
       let (cfg_final, _) = begin 
