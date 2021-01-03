@@ -16,5 +16,7 @@ type invgen_info = {
     igi_loop : (int, string CPSet.t) CPMap.t; (* loop-vertex -> available variable set *)
 }
 
+val inv_true_gen : invgen_info -> t
+
 (* In our blueprint, Invariant is used for a verifier, not refuter. *)
 val gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_info

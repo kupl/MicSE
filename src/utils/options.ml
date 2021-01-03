@@ -24,6 +24,8 @@ let flag_cfgopt_all : bool ref
 (* FLAGS - Basic Path *)
 let flag_bpopt_rsi : bool ref
 =ref false (* remove-skip-instructions *)
+let flag_bp_print_pretty : bool ref
+=ref true (* turn-on pretty-print *)
 
 (* FLAGS - Result of solver *)
 let flag_param_storage : bool ref
@@ -77,6 +79,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-cfg_print_dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
     ("-bpopt_rsi", (Arg.Set flag_bpopt_rsi), "Remove all trivial skip instructions in bp printing.");
     ("-bp_print", (Arg.Set flag_bp_print), "Print all basic paths.");
+    ("-bp_print_unpretty", (Arg.Clear flag_bp_print_pretty), "Do not pretty-printing for \"bp_print\" option.");
     ("-vc_print", (Arg.Set flag_vc_print), "Print all verification conditions.");
     ("-param_storage", (Arg.Set flag_param_storage), "Print counter-example from unsafe-path");
     ("-initial_storage", (Arg.String (fun s -> initial_storage_file := s)), "File path for initial storage of input michelson program");

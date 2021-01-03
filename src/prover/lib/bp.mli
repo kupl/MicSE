@@ -26,6 +26,8 @@ type t = {
   content : basic_node list;
 }
 
+val remove_skip_inst : t -> t
+
 module JsonRep : sig
   exception ParseErr of Yojson.Basic.t
 
@@ -48,3 +50,5 @@ module JsonRep : sig
   val of_t : t -> Yojson.Basic.t
 
 end (* module JsonRep end *)
+
+val simple_stringRep_of_tset : ?pretty:bool -> t Core.Set.Poly.t -> string

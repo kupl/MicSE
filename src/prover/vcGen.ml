@@ -154,3 +154,33 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
       {path_vc=pvc; query_vcs=(CPSet.of_list qvcl)}
     )
 end (* function construct_verifier_vc end *)
+
+
+let construct_initstg_vc : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> PreLib.Adt.data option -> (ProverLib.Inv.t -> ProverLib.Vlang.t)
+= let open ProverLib.Vlang in
+  fun glenv_ref cfg init_stg_opt -> begin
+  match init_stg_opt with
+  | None -> (fun _ -> Formula.VF_true)
+  | Some stg -> begin
+      (* get the vlang-type of "param-storage" variable first. *)
+      let stg_vtyp : Ty.t = 
+        PreLib.Cfg.t_map_find
+          ~errtrace:("Prover.VcGen.construct_initstg_vc : Some stg : ps_vtyp")
+          cfg.type_info
+          PreLib.Cfg.param_storage_name
+        |> PreLib.Mich.get_d
+        |> TypeUtil.ty_of_michtyp
+        |> TypeUtil.get_innertyp2
+        |> Stdlib.snd
+      in
+      (* construct formula and hide it in (Inv.t -> Vlang.t) function. *)
+      let stgvar : Expr.t = V_var (stg_vtyp, !glenv_ref.gv_storage) in
+      let stg_vexpr : Expr.t = VlGen.create_expr_of_michdata stg stg_vtyp in
+      (fun {trx_inv; loop_inv=_} ->
+        let open Formula in
+        (* Create the formula ((trxStorage = storage) -> trxInvariant). 
+          It should be checked whether the formula is VALID before passing the invariant to validator. *)
+        VF_imply (VF_eq (stgvar, stg_vexpr), trx_inv)
+      )
+    end
+end (* function construct_initstg_vc end *)

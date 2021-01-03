@@ -26,6 +26,13 @@ type t = {
   content : basic_node list;
 }
 
+let remove_skip_inst : t -> t
+=fun bp -> begin 
+  let skip_foldf = (fun acc x -> if x.inst = BI_skip then acc else x :: acc) in
+  {bp with content=(List.fold_left skip_foldf [] bp.content |> List.rev)}
+end
+
+
 module JsonRep = struct
   exception ParseErr of Yojson.Basic.t
 
@@ -37,7 +44,7 @@ module JsonRep = struct
     let cname_bi_assert   : string = "BI_assert"
     let cname_bi_assign   : string = "BI_assign"
     let cname_bi_skip     : string = "BI_skip"
-    let fname_glenv_ref   : string = "glenv_ref"
+    let fname_glenv_ref   : string = "glenv_num"
     let fname_cfgvtx      : string = "cfgvtx"
     let fname_inst        : string = "inst"
     let fname_entry_vtx   : string = "entry_vtx"
@@ -74,3 +81,17 @@ module JsonRep = struct
   end
 
 end (* module JsonRep end *)
+
+
+let simple_stringRep_of_tset : ?pretty:bool -> t Core.Set.Poly.t -> string
+=fun ?(pretty=true) bps -> begin
+  let yj_to_str : Yojson.Basic.t -> string = fun b -> if pretty then Yojson.Basic.pretty_to_string b else Yojson.Basic.to_string b in
+  ":: Basic Paths" ^
+  Core.List.foldi 
+    (Core.Set.Poly.to_list bps)
+    ~init:"" 
+    ~f:(fun idx str bp ->
+      str ^ "\nBasic Path #" ^ (Stdlib.string_of_int idx) ^ "\n" 
+      ^ (JsonRep.of_t bp |> yj_to_str)
+    )
+end

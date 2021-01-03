@@ -17,6 +17,16 @@ type invgen_info = {
     igi_loop : (int, string CPSet.t) CPMap.t; (* loop-vertex -> available variable set *)
 }
 
+
+let inv_true_gen : invgen_info -> t
+=fun {igi_trx=_; igi_loop} -> begin
+  let open Vlang.Formula in
+  { trx_inv = VF_true;
+    loop_inv = CPMap.map igi_loop ~f:(fun _ -> VF_true);
+  }
+end
+
+
 (* In our blueprint, Invariant is used for a verifier, not refuter. 
   So it is easy to generate invgen_info from a contract using cfg only.
 *)

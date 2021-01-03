@@ -14,3 +14,4 @@ type v_cond_ingr = ProverLib.Inv.t -> v_cond
 (* renaming process performed here *)
 val construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
 
+val construct_initstg_vc : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> PreLib.Adt.data option -> (ProverLib.Inv.t -> ProverLib.Vlang.t)

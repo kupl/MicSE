@@ -22,7 +22,12 @@ let is_sender_var : string -> bool = fun s -> Core.String.is_prefix s ~prefix:pr
 let is_source_var : string -> bool = fun s -> Core.String.is_prefix s ~prefix:prefix_source
 
 module Env = struct
+  (* Custom construction of Env.t IS NOT ALLOWED. 
+    It may harm some consistency, e.g. "Prover.VlGen.read_type_cfgvar" implementation.
+    Use "gen" function instead.
+  *)
   type t = {
+    gv_num : int;
     gv_param : string;
     gv_storage : string;
     gv_amount : string;
@@ -33,6 +38,7 @@ module Env = struct
 
   let gen : int -> t 
   =fun n -> {
+    gv_num = n;
     gv_param = gen_param n;
     gv_storage = gen_storage n;
     gv_amount = gen_amount n;
@@ -46,38 +52,12 @@ module Env = struct
   module JsonRep = struct
     exception ParseErr of Yojson.Basic.t
 
-    module Const = struct
-      let fname_gv_param    : string = "gv_param"
-      let fname_gv_storage  : string = "gv_storage"
-      let fname_gv_amount   : string = "gv_amount"
-      let fname_gv_balance  : string = "gv_balance"
-      let fname_gv_sender   : string = "gv_sender"
-      let fname_gv_source   : string = "gv_source"
-    end (* module Env.JsonRep.Const end *)
-  
     let of_t : t -> Yojson.Basic.t
-    = let open Const in
-      fun t -> `Assoc [
-        fname_gv_param, `String t.gv_param;
-        fname_gv_storage, `String t.gv_storage;
-        fname_gv_amount, `String t.gv_amount;
-        fname_gv_balance, `String t.gv_balance;
-        fname_gv_sender, `String t.gv_sender;
-        fname_gv_source, `String t.gv_source;
-      ]
-
+    = fun t -> `Int t.gv_num
     let to_t : Yojson.Basic.t -> t
-    = let open Const in
-      fun js ->
-      let assert_nonnull = function | `Null -> Stdlib.raise (ParseErr js) | _ as json_i -> json_i in
-      let extract_strfld = fun fname -> Yojson.Basic.Util.member fname js |> assert_nonnull |> Yojson.Basic.Util.to_string in
-      { gv_param=(extract_strfld fname_gv_param);
-        gv_storage=(extract_strfld fname_gv_storage);
-        gv_amount=(extract_strfld fname_gv_amount);
-        gv_balance=(extract_strfld fname_gv_balance);
-        gv_sender=(extract_strfld fname_gv_sender);
-        gv_source=(extract_strfld fname_gv_source);
-      }
+    = function
+      | `Int n -> gen n
+      | _ as js -> Stdlib.raise (ParseErr js)
 
   end (* module Env.JsonRep end *)
 
