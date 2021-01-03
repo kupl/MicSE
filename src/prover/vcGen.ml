@@ -119,34 +119,45 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
         In this implementation, we need to change the variable name in the exit_invariant.
     *)
     (fun {trx_inv; loop_inv} ->
+      (* find invariant for entry-vtx *)
       let entry_inv : Formula.t =
         if entry_vtx = cfg.main_entry then trx_inv else
         PreLib.Cfg.t_map_find 
           ~errtrace:("VcGen.construct_verifier_vc : 2 : entry_inv : " ^ (Stdlib.string_of_int entry_vtx))
           loop_inv entry_vtx
       in
+      (* find invariant for exit-vtx *)
       let exit_inv : Formula.t = 
         if exit_vtx = cfg.main_exit then trx_inv else
-        let found_exit_inv = 
+        (* There are no dedicated invariant for FAILWITH node. So we just put trx-inv instead. *)
+        let is_exitvtx_failwith : bool =
+          PreLib.Cfg.t_map_find
+            ~errtrace:("VcGen.construct_verifier_vc : 2 : is_exitvtx_failwith : " ^ (Stdlib.string_of_int exit_vtx))
+            cfg.vertex_info
+            exit_vtx
+          |> (function | Cfg_failwith _ -> true | _ -> false)
+        in
+        if is_exitvtx_failwith then trx_inv else
+        (* If exit-vtx is not main-exit-vtx and not failwith-vtx, find loop invariant. *)
+        let found_exit_inv =
           PreLib.Cfg.t_map_find 
-          ~errtrace:("VcGen.construct_verifier_vc : 2 : exit_inv : " ^ (Stdlib.string_of_int entry_vtx))
+          ~errtrace:("VcGen.construct_verifier_vc : 2 : found_exit_inv : exit_inv : " ^ (Stdlib.string_of_int exit_vtx))
           loop_inv exit_vtx
         in
         NameEnv.rename_fmla sp_fold_result.sfa_name_env found_exit_inv
       in
+      (* construct a path verification-condition *)
       let pvc : ProverLib.Vlang.t = 
         Formula.VF_imply (
           Formula.VF_and [entry_inv; sp_fold_result.sfa_str_post],
           exit_inv
         ) 
       in
+      (* construct a query verification-condition list *)
       let qvcl : (ProverLib.Vlang.t * ProverLib.Bp.query_category * PreLib.Cfg.vertex) list =
         List.map 
           (fun((pre_c, post_c), qc, vtx) ->
-            let vc = Formula.VF_imply (
-              Formula.VF_and [entry_inv; pre_c],
-              post_c
-            ) in
+            let vc = Formula.VF_imply (Formula.VF_and [entry_inv; pre_c], post_c) in
             (vc, qc, vtx)
           )
           sp_fold_result.sfa_queries
