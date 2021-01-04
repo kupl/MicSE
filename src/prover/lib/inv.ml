@@ -58,21 +58,11 @@ end
 (*****************************************************************************)
 
 module Map = struct
-  module Vtx = struct
-    module Key = struct
-      type t = vertex
-      let compare x y = Core.Int.compare x y
-      let sexp_of_t s = Core.Int.sexp_of_t s
-      let t_of_sexp x = Core.Int.t_of_sexp x
-    end
-  
-    include Key
-    include Core.Comparable.Make (Key)
-  end
+  exception Error of string
 
-  module VtxMap = Vtx.Map
+  module VtxMap = Core.Map.Poly
 
-  type t = T.t VtxMap.t
+  type t = (Pre.Lib.Cfg.vertex, T.t) VtxMap.t
 
   let empty : t
   =VtxMap.empty
@@ -81,7 +71,7 @@ module Map = struct
   =fun m -> VtxMap.is_empty m
 
   let add : t -> key:vertex -> data:T.t -> t
-  =fun m ~key ~data -> VtxMap.add_exn m ~key:key ~data:data
+  =fun m ~key ~data -> VtxMap.add m ~key:key ~data:data |> (function | `Ok mm -> mm | `Duplicate -> Error "add: Key is duplicated" |> raise)
 
   let find : t -> vertex -> T.t option
   =fun m key -> VtxMap.find m key
@@ -99,9 +89,6 @@ module Map = struct
   
   let fold : t -> init:'a -> f:(key:vertex -> data:T.t -> 'a -> 'a) -> 'a
   =fun m ~init ~f -> VtxMap.fold m ~init:init ~f:f
-
-  let map : t -> f:(key:vertex -> data:T.t -> 'a) -> 'a VtxMap.t
-  =fun m ~f -> VtxMap.mapi m ~f:f
   
   let exists : t -> f:(key:vertex -> data:T.t -> bool) -> bool
   =fun m ~f -> VtxMap.existsi m ~f:f
@@ -158,44 +145,47 @@ end
 (*****************************************************************************)
 
 module WorkList = struct
+  exception Error of string
+
   type t = {
-    current: Map.t;
-    enable: Map.t list;
-    disable: Map.t list;
+    last_enable: Map.t;
+    candidate: Map.t list;
+    expired: Map.t list;
   }
 
   let empty : t
-  ={ current=(Map.empty); enable=[]; disable=[] }
+  ={ last_enable=(Map.empty); candidate=[]; expired=[] }
 
   let is_empty : t -> bool
-  =fun w -> Core.List.is_empty (w.enable)
+  =fun w -> Core.List.is_empty (w.candidate)
 
   let mem : Map.t list -> Map.t -> bool
   =fun l m -> Core.List.exists l ~f:(fun m' -> Map.equal ~m1:m ~m2:m')
 
   let push : t -> Map.t -> t
   =fun w m -> begin
-    if (mem (w.disable) m) || (mem (w.enable) m)
+    if (mem (w.expired) m) || (mem (w.candidate) m)
     then w
-    else { w with enable=((w.enable)@[m]) }
+    else { w with candidate=((w.candidate)@[m]) }
   end
 
   let push_list : t -> Map.t list -> t
   =fun w ml -> Core.List.fold_left ml ~init:w ~f:push
 
   let push_force : t -> Map.t -> t
-  =fun w m -> { w with enable=(m::(w.enable)) }
+  =fun w m -> { w with candidate=(m::(w.candidate)) }
 
   let pop : t -> (Map.t * t)
   =fun w -> begin
-    let m = Core.List.hd_exn (w.enable) in
-    let w' = { w with enable=(Core.List.tl_exn (w.enable)); disable=(m::(w.disable)) } in
+    let m = Core.List.hd (w.candidate) |> (function | Some mm -> mm | None -> Error "pop: Worklist is empty" |> raise) in
+    let candidate' = Core.List.tl (w.candidate) |> (function | Some mm -> mm | None -> Error "pop: Worklist is empty" |> raise) in
+    let w' = { w with candidate=candidate'; expired=(m::(w.expired)) } in
     (m, w')
   end
   
   let map : t -> f:(Map.t -> Map.t) -> t
-  =fun w ~f -> { w with enable=(Core.List.map (w.enable) ~f:f) }
+  =fun w ~f -> { w with candidate=(Core.List.map (w.candidate) ~f:f) }
 
-  let update_current : t -> new_:Map.t -> t
-  =fun w ~new_ -> { w with current=new_ }
+  let update_last_enable : t -> new_:Map.t -> t
+  =fun w ~new_ -> { w with last_enable=new_ }
 end

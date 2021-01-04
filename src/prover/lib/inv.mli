@@ -29,20 +29,11 @@ end
 (*****************************************************************************)
 
 module Map : sig
-  module Vtx : sig
-    module Key : sig
-      type t = vertex
-      val compare : t -> t -> int
-      val sexp_of_t : t -> Core.Sexp.t
-      val t_of_sexp : Core.Sexp.t -> t
-    end
-  
-    include module type of Key
-    include module type of Core.Comparable.Make (Key)
-  end
-  module VtxMap = Vtx.Map
+  exception Error of string
 
-  type t = T.t VtxMap.t
+  module VtxMap = Core.Map.Poly
+
+  type t = (Pre.Lib.Cfg.vertex, T.t) VtxMap.t
 
   val empty : t
   val is_empty : t -> bool
@@ -51,7 +42,6 @@ module Map : sig
   val find_empty : t -> vertex -> T.t
   val mem : t -> vertex -> bool
   val fold : t -> init:'a -> f:(key:vertex -> data:T.t -> 'a -> 'a) -> 'a
-  val map : t -> f:(key:vertex -> data:T.t -> 'a) -> 'a VtxMap.t
   val exists : t -> f:(key:vertex -> data:T.t -> bool) -> bool
   val order : m1:t -> m2:t -> bool (* m1 <= m2 ? true : false *)
   val join : t -> t -> t
@@ -66,10 +56,12 @@ end
 (*****************************************************************************)
 
 module WorkList : sig
+  exception Error of string
+
   type t = {
-    current: Map.t;
-    enable: Map.t list;
-    disable: Map.t list;
+    last_enable: Map.t;
+    candidate: Map.t list;
+    expired: Map.t list;
   }
 
 
@@ -81,5 +73,5 @@ module WorkList : sig
   val push_force : t -> Map.t -> t
   val pop : t -> (Map.t * t)
   val map : t -> f:(Map.t -> Map.t) -> t
-  val update_current : t -> new_:Map.t -> t
+  val update_last_enable : t -> new_:Map.t -> t
 end
