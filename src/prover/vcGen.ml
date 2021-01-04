@@ -5,12 +5,21 @@
 module CPSet = Core.Set.Poly
 module CPMap = Core.Map.Poly
 
-type v_cond = {
-  path_vc : ProverLib.Vlang.t;
-  query_vcs : (ProverLib.Vlang.t * ProverLib.Bp.query_category * PreLib.Cfg.vertex) CPSet.t;
+
+
+type query_vc = {
+  qvc_fml : ProverLib.Vlang.t;            (* verification condition which should be VALID. formula. *)
+  qvc_cat : ProverLib.Bp.query_category;  (* query cateogry *)
+  qvc_vtx : PreLib.Cfg.vertex;            (* the vertex-location where the query comes from *)
+  qvc_bp  : ProverLib.Bp.t;               (* the basic-path which contains this query *)
 }
 
-type v_cond_ingr = ProverLib.Inv.t -> v_cond
+type v_cond = {
+  path_vc : ProverLib.Vlang.t;            (* verification condition which should be SATISFIABLE. formula. *)
+  query_vcs : query_vc CPSet.t;           (* queries. see above explanation. *)
+}
+
+type v_cond_ingr = ProverLib.Inv.t -> v_cond  (* path-vc and query_vcs will be constructed using the given invariant candidate. *)
 
 
 
@@ -162,7 +171,16 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
           )
           sp_fold_result.sfa_queries
       in
-      {path_vc=pvc; query_vcs=(CPSet.of_list qvcl)}
+      (* query_vcs type is changed. below code will convert qvcl to appropriate form. *)
+      let qvcs : query_vc CPSet.t =
+        List.fold_left
+          (fun accs (qvc_fml, qvc_cat, qvc_vtx) ->
+            CPSet.add accs { qvc_fml; qvc_cat; qvc_vtx; qvc_bp={entry_vtx; exit_vtx; content}; }
+          )
+          CPSet.empty
+          qvcl
+      in
+      {path_vc=pvc; query_vcs=qvcs}
     )
 end (* function construct_verifier_vc end *)
 

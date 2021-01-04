@@ -41,7 +41,7 @@ let prove : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
       ( fun vc -> 
         let vcond = vc trinv in
         Vlang.string_of_formula vcond.VcGen.path_vc |> Stdlib.print_endline;
-        CPSet.iter vcond.query_vcs ~f:(fun vc -> (fun (x,_,_) -> x) vc |> Vlang.string_of_formula |> Stdlib.print_endline)
+        CPSet.iter vcond.query_vcs ~f:(fun vc -> vc.qvc_fml |> Vlang.string_of_formula |> Stdlib.print_endline)
       )
       vcl
   in
