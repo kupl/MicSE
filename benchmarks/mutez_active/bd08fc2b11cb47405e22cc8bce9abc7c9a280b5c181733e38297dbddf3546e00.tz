@@ -1,0 +1,637 @@
+# Balance: 1733.340289
+{ parameter
+    (or (or (key_hash %set_delegate) (unit %remove_delegate))
+        (or %default :_entries
+           (unit %_Liq_entry_main)
+           (or (nat %_Liq_entry_sellOut)
+               (or (mutez %_Liq_entry_withdraw)
+                   (or (unit %_Liq_entry_deposit)
+                       (pair :priceUpdate %_Liq_entry_updatePrices
+                          (mutez %sellP)
+                          (pair (mutez %buyP) (mutez %extraBalance)))))))) ;
+  storage
+    (pair key_hash
+          (pair :storage
+             (map %balances address nat)
+             (pair (string %name)
+                   (pair (string %symbol)
+                         (pair (nat %decimals)
+                               (pair (nat %totalSupply)
+                                     (pair (mutez %inBaker)
+                                           (pair (address %owner) (pair
+(mutez %buyPrice) (mutez %sellPrice)))))))))) ;
+  code { DUP ;
+         CAR ;
+         IF_LEFT
+           { PUSH mutez 0 ;
+             AMOUNT ;
+             ASSERT_CMPEQ ;
+             DUP 2 ;
+             CDR ;
+             CAR ;
+             IMPLICIT_ACCOUNT ;
+             ADDRESS ;
+             SENDER ;
+             IFCMPNEQ
+               { SENDER ; PUSH string "Only the owner can operate." ; PAIR ;
+FAILWITH }
+               { DIP { CDR ; NIL operation } ;
+                 IF_LEFT
+                   { SOME ; SET_DELEGATE ; CONS ; PAIR }
+                   { DROP ; NONE key_hash ; SET_DELEGATE ; CONS ; PAIR } } }
+           { DIP { CDR ; DUP ; CDR } ;
+             PAIR ;
+             { DUP ;
+               DIP { CDR } ;
+               CAR ;
+               DUP @parameter ;
+               IF_LEFT
+                 { RENAME @nop_slash_3 ;
+                   { DIP { DUP @storage 2 } ; SWAP } ;
+                   DUP @state ;
+                   { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR %buyPrice
+} ;
+                   PUSH nat 1000000 ;
+                   AMOUNT ;
+                   MUL @micros ;
+                   EDIV ;
+                   IF_NONE
+                     { PUSH string "Bad amount" ; FAILWITH }
+                     { SENDER @addr ;
+                       DUP @addr ;
+                       CONTRACT unit ;
+                       IF_NONE
+                         { PUSH string "Cannot use this contract from non
+unit contract" ; FAILWITH }
+                         { { DIP { DUP @amount 2 } ; SWAP } ;
+                           CAR @tokens ;
+                           { DIP { { DIP { { DIP { DUP @state 2 } ; SWAP } }
+; SWAP } } ;
+                             SWAP } ;
+                           DUP ;
+                           CAR %balances ;
+                           SWAP ;
+                           CDR ;
+                           DUP ;
+                           CAR %name ;
+                           SWAP ;
+                           CDR ;
+                           DUP ;
+                           CAR %symbol ;
+                           SWAP ;
+                           CDR ;
+                           DUP ;
+                           CAR %decimals ;
+                           SWAP ;
+                           CDR ;
+                           CDR ;
+                           { DIP { { DIP { { DIP { { DIP { DUP @tokens 2 } ;
+SWAP } } ; SWAP } } ;
+                                     SWAP } } ;
+                             SWAP } ;
+                           { DIP { { DIP { { DIP { { DIP { { DIP { { DIP { {
+DIP { { DIP { { DIP { DUP @state 2 } ; SWAP } } ; SWAP } } ;
+                                                                            
+SWAP } } ;
+                                                                     SWAP } }
+;
+                                                             SWAP } } ;
+                                                     SWAP } } ;
+                                             SWAP } } ;
+                                     SWAP } } ;
+                             SWAP } ;
+                           { CDR ; CDR ; CDR ; CDR ; CAR %totalSupply } ;
+                           ADD ;
+                           PAIR %totalSupply ;
+                           SWAP ;
+                           PAIR %decimals ;
+                           SWAP ;
+                           PAIR %symbol ;
+                           SWAP ;
+                           PAIR %name ;
+                           SWAP ;
+                           PAIR @s1 %balances ;
+                           CDR ;
+                           { DIP { { DIP { { DIP { { DIP { DUP @state 2 } ;
+SWAP } } ; SWAP } } ;
+                                     SWAP } } ;
+                             SWAP } ;
+                           CAR %balances ;
+                           { DIP { { DIP { { DIP { { DIP { { DIP { DUP @state
+2 } ; SWAP } } ; SWAP } } ;
+                                             SWAP } } ;
+                                     SWAP } } ;
+                             SWAP } ;
+                           CAR %balances ;
+                           { DIP { { DIP { { DIP { { DIP { DUP @addr 2 } ;
+SWAP } } ; SWAP } } ;
+                                     SWAP } } ;
+                             SWAP } ;
+                           GET ;
+                           IF_NONE { PUSH nat 0 } {} ;
+                           RENAME @have ;
+                           { DIP { { DIP { DUP @tokens 2 } ; SWAP } } ; SWAP
+} ;
+                           ADD ;
+                           { DIP { { DIP { { DIP { { DIP { DUP @addr 2 } ;
+SWAP } } ; SWAP } } ;
+                                     SWAP } } ;
+                             SWAP } ;
+                           DIP { SOME } ;
+                           DIP { DIP { DIP { DIP { DROP ; DROP } } } } ;
+                           UPDATE ;
+                           PAIR @s2 %balances ;
+                           NIL operation ;
+                           PAIR } ;
+                       DIP { DROP ; DROP } } ;
+                   DIP { DROP ; DROP } }
+                 { IF_LEFT
+                     { RENAME @amount_slash_14 ;
+                       { DIP { DUP @storage 2 } ; SWAP } ;
+                       PUSH mutez 1000000000000 ;
+                       PUSH mutez 1000000 ;
+                       { DIP { { DIP { DUP @amount 2 } ; SWAP } } ; SWAP } ;
+                       MUL @zamt ;
+                       EDIV ;
+                       IF_NONE
+                         { PUSH string "bad amount" ; FAILWITH }
+                         { SENDER @addr ;
+                           PUSH mutez 0 ;
+                           AMOUNT @txAmount ;
+                           COMPARE ;
+                           NEQ ;
+                           IF { PUSH string "cannot buy and sell in same
+transaction" ; FAILWITH }
+                              { { DIP { DUP @state 2 } ; SWAP } ;
+                                CAR %balances ;
+                                DUP @addr 2 ;
+                                GET ;
+                                IF_NONE { PUSH nat 0 } {} ;
+                                RENAME @have ;
+                                DUP @have ;
+                                { DIP { { DIP { { DIP { { DIP { DUP @amount 2
+} ; SWAP } } ; SWAP } } ;
+                                          SWAP } } ;
+                                  SWAP } ;
+                                COMPARE ;
+                                GT ;
+                                IF { PUSH string "The address does not have
+that much stored" ; FAILWITH }
+                                   { DUP @addr 2 ;
+                                     CONTRACT unit ;
+                                     IF_NONE
+                                       { DUP @addr 2 ;
+                                         PUSH string "Cannot recover bool
+contract from:" ;
+                                         PAIR ;
+                                         FAILWITH }
+                                       { { DIP { { DIP { { DIP { { DIP { DUP
+@amount 2 } ; SWAP } } ; SWAP } } ;
+                                                   SWAP } } ;
+                                           SWAP } ;
+                                         { DIP { { DIP { { DIP { { DIP { DUP
+@state 2 } ; SWAP } } ; SWAP } } ;
+                                                   SWAP } } ;
+                                           SWAP } ;
+                                         { CDR ; CDR ; CDR ; CDR ; CAR
+%totalSupply } ;
+                                         SUB ;
+                                         DUP ;
+                                         ABS ;
+                                         SWAP ;
+                                         GE ;
+                                         IF { DUP @dst 2 ;
+                                              { DIP { { DIP { { DIP { { DIP {
+{ DIP { DUP @state 2 } ; SWAP } } ; SWAP } } ;
+                                                                SWAP } } ;
+                                                        SWAP } } ;
+                                                SWAP } ;
+                                              { CDR ; CDR ; CDR ; CDR ; CDR ;
+CDR ; CDR ; CDR %sellPrice } ;
+                                              { DIP { { DIP { { DIP { { DIP {
+{ DIP { DUP 2 } ; SWAP } } ; SWAP } } ;
+                                                                SWAP } } ;
+                                                        SWAP } } ;
+                                                SWAP } ;
+                                              CAR @nonMicros ;
+                                              MUL @toSend ;
+                                              UNIT ;
+                                              TRANSFER_TOKENS @op ;
+                                              { DIP { { DIP { { DIP { { DIP {
+{ DIP { { DIP { DUP @amount 2 } ; SWAP } } ; SWAP } } ;
+                                                                        SWAP
+} } ;
+                                                                SWAP } } ;
+                                                        SWAP } } ;
+                                                SWAP } ;
+                                              { DIP { { DIP { { DIP { DUP
+@have 2 } ; SWAP } } ; SWAP } } ;
+                                                SWAP } ;
+                                              SUB ;
+                                              DUP ;
+                                              ABS ;
+                                              SWAP ;
+                                              GE ;
+                                              IF { { DIP { { DIP { { DIP { {
+DIP { { DIP { { DIP { DUP @state 2 } ; SWAP } } ; SWAP } } ;
+                                                                            
+SWAP } } ;
+                                                                     SWAP } }
+;
+                                                             SWAP } } ;
+                                                     SWAP } ;
+                                                   DUP ;
+                                                   CAR %balances ;
+                                                   SWAP ;
+                                                   CDR ;
+                                                   DUP ;
+                                                   CAR %name ;
+                                                   SWAP ;
+                                                   CDR ;
+                                                   DUP ;
+                                                   CAR %symbol ;
+                                                   SWAP ;
+                                                   CDR ;
+                                                   DUP ;
+                                                   CAR %decimals ;
+                                                   SWAP ;
+                                                   CDR ;
+                                                   CDR ;
+                                                   { DIP { { DIP { { DIP { {
+DIP { { DIP { { DIP { DUP @newSupply 2 } ; SWAP } } ; SWAP } } ;
+                                                                            
+SWAP } } ;
+                                                                     SWAP } }
+;
+                                                             SWAP } } ;
+                                                     SWAP } ;
+                                                   PAIR %totalSupply ;
+                                                   SWAP ;
+                                                   PAIR %decimals ;
+                                                   SWAP ;
+                                                   PAIR %symbol ;
+                                                   SWAP ;
+                                                   PAIR %name ;
+                                                   SWAP ;
+                                                   PAIR @s1 %balances ;
+                                                   CDR ;
+                                                   { DIP { { DIP { { DIP { {
+DIP { { DIP { { DIP { { DIP { DUP @state 2 } ; SWAP } } ; SWAP } } ;
+                                                                             
+       SWAP } } ;
+                                                                            
+SWAP } } ;
+                                                                     SWAP } }
+;
+                                                             SWAP } } ;
+                                                     SWAP } ;
+                                                   CAR %balances ;
+                                                   { DIP { DUP @newBalance 2
+} ; SWAP } ;
+                                                   { DIP { { DIP { { DIP { {
+DIP { { DIP { { DIP { { DIP { DUP @addr 2 } ; SWAP } } ; SWAP } } ;
+                                                                             
+       SWAP } } ;
+                                                                            
+SWAP } } ;
+                                                                     SWAP } }
+;
+                                                             SWAP } } ;
+                                                     SWAP } ;
+                                                   DIP { SOME } ;
+                                                   DIP { DIP { DIP { DIP {
+DROP } } } } ;
+                                                   UPDATE ;
+                                                   PAIR @s2 %balances ;
+                                                   NIL operation ;
+                                                   { DIP { DUP 2 } ; SWAP } ;
+                                                   CONS ;
+                                                   PAIR }
+                                                 { PUSH string "bad amount" ;
+FAILWITH } ;
+                                              DIP { DROP ; DROP } }
+                                            { PUSH string "bad amount" ;
+FAILWITH } ;
+                                         DIP { DROP } } } ;
+                                DIP { DROP } } ;
+                           DIP { DROP ; DROP } } ;
+                       DIP { DROP ; DROP } }
+                     { IF_LEFT
+                         { RENAME @amt_slash_33 ;
+                           { DIP { DUP @storage 2 } ; SWAP } ;
+                           PUSH @dest (contract :UnitContract unit)
+"tz1LBEKXaxQbd5Gtzbc1ATCwc3pppu81aWGc" ;
+                           { DIP { DUP @amt 2 } ; SWAP } ;
+                           UNIT ;
+                           TRANSFER_TOKENS @op ;
+                           DUP @state 2 ;
+                           { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR %owner }
+;
+                           SOURCE @addr ;
+                           COMPARE ;
+                           NEQ ;
+                           IF { PUSH string "Only owner can withdraw" ;
+FAILWITH }
+                              { DUP @state 2 ;
+                                DUP ;
+                                CAR %balances ;
+                                SWAP ;
+                                CDR ;
+                                DUP ;
+                                CAR %name ;
+                                SWAP ;
+                                CDR ;
+                                DUP ;
+                                CAR %symbol ;
+                                SWAP ;
+                                CDR ;
+                                DUP ;
+                                CAR %decimals ;
+                                SWAP ;
+                                CDR ;
+                                DUP ;
+                                CAR %totalSupply ;
+                                SWAP ;
+                                CDR ;
+                                CDR ;
+                                { DIP { { DIP { { DIP { { DIP { { DIP { { DIP
+{ { DIP { DUP @amt 2 } ; SWAP } } ; SWAP } } ;
+                                                                  SWAP } } ;
+                                                          SWAP } } ;
+                                                  SWAP } } ;
+                                          SWAP } } ;
+                                  SWAP } ;
+                                { DIP { { DIP { { DIP { { DIP { { DIP { { DIP
+{ { DIP { DUP @state 2 } ; SWAP } } ; SWAP } } ;
+                                                                  SWAP } } ;
+                                                          SWAP } } ;
+                                                  SWAP } } ;
+                                          SWAP } } ;
+                                  SWAP } ;
+                                { CDR ; CDR ; CDR ; CDR ; CDR ; CAR %inBaker
+} ;
+                                ADD ;
+                                PAIR %inBaker ;
+                                SWAP ;
+                                PAIR %totalSupply ;
+                                SWAP ;
+                                PAIR %decimals ;
+                                SWAP ;
+                                PAIR %symbol ;
+                                SWAP ;
+                                PAIR %name ;
+                                SWAP ;
+                                PAIR @s1 %balances ;
+                                NIL operation ;
+                                { DIP { DUP @op 2 } ; SWAP } ;
+                                CONS ;
+                                PAIR } ;
+                           DIP { DROP ; DROP ; DROP } }
+                         { IF_LEFT
+                             { RENAME @nop_slash_39 ;
+                               { DIP { DUP @storage 2 } ; SWAP } ;
+                               DUP @state ;
+                               { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR
+%owner } ;
+                               SOURCE @addr ;
+                               COMPARE ;
+                               NEQ ;
+                               IF { PUSH string "Only owner can deposit" ;
+FAILWITH }
+                                  { DUP @state ;
+                                    DUP ;
+                                    CAR %balances ;
+                                    SWAP ;
+                                    CDR ;
+                                    DUP ;
+                                    CAR %name ;
+                                    SWAP ;
+                                    CDR ;
+                                    DUP ;
+                                    CAR %symbol ;
+                                    SWAP ;
+                                    CDR ;
+                                    DUP ;
+                                    CAR %decimals ;
+                                    SWAP ;
+                                    CDR ;
+                                    DUP ;
+                                    CAR %totalSupply ;
+                                    SWAP ;
+                                    CDR ;
+                                    CDR ;
+                                    AMOUNT @amount ;
+                                    { DIP { { DIP { { DIP { { DIP { { DIP { {
+DIP { DUP @state 2 } ; SWAP } } ; SWAP } } ;
+                                                              SWAP } } ;
+                                                      SWAP } } ;
+                                              SWAP } } ;
+                                      SWAP } ;
+                                    { CDR ; CDR ; CDR ; CDR ; CDR ; CAR
+%inBaker } ;
+                                    SUB ;
+                                    PAIR %inBaker ;
+                                    SWAP ;
+                                    PAIR %totalSupply ;
+                                    SWAP ;
+                                    PAIR %decimals ;
+                                    SWAP ;
+                                    PAIR %symbol ;
+                                    SWAP ;
+                                    PAIR %name ;
+                                    SWAP ;
+                                    PAIR @s1 %balances ;
+                                    NIL operation ;
+                                    PAIR } ;
+                               DIP { DROP ; DROP } }
+                             { RENAME @info_slash_44 ;
+                               { DIP { DUP @storage 2 } ; SWAP } ;
+                               DUP @state ;
+                               DUP ;
+                               CAR %balances ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %name ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %symbol ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %decimals ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %totalSupply ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %inBaker ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %owner ;
+                               SWAP ;
+                               CDR ;
+                               CAR %buyPrice ;
+                               { DIP { { DIP { { DIP { { DIP { { DIP { { DIP
+{ { DIP { { DIP { DUP @info 2 } ; SWAP } } ; SWAP } } ;
+                                                                         SWAP
+} } ;
+                                                                 SWAP } } ;
+                                                         SWAP } } ;
+                                                 SWAP } } ;
+                                         SWAP } } ;
+                                 SWAP } ;
+                               CAR %sellP ;
+                               SWAP ;
+                               PAIR %buyPrice %sellPrice ;
+                               SWAP ;
+                               PAIR %owner ;
+                               SWAP ;
+                               PAIR %inBaker ;
+                               SWAP ;
+                               PAIR %totalSupply ;
+                               SWAP ;
+                               PAIR %decimals ;
+                               SWAP ;
+                               PAIR %symbol ;
+                               SWAP ;
+                               PAIR %name ;
+                               SWAP ;
+                               PAIR @s1 %balances ;
+                               DUP ;
+                               CAR %balances ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %name ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %symbol ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %decimals ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %totalSupply ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %inBaker ;
+                               SWAP ;
+                               CDR ;
+                               DUP ;
+                               CAR %owner ;
+                               SWAP ;
+                               CDR ;
+                               CDR %sellPrice ;
+                               { DIP { { DIP { { DIP { { DIP { { DIP { { DIP
+{ { DIP { { DIP { DUP @info 2 } ; SWAP } } ; SWAP } } ;
+                                                                         SWAP
+} } ;
+                                                                 SWAP } } ;
+                                                         SWAP } } ;
+                                                 SWAP } } ;
+                                         SWAP } } ;
+                                 SWAP } ;
+                               { CDR ; CAR %buyP } ;
+                               PAIR %buyPrice %sellPrice ;
+                               SWAP ;
+                               PAIR %owner ;
+                               SWAP ;
+                               PAIR %inBaker ;
+                               SWAP ;
+                               PAIR %totalSupply ;
+                               SWAP ;
+                               PAIR %decimals ;
+                               SWAP ;
+                               PAIR %symbol ;
+                               SWAP ;
+                               PAIR %name ;
+                               SWAP ;
+                               PAIR @s2 %balances ;
+                               { DIP { DUP @info 2 } ; SWAP } ;
+                               CAR %sellP ;
+                               { DIP { { DIP { DUP @info 2 } ; SWAP } } ;
+SWAP } ;
+                               { CDR ; CAR %buyP } ;
+                               COMPARE ;
+                               LT ;
+                               IF { PUSH string "invalid price, enables
+arbitrage" ; FAILWITH }
+                                  { DUP @state 2 ;
+                                    { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR
+%owner } ;
+                                    SOURCE @addr ;
+                                    COMPARE ;
+                                    NEQ ;
+                                    IF { PUSH string "Only owner can set
+price" ; FAILWITH }
+                                       { DUP @s2 ;
+                                         DUP ;
+                                         CAR %balances ;
+                                         SWAP ;
+                                         CDR ;
+                                         DUP ;
+                                         CAR %name ;
+                                         SWAP ;
+                                         CDR ;
+                                         DUP ;
+                                         CAR %symbol ;
+                                         SWAP ;
+                                         CDR ;
+                                         DUP ;
+                                         CAR %decimals ;
+                                         SWAP ;
+                                         CDR ;
+                                         DUP ;
+                                         CAR %totalSupply ;
+                                         SWAP ;
+                                         CDR ;
+                                         CDR ;
+                                         { DIP { { DIP { { DIP { { DIP { {
+DIP { { DIP { { DIP { DUP @info 2 } ; SWAP } } ; SWAP } } ;
+                                                                          
+SWAP } } ;
+                                                                   SWAP } } ;
+                                                           SWAP } } ;
+                                                   SWAP } } ;
+                                           SWAP } ;
+                                         { CDR ; CDR %extraBalance } ;
+                                         { DIP { { DIP { { DIP { { DIP { {
+DIP { { DIP { DUP @s2 2 } ; SWAP } } ; SWAP } } ;
+                                                                   SWAP } } ;
+                                                           SWAP } } ;
+                                                   SWAP } } ;
+                                           SWAP } ;
+                                         { CDR ; CDR ; CDR ; CDR ; CDR ; CAR
+%inBaker } ;
+                                         ADD ;
+                                         PAIR %inBaker ;
+                                         SWAP ;
+                                         PAIR %totalSupply ;
+                                         SWAP ;
+                                         PAIR %decimals ;
+                                         SWAP ;
+                                         PAIR %symbol ;
+                                         SWAP ;
+                                         PAIR %name ;
+                                         SWAP ;
+                                         PAIR @s3 %balances ;
+                                         NIL operation ;
+                                         PAIR } } ;
+                               DIP { DROP ; DROP ; DROP } } } } } ;
+               DIP { DROP ; DROP } } ;
+             SWAP ;
+             CAR ;
+             SWAP ;
+             UNPAIR ;
+             DIP { SWAP ; PAIR } ;
+             PAIR } }
+}
