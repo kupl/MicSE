@@ -1,6 +1,8 @@
 exception Error of string
 exception InvalidExtraction of (Pre.Lib.Cfg.stmt * string)
 
+module CPSet = Core.Set.Poly
+
 (************************************************)
 (************************************************)
 
@@ -35,6 +37,6 @@ end
 
 (************************************************)
 
-val translate : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.vertex -> ProverLib.Bp.t -> (ProverLib.Bp.t list * Pre.Lib.Cfg.vertex list)
+val translate : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.vertex -> ProverLib.Bp.t -> (ProverLib.Bp.t list * Pre.Lib.Cfg.vertex CPSet.t)
 
 val extract : Pre.Lib.Cfg.t -> ProverLib.Bp.lst
