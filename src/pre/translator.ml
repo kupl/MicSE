@@ -2535,6 +2535,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
       (cfg_vtx_added, ())
       |> t_add_vinfos ~errtrace:(gen_emsg "nv vinfos")
             [
+              (in_v, Cfg_skip);
               (nv_1, Cfg_assign (v_r, E_operation (O_create_contract (pgm, v_1, v_2, v_3))));
               (nv_2, Cfg_assign (v_r_op, E_car v_r));
               (nv_3, Cfg_assign (v_r_ad, E_cdr v_r));
