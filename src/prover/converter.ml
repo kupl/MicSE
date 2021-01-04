@@ -386,7 +386,7 @@ let create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> Vlang.Expr.t
       let vv1, vv2 = cvf v1, cvf v2 in
       match cvt v1, cvt v2 with
       | kt1, T_map (kt2, _) when kt1 = kt2 -> V_get_xmoy (vv1, vv2)
-      | kt1, T_map (kt2, _) when kt1 = kt2 -> V_get_xbmo (vv1, vv2)
+      | kt1, T_big_map (kt2, _) when kt1 = kt2 -> V_get_xbmo (vv1, vv2)
       | _ -> err ()
     )
   | E_update (v1, v2, v3) -> (
