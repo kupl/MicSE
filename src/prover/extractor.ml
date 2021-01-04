@@ -24,7 +24,7 @@ module CFGUtils = struct
       let stmt = Cfg.read_stmt_from_vtx
       cfg cfg.main_exit in
       match stmt with
-      | Cfg_assign (_, _) -> "operation_storage"
+      | Cfg_assign (id, _) -> id
       | _ -> Error "read_exit_var: main-exit vertex error" |> raise
   end
 end
@@ -131,8 +131,7 @@ let rec translate : Pre.Lib.Cfg.t -> Pre.Lib.Cfg.vertex -> Bp.t -> (Bp.t list * 
       | Cfg_assign (id, e) -> begin
           let assert_inst = InstUtils.create_inst_assert_basic_prop cur_vtx e (id |> CFGUtils.read_var_type cfg) in
           let bp' = BPUtils.update_current_bp bp assert_inst in
-          let v = if cur_vtx = cfg.main_exit then "operation_storage" else id in
-          let assign_inst = InstUtils.create_inst_assign cur_vtx v e in
+          let assign_inst = InstUtils.create_inst_assign cur_vtx id e in
           let bp'' = BPUtils.update_current_bp bp' assign_inst in
           ([bp''], CPSet.empty)
         end
