@@ -32,14 +32,7 @@ end
 let collect_queries : PreLib.Cfg.t -> (Prover.Lib.Bp.lst) -> (Prover.Lib.Query.t list -> Prover.Lib.Query.t list) -> (Prover.Lib.Query.t list)
 =fun cfg bplist queryfilter -> begin
   let entry_var, exit_var = ((bplist.entry.var |> Option.get), (bplist.exit.var |> Option.get)) in
-  let whitelist : Pre.Lib.Cfg.ident -> bool = begin
-    fun s -> 
-      (s = Pre.Lib.Cfg.param_storage_name)
-      || (Extractor.is_trx_seq_param_name s)
-      || (Extractor.is_trx_seq_storage_name s)
-      || (Extractor.is_trx_seq_operation_name s)
-  end in
-  let queryll : Prover.Lib.Query.t list list = List.map (fun bp -> Prover.Converter.convert ~whitelist_mem:whitelist bp cfg ~entry_var:entry_var ~exit_var:exit_var |> Stdlib.snd) bplist.bps in
+  let queryll : Prover.Lib.Query.t list list = List.map (fun bp -> Prover.Converter.convert bp cfg ~entry_var:entry_var ~exit_var:exit_var |> Stdlib.snd) bplist.bps in
   List.flatten (List.map queryfilter queryll)
 end
 

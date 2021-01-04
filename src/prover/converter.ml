@@ -37,7 +37,6 @@ module Env = struct
     cfg : PreLib.Cfg.t;
     varname : Bp.var VarMap.t;        (* Variable-name Map          : Original Variable-name  -> Latest Variable-name *)
     varexpr : Vlang.Expr.t VarMap.t;  (* Variable to Expression Map : Variable-name           -> Expression of Verification Language *)
-    whitelist_mem : (Pre.Lib.Cfg.ident -> bool);
   }
   type t = body ref
   
@@ -53,14 +52,14 @@ module Env = struct
     String.sub v !idx (String.length v - !idx)
   end
 
-  let create : Pre.Lib.Cfg.t -> whitelist_mem:(Pre.Lib.Cfg.ident -> bool) -> t
-  =fun cfg ~whitelist_mem -> ref { cfg=cfg; varname=VarMap.empty; varexpr=VarMap.empty; whitelist_mem=whitelist_mem}
+  let create : Pre.Lib.Cfg.t -> t
+  =fun cfg -> ref { cfg=cfg; varname=VarMap.empty; varexpr=VarMap.empty }
 
   let read_vartype : PreLib.Cfg.ident -> env:t -> Vlang.typ
   =fun v ~env -> begin (* read_type_cfgvar *)
     let m = !env.cfg.type_info in (* cfg type info map *)
     match Pre.Lib.Cfg.CPMap.find m v with (* find v in cfg type info map *)
-    | None -> Error "read_vartype: Cannot find the variable" |> raise
+    | None -> Error ("read_vartype: Cannot find the variable [" ^ v ^ "]") |> raise
     | Some x -> CvUtils.to_vtyp x
   end
 
@@ -97,12 +96,14 @@ module Env = struct
   =fun  v ~env -> begin (* create_var_of_cfgvar *)
     let m = !env.varexpr in (* variable to expression map *)
     let cv = v |> read_varname ~env:env in (* current variable name of input variable *)
-    if !env.whitelist_mem v
-    (* if v = Pre.Lib.Cfg.param_storage_name *)
-    then Vlang.Expr.V_var ((v |> read_vartype ~env:env), v)
-    else match VarMap.find m cv with
-    | None -> Error ("read_expr_of_cfgvar: Variable " ^ v ^ " is not defined with any expression") |> raise
+    match VarMap.find m cv with
     | Some ce -> ce
+    | None -> begin
+        let var_expr = Vlang.Expr.V_var ((v |> read_vartype ~env:env), v) in
+        let nm = VarMap.add m ~key:cv ~data:var_expr |> (function | `Ok mm -> mm | `Duplicate -> Error "update_expr_of_cfgvar: Duplicate variable name" |> raise) in
+        let _ = env := { !env with varexpr=nm } in
+        var_expr
+      end
   end
   let update_expr_of_cfgvar : Pre.Lib.Cfg.ident -> Vlang.Expr.t -> env:t -> unit
   =fun v e ~env -> begin
@@ -569,12 +570,12 @@ let sp : Env.t -> (Vlang.t * Query.t list) -> (Bp.vertex * Bp.inst) -> (Vlang.t 
   | BI_skip -> (f, qs)
 end
 
-let convert : ?whitelist_mem:(Pre.Lib.Cfg.ident -> bool) -> Bp.t -> PreLib.Cfg.t -> entry_var:Bp.var -> exit_var:Bp.var -> (Vlang.t * Query.t list)
+let convert : Bp.t -> PreLib.Cfg.t -> entry_var:Bp.var -> exit_var:Bp.var -> (Vlang.t * Query.t list)
 = let open Vlang.Formula in
   let open Vlang.Expr in
-  fun ?(whitelist_mem=(fun x -> x = Pre.Lib.Cfg.param_storage_name)) bp cfg ~entry_var ~exit_var -> begin
+  fun bp cfg ~entry_var ~exit_var -> begin
   try
-    let cv_env : Env.t = Env.create cfg ~whitelist_mem:(whitelist_mem) in
+    let cv_env : Env.t = Env.create cfg in
     let _ = cv_env |> Env.update_stg ~stg:(`entry entry_var) in
     let (f, g) = ((bp.pre |> Inv.T.read_formula), (bp.post |> Inv.T.read_formula)) in
     let (f', qs) = Core.List.fold_left bp.body ~init:(f, []) ~f:(sp cv_env) in
