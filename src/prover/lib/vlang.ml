@@ -356,7 +356,7 @@ module Expr = struct
       | V_mul_ini (e1, e2)  -> "MUL(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_mul_iii (e1, e2)  -> "MUL(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_compare (e1, e2)  -> "CMP(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
-      | V_int_of_nat e1     -> "NAT(" ^ (e1 |> ts) ^ ")"
+      | V_int_of_nat e1     -> "INT(" ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
       (* Natural Number                                                        *)

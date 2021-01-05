@@ -109,12 +109,7 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_mul_ini (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
       | V_mul_iii (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
       | V_compare (e1, e2) -> smtexpr_of_compare e1 e2
-      | V_int_of_nat e -> begin
-          Smt.ZExpr.create_ite
-            ~cond:(Smt.ZInt.create_ge (soe e) Smt.ZInt.zero_)
-            ~t:(Smt.ZOption.create_some ~content:(soe e))
-            ~f:(Smt.ZOption.create_none ~content_sort:(Smt.ZNat.sort))
-        end
+      | V_int_of_nat e -> (e |> soe)
 
       (*************************************************************************)
       (* Natural Number                                                        *)
