@@ -615,10 +615,10 @@ module Formula = struct
       (* MicSE-Cfg Specific Boolean *)  
       | VF_mich_if e1                 -> "("  ^ (e1 |> ets) ^ "=" ^ "B_True"     ^ ")"
       | VF_mich_if_none e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "NONE"       ^ ")"
-      | VF_mich_if_left e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "LEFT(_)"    ^ ")"
-      | VF_mich_if_cons e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "CONS(_,_)"  ^ ")"
+      | VF_mich_if_left e1            -> "("  ^ (e1 |> ets) ^ "IS_LEFT"          ^ ")"
+      | VF_mich_if_cons e1            -> "("  ^ (e1 |> ets) ^ "IS_CONS"          ^ ")"
       | VF_mich_loop e1               -> "("  ^ (e1 |> ets) ^ "=" ^ "B_True"     ^ ")"
-      | VF_mich_loop_left e1          -> "("  ^ (e1 |> ets) ^ "=" ^ "LEFT(_)"    ^ ")"
+      | VF_mich_loop_left e1          -> "("  ^ (e1 |> ets) ^ "IS_LEFT"          ^ ")"
       | VF_mich_map_l e1              -> "!(" ^ (e1 |> ets) ^ "=" ^ "L_[]"       ^ ")"
       | VF_mich_map_m e1              -> "!(" ^ (e1 |> ets) ^ "=" ^ "M_{}"       ^ ")"
       | VF_mich_iter_l e1             -> "!(" ^ (e1 |> ets) ^ "=" ^ "L_[]"       ^ ")"
