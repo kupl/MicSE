@@ -59,7 +59,7 @@ module FormulaUtils : sig
 end
 
 (* main convert functions - variable, michelson datas(literal), and cfg-expressions *)
-val create_expr_of_michdata_i : PreLib.Mich.data -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t
+val create_expr_of_michdata_i : PreLib.Mich.data PreLib.Mich.t -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t
 val create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t
 val create_expr_of_cfgexpr : Env.t -> PreLib.Cfg.expr -> ProverLib.Vlang.Expr.t
 val create_formula_of_cond : Env.t -> ProverLib.Bp.cond -> ProverLib.Vlang.v_formula

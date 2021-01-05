@@ -214,7 +214,7 @@ module FormulaUtils = struct
 end
 
 
-let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.t
+let rec create_expr_of_michdata_i : PreLib.Mich.data PreLib.Mich.t -> Vlang.typ -> Vlang.Expr.t
 = let open PreLib.Mich in
   let open Vlang.Ty in
   let open Vlang.Expr in
@@ -225,8 +225,9 @@ let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.
     | D_elt (k, v) -> acc |> Core.Map.Poly.add ~key:(cem k kt) ~data:(cem v vt) |> (function | `Ok m -> m | `Duplicate -> acc)
     | _ -> Error "create_expr_of_michdata_i: Invalid data in elt list" |> raise
   end in
-  fun michdata vtyp -> begin
-    match (vtyp, michdata) with 
+  fun michdata_t vtyp -> begin
+    let michdata_body = (PreLib.Mich.get_d michdata_t) in
+    match (vtyp, michdata_body) with 
     | T_int, D_int zn                   -> V_lit_int zn
     | T_nat, D_int zn                   -> V_lit_nat zn
     | T_mutez, D_int zn                 -> V_lit_mutez zn
@@ -260,11 +261,11 @@ let rec create_expr_of_michdata_i : PreLib.Mich.data -> Vlang.typ -> Vlang.Expr.
                                                                     ~f:(map_func ~kt:kt ~vt:vt))
     | T_lambda (t1, t2), D_lambda it    -> V_lit_lambda (t1, t2, it)
     | _, D_elt _                        -> Error "create_expr_of_michdata_i : Invalid data D_elt" |> raise
-    | _                                 -> Error "create_expr_of_michdata_i : Invalid match" |> raise
+    | _                                 -> Error ("create_expr_of_michdata_i : Invalid match between type [" ^ (vtyp |> Vlang.Ty.to_string) ^ "] and [" ^ (michdata_t |> Pre.Lib.Mich.string_of_datat_ol) ^ "]") |> raise
 end
 and create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> Vlang.typ -> Vlang.Expr.t
 = fun michdata_t vtyp -> begin (* Wrapping function for create_expr_of_michdata_i *)
-  create_expr_of_michdata_i (PreLib.Mich.get_d michdata_t) vtyp
+  create_expr_of_michdata_i michdata_t vtyp
 end
 
 (* TODO (plan) : make this function transaction-specific / amount, balance, source, sender, ... *)
