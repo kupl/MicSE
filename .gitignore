@@ -5,3 +5,6 @@ _build
 # Etc
 DS_Store
 .vscode
+
+# Benchmark outputs
+/scripts/output/
