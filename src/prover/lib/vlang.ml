@@ -715,7 +715,7 @@ module TypeUtil = struct
     | V_unlift_right e -> (match toe e with | T_or (_, tt) -> tt | _ as tt -> invalidtyp tt eee)
     | V_hd_l e -> (match toe e with | T_list tt -> tt | _ as tt -> invalidtyp tt eee)
     | V_hd_s e -> (match toe e with | T_set tt -> tt | _ as tt -> invalidtyp tt eee)
-    | V_exec (e1, _) -> (match toe e1 with | T_lambda (_, t2) -> t2 | _ as tt -> invalidtyp tt eee)
+    | V_exec (_, e2) -> (match toe e2 with | T_lambda (_, t2) -> t2 | _ as tt -> invalidtyp tt eee)
     | V_dup e -> toe e
     | V_itself e -> toe e
 
