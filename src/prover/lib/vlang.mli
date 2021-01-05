@@ -349,8 +349,10 @@ module TypeUtil : sig
   type michtyp = PreLib.Mich.typ
   type mty = PreLib.Mich.typ PreLib.Mich.t
   
-  exception InvalidTyp of typ
-  val invalidtyp : typ -> 'a
+  exception Error of string
+
+  val invalid_typ_of_expr : typ -> Expr.t -> func:string -> 'a
+  val invalid_typ : typ -> func:string -> 'a
 
   val ty_of_michtyp : michtyp -> typ
   val ty_of_mty : mty -> typ
