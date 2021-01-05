@@ -4,4 +4,4 @@ module VlGen = VlGen *)
 
 
 
-val prove : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
+val main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit

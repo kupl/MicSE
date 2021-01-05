@@ -1585,3 +1585,87 @@ module Renaming = struct
   end (* function var_in_expr_formula end *) 
 
 end (* module Renaming end *)
+
+
+module Component = struct
+  
+  module CPSet = Core.Set.Poly (* sugar *)
+  
+  (* "comp" : component. precondition is not same as verification's precondition. *)
+    (* multiple component will be combined to generate an invariant like,
+      comp1 : {precondition=(IF_LEFT v22); body=(UNLIFT_LEFT v22)}
+      comp2 : {precondition=(IF_RIGHT v33); body=(UNLIFT_RIGHT v33)}
+      invariant candidate : (IF_LEFT v22) -> ((IF_right v33) -> (UNLIFT_LEFT v22 < UNLIFT_RIGHT v33))
+    *)
+  type comp = {
+    precond_lst : Formula.t list;
+    typ : Ty.t;
+    body : Expr.t;
+  }
+  type t = comp CPSet.t
+
+  let fold_precond : Formula.t list -> Formula.t
+  =fun flist -> begin 
+    List.fold_left
+      (fun accf f -> Formula.VF_imply (f, accf)) 
+      VF_true
+      flist
+  end (* function fold_comp_pecond end *)
+
+
+  (* Q. which components to gather
+     A. EVERYTHING
+      - option -> none & (some _) & rec(unlifted_option)
+      - pair -> pair-itself & rec(fst) & rec(snd)
+      - or -> left & right & rec(unlifted_left) & rec(unlifted_right)
+      - others -> itself
+  *)
+  let rec gather_comps_i : comp -> t -> t
+  =fun {precond_lst=cur_prec_lst; typ=cur_typ; body=cur_body;} acc_t -> begin
+    (* Precondition & body construction example:
+      For example, you want to traverse to RIGHT of RIGHT of LEFT of variable-23.
+      First, this function will generate a component {True; v23}.
+      Second, this function will make {If-left (v23); Unlift-left v23}
+      Third, this function will make {If-left (v23) -> (If-right (Unlift-left v23)); Unlift-right (Unlift-left v23) }
+      Last, this function will make {If-left (v23) -> (If-right (Unlift-left v23) -> If-right (Unlift-right(Unlift-left v23)));
+                                      Unlift-right (Unlift-right (Unlift-left v23))}
+      In this implementation, we store each precondition pieces in list (order preserved as REVERSED)
+        and fold them (using defined "fold_comp_precond" function above) to construct precondition when needed.
+    *)
+    match cur_typ with
+    | T_option i_ty -> begin
+        let comp_none = { precond_lst = cur_prec_lst; typ = cur_typ; body = V_none i_ty; } in
+        let some_precond = Formula.VF_not (VF_mich_if_none cur_body) :: cur_prec_lst in
+        let comp_some = { precond_lst = some_precond; typ = cur_typ; body = V_some (V_unlift_option cur_body); } in
+        let comp_some_unlifted = { precond_lst = some_precond; typ = i_ty; body = V_unlift_option cur_body; } in
+        gather_comps_i comp_some_unlifted (CPSet.add (CPSet.add acc_t comp_none) comp_some)
+      end
+    | T_pair (i1_ty, i2_ty) -> begin
+        let comp_pair = { precond_lst = cur_prec_lst; typ = cur_typ; body = cur_body; } in
+        let comp_fst = { precond_lst = cur_prec_lst; typ = i1_ty; body = V_car cur_body; } in
+        let acc_t1 = gather_comps_i comp_fst (CPSet.add acc_t comp_pair) in
+        let comp_snd = { precond_lst = cur_prec_lst; typ = i2_ty; body = V_cdr cur_body; } in
+        gather_comps_i comp_snd acc_t1
+      end
+    | T_or (i1_ty, i2_ty) -> begin
+        let left_precond = Formula.VF_mich_if_left cur_body :: cur_prec_lst in
+        let right_precond = Formula.VF_not (Formula.VF_mich_if_left cur_body) :: cur_prec_lst in
+        let comp_left = { precond_lst = left_precond; typ = cur_typ; body = V_left (cur_typ, V_unlift_left cur_body)} in
+        let comp_right = { precond_lst = right_precond; typ = cur_typ; body = V_right (cur_typ, V_unlift_right cur_body)} in
+        let comp_left_unlifted = {precond_lst = left_precond; typ = i1_ty; body = V_unlift_left cur_body} in
+        let comp_right_unlifted = {precond_lst = right_precond; typ = i2_ty; body = V_unlift_right cur_body} in
+        let acc_t1 = CPSet.add (CPSet.add acc_t comp_left) comp_right in
+        let acc_t2 = gather_comps_i comp_left_unlifted acc_t1 in
+        let acc_t3 = gather_comps_i comp_right_unlifted acc_t2 in
+        acc_t3
+      end
+    | _ -> begin
+        CPSet.add acc_t {precond_lst=cur_prec_lst; typ=cur_typ; body=cur_body;}
+      end
+  end (* function gather_comps_i end *)
+
+  let gather : Expr.t -> t
+  =fun e -> gather_comps_i {precond_lst=[]; typ=(TypeUtil.ty_of_expr e); body=e} CPSet.empty
+
+
+end (* module Component end *)

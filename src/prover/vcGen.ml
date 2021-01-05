@@ -105,9 +105,28 @@ let sp : sp_fold_acc -> ProverLib.Bp.basic_node -> sp_fold_acc
   | BI_skip -> {sfa_name_env=sfa_name_env; sfa_str_post=sfa_str_post; sfa_queries=sfa_queries;} (* Nothing happen *)
 end (* function sp end *)
 
+let sp_for_main_exit_vtx : sp_fold_acc -> ProverLib.Bp.basic_node -> sp_fold_acc
+= let open ProverLib.Bp in
+  let open ProverLib.Vlang in
+  fun {sfa_name_env; sfa_str_post; sfa_queries} {glenv_ref; cfgvtx; inst} -> begin
+  (* we assume that the main_exit_vtx comes with the statement "BI_assign (rhs-var, E_itself (lhs-var))" 
+    and the rhs-var's type is same as the (operation list * storage) type.
+    So, this function will add additional basic-node implicitly, "BI_assign (storage-var, E_cdr (rhs-var))"
+  *)
+  match inst with
+  | BI_assign (t, v, _) ->
+    let sp_acc' = sp {sfa_name_env; sfa_str_post; sfa_queries} {glenv_ref; cfgvtx; inst} in
+    let storage_vtyp = TypeUtil.get_innertyp2 t |> Stdlib.snd in
+    let last_inst : inst = BI_assign (storage_vtyp, !glenv_ref.gv_storage, Expr.V_cdr (V_var (t, v))) in
+    sp sp_acc' {glenv_ref; cfgvtx; inst=last_inst}
+  | _ -> Stdlib.failwith ("VcGen.sp_for_main_exit_vtx : match failed with the basic_node : " ^ (JsonRep.of_basic_node {glenv_ref; cfgvtx; inst} |> Yojson.Basic.pretty_to_string))
+end (* function sp_for_main_exit_vtx end *)
+
+
 (* renaming process performed here *)
 let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
-= let open ProverLib.Vlang in
+= let open ProverLib.Bp in
+  let open ProverLib.Vlang in
   fun cfg {entry_vtx; exit_vtx; content} -> begin
     (* 1. evaluate strongest postcondition 
         - name_env : environment for naming
@@ -122,7 +141,14 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
       sfa_queries = [];
     } in
     let sp_fold_result : sp_fold_acc =
-      List.fold_left sp initv content
+      (* originally, it just needs "sp" function, but the bad design in Cfg makes this procedure
+        should check whether the basic-node's vertex is main-exit or not for every recursive call.
+      *)
+      (* "List.fold_left sp initv content" *)
+      List.fold_left 
+        (fun sf_acc bnode -> (if bnode.cfgvtx = cfg.main_exit then sp_for_main_exit_vtx else sp) sf_acc bnode)
+        initv
+        content
     in
     (* 2. make a space to insert invariant 
         In this implementation, we need to change the variable name in the exit_invariant.
@@ -160,7 +186,7 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
         Formula.VF_imply (
           Formula.VF_and [entry_inv; sp_fold_result.sfa_str_post],
           exit_inv
-        ) 
+        )
       in
       (* construct a query verification-condition list *)
       let qvcl : (ProverLib.Vlang.t * ProverLib.Bp.query_category * PreLib.Cfg.vertex) list =

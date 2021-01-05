@@ -387,3 +387,23 @@ module Renaming : sig
   val var_in_expr : Expr.var -> Expr.var -> Expr.t -> Expr.t
   val var_in_expr_formula : Expr.var -> Expr.var -> t -> t
 end (* module Renaming end *)
+
+module Component : sig
+
+  (* "comp" : component. precondition is not same as verification's precondition. *)
+    (* multiple component will be combined to generate an invariant like,
+      comp1 : {precondition=(IF_LEFT v22); body=(UNLIFT_LEFT v22)}
+      comp2 : {precondition=(IF_RIGHT v33); body=(UNLIFT_RIGHT v33)}
+      invariant candidate : (IF_LEFT v22) -> ((IF_right v33) -> (UNLIFT_LEFT v22 < UNLIFT_RIGHT v33))
+    *)
+    type comp = {
+      precond_lst : Formula.t list;
+      typ : Ty.t;
+      body : Expr.t;
+    }
+    type t = comp Core.Set.Poly.t
+
+    val fold_precond : Formula.t list -> Formula.t
+    val gather : Expr.t -> t
+
+end (* module Component end *)

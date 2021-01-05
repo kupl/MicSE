@@ -4,7 +4,7 @@ let main : unit -> unit
   (* 1. Cfg Construction *)
   let (cfg, init_stg_opt) : Cfg.t * (Adt.data option) = Pre.pre_process (!Utils.Options.input_file) in
   (* 2. Run Prover *)
-  let _ = Prover.prove cfg init_stg_opt in
+  let _ = Prover.main cfg init_stg_opt in
   ()
 end
 
