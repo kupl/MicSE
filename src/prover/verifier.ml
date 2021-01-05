@@ -34,7 +34,7 @@ let rec smtsort_of_vlangtyp : Vlang.Ty.t -> Smt.ZSort.t
   | T_bytes -> Smt.ZBytes.sort
   | T_mutez -> Smt.ZMutez.sort
   | T_bool -> Smt.ZBool.sort
-  | T_key_hash -> Smt.ZStr.sort
+  | T_key_hash -> Smt.ZKeyHash.sort
   | T_timestamp -> Smt.ZInt.sort
   | T_address -> Smt.ZAddress.sort
 end (* function smttyp_of_vlangtyp end *)
