@@ -61,7 +61,7 @@ let rec smtexpr_of_compare : Vlang.Expr.t -> Vlang.Expr.t -> Smt.ZExpr.t
     | T_address, T_address -> Smt.ZAddress.create_cmp (e1 |> soe) (e2 |> soe)
     | T_pair (_, _), T_pair (_, _) -> err e1
     | t1, t2 when t1 = t2 -> Stdlib.failwith ("Prover.Verifier.smtexpr_of_compare : expression like this cannot be compared")
-    | _ -> Stdlib.failwith ("Prover.Verifier.smtexpr_of_compare : two expressions have different types")
+    | _ -> Stdlib.failwith ("Prover.Verifier.smtexpr_of_compare : two expressions have different types [" ^ (e1 |> Vlang.TypeUtil.ty_of_expr |> Vlang.Ty.to_string) ^ "] & [" ^ (e2 |> Vlang.TypeUtil.ty_of_expr |> Vlang.Ty.to_string) ^ "]")
 
 end (* smtexpr_of_compare end *)
 
@@ -69,7 +69,8 @@ end (* smtexpr_of_compare end *)
 and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
 = let open Vlang.Expr in
   let soe = smtexpr_of_vlangexpr in (* syntax sugar *)
-  let err e = Stdlib.raise (Not_Implemented_e e) in (* syntax sugar *)
+  (* let err e = Stdlib.raise (Not_Implemented_e e) in syntax sugar *)
+  let err (e: Vlang.Expr.t) = e |> Vlang.TypeUtil.ty_of_expr |> smtsort_of_vlangtyp |> Smt.ZExpr.create_dummy in
   fun ve -> begin
     try
       match ve with
@@ -246,37 +247,37 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_niin (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_inin (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_iiin (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_mnmm (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe |> Smt.ZInt.to_zmutez) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZMutez.create_div dividend divisor) ~snd:(Smt.ZMutez.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_mmnm (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZMutez.create_div dividend divisor |> Smt.ZMutez.to_zint) ~snd:(Smt.ZMutez.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_get_xmoy (e1, e2) -> Smt.ZMap.read_value ~key:(e1 |> soe) ~map:(e2 |> soe)
       | V_get_xbmo (e1, e2) -> Smt.ZMap.read_value ~key:(e1 |> soe) ~map:(e2 |> soe)
