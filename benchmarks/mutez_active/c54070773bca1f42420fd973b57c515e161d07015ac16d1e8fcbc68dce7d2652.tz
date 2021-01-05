@@ -1,62 +1,59 @@
 # Balance: 12402.5
-{ parameter
-    (pair (pair :payload
-             (nat %counter)
-             (or :action
-                (pair :transfer (mutez %amount) (contract %dest unit))
-                (or (option %delegate key_hash)
-                    (pair %change_keys (nat %threshold) (list %keys key)))))
-          (list %sigs (option signature))) ;
-  storage (pair (nat %stored_counter) (pair (nat %threshold) (list %keys
-key))) ;
-  code { UNPAIR ;
-         SWAP ;
-         DUP ;
-         DIP { SWAP } ;
-         DIP { UNPAIR ;
-               DUP ;
-               SELF ;
-               ADDRESS ;
-               CHAIN_ID ;
-               PAIR ;
-               PAIR ;
-               PACK ;
-               DIP { { { DUP ; CAR @counter ; DIP { CDR } } } ; DIP { SWAP }
-} ;
-               SWAP } ;
-         { { DUP ; CAR @stored_counter ; DIP { CDR } } } ;
-         DIP { SWAP } ;
-         ASSERT_CMPEQ ;
-         DIP { SWAP } ;
-         { { DUP ; CAR @threshold ; DIP { CDR @keys } } } ;
-         DIP { PUSH @valid nat 0 ;
-               SWAP ;
-               ITER { DIP { SWAP } ;
-                      SWAP ;
-                      IF_CONS
-                        { IF_SOME
-                            { SWAP ;
-                              DIP { SWAP ;
-                                    DIP 2 { DUP 2 } ;
-                                    { DUP 3 ;
-                                      DIP { CHECK_SIGNATURE } ;
-                                      SWAP ;
-                                      IF { DROP } { FAILWITH } } ;
-                                    PUSH nat 1 ;
-                                    ADD @valid } }
-                            { SWAP ; DROP } }
-                        { FAIL } ;
-                      SWAP } } ;
-         ASSERT_CMPLE ;
-         DROP ;
-         DROP ;
-         DIP { UNPAIR ; PUSH nat 1 ; ADD @new_counter ; PAIR } ;
-         NIL operation ;
-         SWAP ;
-         IF_LEFT
-           { UNPAIR ; UNIT ; TRANSFER_TOKENS ; CONS }
-           { IF_LEFT
-               { SET_DELEGATE ; CONS }
-               { DIP { SWAP ; CAR } ; SWAP ; PAIR ; SWAP } } ;
-         PAIR }
-}
+parameter
+  (pair (pair :payload
+           (nat %counter)
+           (or :action
+              (pair :transfer (mutez %amount) (contract %dest unit))
+              (or (option %delegate key_hash)
+                  (pair %change_keys (nat %threshold) (list %keys key)))))
+        (list %sigs (option signature))) ;
+storage (pair (nat %stored_counter) (pair (nat %threshold) (list %keys key))) ;
+code { UNPAIR ;
+       SWAP ;
+       DUP ;
+       DIP { SWAP } ;
+       DIP { UNPAIR ;
+             DUP ;
+             SELF ;
+             ADDRESS ;
+             CHAIN_ID ;
+             PAIR ;
+             PAIR ;
+             PACK ;
+             DIP { { { DUP ; CAR @counter ; DIP { CDR } } } ; DIP { SWAP } } ;
+             SWAP } ;
+       { { DUP ; CAR @stored_counter ; DIP { CDR } } } ;
+       DIP { SWAP } ;
+       ASSERT_CMPEQ ;
+       DIP { SWAP } ;
+       { { DUP ; CAR @threshold ; DIP { CDR @keys } } } ;
+       DIP { PUSH @valid nat 0 ;
+             SWAP ;
+             ITER { DIP { SWAP } ;
+                    SWAP ;
+                    IF_CONS
+                      { IF_SOME
+                          { SWAP ;
+                            DIP { SWAP ;
+                                  DIP 2 { DUP 2 } ;
+                                  { DUP 3 ;
+                                    DIP { CHECK_SIGNATURE } ;
+                                    SWAP ;
+                                    IF { DROP } { FAILWITH } } ;
+                                  PUSH nat 1 ;
+                                  ADD @valid } }
+                          { SWAP ; DROP } }
+                      { FAIL } ;
+                    SWAP } } ;
+       ASSERT_CMPLE ;
+       DROP ;
+       DROP ;
+       DIP { UNPAIR ; PUSH nat 1 ; ADD @new_counter ; PAIR } ;
+       NIL operation ;
+       SWAP ;
+       IF_LEFT
+         { UNPAIR ; UNIT ; TRANSFER_TOKENS ; CONS }
+         { IF_LEFT
+             { SET_DELEGATE ; CONS }
+             { DIP { SWAP ; CAR } ; SWAP ; PAIR ; SWAP } } ;
+       PAIR }
