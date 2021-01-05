@@ -330,9 +330,9 @@ module Expr = struct
       | V_unlift_option e1  -> "UNOPTION("  ^ (e1 |> ts) ^ ")"
       | V_unlift_left e1    -> "UNLEFT("    ^ (e1 |> ts) ^ ")"
       | V_unlift_right e1   -> "UNRIGHT("   ^ (e1 |> ts) ^ ")"
-      | V_hd_l e1           -> "HD"         ^ (e1 |> ts) ^ ")"
-      | V_hd_s e1           -> "HD"         ^ (e1 |> ts) ^ ")"
-      | V_exec (e1, e2)     -> "EXEC"       ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_hd_l e1           -> "HD("        ^ (e1 |> ts) ^ ")"
+      | V_hd_s e1           -> "HD("        ^ (e1 |> ts) ^ ")"
+      | V_exec (e1, e2)     -> "EXEC("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_dup e1            -> ""           ^ (e1 |> ts)
       | V_itself e1         -> ""           ^ (e1 |> ts)
   
