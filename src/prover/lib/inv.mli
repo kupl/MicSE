@@ -12,13 +12,13 @@ type t = {
 
 
 (* invgen_info should contain information about which variables can be used when generating invariants. 
-    In current implementation, we will remain loop-invariant's component empty. 
-    Available variables are enough to generate invariant.
+    Query-Verification condition will convey a set of variables which appeared in that basic-path,
+    so this datatype does not need to carry a set of variables appeared in each basicpaths.
 *)
 type invgen_info = {
-    igi_trx : Vlang.Component.t; (* available vlang-expr (component) set *)
-    (* "igi_loop" : loop-vertex -> available vlang-expr set * (component-set (empty in current implementation)) *)
-    igi_loop : (int, (Vlang.Ty.t * Vlang.Expr.t) CPSet.t * Vlang.Component.t CPSet.t) CPMap.t;
+    igi_stgcomp : Vlang.Component.t; (* storage's available vlang-expr (component) set *)
+    igi_glvar_set : (Vlang.Ty.t * Vlang.Expr.t) CPSet.t;  (* global variables. they are constnat in only one transaction execution (without storage) *)
+    igi_loopv_set : PreLib.Cfg.vertex CPSet.t;  (* a vertex set contains every loop vertices *)
     igi_entryvtx : PreLib.Cfg.vertex; (* cfg entry vertex *)
     igi_exitvtx : PreLib.Cfg.vertex;  (* cfg exit vertex *)
 }

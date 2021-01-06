@@ -403,7 +403,12 @@ module Component : sig
     }
     type t = comp Core.Set.Poly.t
 
+    (* "fold_precond" should be generate an invariant's precondition when generate an invariant which uses component. *)
     val fold_precond : Formula.t list -> Formula.t
+
+    (* "gather" gather components from the given expression.
+        Mostly, the given expression will be an transaction-storage variable.
+    *)
     val gather : Expr.t -> t
 
 end (* module Component end *)

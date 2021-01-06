@@ -24,6 +24,7 @@ type t = {
   entry_vtx : PreLib.Cfg.vertex;
   exit_vtx : PreLib.Cfg.vertex;
   content : basic_node list;
+  appeared_vars : Vlang.Expr.t Core.Set.Poly.t;
 }
 
 let remove_skip_inst : t -> t
@@ -31,6 +32,19 @@ let remove_skip_inst : t -> t
   let skip_foldf = (fun acc x -> if x.inst = BI_skip then acc else x :: acc) in
   {bp with content=(List.fold_left skip_foldf [] bp.content |> List.rev)}
 end
+
+let collect_assigned_vars : t -> Vlang.Expr.t Core.Set.Poly.t
+=fun bp -> begin
+  List.fold_left
+    (fun accs bnode ->
+      match bnode.inst with
+      | BI_assign (t, v, _) -> Core.Set.Poly.add accs (Vlang.Expr.V_var (t, v))
+      | _ -> accs
+    )
+    Core.Set.Poly.empty
+    bp.content
+end (* function collect_assigned_vars end *)
+
 
 
 module JsonRep = struct

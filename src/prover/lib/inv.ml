@@ -12,23 +12,23 @@ type t = {
 
 
 (* invgen_info should contain information about which variables can be used when generating invariants. 
-    In current implementation, we will remain loop-invariant's component empty. 
-    Available variables are enough to generate invariant.
+    Query-Verification condition will convey a set of variables which appeared in that basic-path,
+    so this datatype does not need to carry a set of variables appeared in each basicpaths.
 *)
 type invgen_info = {
-    igi_trx : Vlang.Component.t; (* available vlang-expr (component) set *)
-    (* "igi_loop" : loop-vertex -> available vlang-expr set * (component-set (empty in current implementation)) *)
-    igi_loop : (int, (Vlang.Ty.t * Vlang.Expr.t) CPSet.t * Vlang.Component.t CPSet.t) CPMap.t;
+    igi_stgcomp : Vlang.Component.t; (* storage's available vlang-expr (component) set *)
+    igi_glvar_set : (Vlang.Ty.t * Vlang.Expr.t) CPSet.t;  (* global variables. they are constnat in only one transaction execution (without storage) *)
+    igi_loopv_set : PreLib.Cfg.vertex CPSet.t;  (* a vertex set contains every loop vertices *)
     igi_entryvtx : PreLib.Cfg.vertex; (* cfg entry vertex *)
     igi_exitvtx : PreLib.Cfg.vertex;  (* cfg exit vertex *)
 }
 
 
 let inv_true_gen : invgen_info -> t
-=fun {igi_trx=_; igi_loop; igi_entryvtx=_; igi_exitvtx=_} -> begin
+=fun {igi_stgcomp=_; igi_glvar_set=_; igi_loopv_set; igi_entryvtx=_; igi_exitvtx=_} -> begin
   let open Vlang.Formula in
   { trx_inv = VF_true;
-    loop_inv = CPMap.map igi_loop ~f:(fun _ -> VF_true);
+    loop_inv = CPSet.fold igi_loopv_set ~init:CPMap.empty ~f:(fun accm loopv -> PreLib.Cfg.t_map_add ~errtrace:("ProverLib.Inv.inv_true_gen") accm loopv (VF_true));
   }
 end
 
@@ -53,15 +53,14 @@ let gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_i
   (* global variables (except storage) cannot be used in transaction invariant.
       But they are behaves like a constant, so it can be used in generating loop invariant.
   *)
-  let basic_var_set : (Vlang.Ty.t * Vlang.Expr.t) CPSet.t = CPSet.of_list [
+  let basic_glvar_set : (Vlang.Ty.t * Vlang.Expr.t) CPSet.t = CPSet.of_list [
     param_typ, Vlang.Expr.V_var (param_typ, glenv.gv_param);
-    strg_typ, Vlang.Expr.V_var (strg_typ, glenv.gv_storage);
+    (* strg_typ, Vlang.Expr.V_var (strg_typ, glenv.gv_storage); *)
     Vlang.Ty.T_mutez, Vlang.Expr.V_var (Vlang.Ty.T_mutez, glenv.gv_amount);
     Vlang.Ty.T_mutez, Vlang.Expr.V_var (Vlang.Ty.T_mutez, glenv.gv_balance);
     Vlang.Ty.T_address, Vlang.Expr.V_var (Vlang.Ty.T_address, glenv.gv_sender);
     Vlang.Ty.T_address, Vlang.Expr.V_var (Vlang.Ty.T_address, glenv.gv_source);
-  ] in
-  let avar_pre_info : Pre.Analyzer.AvailVar.t = Pre.Analyzer.AvailVar.run cfg
+  ]
   and loopvtx_set : int CPSet.t = begin 
     CPMap.fold 
       ~init:(CPSet.empty) 
@@ -72,29 +71,7 @@ let gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_i
         | _ -> accset
       )
   end in
-  let var_to_vlvar : string -> Vlang.Ty.t * Vlang.Expr.t
-  =fun v -> begin
-    let typ = PreLib.Cfg.t_map_find ~errtrace:("ProverLib.Inv.gen_invgen_info_for_single_contract_verification : var_to_vlvar : " ^ v) cfg.type_info v |> Vlang.TypeUtil.ty_of_mty in
-    (typ, Vlang.Expr.V_var (typ, v))
-  end in
-  let absset_filter_pre : (Pre.Analyzer.AvailVar.abs_set * Pre.Analyzer.AvailVar.abs_set) -> (Vlang.Ty.t * Vlang.Expr.t) CPSet.t = begin
-    function | (Pre.Analyzer.AvailVar.S s, _) -> CPSet.union basic_var_set (CPSet.map s ~f:var_to_vlvar) | (Pre.Analyzer.AvailVar.Top, _) -> basic_var_set
-  end
-  in
-  let igi_loop_partial : (int, (Vlang.Ty.t * Vlang.Expr.t) CPSet.t) CPMap.t = 
-    CPSet.fold 
-      ~init:(CPMap.empty)   
-      loopvtx_set 
-      ~f:(fun accmap lvtx -> 
-          CPMap.add accmap ~key:lvtx ~data:(CPMap.find_exn avar_pre_info lvtx |> absset_filter_pre)
-          |> (function `Duplicate -> accmap | `Ok m -> m)
-      )
-  in
-  (* add some empty sets in igi_loop *)
-  let igi_loop : (int, (Vlang.Ty.t * Vlang.Expr.t) CPSet.t * Vlang.Component.t CPSet.t) CPMap.t =
-    CPMap.map igi_loop_partial ~f:(fun x -> (x, CPSet.empty)) 
-  in
-  {igi_trx=strg_comp; igi_loop=igi_loop; igi_entryvtx=cfg.main_entry; igi_exitvtx=cfg.main_exit;}
+  {igi_stgcomp=strg_comp; igi_glvar_set=basic_glvar_set; igi_loopv_set=loopvtx_set; igi_entryvtx=cfg.main_entry; igi_exitvtx=cfg.main_exit;}
 end (* function gen_invgen_info_for_single_contract_verification end *)
 
 let strengthen_worklist : (t * t CPSet.t) -> t CPSet.t

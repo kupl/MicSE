@@ -24,9 +24,12 @@ type t = {
   entry_vtx : PreLib.Cfg.vertex;
   exit_vtx : PreLib.Cfg.vertex;
   content : basic_node list;
+  appeared_vars : Vlang.Expr.t Core.Set.Poly.t;
 }
 
 val remove_skip_inst : t -> t
+
+val collect_assigned_vars : t -> Vlang.Expr.t Core.Set.Poly.t
 
 module JsonRep : sig
   exception ParseErr of Yojson.Basic.t

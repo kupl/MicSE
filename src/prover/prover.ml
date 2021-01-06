@@ -10,7 +10,7 @@ type run_ret = {
 
 type run_env = {
   worklist : ProverLib.Inv.t Core.Set.Poly.t;
-  is_timeout_f : float -> bool; (* is-timeout? *)
+  is_timeout_f : unit -> bool; (* is-timeout? *)
   igi : ProverLib.Inv.invgen_info;  (* information for invariant generation process *)
   vcl : (ProverLib.Inv.t -> VcGen.v_cond) list; (* the list of verification condition *)
   isc : ProverLib.Inv.t -> ProverLib.Vlang.t; (* initial-storage condition *)
@@ -18,10 +18,10 @@ type run_env = {
 }
 
 
-let init_naive_timeout_func : unit -> (float -> bool)
+let init_naive_timeout_func : unit -> (unit -> bool)
 =fun () -> begin
-  let now = Sys.time () in
-  (fun f -> (f > (now +. 1.0)))
+  let initial_time = Sys.time () in
+  (fun () -> ((Sys.time ()) > (initial_time +. Stdlib.float_of_int !(Utils.Options.prover_time_budget))))
 end
 
 
@@ -51,7 +51,7 @@ let rec run : run_env -> run_ret option
   let module CPSet = Core.Set.Poly in
   fun {worklist; is_timeout_f; igi; vcl; isc; ret_opt} -> begin
   (* check escape condition *)
-  if CPSet.is_empty worklist || is_timeout_f (Sys.time ()) then ret_opt else
+  if CPSet.is_empty worklist || is_timeout_f () then ret_opt else
   (* choose a candidate invariant from worklist *)
   let inv_candidate : Inv.t = CPSet.choose_exn worklist in
   let new_worklist_1 : Inv.t CPSet.t = CPSet.remove worklist inv_candidate in

@@ -127,7 +127,7 @@ end (* function sp_for_main_exit_vtx end *)
 let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
 = let open ProverLib.Bp in
   let open ProverLib.Vlang in
-  fun cfg {entry_vtx; exit_vtx; content} -> begin
+  fun cfg {entry_vtx; exit_vtx; content; appeared_vars} -> begin
     (* 1. evaluate strongest postcondition 
         - name_env : environment for naming
         - str_post : strongest postcondition. 
@@ -201,7 +201,7 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
       let qvcs : query_vc CPSet.t =
         List.fold_left
           (fun accs (qvc_fml, qvc_cat, qvc_vtx) ->
-            CPSet.add accs { qvc_fml; qvc_cat; qvc_vtx; qvc_bp={entry_vtx; exit_vtx; content}; }
+            CPSet.add accs { qvc_fml; qvc_cat; qvc_vtx; qvc_bp={entry_vtx; exit_vtx; content; appeared_vars}; }
           )
           CPSet.empty
           qvcl

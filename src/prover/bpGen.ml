@@ -55,8 +55,9 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
       - In-edge Label : edge_label
       - current-vertex : vertex
       - remain-vertice : vertex list
-      - accum-bp : Bp.basic_node list
-      Return: Bp.basic_node list  (* reversed list. It should be reversed after to get normal order. *)
+      - accum-bnl : Bp.basic_node list
+      - accum-var : Vlang.Expr.t CPSet.t
+      Return: Bp.basic_node list * (Vlang.Expr.t CPSet.t)  (* reversed list. It should be reversed after to get normal order. *)
     1. If Assume-cond is (Some _), it means that the previous vertex requires to put assumption (BI_assume)
       - The reason to insert assume-condition "after" conditional vertex appears (not the current vertex is conditional vertex)
         - If Basicpath-vertexlist ends with loop-vertex, there are no reason to put assume-inst in basicpath.
@@ -89,9 +90,11 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
       - Others (e.g. stack operation statements)
         - BI_skip
         - Next Assume-Condition : None
+    2.5. In addition, we collect a set of appearing-variables in each expression.
+      It will collect variables in both LHS, RHS of assign statements, and other variables used.
   *)
-  let rec foldf : (Cfg.vertex * ProverLib.Vlang.t) option -> Cfg.edge_label -> Cfg.vertex -> Cfg.vertex list -> ProverLib.Bp.basic_node list -> ProverLib.Bp.basic_node list
-  =fun assume_cond_opt in_edg_lbl cur_vtx remain_vtc acc_bnl -> begin
+  let rec foldf : (Cfg.vertex * ProverLib.Vlang.t) option -> Cfg.edge_label -> Cfg.vertex -> Cfg.vertex list -> ProverLib.Bp.basic_node list -> ProverLib.Vlang.Expr.t CPSet.t -> (ProverLib.Bp.basic_node list * ProverLib.Vlang.Expr.t CPSet.t)
+  =fun assume_cond_opt in_edg_lbl cur_vtx remain_vtc acc_bnl accum_var -> begin
     (* 1 *)
     let assume_instlst : ProverLib.Bp.basic_node list = begin
       match assume_cond_opt, in_edg_lbl with
@@ -190,19 +193,35 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
       | Cfg_micse_check_entry -> ([cstr_bn BI_skip], None)
     end in
     let new_bp = (cur_instlst @ assume_instlst) @ acc_bnl in
+    (* 2.5. collect appeared variable list *)
+    let appeared_varlst : string list = PreLib.CfgUtil.appeared_varlst_stmt cur_stmt in
+    let appeared_vvarlst : ProverLib.Vlang.Expr.t list = 
+      List.map 
+        (fun v -> 
+          let t = PreLib.Cfg.t_map_find ~errtrace:("BpGen.bp_of_vtxlst : foldf : appeared_vvarlst") cfg.type_info v 
+                  |> ProverLib.Vlang.TypeUtil.ty_of_mty 
+          in 
+          ProverLib.Vlang.Expr.V_var (t, v)
+        ) 
+        appeared_varlst
+    in
+    let new_accum_var : ProverLib.Vlang.Expr.t CPSet.t =
+      List.fold_left CPSet.add accum_var appeared_vvarlst
+    in
     (* escape cond *)
-    if remain_vtc = [] then new_bp else
+    if remain_vtc = [] then (new_bp, new_accum_var) else
     (* recursively call fold function - remain_vtc is not empty list, WARNING: PRECONDITION *)
     let next_vtx = List.hd remain_vtc in
     let next_edg_lbl = Cfg.G.find_edge cfg.flow cur_vtx next_vtx |> (fun (_, lbl, _) -> lbl) in
-    foldf next_assume_cond next_edg_lbl next_vtx (List.tl remain_vtc) new_bp 
+    foldf next_assume_cond next_edg_lbl next_vtx (List.tl remain_vtc) new_bp new_accum_var
   end in
-  let rev_order_bnl : ProverLib.Bp.basic_node list = foldf None Normal (List.hd vtxlst) (List.tl vtxlst) [] in
+  let (rev_order_bnl, accum_vars_final) : ProverLib.Bp.basic_node list * ProverLib.Vlang.Expr.t CPSet.t = foldf None Normal (List.hd vtxlst) (List.tl vtxlst) [] CPSet.empty in
   let exit_vtx : PreLib.Cfg.vertex = try let q = List.hd rev_order_bnl in q.cfgvtx with | _ -> Stdlib.failwith "BpGen : bp_of_vtxlst : exit_vtx" in
   let normal_order_bnl : ProverLib.Bp.basic_node list = List.rev rev_order_bnl in
   let entry_vtx : PreLib.Cfg.vertex = try let q = List.hd normal_order_bnl in q.cfgvtx with | _ -> Stdlib.failwith "BpGen : bp_of_vtxlst : entry_vtx" in
   { entry_vtx = entry_vtx;
     exit_vtx = exit_vtx;
     content = normal_order_bnl;
+    appeared_vars = accum_vars_final;
   }
 end (* function bp_of_vtxlst end *)
