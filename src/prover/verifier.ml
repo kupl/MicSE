@@ -69,7 +69,7 @@ end (* smtexpr_of_compare end *)
 and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
 = let open Vlang.Expr in
   let soe = smtexpr_of_vlangexpr in (* syntax sugar *)
-  (* let err e = Stdlib.raise (Not_Implemented_e e) in syntax sugar *)
+  (* let err e = Stdlib.raise (Not_Implemented_e e) in (* syntax sugar *) *)
   let err (e: Vlang.Expr.t) = e |> Vlang.TypeUtil.ty_of_expr |> smtsort_of_vlangtyp |> Smt.ZExpr.create_dummy in
   fun ve -> begin
     try
@@ -398,7 +398,8 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
 = let open Vlang.Formula in
   let sof = smtexpr_of_vlangformula in  (* syntax sugar *)
   let soe = smtexpr_of_vlangexpr in (* syntax sugar *)
-  let err f = Stdlib.raise (Not_Implemented_f f) in (* syntax sugar *)
+  (* let err f = Stdlib.raise (Not_Implemented_f f) in (* syntax sugar *) *)
+  let err _ = Smt.ZBool.sort |> Smt.ZExpr.create_dummy in
   fun vf -> begin
     try
       match vf with
@@ -414,7 +415,13 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
       | VF_mich_if e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
       | VF_mich_if_none e -> Smt.ZOption.is_none (e |> soe)
       | VF_mich_if_left e -> Smt.ZOr.is_left (e |> soe)
-      | VF_mich_if_cons e -> Smt.ZList.is_cons (e |> soe)
+      | VF_mich_if_cons e -> begin
+          match e |> Vlang.TypeUtil.ty_of_expr with
+          | T_list _ -> Smt.ZList.is_cons (e |> soe)
+          | T_set _ -> err vf (* check whether set's size is not 0 *)
+          | T_map _ -> err vf (* check whether map's size is not 0 *)
+          | _ -> SMT_Encode_Error_f (vf, "Wrong IS_CONS checking") |> raise
+        end
       (* NOT USED. belows are not constructed from Prover.converter *)
       | VF_mich_loop e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
       | VF_mich_loop_left e -> Smt.ZOr.is_left (e |> soe)
