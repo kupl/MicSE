@@ -43,7 +43,7 @@ let flag_vc_print : bool ref
 let z3_time_budget : int ref
 =ref 30 (* z3 time budgets in seconds *)
 let prover_time_budget : int ref
-=ref 30 (* prover time budgets in seconds *)
+=ref 180 (* prover time budgets in seconds *)
 
 (*****************************************************************************)
 (*****************************************************************************)
