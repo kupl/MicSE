@@ -399,7 +399,7 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
   let sof = smtexpr_of_vlangformula in  (* syntax sugar *)
   let soe = smtexpr_of_vlangexpr in (* syntax sugar *)
   (* let err f = Stdlib.raise (Not_Implemented_f f) in (* syntax sugar *) *)
-  let err _ = Smt.ZBool.sort |> Smt.ZExpr.create_dummy in
+  let err _ = Smt.ZFormula.uninterpreted_ in
   fun vf -> begin
     try
       match vf with
