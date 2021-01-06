@@ -87,40 +87,59 @@ let rec work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pr
   (* Choose a candidate invariant *)
   let inv_map, cur_wlst = Inv.WorkList.pop w in
 
-  (* Verify Queries *)
+  (* Generate Verification Conditions *)
   let bps = Generator.apply inv_map bp_list.bps in
-  let inductiveness, proven, unproven = Core.List.fold_right bps ~f:(fun bp (inductive, proven, unproven) -> (
+  let path_vcs, queries = Core.List.fold_right bps ~f:(fun bp (pvcl, ql) -> (begin
     let path_vc, queries = Converter.convert bp cfg ~entry_var:entry_var ~exit_var:exit_var in
-    let path_inductive, _ = Verifier.verify path_vc in
-    let proven, unproven = Core.List.fold_right queries ~f:(fun q (p, up) -> (
-      let result, model = Verifier.verify q.query in
-      if result |> Smt.ZSolver.is_valid
-      then begin
-        let p_q = Query.update_status q (Query.Q_proven) in
-        (p_q::p, up)
-      end else begin
-        let up_q = Query.update_status q (Query.Q_unproven model) in
+    (path_vc::pvcl, queries@ql)
+  end)) ~init:([], []) in
+
+  (* Verify Inductiveness *)
+  let inductiveness = Core.List.fold_right path_vcs ~f:(fun path_vc inductiveness -> (begin
+    if Utils.Timer.is_timeout time then begin
+      false
+    end else begin
+      let path_inductive, _ = Verifier.verify path_vc in
+      inductiveness&&(path_inductive |> Smt.ZSolver.is_valid)
+    end
+  end)) ~init:true in
+
+  (* Verify Queries *)
+  if inductiveness then begin
+    let proven, unproven = Core.List.fold_right queries ~f:(fun q (p, up) -> (begin
+      if Utils.Timer.is_timeout time then begin
+        let up_q = Query.update_status q (Query.Q_unproven None) in
         (p, up_q::up)
+      end else begin
+        let result, model = Verifier.verify q.query in
+        if result |> Smt.ZSolver.is_valid
+        then begin
+          let p_q = Query.update_status q (Query.Q_proven) in
+          (p_q::p, up)
+        end else begin
+          let up_q = Query.update_status q (Query.Q_unproven model) in
+          (p, up_q::up)
+        end
       end
-    )) ~init:(proven, unproven) in
-    (inductive&&(path_inductive |> Smt.ZSolver.is_valid), proven, unproven)
-  )) ~init:(true, [], []) in
-  if inductiveness
-  then begin
+    end)) ~init:([], []) in
     if Core.List.is_empty unproven
     then proven@unproven
     else begin
       let generated_wlst = Generator.W.update ~bp_list:bp_list ~cfg:cfg ~init_stg:init_stg_opt ~wlst:cur_wlst in
       let next_wlst = Generator.W.join ~inv:inv_map ~wlst:generated_wlst in
-      if Utils.Timer.is_timeout time || Inv.WorkList.is_empty next_wlst
-      then proven@unproven
-      else work next_wlst bp_list cfg init_stg_opt time
+      if Utils.Timer.is_timeout time || Inv.WorkList.is_empty next_wlst then begin
+        proven@unproven
+      end else begin
+        let next_work = work next_wlst bp_list cfg init_stg_opt time in
+        if next_work = [] then proven@unproven else next_work
+      end
     end
   end else begin
-    let next_wlst = if (Utils.Timer.is_timeout time) || (Inv.WorkList.is_empty cur_wlst)
-      then Generator.W.last_worklist ~wlst:cur_wlst
-      else cur_wlst in
-    work next_wlst bp_list cfg init_stg_opt time
+    if (Utils.Timer.is_timeout time) || (Inv.WorkList.is_empty cur_wlst) then begin
+      []
+    end else begin
+      work cur_wlst bp_list cfg init_stg_opt time
+    end
   end
 end
 
