@@ -431,6 +431,7 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
       | VF_shiftR_nnn_rhs_in_256 _ -> err vf
       (* Custom Domain Formula for Invariant Generation *)
       | VF_sigma_equal (_, _) -> Smt.ZBool.true_ (* TODO *)
+      | VF_mtzmap_partial_sum_equal (_, _, _) -> Smt.ZBool.true_ (* TODO *)
     with
     | Smt.ZError s -> SMT_Encode_Error_f (vf, s) |> raise
     | e -> e |> raise

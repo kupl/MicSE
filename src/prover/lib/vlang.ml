@@ -600,6 +600,7 @@ module Formula = struct
   | VF_shiftR_nnn_rhs_in_256 of (Expr.t * Expr.t)
   (* Custom Domain Formula for Invariant Generation *)
   | VF_sigma_equal of (Expr.t * Expr.t)
+  | VF_mtzmap_partial_sum_equal of (Expr.t * (Expr.t list) * Expr.t) (* ('k, mutez) map * ('k (OCaml-list)) * mutez -> formula *)
 
   let rec to_string : t -> string
   = let ts = to_string in   (* syntax sugar *)
@@ -636,6 +637,7 @@ module Formula = struct
       | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> "ShiftR_RHS256("     ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       (* Custom Domain Formula for Invariant Generation *)
       | VF_sigma_equal (e1, e2) -> "Sigma(" ^ (e1 |> ets) ^ ")=(" ^ (e2 |> ets) ^ ")"
+      | VF_mtzmap_partial_sum_equal (e1, el2, e3) -> "MtzMap_PSE(" ^ (e1 |> ets) ^ ",(" ^ (el2 |> Core.List.map ~f:ets |> Core.String.concat ~sep:",") ^ ")," ^ (e3 |> ets) ^ ")"
     end
 end (* module Formula end *)
 
@@ -1523,6 +1525,8 @@ module RecursiveMappingExprTemplate = struct
     | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> VF_shiftR_nnn_rhs_in_256 ((re e1), (re e2))
     (* Custom Domain Formula for Invariant Generation *)
     | VF_sigma_equal (e1, e2) -> VF_sigma_equal ((re e1), (re e2))
+    | VF_mtzmap_partial_sum_equal (e1, el2, e3) -> VF_mtzmap_partial_sum_equal((re e1), (List.map re el2), (re e3))
+    
   end (* function map_formula_outer end *)
 
 
@@ -1562,6 +1566,7 @@ module RecursiveMappingExprTemplate = struct
     | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> VF_shiftR_nnn_rhs_in_256 ((re e1), (re e2))
     (* Custom Domain Formula for Invariant Generation *)
     | VF_sigma_equal (e1, e2) -> VF_sigma_equal ((re e1), (re e2))
+    | VF_mtzmap_partial_sum_equal (e1, el2, e3) -> VF_mtzmap_partial_sum_equal (re e1, (List.map re el2), re e3)
     ) |> formula_f
   end (* function map_formula_outer end *)
 
