@@ -182,7 +182,7 @@ code { DUP ;
                EQ ;
                IF {}
                   { PUSH string "WrongCondition: self.data.admin == sp.sender" ; FAILWITH } ;
-               PUSH timestamp "1599219097" ;
+               PUSH timestamp 1599219097 ;
                DIG 2 ;
                DUP ;
                DUG 3 ;
