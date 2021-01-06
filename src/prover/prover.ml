@@ -62,7 +62,7 @@ let rec run : run_env -> run_ret option
   if val_res.inductive && CPSet.is_empty val_res.Validator.u then Some {best_inv=inv_candidate; proved=val_res.p; unproved=val_res.u} else
   (* else verification succeeds *)
   (* generator *)
-  let new_worklist_2 = CPSet.union (Generator.generate (val_res, igi, inv_candidate)) new_worklist_1 in (* TODO *)
+  let new_worklist_2 = CPSet.union (InvGen.generate (val_res, igi, inv_candidate)) new_worklist_1 in (* TODO *)
   (* else verification succeeds - if inductive, update worklist *)
   let new_worklist_3 = if val_res.inductive then Inv.strengthen_worklist (inv_candidate, new_worklist_2) else new_worklist_2 in
   (* additional process - snapshot the best result *)
