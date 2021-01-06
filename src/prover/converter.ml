@@ -260,6 +260,7 @@ let rec create_expr_of_michdata_i : PreLib.Mich.data PreLib.Mich.t -> Vlang.typ 
                                                                     ~init:Core.Map.Poly.empty
                                                                     ~f:(map_func ~kt:kt ~vt:vt))
     | T_lambda (t1, t2), D_lambda it    -> V_lit_lambda (t1, t2, it)
+    | T_contract t, D_string s          -> V_contract_of_address (t, (V_lit_address (V_lit_key_hash s)))
     | _, D_elt _                        -> Error "create_expr_of_michdata_i : Invalid data D_elt" |> raise
     | _                                 -> Error ("create_expr_of_michdata_i : Invalid match between type [" ^ (vtyp |> Vlang.Ty.to_string) ^ "] and [" ^ (michdata_t |> Pre.Lib.Mich.string_of_datat_ol) ^ "]") |> raise
 end
