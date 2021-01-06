@@ -890,7 +890,6 @@ module TypeUtil = struct
     (* Operation                                                             *)
     (*************************************************************************)
     (* | V_lit_operation of t_operation t *) (* V_create_contract, V_transfer_tokens, V_set_delegate has the same feature. *)
-    | V_create_contract _
     | V_transfer_tokens _
     | V_set_delegate    _ -> T_operation
 
@@ -911,6 +910,7 @@ module TypeUtil = struct
     | V_hdtl_l e -> (match toe e with | T_list elt -> T_pair (elt, T_list elt) | _ as tt -> invalidtyp tt eee)
     | V_hdtl_s e -> (match toe e with | T_set elt -> T_pair (elt, T_set elt) | _ as tt -> invalidtyp tt eee)
     | V_hdtl_m e -> (match toe e with | T_map (kt, vt) -> T_pair (T_pair (kt, vt), T_map (kt, vt)) | _ as tt -> invalidtyp tt eee)
+    | V_create_contract _ -> T_pair (T_operation, T_address)
 
     (*************************************************************************)
     (* Or                                                                    *)
