@@ -19,7 +19,7 @@ let validate : (ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (Prov
   let indt_vc : Vlang.t = Vlang.Formula.VF_and (isc :: (List.map (fun x -> x.VcGen.path_vc) vcl)) in
   (* Validate Inductiveness (initial-storage-cond reflected in "indt_vc") *)
   let indt_validity, _ = Verifier.verify indt_vc in (* Verifier.verify runs validity check. *)
-  if is_valid indt_validity then ({inductive=false; p=CPSet.empty; u=CPSet.empty}) else
+  if Stdlib.not (is_valid indt_validity) then ({inductive=false; p=CPSet.empty; u=CPSet.empty}) else
   (* Validate Query *)
   let qset : VcGen.query_vc list =
     List.fold_left 

@@ -406,10 +406,23 @@ module Component : sig
 
     (* "fold_precond" should be generate an invariant's precondition when generate an invariant which uses component. *)
     val fold_precond : Formula.t list -> Formula.t
+    val fold_preconds : comp list -> Formula.t
 
     (* "gather" gather components from the given expression.
         Mostly, the given expression will be an transaction-storage variable.
     *)
     val gather : Expr.t -> t
+
+    (* attach empty precondition *)
+    val comp_of_vexpr_t : (Ty.t * Expr.t) -> comp
+    val comp_of_vexpr : Expr.t -> comp
+
+    (* "filter_typ" : filter components using type constraint *)
+    val filter_typ : (Ty.t -> bool) -> t -> t
+
+    (* "filter_types" : filter components using type constraint, 
+        classify them by concret type.
+    *)
+    val filter_types : (Ty.t -> bool) -> t -> (Ty.t, t) Core.Map.Poly.t
 
 end (* module Component end *)

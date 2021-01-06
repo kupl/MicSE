@@ -1615,7 +1615,13 @@ module Component = struct
       (fun accf f -> Formula.VF_imply (f, accf)) 
       VF_true
       flist
-  end (* function fold_comp_pecond end *)
+  end (* function fold_pecond end *)
+  let fold_preconds : comp list -> Formula.t
+  =fun clist -> begin
+    List.map (fun c -> c.precond_lst) clist
+    |> List.flatten
+    |> fold_precond
+  end (* function fold_preconds end *)
 
 
   (* Q. which components to gather
@@ -1672,5 +1678,28 @@ module Component = struct
   let gather : Expr.t -> t
   =fun e -> gather_comps_i {precond_lst=[]; typ=(TypeUtil.ty_of_expr e); body=e} CPSet.empty
 
+  (* attach empty precondition *)
+  let comp_of_vexpr_t : (Ty.t * Expr.t) -> comp
+  =fun (t, e) -> {precond_lst=[]; typ=t; body=e;}
+  let comp_of_vexpr : Expr.t -> comp
+  =fun e -> comp_of_vexpr_t (TypeUtil.ty_of_expr e, e)
+
+  (* "filter_typ" : filter components using type constraint *)
+  let filter_typ : (Ty.t -> bool) -> t -> t
+  =fun filter_f cset -> CPSet.filter cset ~f:(fun c -> filter_f c.typ)
+
+  (* "filter_types" : filter components using type constraint, 
+        classify them by exact type.
+  *)
+  let filter_types : (Ty.t -> bool) -> t -> (Ty.t, t) Core.Map.Poly.t
+  =fun filter_f cset -> begin
+    Core.Set.Poly.fold
+      (filter_typ filter_f cset)
+      ~init:Core.Map.Poly.empty
+      ~f:(
+        fun accm c ->
+        Core.Map.Poly.update accm c.typ ~f:(function | None -> Core.Set.Poly.singleton c | Some t -> Core.Set.Poly.add t c)
+      )
+  end (* function filter_types end *)
 
 end (* module Component end *)

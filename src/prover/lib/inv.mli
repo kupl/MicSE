@@ -17,7 +17,7 @@ type t = {
 *)
 type invgen_info = {
     igi_stgcomp : Vlang.Component.t; (* storage's available vlang-expr (component) set *)
-    igi_glvar_set : (Vlang.Ty.t * Vlang.Expr.t) CPSet.t;  (* global variables. they are constnat in only one transaction execution (without storage) *)
+    igi_glvar_comp : Vlang.Component.t;  (* global variables. they are constnat in only one transaction execution (without storage) *)
     igi_loopv_set : PreLib.Cfg.vertex CPSet.t;  (* a vertex set contains every loop vertices *)
     igi_entryvtx : PreLib.Cfg.vertex; (* cfg entry vertex *)
     igi_exitvtx : PreLib.Cfg.vertex;  (* cfg exit vertex *)

@@ -17,7 +17,7 @@ type t = {
 *)
 type invgen_info = {
     igi_stgcomp : Vlang.Component.t; (* storage's available vlang-expr (component) set *)
-    igi_glvar_set : (Vlang.Ty.t * Vlang.Expr.t) CPSet.t;  (* global variables. they are constnat in only one transaction execution (without storage) *)
+    igi_glvar_comp : Vlang.Component.t;  (* global variables. they are constnat in only one transaction execution (without storage) *)
     igi_loopv_set : PreLib.Cfg.vertex CPSet.t;  (* a vertex set contains every loop vertices *)
     igi_entryvtx : PreLib.Cfg.vertex; (* cfg entry vertex *)
     igi_exitvtx : PreLib.Cfg.vertex;  (* cfg exit vertex *)
@@ -25,7 +25,7 @@ type invgen_info = {
 
 
 let inv_true_gen : invgen_info -> t
-=fun {igi_stgcomp=_; igi_glvar_set=_; igi_loopv_set; igi_entryvtx=_; igi_exitvtx=_} -> begin
+=fun {igi_stgcomp=_; igi_glvar_comp=_; igi_loopv_set; igi_entryvtx=_; igi_exitvtx=_} -> begin
   let open Vlang.Formula in
   { trx_inv = VF_true;
     loop_inv = CPSet.fold igi_loopv_set ~init:CPMap.empty ~f:(fun accm loopv -> PreLib.Cfg.t_map_add ~errtrace:("ProverLib.Inv.inv_true_gen") accm loopv (VF_true));
@@ -53,13 +53,13 @@ let gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_i
   (* global variables (except storage) cannot be used in transaction invariant.
       But they are behaves like a constant, so it can be used in generating loop invariant.
   *)
-  let basic_glvar_set : (Vlang.Ty.t * Vlang.Expr.t) CPSet.t = CPSet.of_list [
-    param_typ, Vlang.Expr.V_var (param_typ, glenv.gv_param);
+  let basic_glvar_comp : Vlang.Component.t = CPSet.of_list [
+    (param_typ, Vlang.Expr.V_var (param_typ, glenv.gv_param)) |> Vlang.Component.comp_of_vexpr_t;
     (* strg_typ, Vlang.Expr.V_var (strg_typ, glenv.gv_storage); *)
-    Vlang.Ty.T_mutez, Vlang.Expr.V_var (Vlang.Ty.T_mutez, glenv.gv_amount);
-    Vlang.Ty.T_mutez, Vlang.Expr.V_var (Vlang.Ty.T_mutez, glenv.gv_balance);
-    Vlang.Ty.T_address, Vlang.Expr.V_var (Vlang.Ty.T_address, glenv.gv_sender);
-    Vlang.Ty.T_address, Vlang.Expr.V_var (Vlang.Ty.T_address, glenv.gv_source);
+    (Vlang.Ty.T_mutez, Vlang.Expr.V_var (Vlang.Ty.T_mutez, glenv.gv_amount)) |> Vlang.Component.comp_of_vexpr_t;
+    (Vlang.Ty.T_mutez, Vlang.Expr.V_var (Vlang.Ty.T_mutez, glenv.gv_balance)) |> Vlang.Component.comp_of_vexpr_t;
+    (Vlang.Ty.T_address, Vlang.Expr.V_var (Vlang.Ty.T_address, glenv.gv_sender)) |> Vlang.Component.comp_of_vexpr_t;
+    (Vlang.Ty.T_address, Vlang.Expr.V_var (Vlang.Ty.T_address, glenv.gv_source)) |> Vlang.Component.comp_of_vexpr_t;
   ]
   and loopvtx_set : int CPSet.t = begin 
     CPMap.fold 
@@ -71,7 +71,7 @@ let gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_i
         | _ -> accset
       )
   end in
-  {igi_stgcomp=strg_comp; igi_glvar_set=basic_glvar_set; igi_loopv_set=loopvtx_set; igi_entryvtx=cfg.main_entry; igi_exitvtx=cfg.main_exit;}
+  {igi_stgcomp=strg_comp; igi_glvar_comp=basic_glvar_comp; igi_loopv_set=loopvtx_set; igi_entryvtx=cfg.main_entry; igi_exitvtx=cfg.main_exit;}
 end (* function gen_invgen_info_for_single_contract_verification end *)
 
 let strengthen_worklist : (t * t CPSet.t) -> t CPSet.t
