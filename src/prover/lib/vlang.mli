@@ -58,6 +58,7 @@ module Expr : sig
     | V_exec of t * t (* 'a * ('a, 'b) lambda -> 'b *)
     | V_dup  of t   (* 'a -> 'a *)
     | V_itself of t (* 'a -> 'a *)
+    | V_get_default of (t * t * t)  (* 'k * 'v * ('k, 'v) map -> 'v *)  (* key * default-value * map -> get-result *)
 
     (*************************************************************************)
     (* Integer                                                               *)

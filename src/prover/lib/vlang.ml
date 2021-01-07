@@ -85,6 +85,7 @@ module Expr = struct
     | V_exec of t * t (* 'a * ('a, 'b) lambda -> 'b *)
     | V_dup  of t   (* 'a -> 'a *)
     | V_itself of t (* 'a -> 'a *)
+    | V_get_default of (t * t * t)  (* 'k * 'v * ('k, 'v) map -> 'v *)  (* key * default-value * map -> get-result *)
 
     (*************************************************************************)
     (* Integer                                                               *)
@@ -335,6 +336,7 @@ module Expr = struct
       | V_exec (e1, e2)     -> "EXEC"       ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_dup e1            -> ""           ^ (e1 |> ts)
       | V_itself e1         -> ""           ^ (e1 |> ts)
+      | V_get_default (e1, e2, e3) -> "GET_DFT(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
   
       (*************************************************************************)
       (* Integer                                                               *)
@@ -718,6 +720,7 @@ module TypeUtil = struct
     | V_exec (e1, _) -> (match toe e1 with | T_lambda (_, t2) -> t2 | _ as tt -> invalidtyp tt)
     | V_dup e -> toe e
     | V_itself e -> toe e
+    | V_get_default (_, _, e3) -> (match toe e3 with | T_map (_, t2) -> t2 | _ as tt -> invalidtyp tt)
 
     (*************************************************************************)
     (* Integer                                                               *)
@@ -1007,6 +1010,7 @@ module RecursiveMappingExprTemplate = struct
     | V_exec (e1, e2) -> V_exec (rf e1, rf e2)
     | V_dup e -> V_dup (rf e)
     | V_itself e -> V_itself (rf e)
+    | V_get_default (e1, e2, e3) -> V_get_default (rf e1, rf e2, rf e3)
 
     (*************************************************************************)
     (* Integer                                                               *)
@@ -1258,6 +1262,7 @@ module RecursiveMappingExprTemplate = struct
     | V_exec (e1, e2) -> V_exec (rf e1, rf e2)
     | V_dup e -> V_dup (rf e)
     | V_itself e -> V_itself (rf e)
+    | V_get_default (e1, e2, e3) -> V_get_default (rf e1, rf e2, rf e3)
 
     (*************************************************************************)
     (* Integer                                                               *)
