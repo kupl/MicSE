@@ -88,9 +88,9 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_dup e -> soe e
       | V_itself e -> soe e
       | V_get_default (e1, e2, e3) -> begin
-          Smt.ZBool.create_ite 
-            ~cond:(Smt.ZMap.read_exist ~key:e1 ~map:e3)
-            ~t:(Smt.read_value ~key:e1 ~map:e3)
+          Smt.ZExpr.create_ite 
+            ~cond:(Smt.ZMap.read_exist ~key:(soe e1) ~map:(soe e3))
+            ~t:(Smt.ZMap.read_value ~key:(soe e1) ~map:(soe e3))
             ~f:(soe e2)
         end
 
