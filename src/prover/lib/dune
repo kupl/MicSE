@@ -3,6 +3,7 @@
   (public_name micse.prover.lib)
   (libraries
     core
+    yojson
     zarith
     z3
     micse.pre))

@@ -263,7 +263,7 @@ let fail s = raise (Exn_Cfg s)
 (*****************************************************************************)
 
 type vertex = int
-type edge_label = | Normal | If_true | If_false | Failed | Check_skip
+type edge_label = | Normal | If_true | If_false | Failed | If_skip | Loop_skip | Check_skip
 
 module V = struct
   type t = int
@@ -396,6 +396,8 @@ let edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> {cfg with 
 let tedg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 If_true v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
 let fedg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 If_false v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
 let fail_edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 Failed v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
+let iskip_edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 If_skip v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
+let lskip_edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 Loop_skip v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
 let cskip_edg_add : (vertex * vertex) -> t -> t = begin fun (v1, v2) cfg -> let e = G.E.create v1 Check_skip v2 in {cfg with flow=(G.add_edge_e cfg.flow e);} end
 
 let t_map_add ?(errtrace = "") m k v = begin
@@ -446,6 +448,8 @@ end
 let t_add_tedg (v1, v2) (cfg, _) = (tedg_add (v1, v2) cfg, v2)
 let t_add_fedg (v1, v2) (cfg, _) = (fedg_add (v1, v2) cfg, v2)
 let t_add_fail_edg (v1, v2) (cfg, _) = (fail_edg_add (v1, v2) cfg, v2)
+let t_add_iskip_edg (v1, v2) (cfg, _) = (iskip_edg_add (v1, v2) cfg, v2)
+let t_add_lskip_edg (v1, v2) (cfg, _) = (lskip_edg_add (v1, v2) cfg, v2)
 let t_add_cskip_edg (v1, v2) (cfg, _) = (cskip_edg_add (v1, v2) cfg, v2)
 
 let t_add_vinfo ?(errtrace = "") (v, s) (cfg, _) = begin

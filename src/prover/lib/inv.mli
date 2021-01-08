@@ -1,77 +1,31 @@
-type vertex = Pre.Lib.Cfg.vertex
-type formula = Vlang.t
+(* Invariant *)
+
+(* Sugar *)
+module CPSet = Core.Set.Poly
+module CPMap = Core.Map.Poly
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Invariants                                                                *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-module T : sig
-  module CPSet = Core.Set.Poly
-  type t = { id: vertex; formula: formula CPSet.t }
-  
-  val create : vtx:vertex -> t
-  val create_with_formulae : vtx:vertex -> fl:formula list -> t
-  val read_formula : t -> formula
-  val update : t -> f:formula -> t
-  val order : inv1:t -> inv2:t -> bool (* inv1 <= inv2 ? true : false *)
-  val join : inv1:t -> inv2:t -> t
-  val to_string : t -> string
-end
+type t = {
+    trx_inv : Vlang.t;  (* Transaction invariant *)
+    loop_inv : (int, Vlang.t) CPMap.t;  (* Loop invariant : loop-vertex -> Vlang formula *)
+}
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Invariant Map                                                             *)
-(*****************************************************************************)
-(*****************************************************************************)
+(* invgen_info should contain information about which variables can be used when generating invariants. 
+    Query-Verification condition will convey a set of variables which appeared in that basic-path,
+    so this datatype does not need to carry a set of variables appeared in each basicpaths.
+*)
+type invgen_info = {
+    igi_stgcomp : Vlang.Component.t; (* storage's available vlang-expr (component) set *)
+    igi_glvar_comp : Vlang.Component.t;  (* global variables. they are constnat in only one transaction execution (without storage) *)
+    igi_loopv_set : PreLib.Cfg.vertex CPSet.t;  (* a vertex set contains every loop vertices *)
+    igi_entryvtx : PreLib.Cfg.vertex; (* cfg entry vertex *)
+    igi_exitvtx : PreLib.Cfg.vertex;  (* cfg exit vertex *)
+}
 
-module Map : sig
-  exception Error of string
+val inv_true_gen : invgen_info -> t
 
-  module VtxMap = Core.Map.Poly
+(* In our blueprint, Invariant is used for a verifier, not refuter. *)
+val gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_info
 
-  type t = (Pre.Lib.Cfg.vertex, T.t) VtxMap.t
-
-  val empty : t
-  val is_empty : t -> bool
-  val add : t -> key:vertex -> data:T.t -> t
-  val find : t -> vertex -> T.t option
-  val find_empty : t -> vertex -> T.t
-  val mem : t -> vertex -> bool
-  val fold : t -> init:'a -> f:(key:vertex -> data:T.t -> 'a -> 'a) -> 'a
-  val exists : t -> f:(key:vertex -> data:T.t -> bool) -> bool
-  val order : m1:t -> m2:t -> bool (* m1 <= m2 ? true : false *)
-  val join : t -> t -> t
-  val to_string : t -> string
-end
-
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Worklist                                                                  *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-module WorkList : sig
-  exception Error of string
-
-  type t = {
-    last_enable: Map.t;
-    candidate: Map.t list;
-    expired: Map.t list;
-  }
-
-
-  val empty : t
-  val is_empty : t -> bool
-  val mem : Map.t list -> Map.t -> bool
-  val push : t -> Map.t -> t
-  val push_list : t -> Map.t list -> t
-  val push_force : t -> Map.t -> t
-  val pop : t -> (Map.t * t)
-  val map : t -> f:(Map.t -> Map.t) -> t
-  val update_last_enable : t -> new_:Map.t -> t
-end
+val strengthen_worklist : (t * t CPSet.t) -> t CPSet.t

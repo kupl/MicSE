@@ -1,191 +1,101 @@
-type vertex = Pre.Lib.Cfg.vertex
-type formula = Vlang.t
+(* Invariant *)
+
+(* Sugar *)
+module CPSet = Core.Set.Poly
+module CPMap = Core.Map.Poly
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Invariants                                                                *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-module T = struct
-  module CPSet = Core.Set.Poly
-  type t = { id: vertex; formula: formula CPSet.t }
-  
-  let create : vtx:vertex -> t
-  =fun ~vtx -> { id=vtx; formula=CPSet.empty }
-
-  let create_with_formulae : vtx:vertex -> fl:formula list -> t
-  =fun ~vtx ~fl -> { id=vtx; formula=CPSet.of_list fl }
-
-  let read_formula : t -> formula
-  =fun inv -> begin
-    if CPSet.is_empty (inv.formula)
-    then Vlang.Formula.VF_true
-    else Vlang.Formula.VF_and (CPSet.to_list (inv.formula))
-  end
-
-  let update : t -> f:formula -> t
-  =fun inv ~f -> { inv with formula=(CPSet.add (inv.formula) f)}
-
-  let order : inv1:t -> inv2:t -> bool (* inv1 <= inv2 ? true : false *)
-  =fun ~inv1 ~inv2 -> CPSet.is_subset (inv1.formula) ~of_:(inv2.formula)
-
-  let equal : inv1:t -> inv2:t -> bool (* inv1 = inv2 *)
-  =fun ~inv1 ~inv2 -> (order ~inv1:inv1 ~inv2:inv2)&&(order ~inv1:inv1 ~inv2:inv2)
-
-  let join : inv1:t -> inv2:t -> t
-  =fun ~inv1 ~inv2 -> begin
-    if inv1.id <> inv2.id
-    then raise (Failure "Inv.T.join: Error from the invariant id")
-    else { inv1 with formula=(CPSet.union (inv1.formula) (inv2.formula)) }
-  end
-
-  let to_string : t -> string
-  =fun inv -> begin
-    if CPSet.is_empty (inv.formula)
-    then (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": True"
-    else (Pre.Lib.Cfg.string_of_vertex inv.id) ^ ": " ^
-         (Core.String.concat ~sep:" && " (Core.List.map (CPSet.to_list (inv.formula)) ~f:Vlang.string_of_formula))
-  end
-end
+type t = {
+    trx_inv : Vlang.t;  (* Transaction invariant *)
+    loop_inv : (int, Vlang.t) CPMap.t;  (* Loop invariant : loop-vertex -> Vlang formula *)
+}
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Invariant Map                                                             *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-module Map = struct
-  exception Error of string
-
-  module VtxMap = Core.Map.Poly
-
-  type t = (Pre.Lib.Cfg.vertex, T.t) VtxMap.t
-
-  let empty : t
-  =VtxMap.empty
-
-  let is_empty : t -> bool
-  =fun m -> VtxMap.is_empty m
-
-  let add : t -> key:vertex -> data:T.t -> t
-  =fun m ~key ~data -> VtxMap.add m ~key:key ~data:data |> (function | `Ok mm -> mm | `Duplicate -> Error "add: Key is duplicated" |> raise)
-
-  let find : t -> vertex -> T.t option
-  =fun m key -> VtxMap.find m key
-
-  let find_empty : t -> vertex -> T.t
-  =fun m key -> begin
-    let data_opt = VtxMap.find m key in
-    match data_opt with
-    | None -> T.create ~vtx:key
-    | Some inv -> inv
-  end
-
-  let mem : t -> vertex -> bool
-  =fun m key -> VtxMap.mem m key
-  
-  let fold : t -> init:'a -> f:(key:vertex -> data:T.t -> 'a -> 'a) -> 'a
-  =fun m ~init ~f -> VtxMap.fold m ~init:init ~f:f
-  
-  let exists : t -> f:(key:vertex -> data:T.t -> bool) -> bool
-  =fun m ~f -> VtxMap.existsi m ~f:f
-
-  let order : m1:t -> m2:t -> bool (* m1 <= m2 ? true : false *)
-  =fun ~m1 ~m2 -> begin
-    VtxMap.fold_right m2 ~init:true ~f:(fun ~key ~data b -> begin
-      let data' = find_empty m1 key in
-      b&&(T.order ~inv1:data' ~inv2:data)
-    end)
-  end
-
-  let equal : m1:t -> m2:t -> bool (* m1 = m2 *)
-  =fun ~m1 ~m2 -> begin
-    if (VtxMap.length m1) <> (VtxMap.length m2)
-    then false
-    else begin
-      VtxMap.fold_right m2 ~init:true ~f:(fun ~key ~data b -> begin
-        let data' = find_empty m1 key in
-        b&&(T.equal ~inv1:data' ~inv2:data)
-      end)
-    end
-  end
-
-  let join : t -> t -> t
-  =fun m1 m2 -> begin
-    let f : key:vertex -> [ `Both of T.t * T.t | `Left of T.t | `Right of T.t ] -> T.t option
-    =fun ~key dir -> begin
-      let _ = key in
-      match dir with
-      | `Both (inv1, inv2) -> Some (T.join ~inv1:inv1 ~inv2:inv2)
-      | `Left inv -> Some inv
-      | `Right inv -> Some inv
-    end in
-    VtxMap.merge m1 m2 ~f:f
-  end
-
-  let to_string : t -> string
-  =fun m -> begin
-    "{\n" ^ 
-    fold m ~init:"" ~f:(fun ~key ~data str -> begin
-      str ^
-      (Pre.Lib.Cfg.string_of_vertex key) ^ " |-> " ^ (T.to_string data) ^ "\n"
-    end) ^
-    "}"
-  end
-end
+(* invgen_info should contain information about which variables can be used when generating invariants. 
+    Query-Verification condition will convey a set of variables which appeared in that basic-path,
+    so this datatype does not need to carry a set of variables appeared in each basicpaths.
+*)
+type invgen_info = {
+    igi_stgcomp : Vlang.Component.t; (* storage's available vlang-expr (component) set *)
+    igi_glvar_comp : Vlang.Component.t;  (* global variables. they are constnat in only one transaction execution (without storage) *)
+    igi_loopv_set : PreLib.Cfg.vertex CPSet.t;  (* a vertex set contains every loop vertices *)
+    igi_entryvtx : PreLib.Cfg.vertex; (* cfg entry vertex *)
+    igi_exitvtx : PreLib.Cfg.vertex;  (* cfg exit vertex *)
+}
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Worklist                                                                  *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-module WorkList = struct
-  exception Error of string
-
-  type t = {
-    last_enable: Map.t;
-    candidate: Map.t list;
-    expired: Map.t list;
+let inv_true_gen : invgen_info -> t
+=fun {igi_stgcomp=_; igi_glvar_comp=_; igi_loopv_set; igi_entryvtx=_; igi_exitvtx=_} -> begin
+  let open Vlang.Formula in
+  { trx_inv = VF_true;
+    loop_inv = CPSet.fold igi_loopv_set ~init:CPMap.empty ~f:(fun accm loopv -> PreLib.Cfg.t_map_add ~errtrace:("ProverLib.Inv.inv_true_gen") accm loopv (VF_true));
   }
+end
 
-  let empty : t
-  ={ last_enable=(Map.empty); candidate=[]; expired=[] }
 
-  let is_empty : t -> bool
-  =fun w -> Core.List.is_empty (w.candidate)
+(* In our blueprint, Invariant is used for a verifier, not refuter. 
+  So it is easy to generate invgen_info from a contract using cfg only.
+*)
+let gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_info
+=fun cfg -> begin
+  let glenv : GlVar.Env.t = GlVar.Env.t_for_single_contract_verification in
+  (* collect storage-related vlang expressions *)
+  let (param_typ, strg_typ) : Vlang.Ty.t * Vlang.Ty.t =
+    PreLib.Cfg.t_map_find
+      ~errtrace:("ProverLib.Inv.gen_invgen_info_for_single_contract_verification : param_storage")
+      cfg.type_info
+      PreLib.Cfg.param_storage_name
+    |> Vlang.TypeUtil.ty_of_mty
+    |> Vlang.TypeUtil.get_innertyp2
+  in
+  let strg_var : Vlang.Expr.t = V_var (strg_typ, glenv.gv_storage) in 
+  let strg_comp : Vlang.Component.t = Vlang.Component.gather strg_var in
+  (* global variables (except storage) cannot be used in transaction invariant.
+      But they are behaves like a constant, so it can be used in generating loop invariant.
+  *)
+  let basic_glvar_comp : Vlang.Component.t = CPSet.of_list [
+    (param_typ, Vlang.Expr.V_var (param_typ, glenv.gv_param)) |> Vlang.Component.comp_of_vexpr_t;
+    (* strg_typ, Vlang.Expr.V_var (strg_typ, glenv.gv_storage); *)
+    (Vlang.Ty.T_mutez, Vlang.Expr.V_var (Vlang.Ty.T_mutez, glenv.gv_amount)) |> Vlang.Component.comp_of_vexpr_t;
+    (Vlang.Ty.T_mutez, Vlang.Expr.V_var (Vlang.Ty.T_mutez, glenv.gv_balance)) |> Vlang.Component.comp_of_vexpr_t;
+    (Vlang.Ty.T_address, Vlang.Expr.V_var (Vlang.Ty.T_address, glenv.gv_sender)) |> Vlang.Component.comp_of_vexpr_t;
+    (Vlang.Ty.T_address, Vlang.Expr.V_var (Vlang.Ty.T_address, glenv.gv_source)) |> Vlang.Component.comp_of_vexpr_t;
+  ]
+  and loopvtx_set : int CPSet.t = begin 
+    CPMap.fold 
+      ~init:(CPSet.empty) 
+      cfg.vertex_info 
+      ~f:(fun ~key:(v) ~data:(stmt) accset -> 
+        match stmt with
+        | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _ -> CPSet.add accset v
+        | _ -> accset
+      )
+  end in
+  {igi_stgcomp=strg_comp; igi_glvar_comp=basic_glvar_comp; igi_loopv_set=loopvtx_set; igi_entryvtx=cfg.main_entry; igi_exitvtx=cfg.main_exit;}
+end (* function gen_invgen_info_for_single_contract_verification end *)
 
-  let mem : Map.t list -> Map.t -> bool
-  =fun l m -> Core.List.exists l ~f:(fun m' -> Map.equal ~m1:m ~m2:m')
-
-  let push : t -> Map.t -> t
-  =fun w m -> begin
-    if (mem (w.expired) m) || (mem (w.candidate) m)
-    then w
-    else { w with candidate=((w.candidate)@[m]) }
-  end
-
-  let push_list : t -> Map.t list -> t
-  =fun w ml -> Core.List.fold_left ml ~init:w ~f:push
-
-  let push_force : t -> Map.t -> t
-  =fun w m -> { w with candidate=(m::(w.candidate)) }
-
-  let pop : t -> (Map.t * t)
-  =fun w -> begin
-    let m = Core.List.hd (w.candidate) |> (function | Some mm -> mm | None -> Error "pop: Worklist is empty" |> raise) in
-    let candidate' = Core.List.tl (w.candidate) |> (function | Some mm -> mm | None -> Error "pop: Worklist is empty" |> raise) in
-    let w' = { w with candidate=candidate'; expired=(m::(w.expired)) } in
-    (m, w')
-  end
-  
-  let map : t -> f:(Map.t -> Map.t) -> t
-  =fun w ~f -> { w with candidate=(Core.List.map (w.candidate) ~f:f) }
-
-  let update_last_enable : t -> new_:Map.t -> t
-  =fun w ~new_ -> { w with last_enable=new_ }
+let strengthen_worklist : (t * t CPSet.t) -> t CPSet.t
+= let open Vlang in
+  fun ({trx_inv=cur_trxinv; loop_inv=cur_loopinv}, inv_wl) -> begin
+  CPSet.map
+    inv_wl
+    ~f:(
+      fun {trx_inv; loop_inv} ->
+      let new_trxinv = Formula.VF_and [trx_inv; cur_trxinv] in
+      let new_loopinv =
+        CPMap.mapi
+          loop_inv
+          ~f:(
+            fun ~key ~data -> (* key = loop vertex; data = specific loop invariant for one vertex *)
+            let curloopinv_i : Vlang.t = 
+              PreLib.Cfg.t_map_find
+                ~errtrace:("Prover.Inv.strengthen_worklist : curloopinv_i : " ^ (Stdlib.string_of_int key))
+                cur_loopinv
+                key
+            in
+            Formula.VF_and [data; curloopinv_i]
+          )
+      in
+      {trx_inv=new_trxinv; loop_inv=new_loopinv}
+    )
 end

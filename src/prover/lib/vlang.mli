@@ -58,6 +58,7 @@ module Expr : sig
     | V_exec of t * t (* 'a * ('a, 'b) lambda -> 'b *)
     | V_dup  of t   (* 'a -> 'a *)
     | V_itself of t (* 'a -> 'a *)
+    | V_get_default of (t * t * t)  (* 'k * 'v * ('k, 'v) map -> 'v *)  (* key * default-value * map -> get-result *)
 
     (*************************************************************************)
     (* Integer                                                               *)
@@ -122,8 +123,8 @@ module Expr : sig
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez of Z.t
-    | V_amount
-    | V_balance
+    (* | V_amount *)
+    (* | V_balance *)
     | V_add_mmm of t * t  (* mutez * mutez -> mutez *)
     | V_sub_mmm of t * t  (* mutez * mutez -> mutez *)
     | V_mul_mnm of t * t  (* mutez * nat -> mutez *)
@@ -168,8 +169,8 @@ module Expr : sig
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address of t (* key_hash -> address *)
-    | V_source
-    | V_sender
+    (* | V_source *)
+    (* | V_sender *)
     | V_address_of_contract of t (* 'a contract -> address *)
 
     (*************************************************************************)
@@ -323,8 +324,11 @@ module Formula : sig
   | VF_sub_mmm_no_underflow of (Expr.t * Expr.t)
   | VF_mul_mnm_no_overflow of (Expr.t * Expr.t)
   | VF_mul_nmm_no_overflow of (Expr.t * Expr.t)
+  | VF_shiftL_nnn_rhs_in_256 of (Expr.t * Expr.t)
+  | VF_shiftR_nnn_rhs_in_256 of (Expr.t * Expr.t)
   (* Custom Domain Formula for Invariant Generation *)
-  | VF_sigma_equal of ([`Pre | `Post] * Expr.t * Expr.t)
+  | VF_sigma_equal of (Expr.t * Expr.t)
+  | VF_mtzmap_partial_sum_equal of (Expr.t * (Expr.t list) * Expr.t) (* ('k, mutez) map * ('k (OCaml-list)) * mutez -> formula *)
 
   val to_string : t -> string
 end (* module Formula end *)
@@ -387,3 +391,41 @@ module Renaming : sig
   val var_in_expr : Expr.var -> Expr.var -> Expr.t -> Expr.t
   val var_in_expr_formula : Expr.var -> Expr.var -> t -> t
 end (* module Renaming end *)
+
+module Component : sig
+
+  (* "comp" : component. precondition is not same as verification's precondition. *)
+    (* multiple component will be combined to generate an invariant like,
+      comp1 : {precondition=(IF_LEFT v22); body=(UNLIFT_LEFT v22)}
+      comp2 : {precondition=(IF_RIGHT v33); body=(UNLIFT_RIGHT v33)}
+      invariant candidate : (IF_LEFT v22) -> ((IF_right v33) -> (UNLIFT_LEFT v22 < UNLIFT_RIGHT v33))
+    *)
+    type comp = {
+      precond_lst : Formula.t list;
+      typ : Ty.t;
+      body : Expr.t;
+    }
+    type t = comp Core.Set.Poly.t
+
+    (* "fold_precond" should be generate an invariant's precondition when generate an invariant which uses component. *)
+    val fold_precond : Formula.t list -> Formula.t
+    val fold_preconds : comp list -> Formula.t
+
+    (* "gather" gather components from the given expression.
+        Mostly, the given expression will be an transaction-storage variable.
+    *)
+    val gather : Expr.t -> t
+
+    (* attach empty precondition *)
+    val comp_of_vexpr_t : (Ty.t * Expr.t) -> comp
+    val comp_of_vexpr : Expr.t -> comp
+
+    (* "filter_typ" : filter components using type constraint *)
+    val filter_typ : (Ty.t -> bool) -> t -> t
+
+    (* "filter_types" : filter components using type constraint, 
+        classify them by concret type.
+    *)
+    val filter_types : (Ty.t -> bool) -> t -> (Ty.t, t) Core.Map.Poly.t
+
+end (* module Component end *)

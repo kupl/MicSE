@@ -5,6 +5,7 @@ _build
 # Etc
 DS_Store
 .vscode
+tmp/
 
 # Benchmark outputs
 /scripts/output/

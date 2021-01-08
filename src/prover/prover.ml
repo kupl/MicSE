@@ -1,200 +1,131 @@
-module Lib = ProverLib
-open Lib
+(* module BpGen = BpGen
+module VcGen = VcGen
+module VlGen = VlGen *)
 
-module Extractor = Extractor
-module Converter = Converter
-module Generator = Generator
-module Verifier = Verifier
+type run_ret = {
+  best_inv : ProverLib.Inv.t;
+  proved : VcGen.query_vc Core.Set.Poly.t;
+  unproved : VcGen.query_vc Core.Set.Poly.t;
+}
 
-type timer = Utils.Timer.t ref
+type run_env = {
+  worklist : ProverLib.Inv.t Core.Set.Poly.t;
+  is_timeout_f : unit -> bool; (* is-timeout? *)
+  igi : ProverLib.Inv.invgen_info;  (* information for invariant generation process *)
+  vcl : (ProverLib.Inv.t -> VcGen.v_cond) list; (* the list of verification condition *)
+  isc : ProverLib.Inv.t -> ProverLib.Vlang.t; (* initial-storage condition *)
+  ret_opt : run_ret option;
+}
 
-exception Error of string
 
-module ProverUtil = struct
-
-  exception Error of string
-
-  let rec read_line_of_file : in_channel -> int -> string
-  =fun file line -> begin
-    if line < 0
-    then Error "read_line_of_file: Wrong line input for reading." |> raise
-    else match line with
-          | 1 -> input_line file
-          | _ -> let _ = input_line file in read_line_of_file file (line - 1)
-  end
-
-  let read_query_location : Pre.Lib.Cfg.t -> Query.t -> string
-  =fun cfg q -> begin
-    try
-      let file = open_in (!Utils.Options.input_file) in
-      let entry_loc = Pre.Lib.Cfg.CPMap.find_exn cfg.pos_info q.loc.entry in
-      let exit_loc = Pre.Lib.Cfg.CPMap.find_exn cfg.pos_info q.loc.exit in
-      match entry_loc, exit_loc with
-      | Pos (etr_pos, _), Pos (_, ext_pos) -> begin
-          let line = read_line_of_file file etr_pos.lin in
-          (string_of_int etr_pos.lin) ^ ": " ^ (Core.String.slice line (etr_pos.col - 1) (ext_pos.col))
-        end
-      | _ -> Error "read_query_location: Wrong query location information." |> raise
-    with
-    | Core.Not_found_s _
-    | Not_found -> "?: Cannot Find Query Location"
-    | e -> e |> raise
-  end
-
-  let read_param_storage : Smt.ZModel.t -> cfg:Pre.Lib.Cfg.t -> (string * string)
-  =fun model ~cfg -> begin
-    try
-      let param_stg = Pre.Lib.Cfg.param_storage_name |>
-                      Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |>
-                      Vlang.TypeUtil.ty_of_mty |>
-                      Verifier.smtsort_of_vlangtyp |>
-                      Smt.ZExpr.create_var ~name:Pre.Lib.Cfg.param_storage_name in
-      let param_opt, stg_opt = (
-        (param_stg |> Smt.ZPair.read_fst |> Smt.ZModel.eval ~model:model),
-        (param_stg |> Smt.ZPair.read_snd |> Smt.ZModel.eval ~model:model)) in
-      match param_opt, stg_opt with
-      | Some param, Some stg -> ((param |> Smt.ZExpr.to_string), (stg |> Smt.ZExpr.to_string))
-      | _, _ -> Error "read_param_storage: Wrong evaluation of parameter and storage" |> raise
-    with
-    | Core.Not_found_s _
-    | Not_found -> Error "read_param_storage: Type of param_storage is not found" |> raise
-    | e -> e |> raise
-  end
-
-  let read_post_storage : Smt.ZModel.t -> bp_list:Bp.lst -> cfg:Pre.Lib.Cfg.t -> string
-  =fun model ~bp_list ~cfg -> begin
-    try
-      let operation_stg = bp_list.exit.var |>
-                          Option.get |>
-                          Pre.Lib.Cfg.CPMap.find_exn (cfg.type_info) |>
-                          Vlang.TypeUtil.ty_of_mty |>
-                          Verifier.smtsort_of_vlangtyp |>
-                          Smt.ZExpr.create_var ~name:("operation_storage") in
-      match (operation_stg |> Smt.ZPair.read_snd |> Smt.ZModel.eval ~model:model) with
-      | Some stg -> stg |> Smt.ZExpr.to_string
-      | _ -> Error "read_post_storage: wrong evaluation of post storage" |> raise
-    with
-    | Core.Not_found_s _
-    | Not_found -> Error "read_post_storage: Type of param_storage is not found" |> raise
-    | e -> e |> raise
-  end
+let init_naive_timeout_func : unit -> (unit -> bool)
+=fun () -> begin
+  let initial_time = Sys.time () in
+  (fun () -> ((Sys.time ()) > (initial_time +. Stdlib.float_of_int !(Utils.Options.prover_time_budget))))
 end
 
-let rec work : Inv.WorkList.t -> Bp.lst -> Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> timer -> Query.t list
-=fun w bp_list cfg init_stg_opt time -> begin
-  let entry_var, exit_var = ((bp_list.entry.var |> Option.get), (bp_list.exit.var |> Option.get)) in
 
-  (* Choose a candidate invariant *)
-  let inv_map, cur_wlst = Inv.WorkList.pop w in
+(* "select better run-result" is not strictly defined, but it can be naively defined,
+    by selecting run-result which is inductive & has less unproved queries.
+*)
+let update_runret_opt : (run_ret option * run_ret option) -> run_ret option
+=fun (old_rr_opt, new_rr_opt) -> begin
+  match old_rr_opt, new_rr_opt with
+  | None, None -> None
+  | None, Some _ -> new_rr_opt
+  | Some _, None -> old_rr_opt
+  | Some {unproved=u1; _},
+    Some {unproved=u2; _} ->
+      if Core.Set.Poly.length u1 > Core.Set.Poly.length u2 then new_rr_opt else old_rr_opt
+end (* function update_runret_opt end *)
 
-  (* Generate Verification Conditions *)
-  let bps = Generator.apply inv_map bp_list.bps in
-  let path_vcs, queries = Core.List.fold_right bps ~f:(fun bp (pvcl, ql) -> (begin
-    let path_vc, queries = Converter.convert bp cfg ~entry_var:entry_var ~exit_var:exit_var in
-    (path_vc::pvcl, queries@ql)
-  end)) ~init:([], []) in
 
-  (* Verify Inductiveness *)
-  let inductiveness = Core.List.fold_right path_vcs ~f:(fun path_vc inductiveness -> (begin
-    if Utils.Timer.is_timeout time then begin
-      false
-    end else begin
-      let path_inductive, _ = Verifier.verify path_vc in
-      inductiveness&&(path_inductive |> Smt.ZSolver.is_valid)
-    end
-  end)) ~init:true in
 
-  (* Verify Queries *)
-  if inductiveness then begin
-    let proven, unproven = Core.List.fold_right queries ~f:(fun q (p, up) -> (begin
-      if Utils.Timer.is_timeout time then begin
-        let up_q = Query.update_status q (Query.Q_unproven None) in
-        (p, up_q::up)
-      end else begin
-        let result, model = Verifier.verify q.query in
-        if result |> Smt.ZSolver.is_valid
-        then begin
-          let p_q = Query.update_status q (Query.Q_proven) in
-          (p_q::p, up)
-        end else begin
-          let up_q = Query.update_status q (Query.Q_unproven model) in
-          (p, up_q::up)
-        end
-      end
-    end)) ~init:([], []) in
-    if Core.List.is_empty unproven
-    then proven@unproven
-    else begin
-      let generated_wlst = Generator.W.update ~bp_list:bp_list ~cfg:cfg ~init_stg:init_stg_opt ~wlst:cur_wlst in
-      let next_wlst = Generator.W.join ~inv:inv_map ~wlst:generated_wlst in
-      if Utils.Timer.is_timeout time || Inv.WorkList.is_empty next_wlst then begin
-        proven@unproven
-      end else begin
-        let next_work = work next_wlst bp_list cfg init_stg_opt time in
-        if next_work = [] then proven@unproven else next_work
-      end
-    end
-  end else begin
-    if (Utils.Timer.is_timeout time) || (Inv.WorkList.is_empty cur_wlst) then begin
-      []
-    end else begin
-      work cur_wlst bp_list cfg init_stg_opt time
-    end
-  end
-end
+(* "run" is the infinite-loop, escapes in the following conditions
+  - worklist is empty
+  - timeout
+  - verification success
+*)
+let rec run : run_env -> run_ret option
+= let open ProverLib in
+  let module CPSet = Core.Set.Poly in
+  fun {worklist; is_timeout_f; igi; vcl; isc; ret_opt} -> begin
+  (* check escape condition *)
+  if CPSet.is_empty worklist || is_timeout_f () then ret_opt else
+  (* choose a candidate invariant from worklist *)
+  let inv_candidate : Inv.t = CPSet.choose_exn worklist in
+  let new_worklist_1 : Inv.t CPSet.t = CPSet.remove worklist inv_candidate in
+  (* validate *)
+  let val_res : Validator.validate_result = Validator.validate (inv_candidate, vcl, isc) in
+  let cur_retopt = if val_res.inductive then Some {best_inv = inv_candidate; proved = val_res.p; unproved = val_res.u} else None in
+  (* if verification succeeds *)
+  if val_res.inductive && CPSet.is_empty val_res.Validator.u then Some {best_inv=inv_candidate; proved=val_res.p; unproved=val_res.u} else
+  (* else verification succeeds *)
+  (* generator *)
+  let new_worklist_2 = CPSet.union (InvGen.generate (val_res, igi, inv_candidate)) new_worklist_1 in (* TODO *)
+  (* else verification succeeds - if inductive, update worklist *)
+  let new_worklist_3 = if val_res.inductive then Inv.strengthen_worklist (inv_candidate, new_worklist_2) else new_worklist_2 in
+  (* additional process - snapshot the best result *)
+  let new_retopt = update_runret_opt (ret_opt, cur_retopt) in
+  (* recursive call until escape *)
+  run {
+    worklist = new_worklist_3;
+    is_timeout_f = is_timeout_f;
+    igi = igi;
+    vcl = vcl;
+    isc = isc;
+    ret_opt = new_retopt;
+  }
+end (* function run end *)
 
-let prove : Pre.Lib.Cfg.t -> Pre.Lib.Mich.data Pre.Lib.Mich.t option -> unit
-=fun cfg init_stg_opt -> begin
-  try
-    (* Construct basic path *)
-    let bp_list = Extractor.extract cfg in
-    let _ = if !Utils.Options.flag_bp_print
-            then print_endline (":: Basic Paths" ^ 
-                                (Core.List.foldi bp_list.bps ~init:"" ~f:(fun idx str bp -> (
-                                  str ^ "\nBasic Path #" ^ (string_of_int idx) ^ "\n" ^ (Bp.to_string bp))
-                                ))) in
 
-    (* Verify all of basic path *)
-    let initial_worklist = Generator.W.create ~bp_list:bp_list in
-    let time = Utils.Timer.create ~budget:(!Utils.Options.prover_time_budget) in
-    let raw_queries = work initial_worklist bp_list cfg init_stg_opt time in
-
-    (* Print out result *)
-    let queries = Core.List.sort (Core.List.fold_right raw_queries ~f:(fun raw_q qs -> ( (* only when proven@unproven *)
-      if Core.List.mem qs raw_q ~equal:(fun q raw_q -> (Bp.compare_loc q.loc raw_q.loc) = 0)
-      then qs
-      else raw_q::qs
-    )) ~init:[]) ~compare:(fun q1 q2 -> Bp.compare_loc q1.loc q2.loc) in
-    let _ = Core.List.iter queries ~f:(fun q -> (
-      let _ = print_endline ("- Query line " ^ (ProverUtil.read_query_location cfg q)) in
-      match q.status with
-      | Q_proven -> begin
-          let _ = print_endline ("\t- Status: Proven") in
-          let _ = if !Utils.Options.flag_vc_print
-                  then print_endline ("\t- VC: " ^ (Vlang.Formula.to_string q.query)) in
-          ()
-        end
-      | Q_unproven model_opt -> begin
-          let _ = print_endline ("\t- Status: Unproven") in
-          let _ = print_endline ("\t- Category: " ^ (Bp.string_of_category q.typ)) in
-          let _ = match model_opt with
-                  | None -> let _ = print_endline ("\t- Something Wrong") in ()
-                  | Some model -> begin
-                      if !Utils.Options.flag_param_storage
-                      then begin
-                        let param, stg = model |> ProverUtil.read_param_storage ~cfg:cfg in
-                        let _ = print_endline ("\t- Parameter:\t" ^ param) in
-                        let _ = print_endline ("\t- Storage:\t" ^ stg) in
-                        ()
-                      end else ()
-                    end in
-          let _ = if !Utils.Options.flag_vc_print
-                  then print_endline ("\t- VC: " ^ (Vlang.string_of_formula q.query)) in
-          ()
-        end
-      | Q_nonproven -> Error "prove: Non-proved query exists" |> raise
-    )) in
-    ()
-  with
-  | e -> e |> raise
-end
+let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
+= let open PreLib in
+  let open ProverLib in
+  let module CPSet = Core.Set.Poly in
+  fun cfg init_stg_opt -> begin
+  (* 1. Basic-Path Construction *)
+  let prv_glenv_ref : GlVar.Env.t ref = ref GlVar.Env.t_for_single_contract_verification in
+  let basic_vtxlst_set : (Cfg.vertex list) CPSet.t = BpGen.collect_bp_vtx cfg cfg.main_entry in
+  let bpgen_func : Cfg.vertex list -> Bp.t = BpGen.bp_of_vtxlst prv_glenv_ref cfg in
+  let bps_orig : Bp.t CPSet.t = CPSet.map basic_vtxlst_set ~f:bpgen_func in
+  let bps : Bp.t CPSet.t =
+    (* OPTIMIZATION *)
+    if !Utils.Options.flag_bpopt_rsi then CPSet.map bps_orig ~f:Bp.remove_skip_inst else bps_orig
+  in
+  let _ = 
+    (* PRINT *)
+    if !Utils.Options.flag_bp_print 
+    then Stdlib.print_endline (Bp.simple_stringRep_of_tset ~pretty:(!Utils.Options.flag_bp_print_pretty) bps)
+    else ()
+  in
+  (* 2. Verification Condition Construction 
+      - Since CPSet cannot contain a function, we store (Inv.t -> v_cond) functions in list.
+  *)
+  let vcgen : Bp.t -> (Inv.t -> VcGen.v_cond) = VcGen.construct_verifier_vc cfg in
+  let vcl : (Inv.t -> VcGen.v_cond) list = CPSet.fold bps ~init:[] ~f:(fun accl bp -> (vcgen bp) :: accl) in
+  (* 3. Invariant Synthesis & Prove Loop 
+      - The formula "init_stg_cond inv-candidate" should be valid.
+        It should be checked before chekc other validities embedded in "vcl".
+  *)
+  let ivg_info : Inv.invgen_info = Inv.gen_invgen_info_for_single_contract_verification cfg in
+  let init_stg_cond : Inv.t -> Vlang.t = VcGen.construct_initstg_vc prv_glenv_ref cfg init_stg_opt in
+  let run_result_opt : run_ret option =
+    run {
+      worklist = CPSet.singleton (Inv.inv_true_gen ivg_info);
+      is_timeout_f = init_naive_timeout_func ();
+      igi = ivg_info;
+      vcl = vcl;
+      isc = init_stg_cond;
+      ret_opt = None;
+    }
+  in
+  (* interpret prover result *)
+  let _ = 
+    (match run_result_opt with
+    | None -> print_endline "None!"
+    | Some {best_inv; _} -> print_endline "Some!"; print_endline (Vlang.Formula.to_string best_inv.trx_inv)
+    ) (* TODO *)
+  in
+  ()
+end (* function prove end *)

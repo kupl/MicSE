@@ -88,6 +88,12 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_exec (_, _) -> err ve (* function application & execution *)
       | V_dup e -> soe e
       | V_itself e -> soe e
+      | V_get_default (e1, e2, e3) -> begin
+          Smt.ZExpr.create_ite 
+            ~cond:(Smt.ZMap.read_exist ~key:(soe e1) ~map:(soe e3))
+            ~t:(Smt.ZMap.read_value ~key:(soe e1) ~map:(soe e3))
+            ~f:(soe e2)
+        end
 
       (*************************************************************************)
       (* Integer                                                               *)
@@ -152,8 +158,8 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (* Mutez                                                                 *)
       (*************************************************************************)
       | V_lit_mutez zn -> Smt.ZMutez.of_zarith zn
-      | V_amount -> err ve    (* native & uninterpreted symbol needed *)
-      | V_balance -> err ve   (* native & uninterpreted symbol needed *)
+      (* | V_amount -> err ve *)
+      (* | V_balance -> err ve *)
       | V_add_mmm (e1, e2) -> Smt.ZMutez.create_add (e1 |> soe) (e2 |> soe)
       | V_sub_mmm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe) (e2 |> soe)
       | V_mul_mnm (e1, e2) -> Smt.ZMutez.create_mul (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
@@ -211,8 +217,8 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (* Address                                                               *)
       (*************************************************************************)
       | V_lit_address kh -> Smt.ZAddress.create_addrkh (soe kh)
-      | V_source -> Smt.ZAddress.of_string Smt.CONST._tmpname_source
-      | V_sender -> Smt.ZAddress.of_string Smt.CONST._tmpname_sender
+      (* | V_source -> Smt.ZAddress.of_string Smt.CONST._tmpname_source *)
+      (* | V_sender -> Smt.ZAddress.of_string Smt.CONST._tmpname_sender *)
       | V_address_of_contract _ -> err ve (* not supported *)
 
       (*************************************************************************)
@@ -436,8 +442,11 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
       | VF_sub_mmm_no_underflow (e1, e2) -> Smt.ZMutez.check_sub_no_underflow (e1 |> soe) (e2 |> soe)
       | VF_mul_mnm_no_overflow (e1, e2) -> Smt.ZMutez.check_mul_no_overflow (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
       | VF_mul_nmm_no_overflow (e1, e2) -> Smt.ZMutez.check_mul_no_overflow (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe)
+      | VF_shiftL_nnn_rhs_in_256 _ -> err vf
+      | VF_shiftR_nnn_rhs_in_256 _ -> err vf
       (* Custom Domain Formula for Invariant Generation *)
-      | VF_sigma_equal (_, _, _) -> Smt.ZBool.true_ () (* TODO *)
+      | VF_sigma_equal (_, _) -> Smt.ZBool.true_ () (* TODO *)
+      | VF_mtzmap_partial_sum_equal (_, _, _) -> Smt.ZBool.true_ () (* TODO *)
     with
     | Smt.ZError s -> SMT_Encode_Error_f (vf, s) |> raise
     | e -> e |> raise

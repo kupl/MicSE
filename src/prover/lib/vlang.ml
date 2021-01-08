@@ -85,6 +85,7 @@ module Expr = struct
     | V_exec of t * t (* 'a * ('a, 'b) lambda -> 'b *)
     | V_dup  of t   (* 'a -> 'a *)
     | V_itself of t (* 'a -> 'a *)
+    | V_get_default of (t * t * t)  (* 'k * 'v * ('k, 'v) map -> 'v *)  (* key * default-value * map -> get-result *)
 
     (*************************************************************************)
     (* Integer                                                               *)
@@ -149,8 +150,8 @@ module Expr = struct
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez of Z.t
-    | V_amount
-    | V_balance
+    (* | V_amount *)
+    (* | V_balance *)
     | V_add_mmm of t * t  (* mutez * mutez -> mutez *)
     | V_sub_mmm of t * t  (* mutez * mutez -> mutez *)
     | V_mul_mnm of t * t  (* mutez * nat -> mutez *)
@@ -195,8 +196,8 @@ module Expr = struct
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address of t (* key_hash -> address *)
-    | V_source
-    | V_sender
+    (* | V_source *)
+    (* | V_sender *)
     | V_address_of_contract of t (* 'a contract -> address *)
 
     (*************************************************************************)
@@ -335,6 +336,7 @@ module Expr = struct
       | V_exec (e1, e2)     -> "EXEC("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_dup e1            -> ""           ^ (e1 |> ts)
       | V_itself e1         -> ""           ^ (e1 |> ts)
+      | V_get_default (e1, e2, e3) -> "GET_DFT(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
   
       (*************************************************************************)
       (* Integer                                                               *)
@@ -399,8 +401,8 @@ module Expr = struct
       (* Mutez                                                                 *)
       (*************************************************************************)
       | V_lit_mutez zn      -> "M_"       ^ (zn |> Z.to_string)
-      | V_amount            -> "AMOUNT"
-      | V_balance           -> "BALANCE"
+      (* | V_amount            -> "AMOUNT" *)
+      (* | V_balance           -> "BALANCE" *)
       | V_add_mmm (e1, e2)  -> "ADD("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_sub_mmm (e1, e2)  -> "SUB("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_mul_mnm (e1, e2)  -> "MUL("     ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
@@ -445,8 +447,8 @@ module Expr = struct
       (* Address                                                               *)
       (*************************************************************************)
       | V_lit_address e1          -> "ADDRESS(" ^ (e1 |> ts) ^ ")"
-      | V_source                  -> "SOURCE"
-      | V_sender                  -> "SENDER"
+      (* | V_source                  -> "SOURCE" *)
+      (* | V_sender                  -> "SENDER" *)
       | V_address_of_contract e1  -> "ADDRESS(" ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
@@ -596,8 +598,11 @@ module Formula = struct
   | VF_sub_mmm_no_underflow of (Expr.t * Expr.t)
   | VF_mul_mnm_no_overflow of (Expr.t * Expr.t)
   | VF_mul_nmm_no_overflow of (Expr.t * Expr.t)
+  | VF_shiftL_nnn_rhs_in_256 of (Expr.t * Expr.t)
+  | VF_shiftR_nnn_rhs_in_256 of (Expr.t * Expr.t)
   (* Custom Domain Formula for Invariant Generation *)
-  | VF_sigma_equal of ([`Pre | `Post] * Expr.t * Expr.t)
+  | VF_sigma_equal of (Expr.t * Expr.t)
+  | VF_mtzmap_partial_sum_equal of (Expr.t * (Expr.t list) * Expr.t) (* ('k, mutez) map * ('k (OCaml-list)) * mutez -> formula *)
 
   let rec to_string : t -> string
   = let ts = to_string in   (* syntax sugar *)
@@ -630,8 +635,11 @@ module Formula = struct
       | VF_sub_mmm_no_underflow (e1, e2)  -> "NoUnderflow_SUB("  ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_mul_mnm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_mul_nmm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_shiftL_nnn_rhs_in_256 (e1, e2) -> "ShiftL_RHS256("     ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> "ShiftR_RHS256("     ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       (* Custom Domain Formula for Invariant Generation *)
-      | VF_sigma_equal (pos, e1, e2) -> (match pos with `Pre -> "Pre_" | `Post -> "Post_") ^ "Sigma(" ^ (e1 |> ets) ^ ")=(" ^ (e2 |> ets) ^ ")"
+      | VF_sigma_equal (e1, e2) -> "Sigma(" ^ (e1 |> ets) ^ ")=(" ^ (e2 |> ets) ^ ")"
+      | VF_mtzmap_partial_sum_equal (e1, el2, e3) -> "MtzMap_PSE(" ^ (e1 |> ets) ^ ",(" ^ (el2 |> Core.List.map ~f:ets |> Core.String.concat ~sep:",") ^ ")," ^ (e3 |> ets) ^ ")"
     end
 end (* module Formula end *)
 
@@ -718,6 +726,7 @@ module TypeUtil = struct
     | V_exec (_, e2) -> (match toe e2 with | T_lambda (_, t2) -> t2 | _ as tt -> invalidtyp tt eee)
     | V_dup e -> toe e
     | V_itself e -> toe e
+    | V_get_default (_, _, e3) -> (match toe e3 with | T_map (_, t2) -> t2 | _ as tt -> invalidtyp tt eee)
 
     (*************************************************************************)
     (* Integer                                                               *)
@@ -782,8 +791,8 @@ module TypeUtil = struct
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez _
-    | V_amount
-    | V_balance
+    (* | V_amount *)
+    (* | V_balance *)
     | V_add_mmm   _
     | V_sub_mmm   _
     | V_mul_mnm   _
@@ -828,8 +837,8 @@ module TypeUtil = struct
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address _
-    | V_source
-    | V_sender
+    (* | V_source *)
+    (* | V_sender *)
     | V_address_of_contract _ -> T_address
 
     (*************************************************************************)
@@ -1007,6 +1016,7 @@ module RecursiveMappingExprTemplate = struct
     | V_exec (e1, e2) -> V_exec (rf e1, rf e2)
     | V_dup e -> V_dup (rf e)
     | V_itself e -> V_itself (rf e)
+    | V_get_default (e1, e2, e3) -> V_get_default (rf e1, rf e2, rf e3)
 
     (*************************************************************************)
     (* Integer                                                               *)
@@ -1071,8 +1081,8 @@ module RecursiveMappingExprTemplate = struct
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez _ -> eee
-    | V_amount      -> eee
-    | V_balance     -> eee
+    (* | V_amount      -> eee *)
+    (* | V_balance     -> eee *)
     | V_add_mmm (e1, e2) -> V_add_mmm (rf e1, rf e2)
     | V_sub_mmm (e1, e2) -> V_sub_mmm (rf e1, rf e2)
     | V_mul_mnm (e1, e2) -> V_mul_mnm (rf e1, rf e2)
@@ -1117,8 +1127,8 @@ module RecursiveMappingExprTemplate = struct
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address e -> V_lit_address (rf e)
-    | V_source  -> eee
-    | V_sender  -> eee
+    (* | V_source  -> eee *)
+    (* | V_sender  -> eee *)
     | V_address_of_contract e -> V_address_of_contract (rf e)
 
     (*************************************************************************)
@@ -1258,6 +1268,7 @@ module RecursiveMappingExprTemplate = struct
     | V_exec (e1, e2) -> V_exec (rf e1, rf e2)
     | V_dup e -> V_dup (rf e)
     | V_itself e -> V_itself (rf e)
+    | V_get_default (e1, e2, e3) -> V_get_default (rf e1, rf e2, rf e3)
 
     (*************************************************************************)
     (* Integer                                                               *)
@@ -1322,8 +1333,8 @@ module RecursiveMappingExprTemplate = struct
     (* Mutez                                                                 *)
     (*************************************************************************)
     | V_lit_mutez _ -> eee
-    | V_amount      -> eee
-    | V_balance     -> eee
+    (* | V_amount      -> eee *)
+    (* | V_balance     -> eee *)
     | V_add_mmm (e1, e2) -> V_add_mmm (rf e1, rf e2)
     | V_sub_mmm (e1, e2) -> V_sub_mmm (rf e1, rf e2)
     | V_mul_mnm (e1, e2) -> V_mul_mnm (rf e1, rf e2)
@@ -1368,8 +1379,8 @@ module RecursiveMappingExprTemplate = struct
     (* Address                                                               *)
     (*************************************************************************)
     | V_lit_address e -> V_lit_address (rf e)
-    | V_source  -> eee
-    | V_sender  -> eee
+    (* | V_source  -> eee *)
+    (* | V_sender  -> eee *)
     | V_address_of_contract e -> V_address_of_contract (rf e)
 
     (*************************************************************************)
@@ -1521,8 +1532,12 @@ module RecursiveMappingExprTemplate = struct
     | VF_sub_mmm_no_underflow (e1, e2) -> VF_sub_mmm_no_underflow ((re e1), (re e2))
     | VF_mul_mnm_no_overflow (e1, e2) -> VF_mul_mnm_no_overflow ((re e1), (re e2))
     | VF_mul_nmm_no_overflow (e1, e2) -> VF_mul_nmm_no_overflow ((re e1), (re e2))
+    | VF_shiftL_nnn_rhs_in_256 (e1, e2) -> VF_shiftL_nnn_rhs_in_256 ((re e1), (re e2))
+    | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> VF_shiftR_nnn_rhs_in_256 ((re e1), (re e2))
     (* Custom Domain Formula for Invariant Generation *)
-    | VF_sigma_equal (pos, e1, e2) -> VF_sigma_equal (pos, (re e1), (re e2))
+    | VF_sigma_equal (e1, e2) -> VF_sigma_equal ((re e1), (re e2))
+    | VF_mtzmap_partial_sum_equal (e1, el2, e3) -> VF_mtzmap_partial_sum_equal((re e1), (List.map re el2), (re e3))
+    
   end (* function map_formula_outer end *)
 
 
@@ -1558,8 +1573,11 @@ module RecursiveMappingExprTemplate = struct
     | VF_sub_mmm_no_underflow (e1, e2) -> VF_sub_mmm_no_underflow ((re e1), (re e2))
     | VF_mul_mnm_no_overflow (e1, e2) -> VF_mul_mnm_no_overflow ((re e1), (re e2))
     | VF_mul_nmm_no_overflow (e1, e2) -> VF_mul_nmm_no_overflow ((re e1), (re e2))
+    | VF_shiftL_nnn_rhs_in_256 (e1, e2) -> VF_shiftL_nnn_rhs_in_256 ((re e1), (re e2))
+    | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> VF_shiftR_nnn_rhs_in_256 ((re e1), (re e2))
     (* Custom Domain Formula for Invariant Generation *)
-    | VF_sigma_equal (pos, e1, e2) -> VF_sigma_equal (pos, (re e1), (re e2))
+    | VF_sigma_equal (e1, e2) -> VF_sigma_equal ((re e1), (re e2))
+    | VF_mtzmap_partial_sum_equal (e1, el2, e3) -> VF_mtzmap_partial_sum_equal (re e1, (List.map re el2), re e3)
     ) |> formula_f
   end (* function map_formula_outer end *)
 
@@ -1583,3 +1601,116 @@ module Renaming = struct
   end (* function var_in_expr_formula end *) 
 
 end (* module Renaming end *)
+
+
+module Component = struct
+  
+  module CPSet = Core.Set.Poly (* sugar *)
+  
+  (* "comp" : component. precondition is not same as verification's precondition. *)
+    (* multiple component will be combined to generate an invariant like,
+      comp1 : {precondition=(IF_LEFT v22); body=(UNLIFT_LEFT v22)}
+      comp2 : {precondition=(IF_RIGHT v33); body=(UNLIFT_RIGHT v33)}
+      invariant candidate : (IF_LEFT v22) -> ((IF_right v33) -> (UNLIFT_LEFT v22 < UNLIFT_RIGHT v33))
+    *)
+  type comp = {
+    precond_lst : Formula.t list;
+    typ : Ty.t;
+    body : Expr.t;
+  }
+  type t = comp CPSet.t
+
+  let fold_precond : Formula.t list -> Formula.t
+  =fun flist -> begin 
+    List.fold_left
+      (fun accf f -> Formula.VF_imply (f, accf)) 
+      VF_true
+      flist
+  end (* function fold_pecond end *)
+  let fold_preconds : comp list -> Formula.t
+  =fun clist -> begin
+    List.map (fun c -> c.precond_lst) clist
+    |> List.flatten
+    |> fold_precond
+  end (* function fold_preconds end *)
+
+
+  (* Q. which components to gather
+     A. EVERYTHING
+      - option -> none & (some _) & rec(unlifted_option)
+      - pair -> pair-itself & rec(fst) & rec(snd)
+      - or -> left & right & rec(unlifted_left) & rec(unlifted_right)
+      - others -> itself
+  *)
+  let rec gather_comps_i : comp -> t -> t
+  =fun {precond_lst=cur_prec_lst; typ=cur_typ; body=cur_body;} acc_t -> begin
+    (* Precondition & body construction example:
+      For example, you want to traverse to RIGHT of RIGHT of LEFT of variable-23.
+      First, this function will generate a component {True; v23}.
+      Second, this function will make {If-left (v23); Unlift-left v23}
+      Third, this function will make {If-left (v23) -> (If-right (Unlift-left v23)); Unlift-right (Unlift-left v23) }
+      Last, this function will make {If-left (v23) -> (If-right (Unlift-left v23) -> If-right (Unlift-right(Unlift-left v23)));
+                                      Unlift-right (Unlift-right (Unlift-left v23))}
+      In this implementation, we store each precondition pieces in list (order preserved as REVERSED)
+        and fold them (using defined "fold_comp_precond" function above) to construct precondition when needed.
+    *)
+    match cur_typ with
+    | T_option i_ty -> begin
+        let comp_none = { precond_lst = cur_prec_lst; typ = cur_typ; body = V_none i_ty; } in
+        let some_precond = Formula.VF_not (VF_mich_if_none cur_body) :: cur_prec_lst in
+        let comp_some = { precond_lst = some_precond; typ = cur_typ; body = V_some (V_unlift_option cur_body); } in
+        let comp_some_unlifted = { precond_lst = some_precond; typ = i_ty; body = V_unlift_option cur_body; } in
+        gather_comps_i comp_some_unlifted (CPSet.add (CPSet.add acc_t comp_none) comp_some)
+      end
+    | T_pair (i1_ty, i2_ty) -> begin
+        let comp_pair = { precond_lst = cur_prec_lst; typ = cur_typ; body = cur_body; } in
+        let comp_fst = { precond_lst = cur_prec_lst; typ = i1_ty; body = V_car cur_body; } in
+        let acc_t1 = gather_comps_i comp_fst (CPSet.add acc_t comp_pair) in
+        let comp_snd = { precond_lst = cur_prec_lst; typ = i2_ty; body = V_cdr cur_body; } in
+        gather_comps_i comp_snd acc_t1
+      end
+    | T_or (i1_ty, i2_ty) -> begin
+        let left_precond = Formula.VF_mich_if_left cur_body :: cur_prec_lst in
+        let right_precond = Formula.VF_not (Formula.VF_mich_if_left cur_body) :: cur_prec_lst in
+        let comp_left = { precond_lst = left_precond; typ = cur_typ; body = V_left (cur_typ, V_unlift_left cur_body)} in
+        let comp_right = { precond_lst = right_precond; typ = cur_typ; body = V_right (cur_typ, V_unlift_right cur_body)} in
+        let comp_left_unlifted = {precond_lst = left_precond; typ = i1_ty; body = V_unlift_left cur_body} in
+        let comp_right_unlifted = {precond_lst = right_precond; typ = i2_ty; body = V_unlift_right cur_body} in
+        let acc_t1 = CPSet.add (CPSet.add acc_t comp_left) comp_right in
+        let acc_t2 = gather_comps_i comp_left_unlifted acc_t1 in
+        let acc_t3 = gather_comps_i comp_right_unlifted acc_t2 in
+        acc_t3
+      end
+    | _ -> begin
+        CPSet.add acc_t {precond_lst=cur_prec_lst; typ=cur_typ; body=cur_body;}
+      end
+  end (* function gather_comps_i end *)
+
+  let gather : Expr.t -> t
+  =fun e -> gather_comps_i {precond_lst=[]; typ=(TypeUtil.ty_of_expr e); body=e} CPSet.empty
+
+  (* attach empty precondition *)
+  let comp_of_vexpr_t : (Ty.t * Expr.t) -> comp
+  =fun (t, e) -> {precond_lst=[]; typ=t; body=e;}
+  let comp_of_vexpr : Expr.t -> comp
+  =fun e -> comp_of_vexpr_t (TypeUtil.ty_of_expr e, e)
+
+  (* "filter_typ" : filter components using type constraint *)
+  let filter_typ : (Ty.t -> bool) -> t -> t
+  =fun filter_f cset -> CPSet.filter cset ~f:(fun c -> filter_f c.typ)
+
+  (* "filter_types" : filter components using type constraint, 
+        classify them by exact type.
+  *)
+  let filter_types : (Ty.t -> bool) -> t -> (Ty.t, t) Core.Map.Poly.t
+  =fun filter_f cset -> begin
+    Core.Set.Poly.fold
+      (filter_typ filter_f cset)
+      ~init:Core.Map.Poly.empty
+      ~f:(
+        fun accm c ->
+        Core.Map.Poly.update accm c.typ ~f:(function | None -> Core.Set.Poly.singleton c | Some t -> Core.Set.Poly.add t c)
+      )
+  end (* function filter_types end *)
+
+end (* module Component end *)

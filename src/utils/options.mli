@@ -17,6 +17,7 @@ val flag_cfgopt_all : bool ref (* it will set all cfg-optimization *)
 
 (* FLAGS - Basic Path *)
 val flag_bpopt_rsi : bool ref (* remove-skip-instructions *)
+val flag_bp_print_pretty : bool ref (* turn on pretty-print *)
 
 (* FLAGS - Result of solver *)
 val flag_param_storage : bool ref (* print counter-example on unsafe-path *)

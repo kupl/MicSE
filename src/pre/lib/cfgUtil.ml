@@ -131,6 +131,122 @@ let remove_simple_stack_operation_vertices : t -> t
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Appeared Variable List in Expression                                      *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(* it does not distinguishes variables in LHS and RHS of assign stmts. *)
+let appeared_varlst_expr : Cfg.expr -> string list
+= begin function
+  | E_push _ -> []
+  | E_car v -> [v] 
+  | E_cdr v -> [v]
+  | E_abs v -> [v]
+  | E_neg v -> [v]
+  | E_not v -> [v]
+  | E_add  (v1, v2) -> [v1; v2]
+  | E_sub  (v1, v2) -> [v1; v2]
+  | E_mul  (v1, v2) -> [v1; v2]
+  | E_ediv (v1, v2) -> [v1; v2]
+  | E_shiftL (v1, v2) -> [v1; v2]
+  | E_shiftR (v1, v2) -> [v1; v2]
+  | E_and  (v1, v2) -> [v1; v2]
+  | E_or   (v1, v2) -> [v1; v2]
+  | E_xor  (v1, v2) -> [v1; v2]
+  | E_eq  v -> [v]
+  | E_neq v -> [v]
+  | E_lt  v -> [v]
+  | E_gt  v -> [v]
+  | E_leq v -> [v]
+  | E_geq v -> [v]
+  | E_compare (v1, v2) -> [v1; v2]
+  | E_cons (v1, v2) -> [v1; v2]
+  | E_operation _ -> []
+  | E_unit -> []
+  | E_pair (v1, v2) -> [v1; v2]
+  | E_left (v, _) -> [v]
+  | E_right (v, _) -> [v;]
+  | E_some v -> [v]
+  | E_none _ -> []
+  | E_mem (v1, v2) -> [v1; v2]
+  | E_get (v1, v2) -> [v1; v2]
+  | E_update (v1, v2, v3) -> [v1; v2; v3]
+  | E_cast v -> [v]
+  | E_concat (v1, v2) -> [v1; v2]
+  | E_concat_list v -> [v]
+  | E_slice (v1, v2, v3) -> [v1; v2; v3]
+  | E_pack v -> [v]
+  | E_unpack (_, v) -> [v]
+  | E_self -> []
+  | E_contract_of_address (_, v) -> [v]
+  | E_implicit_account v -> [v]
+  | E_now -> []
+  | E_amount -> []
+  | E_balance -> []
+  | E_check_signature (v1, v2, v3) -> [v1; v2; v3]
+  | E_blake2b v -> [v]
+  | E_sha256 v -> [v]
+  | E_sha512 v -> [v]
+  | E_hash_key v -> [v]
+  | E_steps_to_quota -> []
+  | E_source -> []
+  | E_sender -> []
+  | E_address_of_contract v -> [v]
+  | E_unlift_option v -> [v]
+  | E_unlift_left v -> [v]
+  | E_unlift_right v -> [v]
+  | E_hd v -> [v]
+  | E_tl v -> [v]
+  | E_hdtl v -> [v]
+  | E_size v -> [v]
+  | E_isnat v -> [v]
+  | E_int_of_nat v -> [v]
+  | E_chain_id -> []
+  | E_lambda_id _ -> []
+  | E_exec (v1, v2) -> [v1; v2]
+  | E_dup v -> [v]
+  | E_nil _ -> []
+  | E_empty_set _ -> []
+  | E_empty_map (_, _) -> []
+  | E_empty_big_map (_, _) -> []
+  | E_append (v1, v2) -> [v1; v2]
+  | E_itself v -> [v]
+  (* DEPRECATED & UNUSED EXPRESSIONS. They can be erased anytime. *)
+  | E_div (v1, v2) -> [v1; v2]
+  | E_mod (v1, v2) -> [v1; v2]
+  | E_create_contract_address _ -> []
+  | E_create_account_address _ -> []
+  | E_lambda _ -> []
+  | E_special_nil_list -> []
+  | E_phi (v1, v2) -> [v1; v2]
+  | E_unlift_or v -> [v]
+end (* function appeared_varlst_expr end *)
+
+let appeared_varlst_stmt : Cfg.stmt -> string list
+= begin function
+  | Cfg_assign (v, e) -> v :: (appeared_varlst_expr e)
+  | Cfg_skip -> []
+  | Cfg_drop vl -> vl
+  | Cfg_swap -> []
+  | Cfg_dig -> []
+  | Cfg_dug -> []
+  | Cfg_if v -> [v]
+  | Cfg_if_none v -> [v]
+  | Cfg_if_left v -> [v]
+  | Cfg_if_cons v -> [v]
+  | Cfg_loop v -> [v]
+  | Cfg_loop_left v -> [v]
+  | Cfg_map v -> [v]
+  | Cfg_iter v -> [v]
+  | Cfg_failwith v -> [v]
+  | Cfg_micse_check_entry -> []
+  | Cfg_micse_check_value v -> [v]
+end (* function appeared_varlst_stmt *)
+
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Print                                                                     *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -148,7 +264,7 @@ let cfg_to_dotformat : t -> string
   =fun (in_v, e_label, out_v) acc -> begin
     let body_s = (string_of_int in_v) ^ " -> " ^ (string_of_int out_v) in
     (* edge label and style *)
-    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" | Failed -> "[label=\"Failed\", style=dotted]" | Check_skip -> "[label=\"Check_skip\", style=dotted]" in
+    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" | Failed -> "[label=\"Failed\", style=dotted]" | If_skip -> "[label=\"If_skip\", style=dotted]" | Loop_skip -> "[label=\"Loop_skip\", style=dotted]" | Check_skip -> "[label=\"Check_skip\", style=dotted]" in
     (body_s ^ " " ^ edge_s ^ ";") :: acc
   end in
   let flow_s = begin
