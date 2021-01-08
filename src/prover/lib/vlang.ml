@@ -633,8 +633,8 @@ module Formula = struct
       (* Custom Formula for verifiying *)
       | VF_add_mmm_no_overflow (e1, e2)   -> "NoOverflow_ADD("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_sub_mmm_no_underflow (e1, e2)  -> "NoUnderflow_SUB("  ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
-      | VF_mul_mnm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
-      | VF_mul_nmm_no_overflow (e1, e2)   -> "NoOverflow_MUL("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_mul_mnm_no_overflow (e1, e2)   -> "NoOverflow_MUL_MNM("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
+      | VF_mul_nmm_no_overflow (e1, e2)   -> "NoOverflow_MUL_NMM("    ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_shiftL_nnn_rhs_in_256 (e1, e2) -> "ShiftL_RHS256("     ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       | VF_shiftR_nnn_rhs_in_256 (e1, e2) -> "ShiftR_RHS256("     ^ (e1 |> ets) ^ "," ^ (e2 |> ets) ^ ")"
       (* Custom Domain Formula for Invariant Generation *)

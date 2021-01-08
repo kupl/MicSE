@@ -145,7 +145,7 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
           let assert_bi = BI_assert (no_overflow, Q_mutez_arith_safety) in
           ([cstr_bn assert_bi; cstr_bn assign_bi], Some (cur_vtx, no_overflow))
         | V_mul_nmm (e1, e2) ->
-          let no_overflow = VF_mul_mnm_no_overflow (e1, e2) in
+          let no_overflow = VF_mul_nmm_no_overflow (e1, e2) in
           let assert_bi = BI_assert (no_overflow, Q_mutez_arith_safety) in
           ([cstr_bn assert_bi; cstr_bn assign_bi], Some (cur_vtx, no_overflow))
         (* lsl, lsr runtime failure *)
