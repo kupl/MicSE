@@ -19,5 +19,5 @@ let _ = begin
     else
       raise (Failure "No_Input")
   with
-  | exc -> prerr_endline (Printexc.to_string exc); prerr_endline (Printexc.get_backtrace())
+  | exc -> prerr_endline (Printexc.to_string exc);
 end

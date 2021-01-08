@@ -191,11 +191,11 @@ end
 module ZFormula : sig
   type t = ZExpr.t
 
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
   
-  val true_ : t
-  val false_ : t
-  val uninterpreted_ : t
+  val true_ : unit -> t
+  val false_ : unit -> t
+  val uninterpreted_ : unit -> t
 
   val create_not : t -> t
   val create_and : t list -> t
@@ -217,9 +217,9 @@ end
 module ZUnit : sig
   type t = ZExpr.t
 
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
-  val create : t
+  val create : unit -> t
 end
 
 
@@ -232,12 +232,12 @@ end
 module ZBool : sig
   type t = ZExpr.t
 
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val of_bool : bool -> t
   
-  val true_ : t
-  val false_ : t
+  val true_ : unit -> t
+  val false_ : unit -> t
 
   val create_not : t -> t
   val create_and : t -> t -> t
@@ -258,14 +258,14 @@ end
 module ZInt : sig
   type t = ZExpr.t
 
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val of_zarith : Z.t -> t
   val of_int : int -> t
 
-  val minus_one_ : t
-  val zero_ : t
-  val one_ : t
+  val minus_one_ : unit -> t
+  val zero_ : unit -> t
+  val one_ : unit -> t
 
   val create_neg : t -> t
   val create_add : t list -> t
@@ -317,12 +317,12 @@ module ZNat = ZInt
 module ZMutez : sig
   type t = ZExpr.t
 
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val of_zarith : Z.t -> t
   val of_int : int -> t
 
-  val zero_ : t
+  val zero_ : unit -> t
 
   val create_add : t -> t -> t
   val create_sub : t -> t -> t
@@ -356,7 +356,7 @@ end
 module ZStr : sig
   type t = ZExpr.t
 
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val of_string : string -> t
 
@@ -380,9 +380,9 @@ end
 module ZKey : sig
   type t = ZExpr.t
 
-  val _create_const_of_keystr : ZDatatype.const
+  val _create_const_of_keystr : unit -> ZDatatype.const
 
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val of_string : string -> t
   val create_keystr : ZExpr.t -> t
@@ -403,10 +403,10 @@ end
 module ZKeyHash : sig
   type t = ZExpr.t
 
-  val _create_const_of_str : ZDatatype.const
-  val _create_const_of_hashkey : ZDatatype.const
+  val _create_const_of_str : unit -> ZDatatype.const
+  val _create_const_of_hashkey : unit -> ZDatatype.const
   
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val of_string : string -> t
   val create_hashkey : ZExpr.t -> t
@@ -428,7 +428,7 @@ end
 module ZOption : sig
   type t = ZExpr.t
 
-  val _create_const_of_none : ZDatatype.const
+  val _create_const_of_none : unit -> ZDatatype.const
   val _create_const_of_some : content_sort:ZSort.t -> ZDatatype.const
   val _create_sort_name : content_sort:ZSort.t -> string
 
@@ -478,17 +478,17 @@ end
 module ZBytes : sig
   type t = ZExpr.t
 
-  val _create_const_of_bytnil : ZDatatype.const
-  val _create_const_of_bytstr : ZDatatype.const
+  val _create_const_of_bytnil : unit -> ZDatatype.const
+  val _create_const_of_bytstr : unit -> ZDatatype.const
   (* val _create_const_of_pack : content_sort:ZSort.t -> ZDatatype.const*) (* deprecated *)
-  val _create_const_of_concatenated : ZDatatype.const
+  val _create_const_of_concatenated : unit -> ZDatatype.const
   (* let _create_const_of_sliced : content_sort:ZSort.t -> ZDatatype.const *) (* TODO : after ZNat completed *)
-  val _create_const_of_blake2b : ZDatatype.const
-  val _create_const_of_sha256 : ZDatatype.const
-  val _create_const_of_sha512 : ZDatatype.const
+  val _create_const_of_blake2b : unit -> ZDatatype.const
+  val _create_const_of_sha256 : unit -> ZDatatype.const
+  val _create_const_of_sha512 : unit -> ZDatatype.const
 
   (* val create_sort : content_sort:ZSort.t -> ZSort.t *) (* deprecated *)
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val of_string : string -> t
   val create_bytstr : ZExpr.t -> t
@@ -514,10 +514,10 @@ end
 module ZSignature : sig
   type t = ZExpr.t
 
-  val _create_const_of_sigstr : ZDatatype.const
-  val _create_const_of_signed : ZDatatype.const
+  val _create_const_of_sigstr : unit -> ZDatatype.const
+  val _create_const_of_signed : unit -> ZDatatype.const
   
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
   
   val of_string : string -> t
   val create_sigstr : ZExpr.t -> t
@@ -535,9 +535,9 @@ end
 module ZAddress : sig
   type t = ZExpr.t
 
-  val _create_const_of_addrkh : ZDatatype.const
+  val _create_const_of_addrkh : unit -> ZDatatype.const
 
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val of_string : string -> t
 
@@ -587,7 +587,7 @@ end
 module ZList : sig
   type t = ZExpr.t
 
-  val _create_const_of_nil : ZDatatype.const
+  val _create_const_of_nil : unit -> ZDatatype.const
   val _create_const_of_cons : content_sort:ZSort.t -> ZDatatype.const
   val _create_sort_name : content_sort:ZSort.t -> string
 
@@ -650,7 +650,7 @@ module ZSet = ZMap
 module ZOperation : sig
   type t = ZExpr.t
   
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val create_eq : t -> t -> ZBool.t
   val create_neq : t -> t -> ZBool.t
@@ -666,7 +666,7 @@ end
 module ZContract : sig
   type t = ZExpr.t
   
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val create_eq : t -> t -> ZBool.t
   val create_neq : t -> t -> ZBool.t
@@ -682,7 +682,7 @@ end
 module ZLambda : sig
   type t = ZExpr.t
   
-  val sort : ZSort.t
+  val sort : unit -> ZSort.t
 
   val create_eq : t -> t -> ZBool.t
   val create_neq : t -> t -> ZBool.t

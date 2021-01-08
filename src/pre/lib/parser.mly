@@ -121,6 +121,7 @@ typ:
 
 typ_t:
   | t=typ_t_ty_noreq a=annots                 { gen_t_a a t }
+  | a=annots t=typ_t_ty_noreq                 { gen_t_a a t }
   | LP T_OPTION a=annots t=typ RP             { gen_t_a a (T_option t) }
   | LP T_LIST a=annots t=typ RP               { gen_t_a a (T_list t) }
   | LP T_SET a=annots t=typ RP                { gen_t_a a (T_set t) }

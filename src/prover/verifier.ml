@@ -14,29 +14,29 @@ let rec smtsort_of_vlangtyp : Vlang.Ty.t -> Smt.ZSort.t
   let sot = smtsort_of_vlangtyp in (* syntax sugar *)
   fun vt -> begin
   match vt with
-  | T_key -> Smt.ZKey.sort
-  | T_unit -> Smt.ZUnit.sort
-  | T_signature -> Smt.ZSignature.sort
+  | T_key -> Smt.ZKey.sort ()
+  | T_unit -> Smt.ZUnit.sort ()
+  | T_signature -> Smt.ZSignature.sort ()
   | T_option t -> Smt.ZOption.create_sort ~content_sort:(sot t)
   | T_list t -> Smt.ZList.create_sort ~content_sort:(sot t)
   | T_set t -> Smt.ZList.create_sort ~content_sort:(sot t)
-  | T_operation -> Smt.ZOperation.sort
-  | T_contract _ -> Smt.ZContract.sort
+  | T_operation -> Smt.ZOperation.sort ()
+  | T_contract _ -> Smt.ZContract.sort ()
   | T_pair (t1, t2) -> Smt.ZPair.create_sort ~fst_sort:(sot t1) ~snd_sort:(sot t2)
   | T_or (t1, t2) -> Smt.ZOr.create_sort ~left_sort:(sot t1) ~right_sort:(sot t2)
-  | T_lambda (_, _) -> Smt.ZLambda.sort
+  | T_lambda (_, _) -> Smt.ZLambda.sort ()
   | T_map (t1, t2) -> Smt.ZMap.create_sort ~key_sort:(sot t1) ~value_sort:(sot t2)
   | T_big_map (t1, t2) -> Smt.ZMap.create_sort ~key_sort:(sot t1) ~value_sort:(sot t2)
-  | T_chain_id -> Smt.ZStr.sort
-  | T_int -> Smt.ZInt.sort
-  | T_nat -> Smt.ZNat.sort
-  | T_string -> Smt.ZStr.sort
-  | T_bytes -> Smt.ZBytes.sort
-  | T_mutez -> Smt.ZMutez.sort
-  | T_bool -> Smt.ZBool.sort
-  | T_key_hash -> Smt.ZStr.sort
-  | T_timestamp -> Smt.ZInt.sort
-  | T_address -> Smt.ZAddress.sort
+  | T_chain_id -> Smt.ZStr.sort ()
+  | T_int -> Smt.ZInt.sort ()
+  | T_nat -> Smt.ZNat.sort ()
+  | T_string -> Smt.ZStr.sort ()
+  | T_bytes -> Smt.ZBytes.sort ()
+  | T_mutez -> Smt.ZMutez.sort ()
+  | T_bool -> Smt.ZBool.sort ()
+  | T_key_hash -> Smt.ZKeyHash.sort ()
+  | T_timestamp -> Smt.ZInt.sort ()
+  | T_address -> Smt.ZAddress.sort ()
 end (* function smttyp_of_vlangtyp end *)
 
 let sort_of_typt : Pre.Lib.Adt.typ -> Smt.ZSort.t
@@ -61,7 +61,7 @@ let rec smtexpr_of_compare : Vlang.Expr.t -> Vlang.Expr.t -> Smt.ZExpr.t
     | T_address, T_address -> Smt.ZAddress.create_cmp (e1 |> soe) (e2 |> soe)
     | T_pair (_, _), T_pair (_, _) -> err e1
     | t1, t2 when t1 = t2 -> Stdlib.failwith ("Prover.Verifier.smtexpr_of_compare : expression like this cannot be compared")
-    | _ -> Stdlib.failwith ("Prover.Verifier.smtexpr_of_compare : two expressions have different types")
+    | _ -> Stdlib.failwith ("Prover.Verifier.smtexpr_of_compare : two expressions have different types [" ^ (e1 |> Vlang.TypeUtil.ty_of_expr |> Vlang.Ty.to_string) ^ "] & [" ^ (e2 |> Vlang.TypeUtil.ty_of_expr |> Vlang.Ty.to_string) ^ "]")
 
 end (* smtexpr_of_compare end *)
 
@@ -69,7 +69,8 @@ end (* smtexpr_of_compare end *)
 and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
 = let open Vlang.Expr in
   let soe = smtexpr_of_vlangexpr in (* syntax sugar *)
-  let err e = Stdlib.raise (Not_Implemented_e e) in (* syntax sugar *)
+  (* let err e = Stdlib.raise (Not_Implemented_e e) in (* syntax sugar *) *)
+  let err (e: Vlang.Expr.t) = e |> Vlang.TypeUtil.ty_of_expr |> smtsort_of_vlangtyp |> Smt.ZExpr.create_dummy in
   fun ve -> begin
     try
       match ve with
@@ -114,12 +115,7 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_mul_ini (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
       | V_mul_iii (e1, e2) -> Smt.ZInt.create_mul [(e1 |> soe); (e2 |> soe);]
       | V_compare (e1, e2) -> smtexpr_of_compare e1 e2
-      | V_int_of_nat e -> begin
-          Smt.ZExpr.create_ite
-            ~cond:(Smt.ZInt.create_ge (soe e) Smt.ZInt.zero_)
-            ~t:(Smt.ZOption.create_some ~content:(soe e))
-            ~f:(Smt.ZOption.create_none ~content_sort:(Smt.ZNat.sort))
-        end
+      | V_int_of_nat e -> (e |> soe)
 
       (*************************************************************************)
       (* Natural Number                                                        *)
@@ -166,8 +162,8 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (* | V_balance -> err ve *)
       | V_add_mmm (e1, e2) -> Smt.ZMutez.create_add (e1 |> soe) (e2 |> soe)
       | V_sub_mmm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe) (e2 |> soe)
-      | V_mul_mnm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
-      | V_mul_nmm (e1, e2) -> Smt.ZMutez.create_sub (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe)
+      | V_mul_mnm (e1, e2) -> Smt.ZMutez.create_mul (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez)
+      | V_mul_nmm (e1, e2) -> Smt.ZMutez.create_mul (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe)
 
       (*************************************************************************)
       (* Bool                                                                  *)
@@ -177,12 +173,12 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_and_bbb (e1, e2) -> Smt.ZBool.create_and (e1 |> soe) (e2 |> soe)
       | V_or_bbb (e1, e2) -> Smt.ZBool.create_or (e1 |> soe) (e2 |> soe)
       | V_xor_bbb (e1, e2) -> Smt.ZBool.create_xor (e1 |> soe) (e2 |> soe)
-      | V_eq_ib e -> Smt.ZInt.create_eq (e |> soe) (Smt.ZInt.zero_)
-      | V_neq_ib e -> Smt.ZInt.create_neq (e |> soe) (Smt.ZInt.zero_)
-      | V_lt_ib e -> Smt.ZInt.create_lt (e |> soe) (Smt.ZInt.zero_)
-      | V_gt_ib e -> Smt.ZInt.create_gt (e |> soe) (Smt.ZInt.zero_)
-      | V_leq_ib e -> Smt.ZInt.create_le (e |> soe) (Smt.ZInt.zero_)
-      | V_geq_ib e -> Smt.ZInt.create_ge (e |> soe) (Smt.ZInt.zero_)
+      | V_eq_ib e -> Smt.ZInt.create_eq (e |> soe) (Smt.ZInt.zero_ ())
+      | V_neq_ib e -> Smt.ZInt.create_neq (e |> soe) (Smt.ZInt.zero_ ())
+      | V_lt_ib e -> Smt.ZInt.create_lt (e |> soe) (Smt.ZInt.zero_ ())
+      | V_gt_ib e -> Smt.ZInt.create_gt (e |> soe) (Smt.ZInt.zero_ ())
+      | V_leq_ib e -> Smt.ZInt.create_le (e |> soe) (Smt.ZInt.zero_ ())
+      | V_geq_ib e -> Smt.ZInt.create_ge (e |> soe) (Smt.ZInt.zero_ ())
       | V_mem_xsb _ -> err ve (* not supported *)
       | V_mem_xmb (e1, e2) -> Smt.ZMap.read_exist ~key:(e1 |> soe) ~map:(e2 |> soe)
       | V_mem_xbmb (e1, e2) -> Smt.ZMap.read_exist ~key:(e1 |> soe) ~map:(e2 |> soe)
@@ -234,7 +230,7 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       (* Unit                                                                  *)
       (*************************************************************************)
       (* | V_lit_unit : t_unit t *) (* V_unit has the same feature. *)
-      | V_unit -> Smt.ZUnit.create
+      | V_unit -> Smt.ZUnit.create ()
 
       (*************************************************************************)
       (* Signature                                                             *)
@@ -252,37 +248,37 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_ ())) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_niin (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_ ())) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_inin (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_ ())) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_iiin (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZInt.create_div dividend divisor) ~snd:(Smt.ZInt.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZInt.create_eq divisor (Smt.ZInt.zero_ ())) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_mnmm (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe |> Smt.ZInt.to_zmutez) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZMutez.create_div dividend divisor) ~snd:(Smt.ZMutez.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_ ())) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_ediv_mmnm (e1, e2) -> begin
           let dividend, divisor = (e1 |> soe), (e2 |> soe) in
           let qr = Smt.ZPair.create ~fst:(Smt.ZMutez.create_div dividend divisor |> Smt.ZMutez.to_zint) ~snd:(Smt.ZMutez.create_mod dividend divisor) in
           let div_zero_result = Smt.ZOption.create_none ~content_sort:(qr |> Smt.ZExpr.read_sort) in
-          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_)) ~t:div_zero_result ~f:qr
+          Smt.ZExpr.create_ite ~cond:(Smt.ZMutez.create_eq divisor (Smt.ZMutez.zero_ ())) ~t:div_zero_result ~f:(Smt.ZOption.create_some ~content:(qr))
         end
       | V_get_xmoy (e1, e2) -> Smt.ZMap.read_value ~key:(e1 |> soe) ~map:(e2 |> soe)
       | V_get_xbmo (e1, e2) -> Smt.ZMap.read_value ~key:(e1 |> soe) ~map:(e2 |> soe)
@@ -319,7 +315,13 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
           Smt.ZMap.create ~key_sort:(kt |> smtsort_of_vlangtyp) ~value_sort:(vt |> smtsort_of_vlangtyp)
         end
       | V_update_xbss (e1, e2, e3) -> begin
-          Smt.ZMap.update ~key:(e1 |> soe) ~value:(e2 |> soe) ~map:(e3 |> soe)
+          let elem = begin
+            Smt.ZExpr.create_ite
+            ~cond:(soe e2)
+            ~t:(Smt.ZOption.create_some ~content:(Smt.ZBool.true_ ()))
+            ~f:(Smt.ZOption.create_none ~content_sort:(Smt.ZBool.sort ()))
+          end in
+          Smt.ZMap.update ~key:(e1 |> soe) ~value:(elem) ~map:(e3 |> soe)
         end
       | V_tl_s _ -> err ve  (* not supported *)
 
@@ -402,32 +404,39 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
 = let open Vlang.Formula in
   let sof = smtexpr_of_vlangformula in  (* syntax sugar *)
   let soe = smtexpr_of_vlangexpr in (* syntax sugar *)
-  let err f = Stdlib.raise (Not_Implemented_f f) in (* syntax sugar *)
+  (* let err f = Stdlib.raise (Not_Implemented_f f) in (* syntax sugar *) *)
+  let err _ = Smt.ZFormula.uninterpreted_ () in
   fun vf -> begin
     try
       match vf with
       (* logical formula *)
-      | VF_true -> Smt.ZFormula.true_
-      | VF_false -> Smt.ZFormula.false_
+      | VF_true -> Smt.ZFormula.true_ ()
+      | VF_false -> Smt.ZFormula.false_ ()
       | VF_not f -> Smt.ZFormula.create_not (f |> sof)
       | VF_and fl -> Smt.ZFormula.create_and (fl |> Core.List.map ~f:sof)
       | VF_or fl -> Smt.ZFormula.create_or (fl |> Core.List.map ~f:sof)
       | VF_eq (e1,e2) -> Smt.ZFormula.create_eq (e1 |> soe) (e2 |> soe)
       | VF_imply (f1, f2) -> Smt.ZFormula.create_imply (f1 |> sof) (f2 |> sof)
       (* micse-cfg specific boolean *)
-      | VF_mich_if e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
+      | VF_mich_if e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_ ())
       | VF_mich_if_none e -> Smt.ZOption.is_none (e |> soe)
       | VF_mich_if_left e -> Smt.ZOr.is_left (e |> soe)
-      | VF_mich_if_cons e -> Smt.ZList.is_cons (e |> soe)
+      | VF_mich_if_cons e -> begin
+          match e |> Vlang.TypeUtil.ty_of_expr with
+          | T_list _ -> Smt.ZList.is_cons (e |> soe)
+          | T_set _ -> err vf (* check whether set's size is not 0 *)
+          | T_map _ -> err vf (* check whether map's size is not 0 *)
+          | _ -> SMT_Encode_Error_f (vf, "Wrong IS_CONS checking") |> raise
+        end
       (* NOT USED. belows are not constructed from Prover.converter *)
-      | VF_mich_loop e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
+      | VF_mich_loop e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_ ())
       | VF_mich_loop_left e -> Smt.ZOr.is_left (e |> soe)
       | VF_mich_map_l e -> Smt.ZOption.is_none (e |> soe)
       | VF_mich_map_m _ -> err vf (* check whether map's size is not 0 *)
       | VF_mich_iter_l e -> Smt.ZOption.is_none (e |> soe)
       | VF_mich_iter_s _ -> err vf (* check whether set's size is not 0 *)
       | VF_mich_iter_m _ -> err vf (* check whether map's size is not 0 *)
-      | VF_mich_micse_check_value e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_)
+      | VF_mich_micse_check_value e -> Smt.ZBool.create_eq (e |> soe) (Smt.ZBool.true_ ())
       (* Custom Formula for verifiying *)
       | VF_add_mmm_no_overflow (e1, e2) -> Smt.ZMutez.check_add_no_overflow (e1 |> soe) (e2 |> soe)
       | VF_sub_mmm_no_underflow (e1, e2) -> Smt.ZMutez.check_sub_no_underflow (e1 |> soe) (e2 |> soe)
@@ -436,8 +445,8 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
       | VF_shiftL_nnn_rhs_in_256 _ -> err vf
       | VF_shiftR_nnn_rhs_in_256 _ -> err vf
       (* Custom Domain Formula for Invariant Generation *)
-      | VF_sigma_equal (_, _) -> Smt.ZBool.true_ (* TODO *)
-      | VF_mtzmap_partial_sum_equal (_, _, _) -> Smt.ZBool.true_ (* TODO *)
+      | VF_sigma_equal (_, _) -> Smt.ZBool.true_ () (* TODO *)
+      | VF_mtzmap_partial_sum_equal (_, _, _) -> Smt.ZBool.true_ () (* TODO *)
     with
     | Smt.ZError s -> SMT_Encode_Error_f (vf, s) |> raise
     | e -> e |> raise

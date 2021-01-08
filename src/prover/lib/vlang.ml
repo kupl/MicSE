@@ -331,9 +331,9 @@ module Expr = struct
       | V_unlift_option e1  -> "UNOPTION("  ^ (e1 |> ts) ^ ")"
       | V_unlift_left e1    -> "UNLEFT("    ^ (e1 |> ts) ^ ")"
       | V_unlift_right e1   -> "UNRIGHT("   ^ (e1 |> ts) ^ ")"
-      | V_hd_l e1           -> "HD"         ^ (e1 |> ts) ^ ")"
-      | V_hd_s e1           -> "HD"         ^ (e1 |> ts) ^ ")"
-      | V_exec (e1, e2)     -> "EXEC"       ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
+      | V_hd_l e1           -> "HD("        ^ (e1 |> ts) ^ ")"
+      | V_hd_s e1           -> "HD("        ^ (e1 |> ts) ^ ")"
+      | V_exec (e1, e2)     -> "EXEC("      ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_dup e1            -> ""           ^ (e1 |> ts)
       | V_itself e1         -> ""           ^ (e1 |> ts)
       | V_get_default (e1, e2, e3) -> "GET_DFT(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ "," ^ (e3 |> ts) ^ ")"
@@ -358,7 +358,7 @@ module Expr = struct
       | V_mul_ini (e1, e2)  -> "MUL(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_mul_iii (e1, e2)  -> "MUL(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
       | V_compare (e1, e2)  -> "CMP(" ^ (e1 |> ts) ^ "," ^ (e2 |> ts) ^ ")"
-      | V_int_of_nat e1     -> "NAT(" ^ (e1 |> ts) ^ ")"
+      | V_int_of_nat e1     -> "INT(" ^ (e1 |> ts) ^ ")"
   
       (*************************************************************************)
       (* Natural Number                                                        *)
@@ -620,10 +620,10 @@ module Formula = struct
       (* MicSE-Cfg Specific Boolean *)  
       | VF_mich_if e1                 -> "("  ^ (e1 |> ets) ^ "=" ^ "B_True"     ^ ")"
       | VF_mich_if_none e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "NONE"       ^ ")"
-      | VF_mich_if_left e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "LEFT(_)"    ^ ")"
-      | VF_mich_if_cons e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "CONS(_,_)"  ^ ")"
+      | VF_mich_if_left e1            -> "("  ^ (e1 |> ets) ^ "IS_LEFT"          ^ ")"
+      | VF_mich_if_cons e1            -> "("  ^ (e1 |> ets) ^ "IS_CONS"          ^ ")"
       | VF_mich_loop e1               -> "("  ^ (e1 |> ets) ^ "=" ^ "B_True"     ^ ")"
-      | VF_mich_loop_left e1          -> "("  ^ (e1 |> ets) ^ "=" ^ "LEFT(_)"    ^ ")"
+      | VF_mich_loop_left e1          -> "("  ^ (e1 |> ets) ^ "IS_LEFT"          ^ ")"
       | VF_mich_map_l e1              -> "!(" ^ (e1 |> ets) ^ "=" ^ "L_[]"       ^ ")"
       | VF_mich_map_m e1              -> "!(" ^ (e1 |> ets) ^ "=" ^ "M_{}"       ^ ")"
       | VF_mich_iter_l e1             -> "!(" ^ (e1 |> ets) ^ "=" ^ "L_[]"       ^ ")"
@@ -663,8 +663,13 @@ module TypeUtil = struct
   type mty = PreLib.Mich.typ PreLib.Mich.t
   type michtyp = PreLib.Mich.typ
 
-  exception InvalidTyp of typ
-  let invalidtyp t = Stdlib.raise (InvalidTyp t)
+  exception Error of string
+
+  let invalid_typ_of_expr : typ -> Expr.t -> func:string -> 'a
+  =fun t e ~func -> Error (func ^ ": Invalid type [" ^ (t |> Ty.to_string) ^ "] of expression [" ^ (e |> Expr.to_string) ^ "]") |> raise
+
+  let invalid_typ : typ -> func:string -> 'a
+  =fun t ~func -> Error (func ^ ": Invalid type [" ^ (t |> Ty.to_string) ^ "]") |> raise
 
   let rec ty_of_mty : mty -> typ
   =fun mtt -> begin
@@ -703,6 +708,7 @@ module TypeUtil = struct
   let rec ty_of_expr : Expr.t -> typ
   = let open Ty in
     let open Expr in
+    let invalidtyp = invalid_typ_of_expr ~func:"ty_of_expr" in
     let toe = ty_of_expr in (* syntax sugar *)
     fun eee -> begin
     match eee with
@@ -710,17 +716,17 @@ module TypeUtil = struct
     (* Variable & Polymorphic                                                *)
     (*************************************************************************)
     | V_var (t, _) -> t
-    | V_car e -> (match toe e with | T_pair (tt, _) -> tt | _ as tt -> invalidtyp tt)
-    | V_cdr e -> (match toe e with | T_pair (_, tt) -> tt | _ as tt -> invalidtyp tt)
-    | V_unlift_option e -> (match toe e with | T_option tt -> tt | _ as tt -> invalidtyp tt)
-    | V_unlift_left e -> (match toe e with | T_or (tt, _) -> tt | _ as tt -> invalidtyp tt)
-    | V_unlift_right e -> (match toe e with | T_or (_, tt) -> tt | _ as tt -> invalidtyp tt)
-    | V_hd_l e -> (match toe e with | T_list tt -> tt | _ as tt -> invalidtyp tt)
-    | V_hd_s e -> (match toe e with | T_set tt -> tt | _ as tt -> invalidtyp tt)
-    | V_exec (e1, _) -> (match toe e1 with | T_lambda (_, t2) -> t2 | _ as tt -> invalidtyp tt)
+    | V_car e -> (match toe e with | T_pair (tt, _) -> tt | _ as tt -> invalidtyp tt eee)
+    | V_cdr e -> (match toe e with | T_pair (_, tt) -> tt | _ as tt -> invalidtyp tt eee)
+    | V_unlift_option e -> (match toe e with | T_option tt -> tt | _ as tt -> invalidtyp tt eee)
+    | V_unlift_left e -> (match toe e with | T_or (tt, _) -> tt | _ as tt -> invalidtyp tt eee)
+    | V_unlift_right e -> (match toe e with | T_or (_, tt) -> tt | _ as tt -> invalidtyp tt eee)
+    | V_hd_l e -> (match toe e with | T_list tt -> tt | _ as tt -> invalidtyp tt eee)
+    | V_hd_s e -> (match toe e with | T_set tt -> tt | _ as tt -> invalidtyp tt eee)
+    | V_exec (_, e2) -> (match toe e2 with | T_lambda (_, t2) -> t2 | _ as tt -> invalidtyp tt eee)
     | V_dup e -> toe e
     | V_itself e -> toe e
-    | V_get_default (_, _, e3) -> (match toe e3 with | T_map (_, t2) -> t2 | _ as tt -> invalidtyp tt)
+    | V_get_default (_, _, e3) -> (match toe e3 with | T_map (_, t2) -> t2 | _ as tt -> invalidtyp tt eee)
 
     (*************************************************************************)
     (* Integer                                                               *)
@@ -864,8 +870,8 @@ module TypeUtil = struct
     | V_ediv_iiin _ -> T_option (T_pair (T_int, T_nat))
     | V_ediv_mnmm _ -> T_option (T_pair (T_mutez, T_mutez))
     | V_ediv_mmnm _ -> T_option (T_pair (T_nat, T_mutez))
-    | V_get_xmoy (_, e2) -> (match toe e2 with | T_map (_, tt) -> T_option tt | _ as tt -> invalidtyp tt)
-    | V_get_xbmo (_, e2) -> (match toe e2 with | T_big_map (_, tt) -> T_option tt | _ as tt -> invalidtyp tt)
+    | V_get_xmoy (_, e2) -> (match toe e2 with | T_map (_, tt) -> T_option tt | _ as tt -> invalidtyp tt eee)
+    | V_get_xbmo (_, e2) -> (match toe e2 with | T_big_map (_, tt) -> T_option tt | _ as tt -> invalidtyp tt eee)
     | V_slice_nnso _ -> T_option T_string
     | V_slice_nnbo _ -> T_option T_bytes
     | V_unpack (t, _) -> T_option t
@@ -893,14 +899,13 @@ module TypeUtil = struct
     (* Operation                                                             *)
     (*************************************************************************)
     (* | V_lit_operation of t_operation t *) (* V_create_contract, V_transfer_tokens, V_set_delegate has the same feature. *)
-    | V_create_contract _
     | V_transfer_tokens _
     | V_set_delegate    _ -> T_operation
 
     (*************************************************************************)
     (* Contract                                                              *)
     (*************************************************************************)
-    | V_lit_contract (_, _, _, _, e5) -> (match toe e5 with | T_lambda (T_pair (pt, _), _) -> T_contract pt | _ as tt -> invalidtyp tt)
+    | V_lit_contract (_, _, _, _, e5) -> (match toe e5 with | T_lambda (T_pair (pt, _), _) -> T_contract pt | _ as tt -> invalidtyp tt eee)
     | V_self t -> T_contract t
     | V_implicit_account _ -> T_contract T_unit
 
@@ -909,11 +914,12 @@ module TypeUtil = struct
     (*************************************************************************)
     (* | V_lit_pair : 'a t * 'b t -> ('a, 'b) t_pair t *) (* V_pair has the same feature *)
     | V_pair (e1, e2) -> T_pair (toe e1, toe e2)
-    | V_hd_m e -> (match toe e with | T_map (kt, vt) -> T_pair (kt, vt) | _ as tt -> invalidtyp tt)
-    | V_hd_bm e -> (match toe e with | T_big_map (kt, vt) -> T_pair (kt, vt) | _ as tt -> invalidtyp tt)
-    | V_hdtl_l e -> (match toe e with | T_list elt -> T_pair (elt, T_list elt) | _ as tt -> invalidtyp tt)
-    | V_hdtl_s e -> (match toe e with | T_set elt -> T_pair (elt, T_set elt) | _ as tt -> invalidtyp tt)
-    | V_hdtl_m e -> (match toe e with | T_map (kt, vt) -> T_pair (T_pair (kt, vt), T_map (kt, vt)) | _ as tt -> invalidtyp tt)
+    | V_hd_m e -> (match toe e with | T_map (kt, vt) -> T_pair (kt, vt) | _ as tt -> invalidtyp tt eee)
+    | V_hd_bm e -> (match toe e with | T_big_map (kt, vt) -> T_pair (kt, vt) | _ as tt -> invalidtyp tt eee)
+    | V_hdtl_l e -> (match toe e with | T_list elt -> T_pair (elt, T_list elt) | _ as tt -> invalidtyp tt eee)
+    | V_hdtl_s e -> (match toe e with | T_set elt -> T_pair (elt, T_set elt) | _ as tt -> invalidtyp tt eee)
+    | V_hdtl_m e -> (match toe e with | T_map (kt, vt) -> T_pair (T_pair (kt, vt), T_map (kt, vt)) | _ as tt -> invalidtyp tt eee)
+    | V_create_contract _ -> T_pair (T_operation, T_address)
 
     (*************************************************************************)
     (* Or                                                                    *)
@@ -933,7 +939,7 @@ module TypeUtil = struct
     | V_lambda_id (t1, t2, _) -> T_lambda (t1, t2)
     | V_lit_lambda (t1, t2, _) -> T_lambda (t1, t2)
     | V_lambda_unknown (t1, t2) -> T_lambda (t1, t2)
-    | V_lambda_closure (e1, e2) -> (match toe e1, toe e2 with | T_lambda (T_pair(p1, p2), rett), pt when p1 = pt -> T_lambda(p2, rett) | _, tt2 -> invalidtyp tt2)
+    | V_lambda_closure (e1, e2) -> (match toe e1, toe e2 with | T_lambda (T_pair(p1, p2), rett), pt when p1 = pt -> T_lambda(p2, rett) | _, tt2 -> invalidtyp tt2 eee)
     (*************************************************************************)
     (* Map                                                                   *)
     (*************************************************************************)
@@ -965,7 +971,7 @@ module TypeUtil = struct
     | T_list it
     | T_set it
     | T_contract it -> it
-    | _ as tt -> invalidtyp tt
+    | _ as tt -> invalid_typ tt ~func:"get_innertyp"
 
   (* pair & or & lambda & map & big_map *)
   let get_innertyp2 : typ -> (typ * typ) = 
@@ -975,7 +981,7 @@ module TypeUtil = struct
     | T_lambda (t1, t2)
     | T_map (t1, t2)
     | T_big_map (t1, t2) -> (t1, t2)
-    | _ as tt -> invalidtyp tt
+    | _ as tt -> invalid_typ tt ~func:"get_innertyp2"
 
 end (* module TypeUtil end *)
 
