@@ -39,8 +39,8 @@ let rec create_expr_of_michdata_i : PreLib.Mich.data -> ProverLib.Vlang.typ -> P
   (fun michdata vtyp ->
     match (vtyp, michdata) with 
     | T_int, D_int zn -> V_lit_int zn
-    | T_nat, D_int zn -> V_lit_int zn
-    | T_mutez, D_int zn -> V_lit_int zn
+    | T_nat, D_int zn -> V_lit_nat zn
+    | T_mutez, D_int zn -> V_lit_mutez zn
     | T_timestamp, D_int zn -> V_lit_timestamp_sec zn
     | T_string, D_string s -> V_lit_string s
     | T_key_hash, D_string s -> V_lit_key_hash s
@@ -66,7 +66,8 @@ let rec create_expr_of_michdata_i : PreLib.Mich.data -> ProverLib.Vlang.typ -> P
       V_lit_big_map (kt, vt, (List.fold_left (fun acc x -> (match (PreLib.Mich.get_d x) with | D_elt (k, v) -> (Core.Map.Poly.add acc ~key:(cem k kt) ~data:(cem v vt) |> (function | `Ok m -> m | `Duplicate -> acc)) | _ -> Stdlib.failwith errmsg)) Core.Map.Poly.empty dlist))
     | _, D_elt _ -> Stdlib.failwith "Prover.Converter.create_expr_of_michdata_i : (_, D_elt)"
     | T_lambda (t1, t2), D_lambda it -> V_lit_lambda (t1, t2, it)
-    | _ -> Stdlib.failwith "Prover.Converter.create_expr_of_michdata_i : match failed"
+    | T_contract t, D_string s -> V_contract_of_address (t, (V_lit_address (V_lit_key_hash s)))
+    | _ -> Stdlib.failwith ("Prover.Converter.create_expr_of_michdata_i : match failed between type [" ^ (vtyp |> ProverLib.Vlang.Ty.to_string) ^ "] and [" ^ (PreLib.Mich.gen_t michdata |> Pre.Lib.Mich.string_of_datat_ol) ^ "]")
   )
 and create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t
 = fun michdata_t vtyp -> begin
@@ -192,7 +193,7 @@ let expr_of_cfgexpr : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> PreLib.Cfg.ex
       let vv1, vv2 = cvf v1, cvf v2 in
       match cvt v1, cvt v2 with
       | kt1, T_map (kt2, _) when kt1 = kt2 -> V_get_xmoy (vv1, vv2)
-      | kt1, T_map (kt2, _) when kt1 = kt2 -> V_get_xbmo (vv1, vv2)
+      | kt1, T_big_map (kt2, _) when kt1 = kt2 -> V_get_xbmo (vv1, vv2)
       | _ -> err ()
     )
   | E_update (v1, v2, v3) -> (
