@@ -7,6 +7,19 @@ type validate_result = {
   u : VcGen.query_vc CPSet.t; (* unproved query set *)
 }
 
+(* Query-Comparator and Query-Set 
+  It will be used to remove duplicated queries.
+  This module will be used in the function "validate"
+*)
+module QueryOT = struct
+  type t = VcGen.query_vc
+  let compare : t -> t -> int =
+    let open VcGen in
+    fun q1 q2 -> Stdlib.compare (q1.qvc_fml, q1.qvc_cat, q1.qvc_vtx) (q2.qvc_fml, q2.qvc_cat, q2.qvc_vtx)
+end
+module QuerySet = Set.Make(QueryOT)
+
+
 let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t)) -> validate_result
 = let open ProverLib in
   let is_valid : Smt.ZSolver.validity -> bool = (function | Smt.ZSolver.VAL -> true | _ -> false) in
@@ -43,6 +56,14 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
       []
       vcl 
     |> List.flatten
+    (* REMOVE DUPLICATED QUERIES 
+        In fact, it is inefficient to remove duplicated queries in validate-process
+        than remove queries while constructing basic-path.
+        However, in this implementation, it is hard to distinguish
+        which queries are duplicated for (Inv.t -> VcGen.v_cond) datatype.
+    *)
+    |> QuerySet.of_list
+    |> QuerySet.elements
   in
   let (pset, uset) : VcGen.query_vc CPSet.t * VcGen.query_vc CPSet.t = 
     let open VcGen in
