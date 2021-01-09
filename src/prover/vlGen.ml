@@ -66,7 +66,7 @@ let rec create_expr_of_michdata_i : PreLib.Mich.data -> ProverLib.Vlang.typ -> P
       V_lit_big_map (kt, vt, (List.fold_left (fun acc x -> (match (PreLib.Mich.get_d x) with | D_elt (k, v) -> (Core.Map.Poly.add acc ~key:(cem k kt) ~data:(cem v vt) |> (function | `Ok m -> m | `Duplicate -> acc)) | _ -> Stdlib.failwith errmsg)) Core.Map.Poly.empty dlist))
     | _, D_elt _ -> Stdlib.failwith "Prover.Converter.create_expr_of_michdata_i : (_, D_elt)"
     | T_lambda (t1, t2), D_lambda it -> V_lit_lambda (t1, t2, it)
-    | T_contract t, D_string s -> V_contract_of_address (t, (V_lit_address (V_lit_key_hash s)))
+    | T_contract _, D_string s -> V_implicit_account (V_lit_key_hash (s))
     | _ -> Stdlib.failwith ("Prover.Converter.create_expr_of_michdata_i : match failed between type [" ^ (vtyp |> ProverLib.Vlang.Ty.to_string) ^ "] and [" ^ (PreLib.Mich.gen_t michdata |> Pre.Lib.Mich.string_of_datat_ol) ^ "]")
   )
 and create_expr_of_michdata : PreLib.Mich.data PreLib.Mich.t -> ProverLib.Vlang.typ -> ProverLib.Vlang.Expr.t
