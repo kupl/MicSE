@@ -9,3 +9,5 @@ module InvRecipe = InvRecipe
 module Bp = Bp
 
 module Smt = Smt
+
+module VlangUtil = VlangUtil

@@ -7,4 +7,4 @@ type validate_result = {
   u : VcGen.query_vc CPSet.t; (* unproved queri set *)
 }
 
-val validate : (ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t)) -> validate_result
+val validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t)) -> validate_result

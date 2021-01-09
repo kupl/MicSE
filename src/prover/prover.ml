@@ -10,19 +10,20 @@ type run_ret = {
 
 type run_env = {
   worklist : ProverLib.Inv.t Core.Set.Poly.t;
-  is_timeout_f : unit -> bool; (* is-timeout? *)
+  timer : Utils.Timer.t ref;
   igi : ProverLib.Inv.invgen_info;  (* information for invariant generation process *)
   vcl : (ProverLib.Inv.t -> VcGen.v_cond) list; (* the list of verification condition *)
   isc : ProverLib.Inv.t -> ProverLib.Vlang.t; (* initial-storage condition *)
+  istg_exists : bool; (* is initial storage exists? if exists, true, else, false. *)
   ret_opt : run_ret option;
 }
 
 
-let init_naive_timeout_func : unit -> (unit -> bool)
+(* let init_naive_timeout_func : unit -> (unit -> bool)
 =fun () -> begin
   let initial_time = Sys.time () in
   (fun () -> ((Sys.time ()) > (initial_time +. Stdlib.float_of_int !(Utils.Options.prover_time_budget))))
-end
+end *)
 
 
 (* "select better run-result" is not strictly defined, but it can be naively defined,
@@ -49,20 +50,20 @@ end (* function update_runret_opt end *)
 let rec run : run_env -> run_ret option
 = let open ProverLib in
   let module CPSet = Core.Set.Poly in
-  fun {worklist; is_timeout_f; igi; vcl; isc; ret_opt} -> begin
+  fun {worklist; timer; igi; vcl; isc; istg_exists; ret_opt} -> begin
   (* check escape condition *)
-  if CPSet.is_empty worklist || is_timeout_f () then ret_opt else
+  if CPSet.is_empty worklist || Utils.Timer.is_timeout timer then ret_opt else
   (* choose a candidate invariant from worklist *)
   let inv_candidate : Inv.t = CPSet.choose_exn worklist in
   let new_worklist_1 : Inv.t CPSet.t = CPSet.remove worklist inv_candidate in
   (* validate *)
-  let val_res : Validator.validate_result = Validator.validate (inv_candidate, vcl, isc) in
+  let val_res : Validator.validate_result = Validator.validate (timer, inv_candidate, vcl, isc) in
   let cur_retopt = if val_res.inductive then Some {best_inv = inv_candidate; proved = val_res.p; unproved = val_res.u} else None in
   (* if verification succeeds *)
   if val_res.inductive && CPSet.is_empty val_res.Validator.u then Some {best_inv=inv_candidate; proved=val_res.p; unproved=val_res.u} else
   (* else verification succeeds *)
   (* generator *)
-  let new_worklist_2 = CPSet.union (InvGen.generate (val_res, igi, inv_candidate)) new_worklist_1 in (* TODO *)
+  let new_worklist_2 = CPSet.union (InvGen.generate (val_res, igi, inv_candidate, istg_exists)) new_worklist_1 in (* TODO *)
   (* else verification succeeds - if inductive, update worklist *)
   let new_worklist_3 = if val_res.inductive then Inv.strengthen_worklist (inv_candidate, new_worklist_2) else new_worklist_2 in
   (* additional process - snapshot the best result *)
@@ -70,10 +71,11 @@ let rec run : run_env -> run_ret option
   (* recursive call until escape *)
   run {
     worklist = new_worklist_3;
-    is_timeout_f = is_timeout_f;
+    timer = timer;
     igi = igi;
     vcl = vcl;
     isc = isc;
+    istg_exists = istg_exists;
     ret_opt = new_retopt;
   }
 end (* function run end *)
@@ -113,18 +115,25 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
   let run_result_opt : run_ret option =
     run {
       worklist = CPSet.singleton (Inv.inv_true_gen ivg_info);
-      is_timeout_f = init_naive_timeout_func ();
+      timer = Utils.Timer.create ~budget:!Utils.Options.prover_time_budget;
       igi = ivg_info;
       vcl = vcl;
       isc = init_stg_cond;
+      istg_exists = Option.is_some init_stg_opt;
       ret_opt = None;
     }
   in
   (* interpret prover result *)
   let _ = 
     (match run_result_opt with
-    | None -> print_endline "None!"
-    | Some {best_inv; _} -> print_endline "Some!"; print_endline (Vlang.Formula.to_string best_inv.trx_inv)
+    | None -> print_endline "Failure to create invariant that satisfies inductiveness."
+    | Some {best_inv; proved; unproved} ->
+        print_endline "Best Performed Invariant (Only TrxInv will be printed):";
+        print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run best_inv.trx_inv));
+        print_endline ("Proved Queries : " ^ string_of_int (CPSet.length proved));
+        CPSet.iter proved ~f:(fun p -> print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run p.qvc_fml)));
+        print_endline ("Unproved Queries : " ^ string_of_int (CPSet.length unproved));
+        CPSet.iter unproved ~f:(fun p -> print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run p.qvc_fml)));
     ) (* TODO *)
   in
   ()

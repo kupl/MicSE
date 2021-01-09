@@ -140,7 +140,7 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
       sfa_str_post = Formula.VF_true;
       sfa_queries = [];
     } in
-    let sp_fold_result : sp_fold_acc =
+    let sp_fold_result_orig : sp_fold_acc =
       (* originally, it just needs "sp" function, but the bad design in Cfg makes this procedure
         should check whether the basic-node's vertex is main-exit or not for every recursive call.
       *)
@@ -149,6 +149,15 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
         (fun sf_acc bnode -> (if bnode.cfgvtx = cfg.main_exit then sp_for_main_exit_vtx else sp) sf_acc bnode)
         initv
         content
+    in
+    (* 1.5. Vlang Formula Optimization on "sp_fold_result_orig"
+    *)
+    let sp_fold_result : sp_fold_acc =
+      let nopt = ProverLib.VlangUtil.NaiveOpt.run in (* sugar *)
+      {sp_fold_result_orig with
+        sfa_str_post = nopt sp_fold_result_orig.sfa_str_post;
+        sfa_queries = List.map (fun ((pre, post), qc, vtx) -> ((nopt pre, nopt post), qc, vtx)) sp_fold_result_orig.sfa_queries;
+      }
     in
     (* 2. make a space to insert invariant 
         In this implementation, we need to change the variable name in the exit_invariant.
@@ -187,12 +196,22 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
           Formula.VF_and [entry_inv; sp_fold_result.sfa_str_post],
           exit_inv
         )
+        (*
+        (* Formula Optimization inserted to enhance formula readability *)
+        |> ProverLib.VlangUtil.NaiveOpt.run
+        *)
       in
       (* construct a query verification-condition list *)
       let qvcl : (ProverLib.Vlang.t * ProverLib.Bp.query_category * PreLib.Cfg.vertex) list =
         List.map 
           (fun((pre_c, post_c), qc, vtx) ->
-            let vc = Formula.VF_imply (Formula.VF_and [entry_inv; pre_c], post_c) in
+            let vc = 
+              Formula.VF_imply (Formula.VF_and [entry_inv; pre_c], post_c)
+              (*
+              (* Formula Optimization inserted to enhance formula readability *)
+              |> ProverLib.VlangUtil.NaiveOpt.run
+              *)
+            in
             (vc, qc, vtx)
           )
           sp_fold_result.sfa_queries

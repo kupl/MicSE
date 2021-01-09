@@ -16,10 +16,14 @@ let collect_set : ('a CPSet.t) list -> ('a CPSet.t)
 end (* function collect_set end *)
 
 
-let refine_T : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
+let refine_T : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info * bool -> (Inv.t CPSet.t)
 = let open Vlang in
-  (* currnet-invariant, basic-path, trx-vertex (main-entry or main-exit), invariant-generation-info *)
-  fun (cur_inv, bp, _, igi) -> begin
+  (* currnet-invariant, basic-path, trx-vertex (main-entry or main-exit), invariant-generation-info, is-initial-storage-exists *)
+  fun (cur_inv, bp, _, igi, istg_exists) -> begin
+  (* -1. If there are no initial storage condition given, the transaction invariant should be always "True".
+      No more invariants will be generated.
+  *)
+  if Stdlib.not istg_exists then CPSet.empty else
   (* update function : it combines former one and the given one with VF_and. *)
   let update : Vlang.t -> Inv.t = fun fmla -> {cur_inv with trx_inv=(VF_and [cur_inv.trx_inv; fmla]);} in
   (* 0. collect all components *)
@@ -73,9 +77,9 @@ let refine_L : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
 end (* function refine_L end *)
 
 
-let generate : (Validator.validate_result * ProverLib.Inv.invgen_info * ProverLib.Inv.t) -> ProverLib.Inv.t CPSet.t
-= (* current-worklist, validation-result, invariant-generation-information, current-invariant *)
-  fun (val_res, igi, cur_inv) -> begin
+let generate : (Validator.validate_result * ProverLib.Inv.invgen_info * ProverLib.Inv.t * bool) -> ProverLib.Inv.t CPSet.t
+= (* current-worklist, validation-result, invariant-generation-information, current-invariant, is-initial-stroage-exists *)
+  fun (val_res, igi, cur_inv, istg_exists) -> begin
   (* collect refine targets *)
   let refine_targets : (Cfg.vertex * Bp.t) CPSet.t =
     CPSet.fold
@@ -98,7 +102,7 @@ let generate : (Validator.validate_result * ProverLib.Inv.invgen_info * ProverLi
         fun accset (vtx, bp) ->
         (* if the refine target is entry or exit vertex *)
         if (vtx = igi.igi_entryvtx || vtx = igi.igi_exitvtx)
-        then (CPSet.union (refine_T (cur_inv, bp, vtx, igi)) accset)
+        then (CPSet.union (refine_T (cur_inv, bp, vtx, igi, istg_exists)) accset)
         (* else (refine target is loop-vertex) *)
         else (CPSet.union (refine_L (cur_inv, bp, vtx, igi)) accset)
       )
