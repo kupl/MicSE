@@ -490,6 +490,8 @@ module ZBytes : sig
   (* val create_sort : content_sort:ZSort.t -> ZSort.t *) (* deprecated *)
   val sort : unit -> ZSort.t
 
+  (* val bytnil : unit -> t *)
+
   val of_string : string -> t
   val create_bytstr : ZExpr.t -> t
   val create_pack : unit -> t

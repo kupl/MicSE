@@ -830,36 +830,35 @@ module ZBytes = struct
   let sort : unit -> ZSort.t
   =fun () -> ZDatatype.create_sort
     ~name:CONST._sort_bytes
-    ~const_list:[ (_create_const_of_bytnil ());
-                  (_create_const_of_bytstr ());
+    ~const_list:[ (_create_const_of_bytstr ());
                   (_create_const_of_concatenated ());
                   (_create_const_of_blake2b ());
                   (_create_const_of_sha256 ());
                   (_create_const_of_sha512 ());
                 ]
  
-  let bytnil : unit -> t
-  =fun () -> sort () |> ZDatatype.create ~const_idx:0 ~expr_list:[]
+  (* let bytnil : unit -> t
+  =fun () -> sort () |> ZDatatype.create ~const_idx:0 ~expr_list:[] *)
 
   let of_string : string -> t
-  =fun s -> sort () |> ZDatatype.create ~const_idx:1 ~expr_list:[ZStr.of_string s; (bytnil ())]
+  =fun s -> sort () |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string s;]
   let create_bytstr : ZExpr.t -> t
-  =fun content -> sort () |> ZDatatype.create ~const_idx:1 ~expr_list:[content; (bytnil ())]
+  =fun content -> sort () |> ZDatatype.create ~const_idx:0 ~expr_list:[content;]
 
   let create_pack : unit -> t
   =fun () -> ZStr.sort () |> ZExpr.create_dummy |> create_bytstr
 
   let create_concatenated : fst_bytes:t -> snd_bytes:t -> t
-  =fun ~fst_bytes ~snd_bytes -> sort () |> ZDatatype.create ~const_idx:2 ~expr_list:[fst_bytes; snd_bytes]
+  =fun ~fst_bytes ~snd_bytes -> sort () |> ZDatatype.create ~const_idx:1 ~expr_list:[fst_bytes; snd_bytes]
 
   (* let create_sliced : ZExpr.t -> t *) (* TODO : after _create_const_of_sliced finished *)
 
   let create_blake2b : ZExpr.t -> t
-  =fun content -> sort () |> ZDatatype.create ~const_idx:3 ~expr_list:[content]
+  =fun content -> sort () |> ZDatatype.create ~const_idx:2 ~expr_list:[content]
   let create_sha256 : ZExpr.t -> t
-  =fun content -> sort () |> ZDatatype.create ~const_idx:4 ~expr_list:[content]
+  =fun content -> sort () |> ZDatatype.create ~const_idx:3 ~expr_list:[content]
   let create_sha512 : ZExpr.t -> t
-  =fun content -> sort () |> ZDatatype.create ~const_idx:5 ~expr_list:[content]
+  =fun content -> sort () |> ZDatatype.create ~const_idx:4 ~expr_list:[content]
 
 end
 
