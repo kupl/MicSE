@@ -1247,8 +1247,7 @@ module ZSolver = struct
   let check_satisfiability : ZFormula.t list -> (satisfiability * ZModel.t option)
   =fun fl -> begin
     let solver = _create () in
-    let _ = _formula_add solver fl in
-    match Z3.Solver.check solver [] with
+    match Z3.Solver.check solver fl with
     | UNKNOWN -> (UNKNOWN, None)
     | UNSATISFIABLE -> (UNSAT, None)
     | SATISFIABLE -> (SAT, (solver |> Z3.Solver.get_model))
@@ -1256,8 +1255,8 @@ module ZSolver = struct
   let check_validity : ZFormula.t list -> (validity * ZModel.t option)
   =fun fl -> begin
     let solver = _create () in
-    let _ = _formula_add solver [(fl |> ZFormula.create_and |> ZFormula.create_not)] in
-    match Z3.Solver.check solver [] with
+    let fmla = fl |> ZFormula.create_and |> ZFormula.create_not in
+    match Z3.Solver.check solver [fmla] with
     | UNKNOWN -> (UNKNOWN, None)
     | UNSATISFIABLE -> (VAL, None)
     | SATISFIABLE -> (INVAL, (solver |> Z3.Solver.get_model))
