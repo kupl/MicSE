@@ -87,13 +87,21 @@ let strengthen_worklist : (t * t CPSet.t) -> t CPSet.t
           loop_inv
           ~f:(
             fun ~key ~data -> (* key = loop vertex; data = specific loop invariant for one vertex *)
-            let curloopinv_i : Vlang.t = 
-              PreLib.Cfg.t_map_find
-                ~errtrace:("Prover.Inv.strengthen_worklist : curloopinv_i : " ^ (Stdlib.string_of_int key))
-                cur_loopinv
-                key
-            in
-            Formula.VF_and [data; curloopinv_i]
+            try
+              let curloopinv_i : Vlang.t = 
+                PreLib.Cfg.t_map_find
+                  ~errtrace:("Prover.Inv.strengthen_worklist : curloopinv_i : " ^ (Stdlib.string_of_int key))
+                  cur_loopinv
+                  key
+              in
+              Formula.VF_and [data; curloopinv_i]
+            with
+              (* "PreLib.Cfg.t_map_find" emits error when the "key" is not a loop-vertex but just a "failwith" vertex.
+                  If this case happens, do not update it.
+                  According to the value "exit_inv" in "Prover.VcGen.construct_verifier_vc" implementation,
+                  every invariant for failwith vertex will be ignored.
+              *)
+              | PreLib.Cfg.Exn_Cfg _ -> data           
           )
       in
       {trx_inv=new_trxinv; loop_inv=new_loopinv}
