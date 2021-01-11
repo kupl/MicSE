@@ -30,7 +30,8 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
   let vcl : VcGen.v_cond list = List.map (fun x -> x inv_candidate) vc_fl in
   let isc : Vlang.t = isc_f inv_candidate in
   (* Validate Inductiveness (initial-storage-cond reflected in "indt_vc") *)
-  let indt_vc_l : Vlang.t list = List.map (fun x -> Vlang.Formula.VF_and [isc; x.VcGen.path_vc]) vcl in
+  (* Naive Optimization used here *)
+  let indt_vc_l : Vlang.t list = List.map (fun x -> Vlang.Formula.VF_and [isc; x.VcGen.path_vc] |> VlangUtil.NaiveOpt.run) vcl in
   let indt_validity, _ =
     let rec foldf : (bool * Vlang.t list) -> (bool * Vlang.t list)
     =fun (acc_validity_b, remain_indt_vc_l) -> begin
@@ -40,7 +41,16 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
       if Stdlib.not acc_validity_b then acc_validity_b, remain_indt_vc_l else
       match remain_indt_vc_l with
       | [] -> acc_validity_b, []
-      | h :: t -> foldf (Verifier.verify h |> Stdlib.fst |> is_valid, t) (* Verifier.verify runs validity check. *)
+      | h :: t -> 
+        let (validity, _) : Smt.ZSolver.validity * Smt.ZModel.t option = 
+          (* if the formula trivial, do not pass it to z3 *)
+          (match h with
+          | Vlang.Formula.VF_true -> (VAL, None)
+          | Vlang.Formula.VF_false -> (INVAL, None)
+          | _ -> (Verifier.verify h)
+          )
+        in 
+        foldf (Smt.ZSolver.is_valid validity, t)
     end in
     foldf (true, indt_vc_l)
   in
