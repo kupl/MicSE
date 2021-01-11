@@ -5,5 +5,6 @@
     micse.utils
     micse.pre
     micse.prover
+    micse.refuter
   )
   (package micse))

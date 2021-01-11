@@ -1,0 +1,9 @@
+(library
+  (name refuter)
+  (public_name micse.refuter)
+  (libraries
+    core
+    micse.pre
+    micse.prover
+    micse.prover.lib
+    ))

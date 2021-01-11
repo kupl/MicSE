@@ -1,6 +1,9 @@
-(* module BpGen = BpGen
+module BpGen = BpGen
+module InvGen = InvGen
+module Validator = Validator
 module VcGen = VcGen
-module VlGen = VlGen *)
+module Verifier = Verifier
+module VlGen = VlGen
 
 type run_ret = {
   best_inv : ProverLib.Inv.t;
