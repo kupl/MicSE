@@ -65,6 +65,8 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   let module CPMap = Core.Map.Poly in
   (* control-flow-graph, initial-storage-option, transaction-unrolling-number, loop-unrolling-number *)
   fun (cfg, cfgcon_counter) init_stg_opt trx_ur_num loop_ur_num -> begin
+  (* 0. Set the timer *)
+  let timer = Utils.Timer.create ~budget:!Utils.Options.prover_time_budget in
   (* 1. Unrolling loops in the Cfg
       To remove any confusion, it shadows the name "cfg".
   *)
@@ -76,9 +78,17 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
     =fun accmap n -> begin
       (* escape condition *)
       if n >= trx_ur_num then accmap else
+      if Utils.Timer.is_timeout timer
+      then (
+        let _ = print_endline ("Timeout before collecting trx_bp_map with integer-argument : " ^ (Stdlib.string_of_int n)) in
+        Stdlib.failwith "Refuter : Main : trx_bp_map"
+      )
+      else 
+      (* debug *) let _ = print_endline ("debug : trx_bp_map : " ^ (string_of_int n)) in
       (* basic-path construction. It is similar to basicpath-generation part in "Prover.main" *)
       let prv_glenv_ref : GlVar.Env.t ref = ref (GlVar.Env.gen n) in
       let basic_vtxlst_set : (Cfg.vertex list) CPSet.t = BpGen.collect_bp_vtx cfg cfg.main_entry in
+      (* debug *) let _ = print_endline ("basic_vtxlst_set size : " ^ (string_of_int (CPSet.length basic_vtxlst_set))) in 
       let bpgen_func : Cfg.vertex list -> Bp.t = BpGen.bp_of_vtxlst prv_glenv_ref cfg in
       let bps_orig : Bp.t CPSet.t = 
         CPSet.map basic_vtxlst_set ~f:bpgen_func 
@@ -177,14 +187,34 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   (* This implementation will generate every length-N transaction combination. *)
   let generated_complete_combination : Bp.t CPSet.t = 
     let combination_list : Bp.t list CPSet.t = 
-      let foldf : Bp.t list CPSet.t -> int -> Bp.t list CPSet.t
+      let rec foldf : Bp.t list CPSet.t -> int -> Bp.t list CPSet.t
       =fun accset n -> begin
         (* foldf escape condition *)
         if n < 0 then accset else
+        (* debug *) let _ = print_endline ("combination_list - foldf : accset size : " ^ string_of_int (CPSet.length accset)) in
         (* WARNING: trx-basicpaths of transaction-N. "Option.get" might raise "Invalid_argument" *)
         let trx_bps : Bp.t CPSet.t = CPMap.find trx_bp_map n |> Option.get in
         (* append each list *)
-        CPSet.fold trx_bps ~init:CPSet.empty ~f:(fun accs_i bp -> CPSet.union (CPSet.map accset ~f:(fun bpl -> bp :: bpl)) accs_i)
+        let newset : Bp.t list CPSet.t = 
+          CPSet.fold 
+            trx_bps 
+            ~init:CPSet.empty 
+            ~f:(
+              fun accs_i bp -> 
+              CPSet.union (
+                (* Timeout - escape condition *)
+                if Utils.Timer.is_timeout timer
+                  then (
+                    let _ = print_endline ("Timeout after collecting " ^ (Stdlib.string_of_int (CPSet.length accs_i)) ^ " combination_list with integer-argument : ") in
+                    Stdlib.failwith "Refuter : Main : generated_complete_combination : combination_list"
+                  )
+                  else 
+                CPSet.map accset ~f:(fun bpl -> bp :: bpl)) 
+                accs_i
+            ) 
+        in
+        (* recursive call *)
+        foldf newset (n-1)
       end in
       foldf (CPSet.singleton []) (trx_ur_num-1)
     in
@@ -213,11 +243,13 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   =fun (worklist, refuted_set) timer -> begin
     (* check escape condition *)
     if CPSet.is_empty worklist || Utils.Timer.is_timeout timer then (worklist, refuted_set) else
-    (* choose a basicpath from worklist. Perform "3.2." here.
-        (integer argument for "remove_assertion_except" is hardcoded.)
-    *)
-    let bp_picked : Bp.t = CPSet.choose_exn worklist |> remove_assertion_except (trx_ur_num-1) in
+    (* choose a basicpath from worklist. *)
+    let bp_picked : Bp.t = CPSet.choose_exn worklist in
     let new_worklist_1 : Bp.t CPSet.t = CPSet.remove worklist bp_picked in
+    (* Perform "3.2." here.
+      (integer argument for "remove_assertion_except" is hardcoded.) 
+    *)
+    let bp_picked : Bp.t = bp_picked |> remove_assertion_except (trx_ur_num-1) in
     (* extract queries *)
     let query_vcs : VcGen.query_vc CPSet.t = 
       let vcond : VcGen.v_cond = (VcGen.construct_verifier_vc cfg bp_picked) true_inv in
@@ -263,7 +295,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   let (unsearched_set, refuted_set) : Bp.t CPSet.t * (VcGen.query_vc * Smt.ZModel.t) CPSet.t = 
     refute 
       (generated_complete_combination, CPSet.empty) 
-      (Utils.Timer.create ~budget:!Utils.Options.prover_time_budget) 
+      timer
   in
   (* Interpret Refuter Result *)
   let _ = (
@@ -276,6 +308,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
       refuted_set
       ~f:(
         fun (qvc, mdl) ->
+        Stdlib.incr a;
         print_endline ("Scenario #" ^ string_of_int !a);
         print_endline ("Vertex: " ^ string_of_int qvc.qvc_vtx);
         print_endline ("Cateogry: " ^ (Bp.JsonRep.of_query_category qvc.qvc_cat |> Yojson.Basic.pretty_to_string));
