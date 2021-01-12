@@ -13,6 +13,7 @@ type run_ret = {
 
 type run_env = {
   worklist : ProverLib.Inv.t Core.Set.Poly.t;
+  invs_collected : ProverLib.Inv.t Core.Set.Poly.t;
   timer : Utils.Timer.t ref;
   igi : ProverLib.Inv.invgen_info;  (* information for invariant generation process *)
   vcl : (ProverLib.Inv.t -> VcGen.v_cond) list; (* the list of verification condition *)
@@ -53,11 +54,12 @@ end (* function update_runret_opt end *)
 let rec run : run_env -> run_ret option
 = let open ProverLib in
   let module CPSet = Core.Set.Poly in
-  fun {worklist; timer; igi; vcl; isc; istg_exists; ret_opt} -> begin
+  fun {worklist; invs_collected; timer; igi; vcl; isc; istg_exists; ret_opt} -> begin
   (* check escape condition *)
   if CPSet.is_empty worklist || Utils.Timer.is_timeout timer then ret_opt else
   (* choose a candidate invariant from worklist *)
   let inv_candidate : Inv.t = CPSet.choose_exn worklist in
+  let new_invs_collected : Inv.t CPSet.t = CPSet.add invs_collected inv_candidate in
   let new_worklist_1 : Inv.t CPSet.t = CPSet.remove worklist inv_candidate in
   (* validate *)
   let val_res : Validator.validate_result = Validator.validate (timer, inv_candidate, vcl, isc) in
@@ -66,7 +68,7 @@ let rec run : run_env -> run_ret option
   if val_res.inductive && CPSet.is_empty val_res.Validator.u then Some {best_inv=inv_candidate; proved=val_res.p; unproved=val_res.u} else
   (* else verification succeeds *)
   (* generator *)
-  let new_worklist_2 = CPSet.union (InvGen.generate (val_res, igi, inv_candidate, istg_exists)) new_worklist_1 in (* TODO *)
+  let new_worklist_2 = CPSet.union (InvGen.generate (val_res, igi, inv_candidate, istg_exists, new_invs_collected)) new_worklist_1 in (* TODO *)
   (* else verification succeeds - if inductive, update worklist *)
   let new_worklist_3 = if val_res.inductive then Inv.strengthen_worklist (inv_candidate, new_worklist_2) else new_worklist_2 in
   (* additional process - snapshot the best result *)
@@ -74,6 +76,7 @@ let rec run : run_env -> run_ret option
   (* recursive call until escape *)
   run {
     worklist = new_worklist_3;
+    invs_collected = new_invs_collected;
     timer = timer;
     igi = igi;
     vcl = vcl;
@@ -88,6 +91,7 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
 = let open PreLib in
   let open ProverLib in
   let module CPSet = Core.Set.Poly in
+  let module CPMap = Core.Map.Poly in
   fun cfg init_stg_opt -> begin
   (* 1. Basic-Path Construction *)
   let prv_glenv_ref : GlVar.Env.t ref = ref GlVar.Env.t_for_single_contract_verification in
@@ -118,6 +122,7 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
   let run_result_opt : run_ret option =
     run {
       worklist = CPSet.singleton (Inv.inv_true_gen ivg_info);
+      invs_collected = CPSet.empty;
       timer = Utils.Timer.create ~budget:!Utils.Options.prover_time_budget;
       igi = ivg_info;
       vcl = vcl;
@@ -131,8 +136,10 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
     (match run_result_opt with
     | None -> print_endline "Failure to create invariant that satisfies inductiveness."
     | Some {best_inv; proved; unproved} ->
-        print_endline "Best Performed Invariant (Only TrxInv will be printed):";
-        print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run best_inv.trx_inv));
+        print_endline "Best Performed Invariant - Transaction Invariant:";
+        print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula best_inv.trx_inv)));
+        print_endline "Best Performed Invariant - Loop Invariant:";
+        CPMap.iteri best_inv.loop_inv ~f:(fun ~key ~data -> print_endline ((Stdlib.string_of_int key) ^ " : " ^ (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula data)))));
         print_endline ("Proved Queries : " ^ string_of_int (CPSet.length proved));
         CPSet.iter proved ~f:(fun p -> print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run p.qvc_fml)));
         print_endline ("Unproved Queries : " ^ string_of_int (CPSet.length unproved));

@@ -238,7 +238,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   end in (* internal function remove_assertion_except end *)
   (* 3.3. Refute *)
   (* refute each basicpaths/queries until timeout or run out of basicpaths. *)
-  let true_inv : Inv.t = {trx_inv=VF_true; loop_inv=CPMap.empty} in (* Invariant "True" *)
+  let true_inv : Inv.t = {trx_inv=(CPSet.singleton Vlang.Formula.VF_true); loop_inv=CPMap.empty} in (* Invariant "True" *)
   let rec refute : (Bp.t CPSet.t * (VcGen.query_vc * Smt.ZModel.t) CPSet.t) -> (Utils.Timer.t ref) -> (Bp.t CPSet.t * (VcGen.query_vc * Smt.ZModel.t) CPSet.t)
   =fun (worklist, refuted_set) timer -> begin
     (* check escape condition *)

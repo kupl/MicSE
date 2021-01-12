@@ -6,8 +6,8 @@ module CPMap = Core.Map.Poly
 
 
 type t = {
-    trx_inv : Vlang.t;  (* Transaction invariant *)
-    loop_inv : (int, Vlang.t) CPMap.t;  (* Loop invariant : loop-vertex -> Vlang formula *)
+    trx_inv : Vlang.t CPSet.t;  (* Transaction invariant *)
+    loop_inv : (int, Vlang.t CPSet.t) CPMap.t;  (* Loop invariant : loop-vertex -> Vlang formula *)
 }
 
 
@@ -27,8 +27,8 @@ type invgen_info = {
 let inv_true_gen : invgen_info -> t
 =fun {igi_stgcomp=_; igi_glvar_comp=_; igi_loopv_set; igi_entryvtx=_; igi_exitvtx=_} -> begin
   let open Vlang.Formula in
-  { trx_inv = VF_true;
-    loop_inv = CPSet.fold igi_loopv_set ~init:CPMap.empty ~f:(fun accm loopv -> PreLib.Cfg.t_map_add ~errtrace:("ProverLib.Inv.inv_true_gen") accm loopv (VF_true));
+  { trx_inv = CPSet.singleton VF_true;
+    loop_inv = CPSet.fold igi_loopv_set ~init:CPMap.empty ~f:(fun accm loopv -> PreLib.Cfg.t_map_add ~errtrace:("ProverLib.Inv.inv_true_gen") accm loopv (CPSet.singleton VF_true));
   }
 end
 
@@ -75,26 +75,25 @@ let gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_i
 end (* function gen_invgen_info_for_single_contract_verification end *)
 
 let strengthen_worklist : (t * t CPSet.t) -> t CPSet.t
-= let open Vlang in
-  fun ({trx_inv=cur_trxinv; loop_inv=cur_loopinv}, inv_wl) -> begin
+=fun ({trx_inv=cur_trxinv; loop_inv=cur_loopinv}, inv_wl) -> begin
   CPSet.map
     inv_wl
     ~f:(
       fun {trx_inv; loop_inv} ->
-      let new_trxinv = Formula.VF_and [trx_inv; cur_trxinv] in
+      let new_trxinv = CPSet.union trx_inv cur_trxinv in
       let new_loopinv =
         CPMap.mapi
           loop_inv
           ~f:(
             fun ~key ~data -> (* key = loop vertex; data = specific loop invariant for one vertex *)
             try
-              let curloopinv_i : Vlang.t = 
+              let curloopinv_i : Vlang.t CPSet.t = 
                 PreLib.Cfg.t_map_find
                   ~errtrace:("Prover.Inv.strengthen_worklist : curloopinv_i : " ^ (Stdlib.string_of_int key))
                   cur_loopinv
                   key
               in
-              Formula.VF_and [data; curloopinv_i]
+              CPSet.union data curloopinv_i
             with
               (* "PreLib.Cfg.t_map_find" emits error when the "key" is not a loop-vertex but just a "failwith" vertex.
                   If this case happens, do not update it.
@@ -106,4 +105,10 @@ let strengthen_worklist : (t * t CPSet.t) -> t CPSet.t
       in
       {trx_inv=new_trxinv; loop_inv=new_loopinv}
     )
-end
+end (* function strengthen_worklist end *)
+
+(* "inv_to_formula" just connect invariant set using "VF_and". *)
+let inv_to_formula : Vlang.t CPSet.t -> Vlang.t
+=fun fset -> begin 
+  VF_and (CPSet.to_list fset)
+end (* function inv_to_formula end *)

@@ -25,7 +25,7 @@ let refine_T : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info * bool -> (Inv.t CPSe
   *)
   if Stdlib.not istg_exists then CPSet.empty else
   (* update function : it combines former one and the given one with VF_and. *)
-  let update : Vlang.t -> Inv.t = fun fmla -> {cur_inv with trx_inv=(VF_and [cur_inv.trx_inv; fmla]);} in
+  let update : Vlang.t -> Inv.t = fun fmla -> {cur_inv with trx_inv=(CPSet.add cur_inv.trx_inv fmla);} in
   (* 0. collect all components *)
   let all_components : Component.t = 
     collect_set [
@@ -67,8 +67,8 @@ let refine_L : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
   (* update function : it combines former one and the given one with VF_and. *)
   let update : Vlang.t -> Inv.t
   =fun fmla -> begin
-    let new_linv : (int, Vlang.t) CPMap.t = 
-      CPMap.update cur_inv.loop_inv vtx ~f:(function | None -> fmla | Some li -> VF_and [li; fmla])
+    let new_linv : (int, Vlang.t CPSet.t) CPMap.t = 
+      CPMap.update cur_inv.loop_inv vtx ~f:(function | None -> CPSet.singleton fmla | Some li -> CPSet.add li fmla)
     in
     {cur_inv with loop_inv=new_linv}
   end in
@@ -107,9 +107,9 @@ let refine_L : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
 end (* function refine_L end *)
 
 
-let generate : (Validator.validate_result * ProverLib.Inv.invgen_info * ProverLib.Inv.t * bool) -> ProverLib.Inv.t CPSet.t
-= (* current-worklist, validation-result, invariant-generation-information, current-invariant, is-initial-stroage-exists *)
-  fun (val_res, igi, cur_inv, istg_exists) -> begin
+let generate : (Validator.validate_result * ProverLib.Inv.invgen_info * ProverLib.Inv.t * bool * ProverLib.Inv.t CPSet.t) -> ProverLib.Inv.t CPSet.t
+= (* current-worklist, validation-result, invariant-generation-information, current-invariant, is-initial-stroage-exists, invariants-already-used *)
+  fun (val_res, igi, cur_inv, istg_exists, invs_collected) -> begin
   (* collect refine targets *)
   let refine_targets : (Cfg.vertex * Bp.t) CPSet.t =
     CPSet.fold
@@ -138,5 +138,5 @@ let generate : (Validator.validate_result * ProverLib.Inv.invgen_info * ProverLi
       )
   in
   (* return invariant set. Set union processing with existing inv-set will be performed at the module "Prover" *)
-  newly_generated_inv
+  CPSet.diff newly_generated_inv invs_collected
 end (* function generate end *)

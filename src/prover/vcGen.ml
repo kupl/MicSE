@@ -164,14 +164,14 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
     *)
     (fun {trx_inv; loop_inv} ->
       (* find invariant for entry-vtx *)
-      let entry_inv : Formula.t =
+      let entry_inv : Formula.t CPSet.t =
         if entry_vtx = cfg.main_entry then trx_inv else
         PreLib.Cfg.t_map_find 
           ~errtrace:("VcGen.construct_verifier_vc : 2 : entry_inv : " ^ (Stdlib.string_of_int entry_vtx))
           loop_inv entry_vtx
       in
       (* find invariant for exit-vtx *)
-      let exit_inv : Formula.t = 
+      let exit_inv : Formula.t CPSet.t = 
         if exit_vtx = cfg.main_exit then trx_inv else
         (* There are no dedicated invariant for FAILWITH node. So we just put trx-inv instead. *)
         let is_exitvtx_failwith : bool =
@@ -188,13 +188,13 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
           ~errtrace:("VcGen.construct_verifier_vc : 2 : found_exit_inv : exit_inv : " ^ (Stdlib.string_of_int exit_vtx))
           loop_inv exit_vtx
         in
-        NameEnv.rename_fmla sp_fold_result.sfa_name_env found_exit_inv
+        CPSet.map found_exit_inv ~f:(fun ei -> NameEnv.rename_fmla sp_fold_result.sfa_name_env ei)
       in
       (* construct a path verification-condition *)
       let pvc : ProverLib.Vlang.t = 
         Formula.VF_imply (
-          Formula.VF_and [entry_inv; sp_fold_result.sfa_str_post],
-          exit_inv
+          Formula.VF_and [ProverLib.Inv.inv_to_formula entry_inv; sp_fold_result.sfa_str_post],
+          ProverLib.Inv.inv_to_formula exit_inv
         )
         (*
         (* Formula Optimization inserted to enhance formula readability *)
@@ -206,7 +206,7 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
         List.map 
           (fun((pre_c, post_c), qc, vtx) ->
             let vc = 
-              Formula.VF_imply (Formula.VF_and [entry_inv; pre_c], post_c)
+              Formula.VF_imply (Formula.VF_and [ProverLib.Inv.inv_to_formula entry_inv; pre_c], post_c)
               (*
               (* Formula Optimization inserted to enhance formula readability *)
               |> ProverLib.VlangUtil.NaiveOpt.run
@@ -254,7 +254,7 @@ let construct_initstg_vc : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> PreLib.A
         let open Formula in
         (* Create the formula ((trxStorage = storage) -> trxInvariant). 
           It should be checked whether the formula is VALID before passing the invariant to validator. *)
-        VF_imply (VF_eq (stgvar, stg_vexpr), trx_inv)
+        VF_imply (VF_eq (stgvar, stg_vexpr), ProverLib.Inv.inv_to_formula trx_inv)
       )
     end
 end (* function construct_initstg_vc end *)

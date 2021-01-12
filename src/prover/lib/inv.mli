@@ -6,8 +6,8 @@ module CPMap = Core.Map.Poly
 
 
 type t = {
-    trx_inv : Vlang.t;  (* Transaction invariant *)
-    loop_inv : (int, Vlang.t) CPMap.t;  (* Loop invariant : loop-vertex -> Vlang formula *)
+    trx_inv : Vlang.t CPSet.t;  (* Transaction invariant *)
+    loop_inv : (int, Vlang.t CPSet.t) CPMap.t;  (* Loop invariant : loop-vertex -> Vlang formula *)
 }
 
 
@@ -29,3 +29,5 @@ val inv_true_gen : invgen_info -> t
 val gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_info
 
 val strengthen_worklist : (t * t CPSet.t) -> t CPSet.t
+
+val inv_to_formula : Vlang.t CPSet.t -> Vlang.t
