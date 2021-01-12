@@ -5,14 +5,16 @@
     print_unrolled_cfg
     refuter_only
     test_data_parse
-    test_timer)
+    test_timer
+    test_z3)
   (public_names 
     micse.utils.avar_analysis
     micse.utils.construct_cfg 
     micse.utils.print_unrolled_cfg
     micse.utils.refuter_only
     micse.utils.test_data_parse
-    micse.utils.test_timer)
+    micse.utils.test_timer
+    micse.utils.test_z3)
   (libraries
     micse.utils
     micse.pre
