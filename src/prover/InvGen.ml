@@ -27,27 +27,31 @@ let refine_T : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info * bool -> (Inv.t CPSe
   (* update function : it combines former one and the given one with VF_and. *)
   let update : Vlang.t -> Inv.t = fun fmla -> {cur_inv with trx_inv=(CPSet.add cur_inv.trx_inv fmla);} in
   (* 0. collect all components *)
+  let bp_components : Component.t = BpUtil.collect_components (BpUtil.bp_substitution bp) in
+  let strg_components : Component.t = igi.igi_stgcomp in
   let all_components : Component.t = 
     collect_set [
-      igi.igi_stgcomp;
-      igi.igi_glvar_comp;
-      CPSet.map bp.appeared_vars ~f:Component.comp_of_vexpr;
+      bp_components;
+      strg_components;
+      (* igi.igi_stgcomp; *)
+      (* igi.igi_glvar_comp; *)
+      (* CPSet.map bp.appeared_vars ~f:Component.comp_of_vexpr;  *)
     ]
   in
   (* 1. mutez-equal formula *)
-  let mutez_comps : Component.t = Component.filter_typ (fun x -> x = Ty.T_mutez) all_components in
-  let mutez_equal_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.mutez_equal mutez_comps in
+  let strg_mutez_comps : Component.t = Component.filter_typ (fun x -> x = Ty.T_mutez) strg_components in
+  let mutez_equal_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.mutez_equal strg_mutez_comps in
   (* 2. mtzmap-partial-sum formula *)
-  let mtzmap_comps : (Ty.t, Component.t) CPMap.t = Component.filter_types (function | Ty.T_map (_, Ty.T_mutez) -> true | _ -> false) all_components in
+  let mtzmap_comps : (Ty.t, Component.t) CPMap.t = Component.filter_types (function | Ty.T_map (_, Ty.T_mutez) -> true | _ -> false) strg_components in
   let mtzmap_partial_sum_equal_fmlas : Formula.t CPSet.t = 
     CPMap.fold
       mtzmap_comps
       ~init:CPSet.empty
       ~f:(
         fun ~key ~data fmla_accset ->
-        let key_comps : Component.t = Component.filter_typ (fun x -> x = key) all_components in
+        let key_comps : Component.t = Component.filter_typ (fun x -> Ty.T_map (x, Ty.T_mutez) = key) all_components in
         (* we already collect mutez components at the above procedure *)
-        let mm_ps_fmlas : Vlang.Formula.t CPSet.t = ProverLib.InvRecipe.mtzmap_partial_sum data key_comps mutez_comps in
+        let mm_ps_fmlas : Vlang.Formula.t CPSet.t = ProverLib.InvRecipe.mtzmap_partial_sum data key_comps strg_mutez_comps in
         CPSet.union mm_ps_fmlas fmla_accset
       )
   in
@@ -63,7 +67,7 @@ end (* function refine_T end *)
 let refine_L : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
 = let open Vlang in
   (* currnet-invariant, basic-path, vertex (loop-vtx), invariant-generation-info *)
-  fun (cur_inv, bp, vtx, igi) -> begin
+  fun (cur_inv, bp, vtx, _) -> begin
   (* update function : it combines former one and the given one with VF_and. *)
   let update : Vlang.t -> Inv.t
   =fun fmla -> begin
@@ -75,9 +79,18 @@ let refine_L : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
   (* 0. collect all components *)
   let all_components : Component.t =
     collect_set [
-      igi.igi_stgcomp;
-      igi.igi_glvar_comp;
-      CPSet.map bp.appeared_vars ~f:Component.comp_of_vexpr;
+      (* igi.igi_stgcomp; *)
+      (* igi.igi_glvar_comp; *)
+      (* 
+        (* At the first implementation, we think that the appeared_vars is enough. 
+          However, appeared_vars has too many duplicated values, which results to too many
+          invariant candidates to check.
+          Now we use expressions from "substituted-basicpath".
+          This approach removes some duplicated vlang-expressions.
+        *)
+        CPSet.map bp.appeared_vars ~f:Component.comp_of_vexpr; 
+      *)
+      BpUtil.collect_components (BpUtil.bp_substitution bp);
     ]
   in
   (* 1. mutez-equal formula *)
@@ -91,7 +104,7 @@ let refine_L : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
       ~init:CPSet.empty
       ~f:(
         fun ~key ~data fmla_accset ->
-        let key_comps : Component.t = Component.filter_typ (fun x -> x = key) all_components in
+          let key_comps : Component.t = Component.filter_typ (fun x -> Ty.T_map (x, Ty.T_mutez) = key) all_components in
         (* we already collect mutez components at the above procedure *)
         let mm_ps_fmlas : Vlang.Formula.t CPSet.t = ProverLib.InvRecipe.mtzmap_partial_sum data key_comps mutez_comps in
         CPSet.union mm_ps_fmlas fmla_accset
@@ -138,5 +151,6 @@ let generate : (Validator.validate_result * ProverLib.Inv.invgen_info * ProverLi
       )
   in
   (* return invariant set. Set union processing with existing inv-set will be performed at the module "Prover" *)
+  (* remove already-used invariants with "CPSet.diff" *)
   CPSet.diff newly_generated_inv invs_collected
 end (* function generate end *)

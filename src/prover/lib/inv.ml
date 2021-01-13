@@ -74,8 +74,9 @@ let gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_i
   {igi_stgcomp=strg_comp; igi_glvar_comp=basic_glvar_comp; igi_loopv_set=loopvtx_set; igi_entryvtx=cfg.main_entry; igi_exitvtx=cfg.main_exit;}
 end (* function gen_invgen_info_for_single_contract_verification end *)
 
-let strengthen_worklist : (t * t CPSet.t) -> t CPSet.t
-=fun ({trx_inv=cur_trxinv; loop_inv=cur_loopinv}, inv_wl) -> begin
+let strengthen_worklist : (t * t CPSet.t * t CPSet.t) -> t CPSet.t
+=fun ({trx_inv=cur_trxinv; loop_inv=cur_loopinv}, inv_wl, invs_collected) -> begin
+  let newly_generated_inv : t CPSet.t = 
   CPSet.map
     inv_wl
     ~f:(
@@ -105,6 +106,9 @@ let strengthen_worklist : (t * t CPSet.t) -> t CPSet.t
       in
       {trx_inv=new_trxinv; loop_inv=new_loopinv}
     )
+  in
+  (* remove already-used invariants with "CPSet.diff" *)
+  CPSet.diff newly_generated_inv invs_collected
 end (* function strengthen_worklist end *)
 
 (* "inv_to_formula" just connect invariant set using "VF_and". *)

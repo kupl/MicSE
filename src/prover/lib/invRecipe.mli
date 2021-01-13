@@ -1,5 +1,13 @@
 module CPSet = Core.Set.Poly (* sugar *)
 
+val combination_rfl : 'a CPSet.t -> ('a * 'a) CPSet.t
+
+val combination : 'a CPSet.t -> 'b CPSet.t -> ('a * 'b) CPSet.t
+
+val combination_self_two_diff : 'a list -> ('a * 'a) list
+
+
+
 (* "formula_mutez_equal" : every component should be mutez type. *)
 val mutez_equal : Vlang.Component.t -> Vlang.Formula.t CPSet.t
 

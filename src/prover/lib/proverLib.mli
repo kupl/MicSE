@@ -8,6 +8,10 @@ module InvRecipe = InvRecipe
 
 module Bp = Bp
 
+module BpUtil = BpUtil
+
 module Smt = Smt
+
+module Ftmp = Ftmp
 
 module VlangUtil = VlangUtil

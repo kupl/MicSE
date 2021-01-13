@@ -91,7 +91,7 @@ and smtexpr_of_vlangexpr : Vlang.Expr.t -> Smt.ZExpr.t
       | V_get_default (e1, e2, e3) -> begin
           Smt.ZExpr.create_ite 
             ~cond:(Smt.ZMap.read_exist ~key:(soe e1) ~map:(soe e3))
-            ~t:(Smt.ZMap.read_value ~key:(soe e1) ~map:(soe e3))
+            ~t:(Smt.ZOption.read (Smt.ZMap.read_value ~key:(soe e1) ~map:(soe e3)))
             ~f:(soe e2)
         end
 
@@ -446,7 +446,7 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
       | VF_shiftR_nnn_rhs_in_256 _ -> err vf
       (* Custom Domain Formula for Invariant Generation *)
       | VF_sigma_equal (_, _) -> Smt.ZBool.true_ () (* TODO *)
-      | VF_mtzmap_partial_sum_equal (_, _, _) -> Smt.ZBool.true_ () (* TODO *)
+      | VF_mtzmap_partial_sum_equal (e1, el2, e3) -> sof (Ftmp.MtzMapPartialSumEq.encode_vf_mtzmap_partial_sum_equal (e1, el2, e3)) (* TODO *)
     with
     | Smt.ZError s -> SMT_Encode_Error_f (vf, s) |> raise
     | e -> e |> raise

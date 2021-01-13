@@ -59,10 +59,18 @@ let rec run : run_env -> run_ret option
   if CPSet.is_empty worklist || Utils.Timer.is_timeout timer then ret_opt else
   (* choose a candidate invariant from worklist *)
   let inv_candidate : Inv.t = CPSet.choose_exn worklist in
+  (*
+  (* debug *) let _ = print_endline ("WL SIZE : " ^ string_of_int (CPSet.length worklist)) in
+  (* debug *) let _ = print_endline (Vlang.Formula.to_string (Inv.inv_to_formula inv_candidate.trx_inv |> VlangUtil.NaiveOpt.run)) in
+  (* debug *) let _ = Stdlib.flush_all () in
+  *)
   let new_invs_collected : Inv.t CPSet.t = CPSet.add invs_collected inv_candidate in
   let new_worklist_1 : Inv.t CPSet.t = CPSet.remove worklist inv_candidate in
   (* validate *)
   let val_res : Validator.validate_result = Validator.validate (timer, inv_candidate, vcl, isc) in
+  (*
+  (* debug *) let _ = print_endline (string_of_bool val_res.inductive); print_newline () in
+  *)
   let cur_retopt = if val_res.inductive then Some {best_inv = inv_candidate; proved = val_res.p; unproved = val_res.u} else None in
   (* if verification succeeds *)
   if val_res.inductive && CPSet.is_empty val_res.Validator.u then Some {best_inv=inv_candidate; proved=val_res.p; unproved=val_res.u} else
@@ -70,7 +78,7 @@ let rec run : run_env -> run_ret option
   (* generator *)
   let new_worklist_2 = CPSet.union (InvGen.generate (val_res, igi, inv_candidate, istg_exists, new_invs_collected)) new_worklist_1 in (* TODO *)
   (* else verification succeeds - if inductive, update worklist *)
-  let new_worklist_3 = if val_res.inductive then Inv.strengthen_worklist (inv_candidate, new_worklist_2) else new_worklist_2 in
+  let new_worklist_3 = if val_res.inductive then Inv.strengthen_worklist (inv_candidate, new_worklist_2, new_invs_collected) else new_worklist_2 in
   (* additional process - snapshot the best result *)
   let new_retopt = update_runret_opt (ret_opt, cur_retopt) in
   (* recursive call until escape *)

@@ -28,6 +28,6 @@ val inv_true_gen : invgen_info -> t
 (* In our blueprint, Invariant is used for a verifier, not refuter. *)
 val gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_info
 
-val strengthen_worklist : (t * t CPSet.t) -> t CPSet.t
+val strengthen_worklist : (t * t CPSet.t * t CPSet.t) -> t CPSet.t
 
 val inv_to_formula : Vlang.t CPSet.t -> Vlang.t

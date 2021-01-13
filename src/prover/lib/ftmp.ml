@@ -11,15 +11,16 @@ module MtzMapPartialSumEq = struct
   type partition = idx PolySet.t
 
   (* "const_remain_var_prefix" : constant. magic-string prefix to create a (unique-like) variable name. *)
-  let const_remain_var_prefix : string = "__MMPSE_RV_"
+  let const_remain_var_prefix : string = "__MMPSE_RV_("
+  let const_remain_var_postfix : string = ")"
 
   (* "create_remain_var" recieves the map-variable "x" (in vlang expression) and creates the variable-Rx *)
   let create_remain_var : Vlang.Expr.t -> Vlang.Expr.t
   = let open Vlang.Expr in
     fun mv -> begin
     match mv with
-    | V_var (t, vname) -> V_var (t, const_remain_var_prefix ^ vname)
-    | _ -> Stdlib.failwith "ProverLib.Ftmp.create_remain_var : match failed"
+    | V_var (_, vname) -> V_var (Ty.T_mutez, const_remain_var_prefix ^ vname ^ const_remain_var_postfix)
+    | _ -> V_var (Ty.T_mutez, const_remain_var_prefix ^ (Vlang.Expr.to_string mv) ^ const_remain_var_postfix)
   end (* function create_remain_var end *)
 
   (* "read_partition_expr {{a;b}; {c}; {d;e;f}} m" returns "[GET_DFT(a,0,m); GET(c,0,m); GET(d,0,m)]" in vlang-expr list form *)
