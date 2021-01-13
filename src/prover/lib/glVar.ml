@@ -42,7 +42,7 @@ module Env = struct
     gv_param = gen_param n;
     gv_storage = gen_storage n;
     gv_amount = gen_amount n;
-    gv_balance = gen_amount n;
+    gv_balance = gen_balance n;
     gv_sender = gen_sender n;
     gv_source = gen_source n;
   }

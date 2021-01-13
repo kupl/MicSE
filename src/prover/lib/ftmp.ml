@@ -11,7 +11,7 @@ module MtzMapPartialSumEq = struct
   type partition = idx PolySet.t
 
   (* "const_remain_var_prefix" : constant. magic-string prefix to create a (unique-like) variable name. *)
-  let const_remain_var_prefix : string = "__MMPSE_RV_("
+  let const_remain_var_prefix : string = "__MTZMAP_SUM_REMAIN_("
   let const_remain_var_postfix : string = ")"
 
   (* "create_remain_var" recieves the map-variable "x" (in vlang expression) and creates the variable-Rx *)

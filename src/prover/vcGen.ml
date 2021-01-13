@@ -28,6 +28,18 @@ module NameEnv = struct
 
   let new_var : string -> string = fun x -> x ^ "#"
 
+  let initial_value : t =
+    let open ProverLib.GlVar.Env in
+    let e = t_for_single_contract_verification in
+    CPMap.of_alist_exn [
+      e.gv_param, e.gv_param;
+      e.gv_storage, e.gv_storage;
+      e.gv_amount, e.gv_amount;
+      e.gv_balance, e.gv_balance;
+      e.gv_sender, e.gv_sender;
+      e.gv_source, e.gv_source;
+    ]
+
   let get : t -> string -> string
   =fun env v -> begin
     try
@@ -136,7 +148,7 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
           - it should be converted to ((entry-inv /\ precond) -> postcond) using invariant later.
     *)
     let initv : sp_fold_acc = {
-      sfa_name_env = CPMap.empty;
+      sfa_name_env = NameEnv.initial_value;
       sfa_str_post = Formula.VF_true;
       sfa_queries = [];
     } in
@@ -170,25 +182,31 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
           ~errtrace:("VcGen.construct_verifier_vc : 2 : entry_inv : " ^ (Stdlib.string_of_int entry_vtx))
           loop_inv entry_vtx
       in
-      (* find invariant for exit-vtx *)
+      (* find invariant for exit-vtx 
+          invariant for exit-vtx requires variable renaming!!!
+      *)
       let exit_inv : Formula.t CPSet.t = 
-        if exit_vtx = cfg.main_exit then trx_inv else
-        (* There are no dedicated invariant for FAILWITH node. So we just put trx-inv instead. *)
-        let is_exitvtx_failwith : bool =
-          PreLib.Cfg.t_map_find
-            ~errtrace:("VcGen.construct_verifier_vc : 2 : is_exitvtx_failwith : " ^ (Stdlib.string_of_int exit_vtx))
-            cfg.vertex_info
-            exit_vtx
-          |> (function | Cfg_failwith _ -> true | _ -> false)
+        let exit_inv_raw : Formula.t CPSet.t = 
+          if exit_vtx = cfg.main_exit then trx_inv else
+          (* There are no dedicated invariant for FAILWITH node. So we just put trx-inv instead. *)
+          let is_exitvtx_failwith : bool =
+            PreLib.Cfg.t_map_find
+              ~errtrace:("VcGen.construct_verifier_vc : 2 : is_exitvtx_failwith : " ^ (Stdlib.string_of_int exit_vtx))
+              cfg.vertex_info
+              exit_vtx
+            |> (function | Cfg_failwith _ -> true | _ -> false)
+          in
+          if is_exitvtx_failwith then trx_inv else
+          (* If exit-vtx is not main-exit-vtx and not failwith-vtx, find loop invariant. *)
+          let found_exit_inv =
+            PreLib.Cfg.t_map_find 
+            ~errtrace:("VcGen.construct_verifier_vc : 2 : found_exit_inv : exit_inv : " ^ (Stdlib.string_of_int exit_vtx))
+            loop_inv exit_vtx
+          in
+          found_exit_inv
         in
-        if is_exitvtx_failwith then trx_inv else
-        (* If exit-vtx is not main-exit-vtx and not failwith-vtx, find loop invariant. *)
-        let found_exit_inv =
-          PreLib.Cfg.t_map_find 
-          ~errtrace:("VcGen.construct_verifier_vc : 2 : found_exit_inv : exit_inv : " ^ (Stdlib.string_of_int exit_vtx))
-          loop_inv exit_vtx
-        in
-        CPSet.map found_exit_inv ~f:(fun ei -> NameEnv.rename_fmla sp_fold_result.sfa_name_env ei)
+        (* RENAMING!!! *)
+        CPSet.map exit_inv_raw ~f:(fun ei -> NameEnv.rename_fmla sp_fold_result.sfa_name_env ei)
       in
       (* construct a path verification-condition *)
       let pvc : ProverLib.Vlang.t = 

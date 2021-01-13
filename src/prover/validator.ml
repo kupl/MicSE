@@ -25,13 +25,14 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
   let is_valid : Smt.ZSolver.validity -> bool = (function | Smt.ZSolver.VAL -> true | _ -> false) in
   fun (timer, inv_candidate, vc_fl, isc_f) -> begin
   (* vcl : verification condition list *)
-  (* isc : initial storage condition *)
+  (* isc : initial storage condition. deprecated *)
   (* indt_vc : inductiveness condition *)
   let vcl : VcGen.v_cond list = List.map (fun x -> x inv_candidate) vc_fl in
-  let isc : Vlang.t = isc_f inv_candidate in
+  let _ : Vlang.t = isc_f inv_candidate in (* "isc" : deprecated *)
   (* Validate Inductiveness (initial-storage-cond reflected in "indt_vc") *)
   (* Naive Optimization used here *)
-  let indt_vc_l : Vlang.t list = List.map (fun x -> Vlang.Formula.VF_and [isc; x.VcGen.path_vc] |> VlangUtil.NaiveOpt.run) vcl in
+  (* let indt_vc_l : Vlang.t list = List.map (fun x -> Vlang.Formula.VF_and [isc; x.VcGen.path_vc] |> VlangUtil.NaiveOpt.run) vcl in (* deprecated *) *)
+  let indt_vc_l : Vlang.t list = List.map (fun x -> VlangUtil.NaiveOpt.run x.VcGen.path_vc) vcl in
   let indt_validity, _ =
     let rec foldf : (bool * Vlang.t list) -> (bool * Vlang.t list)
     =fun (acc_validity_b, remain_indt_vc_l) -> begin
@@ -42,6 +43,7 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
       match remain_indt_vc_l with
       | [] -> acc_validity_b, []
       | h :: t -> 
+        (* debug *) let _ = print_endline "FORMULA : "; print_endline (Vlang.Formula.to_string h);  in
         let (validity, _) : Smt.ZSolver.validity * Smt.ZModel.t option = 
           (* if the formula trivial, do not pass it to z3 *)
           (match h with
@@ -50,6 +52,17 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
           | _ -> (Verifier.verify h)
           )
         in 
+        
+        (*
+        (* debug *) let _ = 
+          (match mopt with
+          | Some m -> print_endline "ZMODEL : "; Smt.ZModel.to_string m |> print_endline 
+            | _ -> ()
+
+          )
+        in
+        *)
+
         foldf (Smt.ZSolver.is_valid validity, t)
     end in
     foldf (true, indt_vc_l)
@@ -85,7 +98,17 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
       if qlist = [] then (p_acc, u_acc) else
       let (q, rqlst) = (List.hd qlist, List.tl qlist) in
       (* this fold-function separates validated-queries and invalidated/unproven-queries *)
-      let q_validity, _ = Verifier.verify q.qvc_fml in
+      let q_validity, mopt = Verifier.verify q.qvc_fml in
+      let _ = mopt in
+(*       
+      (* debug *) let _ = 
+        (match mopt with
+        | Some m -> print_endline "FORMULA : "; print_endline (Vlang.Formula.to_string q.qvc_fml); print_endline "ZMODEL : "; Smt.ZModel.to_string m |> print_endline 
+          | _ -> ()
+
+        )
+      in *)
+
       let (npacc, nuacc) = if is_valid q_validity then (CPSet.add p_acc q, u_acc) else (p_acc, CPSet.add u_acc q) in
       foldf (npacc, nuacc) rqlst
     end in
