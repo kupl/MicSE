@@ -56,6 +56,10 @@ let mutez_equal : Vlang.Component.t -> Vlang.Formula.t CPSet.t
   CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_eq (c1.body, c2.body)))
 end (* function formula_mutez_equal end *)
 
+(* WARNING : "remain_var_gen" has internal side-effects. *)
+let remain_var_gen : unit -> string
+= let c = ref 0 in fun () -> (Stdlib.incr c; "__MTZMAP_SUM_R_" ^ (Stdlib.string_of_int !c))
+
 let mtzmap_partial_sum : Vlang.Component.t -> Vlang.Component.t -> Vlang.Component.t -> Vlang.Formula.t CPSet.t
 = let open Vlang in
   let open Formula in
@@ -77,6 +81,6 @@ let mtzmap_partial_sum : Vlang.Component.t -> Vlang.Component.t -> Vlang.Compone
         ] 
       in
       (* generate formula *)
-      VF_imply (fold_precond prec_lst, VF_mtzmap_partial_sum_equal(km.body, CPSet.fold k_sset ~init:[] ~f:(fun accl x -> x.body :: accl), m.body))
+      VF_imply (fold_precond prec_lst, VF_mtzmap_partial_sum_equal(km.body, CPSet.fold k_sset ~init:[] ~f:(fun accl x -> x.body :: accl), m.body, remain_var_gen ()))
     )
 end (* function mtzmap_partial_sum end *)

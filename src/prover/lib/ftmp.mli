@@ -11,10 +11,13 @@ module MtzMapPartialSumEq : sig
   type partition = idx PolySet.t
 
   (* "const_remain_var_prefix" : constant. magic-string prefix to create a (unique-like) variable name. *)
-  val const_remain_var_prefix : string
+  (* val const_remain_var_prefix : string *)
 
   (* "create_remain_var" recieves the map-variable "x" (in vlang expression) and creates the variable-Rx *)
-  val create_remain_var : Vlang.Expr.t -> Vlang.Expr.t
+  (* val create_remain_var : Vlang.Expr.t -> Vlang.Expr.t *)
+  
+  (* "create_remain_var" creates the variable-Rx using the given string. *)
+  val create_remain_var : string -> Vlang.Expr.t
 
   (* "read_partition_expr {{a;b}; {c}; {d;e;f}} m" returns "[GET_DFT(a,0,m); GET(c,0,m); GET(d,0,m)]" in vlang-expr list form *)
   (* If GET instruction failed, GET(_,m) will return 0-value instead. *)
@@ -38,6 +41,6 @@ module MtzMapPartialSumEq : sig
   val create_snd_formula : partition -> map:Vlang.Expr.t -> remain_var:Vlang.Expr.t -> Vlang.t
   
   (* "encode_vf_..._sum_equal" encodes VF_mtzmap_partial_sum_equal into Vlang primitives. *)
-  val encode_vf_mtzmap_partial_sum_equal : Expr.t * (Expr.t list) * Expr.t -> Vlang.t
+  val encode_vf_mtzmap_partial_sum_equal : Expr.t * (Expr.t list) * Expr.t * string -> Vlang.t
   
 end (* module MtzMapPartialSumEq end *)

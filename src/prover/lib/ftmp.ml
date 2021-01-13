@@ -10,6 +10,7 @@ module MtzMapPartialSumEq = struct
   (* "partiation" separates expressions in several elements *)
   type partition = idx PolySet.t
 
+(* 
   (* "const_remain_var_prefix" : constant. magic-string prefix to create a (unique-like) variable name. *)
   let const_remain_var_prefix : string = "__MTZMAP_SUM_REMAIN_("
   let const_remain_var_postfix : string = ")"
@@ -22,7 +23,11 @@ module MtzMapPartialSumEq = struct
     | V_var (_, vname) -> V_var (Ty.T_mutez, const_remain_var_prefix ^ vname ^ const_remain_var_postfix)
     | _ -> V_var (Ty.T_mutez, const_remain_var_prefix ^ (Vlang.Expr.to_string mv) ^ const_remain_var_postfix)
   end (* function create_remain_var end *)
+*)
 
+  (* "create_remain_var" creates the variable-Rx using the given string. *)
+  let create_remain_var : string -> Vlang.Expr.t = fun s -> V_var (Ty.T_mutez, s)
+  
   (* "read_partition_expr {{a;b}; {c}; {d;e;f}} m" returns "[GET_DFT(a,0,m); GET(c,0,m); GET(d,0,m)]" in vlang-expr list form *)
   (* If GET instruction failed, GET(_,m) will return 0-value instead. *)
   let read_partition_expr : partition -> map:Vlang.Expr.t -> Vlang.Expr.t list
@@ -122,13 +127,13 @@ module MtzMapPartialSumEq = struct
   end
 
   (* "encode_vf_..._sum_equal" encodes VF_mtzmap_partial_sum_equal into Vlang primitives. *)
-  let encode_vf_mtzmap_partial_sum_equal : Expr.t * (Expr.t list) * Expr.t -> Vlang.t
-  =fun (mmap, keylst, sum) -> begin
+  let encode_vf_mtzmap_partial_sum_equal : Expr.t * (Expr.t list) * Expr.t * string -> Vlang.t
+  =fun (mmap, keylst, sum, rvar) -> begin
     (* make a partition *)
     let keyset : Expr.t PolySet.t = PolySet.of_list keylst in
     let ptt_lst : partition list = create_n_partition ~n:(PolySet.length keyset) ~idxs:keyset in
     (* generate first, second formulas (g1, g2) *)
-    let rv : Expr.t = create_remain_var mmap in
+    let rv : Expr.t = create_remain_var rvar in
     let g1_list : Vlang.t list = List.map (fun p -> create_fst_formula p ~map:mmap ~remain_var:rv ~value:sum) ptt_lst in
     let g2_list : Vlang.t list = List.map (fun p -> create_snd_formula p ~map:mmap ~remain_var:rv) ptt_lst in
     VF_and (g1_list @ g2_list)

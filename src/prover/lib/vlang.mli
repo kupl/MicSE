@@ -328,7 +328,7 @@ module Formula : sig
   | VF_shiftR_nnn_rhs_in_256 of (Expr.t * Expr.t)
   (* Custom Domain Formula for Invariant Generation *)
   | VF_sigma_equal of (Expr.t * Expr.t)
-  | VF_mtzmap_partial_sum_equal of (Expr.t * (Expr.t list) * Expr.t) (* ('k, mutez) map * ('k (OCaml-list)) * mutez -> formula *)
+  | VF_mtzmap_partial_sum_equal of (Expr.t * (Expr.t list) * Expr.t * string) (* ('k, mutez) map * ('k (OCaml-list)) * mutez * (remain-variable name) -> formula *)
 
   val to_string : t -> string
 end (* module Formula end *)
