@@ -1367,6 +1367,7 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     (*  flow        : (in_v [If_true]-> i1_begin) & (in_v [If_false]-> i2_begin)
                       & (i1_begin -> (i1 ...) -> i1_end) & (i2_begin -> (i2 ...) -> i2_end)
                       & (i1_end -> (renaming symbols ...) -> out_v) & (i2_end -> (renaming symbols ...) -> out_v)
+                      & (in_v [If_skip]-> out_v)
         variables   : var-1 : condition boolean variable located at the top of the stack
         vertex_info : in_v : Cfg_if (var-1)
                       i1_begin, i2_begin : decided by THEN, ELSE branches.
@@ -1387,7 +1388,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let flow_edg_added = begin
       let true_edg = G.E.create in_v If_true i1_begin in
       let false_edg = G.E.create in_v If_false i2_begin in
-      flow_vtx_added |> addedg_e true_edg |> addedg_e false_edg
+      let skip_edg = G.E.create in_v If_skip out_v in
+      flow_vtx_added |> addedg_e true_edg |> addedg_e false_edg |> addedg_e skip_edg
     end in
     (* set vertex infos of in_v, i1_end, i2_end *)
     let var_1 : string = ns_hd stack_info in
