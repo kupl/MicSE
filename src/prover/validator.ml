@@ -43,7 +43,6 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
       match remain_indt_vc_l with
       | [] -> acc_validity_b, []
       | h :: t -> 
-        (* debug *) let _ = print_endline "FORMULA : "; print_endline (Vlang.Formula.to_string h);  in
         let (validity, _) : Smt.ZSolver.validity * Smt.ZModel.t option = 
           (* if the formula trivial, do not pass it to z3 *)
           (match h with
@@ -52,17 +51,6 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
           | _ -> (Verifier.verify h)
           )
         in 
-        
-        (*
-        (* debug *) let _ = 
-          (match mopt with
-          | Some m -> print_endline "ZMODEL : "; Smt.ZModel.to_string m |> print_endline 
-            | _ -> ()
-
-          )
-        in
-        *)
-
         foldf (Smt.ZSolver.is_valid validity, t)
     end in
     foldf (true, indt_vc_l)
