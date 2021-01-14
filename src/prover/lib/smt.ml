@@ -70,7 +70,7 @@ module CONST = struct
   let _field_list_head : string = "head"
   let _field_list_tail : string = "tail"
 
-  let _bit_mutez : int = 63
+  let _bit_mutez : int = 3
 
   let _int2bv_precision : int = 128
 end
@@ -1096,25 +1096,23 @@ module ZMap = struct
   end
 
   let create_sort : key_sort:ZSort.t -> value_sort:ZSort.t -> ZSort.t
-  =fun ~key_sort ~value_sort -> value_sort |> (key_sort |> Z3.Z3Array.mk_sort (ZCtx.read ()))
+  =fun ~key_sort ~value_sort -> begin
+    Z3.Z3Array.mk_sort (ZCtx.read ()) key_sort (ZOption.create_sort ~content_sort:value_sort)
+  end
 
   let read_default_value : t -> ZExpr.t
-  =fun e -> e |> Z3.Z3Array.mk_term_array (ZCtx.read ())
+  =fun e -> begin
+    let value_sort = Z3.Z3Array.get_range (e |> ZExpr.read_sort) in
+    ZOption.create_none ~content_sort:value_sort
+  end
 
   let create : key_sort:ZSort.t -> value_sort:ZSort.t -> t
   =fun ~key_sort ~value_sort -> begin
-    value_sort |> (
-    key_sort |> (
-    (_create_name ~key_sort:key_sort ~value_sort:value_sort) |> ZSym.create |>
-    Z3.Z3Array.mk_const (ZCtx.read ())))
+    Z3.Z3Array.mk_const_array (ZCtx.read ()) key_sort (ZOption.create_none ~content_sort:value_sort)
   end
   let read_value : key:ZExpr.t -> map:t -> ZExpr.t
   =fun ~key ~map -> begin
-    let value = Z3.Z3Array.mk_select (ZCtx.read ()) map key in
-    ZExpr.create_ite
-      ~cond:(ZBool.create_eq value (map |> read_default_value))
-      ~t:(ZOption.create_none ~content_sort:(map |> ZExpr.read_sort |> Z3.Z3Array.get_range))
-      ~f:(ZOption.create_some ~content:value)
+    Z3.Z3Array.mk_select (ZCtx.read ()) map key
   end
   let read_exist : key:ZExpr.t -> map:t -> ZBool.t
   =fun ~key ~map -> begin
@@ -1125,16 +1123,7 @@ module ZMap = struct
   end
   let update : key:ZExpr.t -> value:ZExpr.t -> map:t -> t
   =fun ~key ~value ~map -> begin
-    ZExpr.create_ite
-      ~cond:(value |> ZOption.is_none)
-      ~t:(map |> read_default_value |> (
-          key |> (
-          map |>
-          Z3.Z3Array.mk_store (ZCtx.read ()))))
-      ~f:(value |> ZOption.read |> (
-          key |> (
-          map |>
-          Z3.Z3Array.mk_store (ZCtx.read ()))))
+    Z3.Z3Array.mk_store (ZCtx.read ()) map key value
   end
 
   let create_eq : t -> t -> ZBool.t
