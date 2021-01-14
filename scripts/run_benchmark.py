@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import argparse
+import tempfile
 import subprocess
 from datetime import datetime
 
@@ -65,25 +66,56 @@ def run (env):
     print (proc.stderr)
     return None
   # Run benchmarks
+  pool = []
+  for idx, file in enumerate (env.candidates):
+    # Set command line
+    cmd = ["dune", "exec", "--", "micse"]
+    cmd += ["-input", os.path.join (env.benchmark, file)]
+    cmd += ["-z3_timeout", str (env.z3_time)]
+    cmd += ["-prover_timeout", str (env.prover_time)]
+    # Job Started
+    job = dotdict()
+    job.idx = idx + 1
+    sys.stderr.write ("  > Job #{} is started [{}/{}]\n".format (job.idx, job.idx, jobLen))
+    job.tempFP = tempfile.TemporaryFile ()
+    job.cmd = cmd
+    job.startTime = time.time ()
+    job.proc = subprocess.Popen (cmd, stdout=job.tempFP, stderr=subprocess.STDOUT, text=True, cwd=PROJECT_DIR)
+    job.endTime = job.startTime
+    job.runTime = 0.000
+    job.terminateCheck = False
+    # Print Log
+    pool.append(job)
+    time.sleep(0.5)
+  # Write Outputs
   with open (env.output, "w") as fp:
-    for idx, file in enumerate (env.candidates):
-      # Set command line
-      cmd = ["dune", "exec", "--", "micse"]
-      cmd += ["-input", os.path.join (env.benchmark, file)]
-      cmd += ["-z3_timeout", str (env.z3_time)]
-      cmd += ["-prover_timeout", str (env.prover_time)]
-      # Job Started
-      print ("  > Job [{}/{}] is started".format (idx + 1, jobLen))
-      fp.write ("$ " + " ".join (cmd) + "\n")
-      # Run Job
-      timeStarted = time.time ()
-      proc = subprocess.run (cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=PROJECT_DIR)
-      timeFinished = time.time ()
-      # Job Finished
-      runTime = round ((timeFinished - timeStarted), 3)
-      fp.write (proc.stdout)
-      fp.write ("...[{}s - {}/{}]\n\n".format (runTime, idx + 1, jobLen))
-      print ("  > Job [{}/{}] is done in {}s".format (idx + 1, jobLen, runTime))
+    terminatedJobCount = 0
+    while True:
+      terminateCheck = True
+      for job in pool:
+        # Check Termination of Process
+        if job.proc.poll () == None:
+          # Skip the Non-terminated process
+          terminateCheck = False
+        else:
+          if job.terminateCheck: continue
+          else:
+            terminatedJobCount += 1
+            # Check Run Time
+            job.endTime = time.time ()
+            job.runTime = round ((job.endTime - job.startTime), 3)
+            job.terminateCheck = True
+            sys.stderr.write ("  > Job #{} is done in {}s [{}/{}]\n".format (job.idx, job.runTime, terminatedJobCount, jobLen))
+      # Break the Wait Loop when All of Job is Terminated
+      if terminateCheck: break
+      # Wait the Next Termination Check Loop
+      time.sleep (1)
+    for job in pool:
+      job.tempFP.seek (0)
+      fp.write ("$ " + " ".join (job.cmd) + "\n")
+      fp.write (job.tempFP.read ().decode ())
+      fp.write ("...[{}s - {}/{}]\n\n".format (job.runTime, job.idx, jobLen))
+      job.tempFP.close ()
   return None
 
 if __name__ == "__main__":
