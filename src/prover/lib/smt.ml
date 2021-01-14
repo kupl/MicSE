@@ -70,7 +70,7 @@ module CONST = struct
   let _field_list_head : string = "head"
   let _field_list_tail : string = "tail"
 
-  let _bit_mutez : int = 3
+  let _bit_mutez : int = 63
 
   let _int2bv_precision : int = 128
 end
@@ -1117,7 +1117,7 @@ module ZMap = struct
   let read_exist : key:ZExpr.t -> map:t -> ZBool.t
   =fun ~key ~map -> begin
     ZExpr.create_ite
-      ~cond:(read_value ~key:key ~map:map |> ZOption.is_none)
+      ~cond:(read_value ~key:key ~map:map |> ZOption.is_some)
       ~t:(ZBool.true_ ())
       ~f:(ZBool.false_ ())
   end
