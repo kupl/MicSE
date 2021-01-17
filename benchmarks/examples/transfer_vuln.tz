@@ -1,0 +1,49 @@
+parameter (pair (address %toAddr) (mutez %money));
+storage   (pair (map %balance address mutez) (pair (address %owner) (mutez %totalSupply)));
+code
+  {
+    # (toAddr, money), (balance, (owner, totalSupply)) = param, storage in
+    UNPAIR;         # @param : @storage
+    UNPAIR;         # %toAddr : %money : @storage
+    DIP 2 { UNPAIR; }; # %toAddr : %money : %balance : pair %owner %totalSupply
+    # existing_s, existing_ta = match balance[SENDER], balance[toAddr] with | Some m1, Some m2 -> m1, m2 | Some m1, None -> m1, 0 | _ -> FAILURE in
+    DUP 3;          # %balance : %toAddr : %money : %balance : pair %owner %totalSupply
+    DUP 2;          # %toAddr : %balance : %toAddr : %money : %balance : pair %owner %totalSupply
+    GET;            # %balance[%toAddr] : %toAddr : %money : %balance : pair %owner %totalSupply
+    IF_NONE 
+      { PUSH mutez 0; } 
+      {};           # %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    DUP 4;          # %balance : %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    SENDER;         # @sender : %balance : %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    GET;            # %balance[@sender] : %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    IF_NONE
+      { FAIL; }
+      {};           # %existing_s : %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    # new_balance = if existing_s < money then FAILURE else update (existing_ta + money, toAddr, (update existing_s - money, SENDER, balance))
+    DUP 4;          # %money : %existing_s : %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    DUP 2;          # %existing_s : %money : %existing_s : %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    COMPARE;        # int : %existing_s : %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    GE;             # bool : %existing_s : %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    IF
+      {}
+      { FAIL; };    # %existing_s : %existing_ta : %toAddr : %money : %balance : pair %owner %totalSupply
+    DIP 
+      { 
+        DIG 3;      # %existing_s : %balance : %existing_ta : %toAddr : %money : pair %owner %totalSupply
+        SENDER;     # %existing_s : @sender : %balance : %existing_ta : %toAddr : %money : pair %owner %totalSupply
+        DUP 5;      # %existing_s : %money : @sender : %balance : %existing_ta : %toAddr : %money : pair %owner %totalSupply
+      };
+    SUB;            # mutez : @sender : %balance : %existing_ta : %toAddr : %money : pair %owner %totalSupply
+    SOME;           # option mutez : @sender : %balance : %existing_ta : %toAddr : %money : pair %owner %totalSupply
+    SWAP;           # @sender : option mutez : %balance : %existing_ta : %toAddr : %money : pair %owner %totalSupply
+    UPDATE;         # %balance_i : %existing_ta : %toAddr : %money : pair %owner %totalSupply
+    DUG 3;          # %existing_ta : %toAddr : %money : %balance_i : pair %owner %totalSupply
+    DIP { SWAP; };  # %existing_ta : %money : %toAddr : %balance_i : pair %owner %totalSupply
+    ADD;            # mutez : %toAddr : %balance_i : pair %owner %totalSupply
+    SOME;           # option mutez : %toAddr : %balance_i : pair %owner %totalSupply
+    SWAP;           # %toAddr : option mutez : %balance_i : pair %owner %totalSupply
+    UPDATE;         # %new_balance : pair %owner %totalSupply
+    PAIR;           # pair %new_balance (pair %owner %totalSupply)
+    NIL operation;  # list operation : pair %new_balance (pair %owner %totalSupply)
+    PAIR;           # pair (list operation) (pair (map address mutez) (pair (address %owner) (mutez %totalSupply)))
+  };
