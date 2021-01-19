@@ -343,6 +343,8 @@ let read_succ_from_vtx : t -> vertex -> (E.t * V.t) list
     (succ_edge, succ_vtx)
   )) in
   succ
+  (* If_skip and Loop_skip edge in cfg should not be used in Analyzer. *)
+  |> List.filter (function | (If_skip, _) | (Loop_skip, _) -> false | _ -> true)
 end
 
 let read_pred_from_vtx : t -> vertex -> (E.t * V.t) list
@@ -353,6 +355,8 @@ let read_pred_from_vtx : t -> vertex -> (E.t * V.t) list
     (pred_edge, pred_vtx)
   )) in
   pred
+  (* If_skip and Loop_skip edge in cfg should not be used in Analyzer. *)
+  |> List.filter (function | (If_skip, _) | (Loop_skip, _) -> false | _ -> true)
 end
 
 let is_main_entry : t -> vertex -> bool
