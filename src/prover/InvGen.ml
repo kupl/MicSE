@@ -19,11 +19,11 @@ end (* function collect_set end *)
 let refine_T : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info * bool -> (Inv.t CPSet.t)
 = let open Vlang in
   (* currnet-invariant, basic-path, trx-vertex (main-entry or main-exit), invariant-generation-info, is-initial-storage-exists *)
-  fun (cur_inv, bp, _, igi, istg_exists) -> begin
+  fun (cur_inv, bp, _, igi, _) -> begin
   (* -1. If there are no initial storage condition given, the transaction invariant should be always "True".
       No more invariants will be generated.
   *)
-  if Stdlib.not istg_exists then CPSet.empty else
+  (*if Stdlib.not istg_exists then CPSet.empty else*)
   (* update function : it combines former one and the given one with VF_and. *)
   let update : Vlang.t -> Inv.t = fun fmla -> {cur_inv with trx_inv=(CPSet.add cur_inv.trx_inv fmla);} in
   (* 0. collect all components *)
