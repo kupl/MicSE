@@ -4,6 +4,7 @@ import time
 import argparse
 import tempfile
 import subprocess
+import multiprocessing
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -11,17 +12,12 @@ PROJECT_DIR = os.path.join (BASE_DIR, "..")
 BENCHMARK_DIR = os.path.join (PROJECT_DIR, "benchmarks")
 OUTPUT_DIR = os.path.join (BASE_DIR, "output")
 
-class dotdict(dict):
-    """dot.notation access to dictionary attributes"""
-    __getattr__ = dict.get
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
 
 def main ():
   try:
     sys.stderr.write ("> Start\n")
     env = read_env ()
-    run (env)
+    multi_run (env)
     sys.stderr.write ("> Done\n")
   except Exception as ex:
     excType, excValue, excTrackback = sys.exc_info ()
@@ -29,8 +25,9 @@ def main ():
     traceback.print_tb (excTrackback, file=sys.stderr)
   return None
 
+
 def read_env ():
-  env = dotdict()
+  env = dict()
   # Parse arguments
   parser = argparse.ArgumentParser ()
   parser.add_argument ("-b", "--benchmark", type=str, default="toy", help="benchmark directory which to examinate (default: toy)")
@@ -40,83 +37,84 @@ def read_env ():
   args = parser.parse_args ()
   # Initialize env
   ## Add env for benchmark directory path and candidates
-  env.benchmark = os.path.join (BENCHMARK_DIR, args.benchmark)
-  if not (os.path.isdir (env.benchmark)):
+  env['benchmark'] = os.path.join (BENCHMARK_DIR, args.benchmark)
+  if not (os.path.isdir (env['benchmark'])):
     raise Exception ("Wrong benchmark directory")
   else:
-    env.candidates = os.listdir(env.benchmark)
+    env['candidates'] = sorted(os.listdir(env['benchmark']))
   ## Add env for output file path
   if not (os.path.isdir (OUTPUT_DIR)):
     os.mkdir(OUTPUT_DIR)
   if args.output == "":
-    env.output = os.path.join (OUTPUT_DIR, args.benchmark)
+    env['output'] = os.path.join (OUTPUT_DIR, args.benchmark)
   else:
-    env.output = os.path.join (OUTPUT_DIR, args.output)
-  env.output += str(datetime.now().strftime("_%Y%m%d%H%M%S.out"))
+    env['output'] = os.path.join (OUTPUT_DIR, args.output)
+  env['output'] += str(datetime.now().strftime("_%Y%m%d%H%M%S.out"))
   ## Add env for time budget
-  env.z3_time = args.z3_time_budget
-  env.prover_time = args.prover_time_budget
+  env['z3_time'] = args.z3_time_budget
+  env['prover_time'] = args.prover_time_budget
   return env
 
-def run (env):
-  jobLen = len(env.candidates)
+
+def multi_run (env):
+  jobLen = len(env['candidates'])
   # Check make failure
   proc = subprocess.run ("make", stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, cwd=PROJECT_DIR)
   if proc.returncode != 0:
     print (proc.stderr)
     return None
-  # Run benchmarks
-  pool = []
-  for idx, file in enumerate (env.candidates):
-    # Set command line
-    cmd = ["dune", "exec", "--", "micse"]
-    cmd += ["-input", os.path.join (env.benchmark, file)]
-    cmd += ["-z3_timeout", str (env.z3_time)]
-    cmd += ["-prover_timeout", str (env.prover_time)]
-    # Job Started
-    job = dotdict()
-    job.idx = idx + 1
-    sys.stderr.write ("  > Job #{} is started [{}/{}]\n".format (job.idx, job.idx, jobLen))
-    job.tempFP = tempfile.TemporaryFile ()
-    job.cmd = cmd
-    job.startTime = time.time ()
-    job.proc = subprocess.Popen (cmd, stdout=job.tempFP, stderr=subprocess.STDOUT, text=True, cwd=PROJECT_DIR)
-    job.endTime = job.startTime
-    job.runTime = 0.000
-    job.terminateCheck = False
-    # Print Log
-    pool.append(job)
-    time.sleep(0.5)
+  # Synchronized Value Manager for multiprocessing Pool
+  manager = multiprocessing.Manager()
+  runrst = manager.list([]) # container to save run-results
+  syncdata = manager.list([0,jobLen]) # (0 : terminatedJobCount, 1 : jobLen)
+  # Make a multiprocessing Pool and run all
+  idx_candidate_env_runrst_syncdata_list = [(idx, candidate, env, runrst, syncdata) for idx, candidate in enumerate(env['candidates'])]
+  pool = multiprocessing.Pool(processes=(max(multiprocessing.cpu_count()-1, 1)))
+  pool.starmap(run_f, idx_candidate_env_runrst_syncdata_list)
+  # I don't know why, but close() and join() recommended at "https://stackoverflow.com/a/47683305"
+  pool.close()
+  pool.join()
   # Write Outputs
-  with open (env.output, "w") as fp:
-    terminatedJobCount = 0
-    while True:
-      terminateCheck = True
-      for job in pool:
-        # Check Termination of Process
-        if job.proc.poll () == None:
-          # Skip the Non-terminated process
-          terminateCheck = False
-        else:
-          if job.terminateCheck: continue
-          else:
-            terminatedJobCount += 1
-            # Check Run Time
-            job.endTime = time.time ()
-            job.runTime = round ((job.endTime - job.startTime), 3)
-            job.terminateCheck = True
-            sys.stderr.write ("  > Job #{} is done in {}s [{}/{}]\n".format (job.idx, job.runTime, terminatedJobCount, jobLen))
-      # Break the Wait Loop when All of Job is Terminated
-      if terminateCheck: break
-      # Wait the Next Termination Check Loop
-      time.sleep (1)
-    for job in pool:
-      job.tempFP.seek (0)
-      fp.write ("$ " + " ".join (job.cmd) + "\n")
-      fp.write (job.tempFP.read ().decode ())
-      fp.write ("...[{}s - {}/{}]\n\n".format (job.runTime, job.idx, jobLen))
-      job.tempFP.close ()
+  with open (env['output'], 'w') as fp:
+    for job in runrst:
+      fp.write(job['resultLog'])
   return None
+
+
+def run_f (idx, file, env, runrst, syncdata):
+  # Set command line
+  #cmd = ["dune", "exec", "--", "micse"]
+  cmd = ["./_build/install/default/bin/micse"]
+  cmd += ["-input", os.path.join (env['benchmark'], file)]
+  cmd += ["-z3_timeout", str (env['z3_time'])]
+  cmd += ["-prover_timeout", str (env['prover_time'])]
+  # Job Started
+  job = dict()
+  job['idx'] = idx
+  sys.stderr.write ("  > Job #{} is started\n".format (job['idx']))
+  tempFP = tempfile.TemporaryFile ()
+  job['cmd'] = cmd
+  job['startTime'] = time.time ()
+  proc = subprocess.Popen (cmd, stdout=tempFP, stderr=subprocess.STDOUT, text=True, cwd=PROJECT_DIR)
+  # Waits until the process finished
+  job['process_end_status'] = proc.wait()
+  # Job Finished
+  job['endTime'] = time.time ()
+  job['runTime'] = round ((job['endTime'] - job['startTime']), 3)
+  job['terminateCheck'] = True
+  syncdata[0] += 1
+  # Print Log and append results
+  tempFP.seek(0)
+  job['resultLog'] = ( \
+    '% ' + ' '.join (job['cmd']) + '\n' \
+    + tempFP.read().decode() \
+    + "...[{}s - {}/{}]\n\n".format (job['runTime'], job['idx'], syncdata[1])
+  )
+  tempFP.close()
+  sys.stderr.write ("  > Job #{} is done in {}s [{}/{}]\n".format (job['idx'], job['runTime'], syncdata[0], syncdata[1]))
+  runrst.append(job)
+  return None
+
 
 if __name__ == "__main__":
   main ()
