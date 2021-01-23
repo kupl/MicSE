@@ -5,6 +5,7 @@ type validate_result = {
   inductive : bool;
   p : VcGen.query_vc CPSet.t; (* proved query set *)
   u : VcGen.query_vc CPSet.t; (* unproved query set *)
+  allq : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) CPSet.t; (* all queries *)
 }
 
 (* Query-Comparator and Query-Set 
@@ -20,16 +21,19 @@ end
 module QuerySet = Set.Make(QueryOT)
 
 
-let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t)) -> validate_result
+let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t) * (ProverLib.Bp.query_category * PreLib.Cfg.vertex -> bool)) -> validate_result
 = let open ProverLib in
   let is_valid : Smt.ZSolver.validity -> bool = (function | Smt.ZSolver.VAL -> true | _ -> false) in
-  fun (timer, inv_candidate, vc_fl, isc_f) -> begin
+  fun (timer, inv_candidate, vc_fl, isc_f, is_up_query) -> begin
   (* vcl : verification condition list *)
   (* isc : initial storage condition. deprecated *)
   (* indt_vc : inductiveness condition *)
+  (* is_up_query : is_unproved_query? *)
   let vcl : VcGen.v_cond list = List.map (fun x -> x inv_candidate) vc_fl in
   let _ : Vlang.t = isc_f inv_candidate in (* "isc" : deprecated *)
   (* Validate Inductiveness (initial-storage-cond reflected in "indt_vc") *)
+  
+  (* (* this expression is deprecated, since we cannot prove "this procedure" has the semantic equals to the "the semantic of validity-checking of whole big-formula of path-inductiveness". *)
   (* Naive Optimization used here *)
   (* let indt_vc_l : Vlang.t list = List.map (fun x -> Vlang.Formula.VF_and [isc; x.VcGen.path_vc] |> VlangUtil.NaiveOpt.run) vcl in (* deprecated *) *)
   let indt_vc_l : Vlang.t list = List.map (fun x -> VlangUtil.NaiveOpt.run x.VcGen.path_vc) vcl in
@@ -55,10 +59,12 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
     end in
     foldf (true, indt_vc_l)
   in
-  (* (* this expression is deprecated, since big and-expression would affect performance. *) 
-    let indt_vc : Vlang.t = Vlang.Formula.VF_and (isc :: (List.map (fun x -> x.VcGen.path_vc) vcl)) in 
   *)
-  if Stdlib.not indt_validity then ({inductive=false; p=CPSet.empty; u=CPSet.empty}) else
+  (* (* deprecated, since "isc" deprecated above*) let indt_vc : Vlang.t = Vlang.Formula.VF_and (isc :: (List.map (fun x -> x.VcGen.path_vc) vcl)) in *)
+  let indt_vc : Vlang.t = Vlang.Formula.VF_and (List.map (fun x -> x.VcGen.path_vc) vcl) in
+  let (indt_validity_i, _) = Verifier.verify indt_vc in
+  let indt_validity = indt_validity_i |> is_valid in
+  if Stdlib.not indt_validity then ({inductive=false; p=CPSet.empty; u=CPSet.empty; allq=CPSet.empty}) else
   (* Validate Query *)
   let qset : VcGen.query_vc list =
     List.fold_left 
@@ -75,6 +81,9 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
     *)
     |> QuerySet.of_list
     |> QuerySet.elements
+    (* REMOVE PROVED QUERIES
+    *)
+    |> List.filter (fun q -> is_up_query (q.VcGen.qvc_cat, q.VcGen.qvc_vtx))
   in
   let (pset, uset) : VcGen.query_vc CPSet.t * VcGen.query_vc CPSet.t = 
     let open VcGen in
@@ -102,5 +111,9 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
     end in
     foldf (CPSet.empty, CPSet.empty) qset
   in
-  {inductive=true; p=pset; u=uset}
+  let allq_val : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) CPSet.t =
+    let open VcGen in
+    List.fold_left (fun accset q -> CPSet.add accset (q.qvc_cat, q.qvc_vtx)) CPSet.empty qset
+  in
+  {inductive=true; p=pset; u=uset; allq=allq_val}
 end

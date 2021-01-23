@@ -21,6 +21,7 @@ type invgen_info = {
     igi_loopv_set : PreLib.Cfg.vertex CPSet.t;  (* a vertex set contains every loop vertices *)
     igi_entryvtx : PreLib.Cfg.vertex; (* cfg entry vertex *)
     igi_exitvtx : PreLib.Cfg.vertex;  (* cfg exit vertex *)
+    igi_avs_pre : (PreLib.Cfg.vertex, Vlang.Component.t) CPMap.t;  (* available variable set (available variable "before" execute the stmt) *)
 }
 
 val inv_true_gen : invgen_info -> t

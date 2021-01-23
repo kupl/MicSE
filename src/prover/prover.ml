@@ -5,10 +5,16 @@ module VcGen = VcGen
 module Verifier = Verifier
 module VlGen = VlGen
 
-type run_ret = {
+(* type run_ret = {
   best_inv : ProverLib.Inv.t;
   proved : VcGen.query_vc Core.Set.Poly.t;
   unproved : VcGen.query_vc Core.Set.Poly.t;
+} *)
+
+type run_ret = {
+  all_qs : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) Core.Set.Poly.t;
+  proved_qs : (ProverLib.Inv.t * (ProverLib.Bp.query_category * PreLib.Cfg.vertex)) Core.Set.Poly.t;
+  unproved_qs : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) Core.Set.Poly.t;
 }
 
 type run_env = {
@@ -29,6 +35,28 @@ type run_env = {
   (fun () -> ((Sys.time ()) > (initial_time +. Stdlib.float_of_int !(Utils.Options.prover_time_budget))))
 end *)
 
+(*  "collect_really_proved_queries_with_inv" function explanation 
+  In the context of "Validator.validate_result", 
+  If the same (query-category * query-vertex) exists in
+  - only "proved set" : it is really proved query.
+  - else (e.g., both "proved set" and "unproved set") : it is not really proved query.
+*)
+let collect_really_proved_queries_with_inv : ProverLib.Inv.t -> Validator.validate_result -> run_ret
+=fun inv vr -> begin
+  let open Validator in
+  let open VcGen in
+  let upqs = CPSet.map vr.u ~f:(fun q -> (q.qvc_cat, q.qvc_vtx)) in
+  { all_qs = vr.allq;
+    proved_qs = (
+      CPSet.fold 
+        vr.p 
+        ~init:CPSet.empty 
+        ~f:(fun accs q -> let cvp = (q.qvc_cat, q.qvc_vtx) in if CPSet.mem upqs (q.qvc_cat, q.qvc_vtx) then accs else (CPSet.add accs (inv, cvp)))
+    );
+    unproved_qs = upqs;
+  }
+end (* function collect_really_proved_queries_with_inv end *)
+
 
 (* "select better run-result" is not strictly defined, but it can be naively defined,
     by selecting run-result which is inductive & has less unproved queries.
@@ -39,9 +67,12 @@ let update_runret_opt : (run_ret option * run_ret option) -> run_ret option
   | None, None -> None
   | None, Some _ -> new_rr_opt
   | Some _, None -> old_rr_opt
-  | Some {unproved=u1; _},
-    Some {unproved=u2; _} ->
-      if Core.Set.Poly.length u1 > Core.Set.Poly.length u2 then new_rr_opt else old_rr_opt
+  | Some {all_qs; proved_qs=pqs1; unproved_qs=uqs1;}, 
+    Some {proved_qs=pqs2; unproved_qs=uqs2; _} ->
+      (* if "run_ret"s are well calculated,
+        & Validator.validate tries to validate "unproven queries" only,
+        then below code is correct. *)
+      Some {all_qs=all_qs; proved_qs=(Core.Set.Poly.union pqs1 pqs2); unproved_qs=(Core.Set.Poly.inter uqs1 uqs2)}
 end (* function update_runret_opt end *)
 
 
@@ -62,17 +93,29 @@ let rec run : run_env -> run_ret option
   let new_invs_collected : Inv.t CPSet.t = CPSet.add invs_collected inv_candidate in
   let new_worklist_1 : Inv.t CPSet.t = CPSet.remove worklist inv_candidate in
   (* validate *)
-  let val_res : Validator.validate_result = Validator.validate (timer, inv_candidate, vcl, isc) in
-  let cur_retopt = if val_res.inductive then Some {best_inv = inv_candidate; proved = val_res.p; unproved = val_res.u} else None in
+  let is_unproved_query : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) -> bool
+  =fun (category, vtx) -> begin
+    (match ret_opt with
+    | None -> true
+    | Some {unproved_qs=uqs; _} -> (CPSet.mem uqs (category, vtx))
+    )
+  end in
+  let val_res : Validator.validate_result = Validator.validate (timer, inv_candidate, vcl, isc, is_unproved_query) in
+  let cur_retopt = 
+    if val_res.inductive 
+    then Some (collect_really_proved_queries_with_inv inv_candidate val_res)
+    else None 
+  in
+  (* additional process - snapshot the best result *)
+  let new_retopt = update_runret_opt (ret_opt, cur_retopt) in
   (* if verification succeeds *)
-  if val_res.inductive && CPSet.is_empty val_res.Validator.u then Some {best_inv=inv_candidate; proved=val_res.p; unproved=val_res.u} else
-  (* else verification succeeds *)
+  if (Option.is_some new_retopt && CPSet.is_empty (Option.get new_retopt).unproved_qs) then new_retopt else 
+  (* else (= not verification succeeds) *)
   (* generator *)
   let new_worklist_2 = CPSet.union (InvGen.generate (val_res, igi, inv_candidate, istg_exists, new_invs_collected)) new_worklist_1 in (* TODO *)
   (* else verification succeeds - if inductive, update worklist *)
   let new_worklist_3 = if val_res.inductive then Inv.strengthen_worklist (inv_candidate, new_worklist_2, new_invs_collected) else new_worklist_2 in
-  (* additional process - snapshot the best result *)
-  let new_retopt = update_runret_opt (ret_opt, cur_retopt) in
+  
   (* recursive call until escape *)
   run {
     worklist = new_worklist_3;
@@ -134,16 +177,27 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
   (* interpret prover result *)
   let _ = 
     (match run_result_opt with
-    | None -> print_endline "Failure to create invariant that satisfies inductiveness."
-    | Some {best_inv; proved; unproved} ->
-        print_endline "Best Performed Invariant - Transaction Invariant:";
-        print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula best_inv.trx_inv)));
-        print_endline "Best Performed Invariant - Loop Invariant:";
-        CPMap.iteri best_inv.loop_inv ~f:(fun ~key ~data -> print_endline ((Stdlib.string_of_int key) ^ " : " ^ (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula data)))));
-        print_endline ("Proved Queries : " ^ string_of_int (CPSet.length proved));
-        CPSet.iter proved ~f:(fun p -> print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run p.qvc_fml)));
-        print_endline ("Unproved Queries : " ^ string_of_int (CPSet.length unproved));
-        CPSet.iter unproved ~f:(fun p -> print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run p.qvc_fml)));
+    | None -> print_endline "Failure to create invariant that satisfies inductiveness. This log means that Z3 timeout is set too short to prove inductiveness of invariant-True."
+    | Some {all_qs; proved_qs; unproved_qs} -> 
+        print_endline ("# of Total Queries : " ^ (Stdlib.string_of_int (CPSet.length all_qs)));
+        print_endline ("# of Proved Queries : " ^ (Stdlib.string_of_int (CPSet.length proved_qs)));
+        print_endline ("# of Unproved Queries : " ^ (Stdlib.string_of_int (CPSet.length unproved_qs)));
+        print_endline ("================ Proved Queries ::");
+        let i = ref 0 in
+        CPSet.iter proved_qs ~f:(fun (inv, (category, vtxnum)) ->
+          Stdlib.incr i;
+          print_endline ("======== Proved Query #" ^ (Stdlib.string_of_int !i) ^ ", vtx=" ^ (Stdlib.string_of_int vtxnum) ^ ", category=" ^ (ProverLib.Bp.JsonRep.of_query_category category |> Yojson.Basic.to_string));
+          print_endline ("==== Transaction Invariant (printed in optimized form):");
+          print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula inv.trx_inv)));  
+          print_endline "==== Loop Invariant (printed in optimized form):";
+          CPMap.iteri inv.loop_inv ~f:(fun ~key ~data -> print_endline ((Stdlib.string_of_int key) ^ " : " ^ (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula data)))));
+        );
+        print_endline ("================ Unproved Queries ::");
+        let i = ref 0 in
+        CPSet.iter unproved_qs ~f:(fun (category, vtxnum) -> 
+          Stdlib.incr i;
+          print_endline ("======== Unproved Query #" ^ (Stdlib.string_of_int !i) ^ ", vtx=" ^ (Stdlib.string_of_int vtxnum) ^ ", category=" ^ (ProverLib.Bp.JsonRep.of_query_category category |> Yojson.Basic.to_string));
+        );
     ) (* TODO *)
   in
   ()

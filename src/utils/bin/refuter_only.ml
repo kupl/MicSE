@@ -8,7 +8,7 @@
       dune exec -- micse.utils.refuter_only -input [PROJECT-ROOT]/benchmarks/toy/add1.tz
 *)
 
-let unroll_NUM = 2
+let unroll_NUM = 1
 let transaction_seq_NUM = 2
 
 let main : unit -> unit

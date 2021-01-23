@@ -38,6 +38,8 @@ module AvailVar = struct
     | S set1, S set2 -> CPSet.equal set1 set2
     | _ -> false
   end
+  let abs_set_concr : abs_set -> string CPSet.t
+  = (function | Top -> CPSet.empty | S sset -> sset)
 
   type t = (int, abs_set * abs_set) CPMap.t
   type worklist = vertex CPSet.t

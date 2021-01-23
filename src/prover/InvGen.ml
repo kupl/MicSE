@@ -31,25 +31,36 @@ let refine_T : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info * bool -> (Inv.t CPSe
   let strg_components : Component.t = igi.igi_stgcomp in
   let all_components : Component.t = 
     collect_set [
-      bp_components;
+      (* bp_components; *)
       strg_components;
       (* igi.igi_stgcomp; *)
       (* igi.igi_glvar_comp; *)
       (* CPSet.map bp.appeared_vars ~f:Component.comp_of_vexpr;  *)
     ]
   in
-  (* 1. mutez-equal formula *)
+  (* 1. all-equal formula *)
+  let all_equal_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.all_equal all_components in
+  (* 2. mutez-ge formula *)
+  let mutez_comps : Component.t = Component.filter_typ (fun x -> x = Ty.T_mutez) all_components in
+  let mutez_ge_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.mutez_ge mutez_comps in
+  (* 3. int-ge formula *)
+  let int_comps : Component.t = Component.filter_typ (fun x -> x = Ty.T_int) all_components in
+  let int_ge_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.int_ge int_comps in
+  (* 4. nat-ge formula *)
+  let nat_comps : Component.t = Component.filter_typ (fun x -> x = Ty.T_nat) all_components in
+  let nat_ge_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.nat_ge nat_comps in
+  (* 5. mtzmap-partial-sum formula (use only strg_mutez_comps for sum) *)
   let strg_mutez_comps : Component.t = Component.filter_typ (fun x -> x = Ty.T_mutez) strg_components in
-  let mutez_equal_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.mutez_equal strg_mutez_comps in
-  (* 2. mtzmap-partial-sum formula *)
   let mtzmap_comps : (Ty.t, Component.t) CPMap.t = Component.filter_types (function | Ty.T_map (_, Ty.T_mutez) -> true | _ -> false) strg_components in
   let mtzmap_partial_sum_equal_fmlas : Formula.t CPSet.t = 
+    let all_components_contains_bp_components : Component.t = collect_set [bp_components; all_components] in
     CPMap.fold
       mtzmap_comps
       ~init:CPSet.empty
       ~f:(
         fun ~key ~data fmla_accset ->
-        let key_comps : Component.t = Component.filter_typ (fun x -> Ty.T_map (x, Ty.T_mutez) = key) all_components in
+        (* key_components in mtzmap_partial_sum recipe has previlege to use more components than other recipes *)
+        let key_comps : Component.t = Component.filter_typ (fun x -> Ty.T_map (x, Ty.T_mutez) = key) all_components_contains_bp_components in
         (* we already collect mutez components at the above procedure *)
         let mm_ps_fmlas : Vlang.Formula.t CPSet.t = ProverLib.InvRecipe.mtzmap_partial_sum data key_comps strg_mutez_comps in
         CPSet.union mm_ps_fmlas fmla_accset
@@ -57,7 +68,10 @@ let refine_T : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info * bool -> (Inv.t CPSe
   in
   (* "+oo". collect all formulas and return *)
   let fmlas : Formula.t CPSet.t list = 
-    [ mutez_equal_fmlas;
+    [ all_equal_fmlas;
+      mutez_ge_fmlas;
+      int_ge_fmlas;
+      nat_ge_fmlas;
       mtzmap_partial_sum_equal_fmlas;
     ]
   in
@@ -67,7 +81,7 @@ end (* function refine_T end *)
 let refine_L : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
 = let open Vlang in
   (* currnet-invariant, basic-path, vertex (loop-vtx), invariant-generation-info *)
-  fun (cur_inv, bp, vtx, _) -> begin
+  fun (cur_inv, _, vtx, igi) -> begin
   (* update function : it combines former one and the given one with VF_and. *)
   let update : Vlang.t -> Inv.t
   =fun fmla -> begin
@@ -90,12 +104,21 @@ let refine_L : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
         *)
         CPSet.map bp.appeared_vars ~f:Component.comp_of_vexpr; 
       *)
-      BpUtil.collect_components (BpUtil.bp_substitution bp);
+      (* BpUtil.collect_components (BpUtil.bp_substitution bp); *)
+      (PreLib.Cfg.t_map_find ~errtrace:("Prover.InvGen.refine_L : all_components") igi.igi_avs_pre vtx);
     ]
   in
-  (* 1. mutez-equal formula *)
+  (* 1. all-equal formula *)
+  let all_equal_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.all_equal all_components in
+  (* 2. mutez-ge formula *)
   let mutez_comps : Component.t = Component.filter_typ (fun x -> x = Ty.T_mutez) all_components in
-  let mutez_equal_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.mutez_equal mutez_comps in
+  let mutez_ge_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.mutez_ge mutez_comps in
+  (* 3. int-ge formula *)
+  let int_comps : Component.t = Component.filter_typ (fun x -> x = Ty.T_int) all_components in
+  let int_ge_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.int_ge int_comps in
+  (* 4. nat-ge formula *)
+  let nat_comps : Component.t = Component.filter_typ (fun x -> x = Ty.T_nat) all_components in
+  let nat_ge_fmlas : Formula.t CPSet.t = ProverLib.InvRecipe.nat_ge nat_comps in
   (* . mtzmap-partial-sum formula *)
   let mtzmap_comps : (Ty.t, Component.t) CPMap.t = Component.filter_types (function | Ty.T_map (_, Ty.T_mutez) -> true | _ -> false) all_components in
   let mtzmap_partial_sum_equal_fmlas : Formula.t CPSet.t = 
@@ -112,7 +135,10 @@ let refine_L : Inv.t * Bp.t * Cfg.vertex * Inv.invgen_info -> (Inv.t CPSet.t)
   in
   (* "+oo". collect all formulas and return *)
   let fmlas : Formula.t CPSet.t list = 
-    [ mutez_equal_fmlas;
+    [ all_equal_fmlas;
+      mutez_ge_fmlas;
+      int_ge_fmlas;
+      nat_ge_fmlas;
       mtzmap_partial_sum_equal_fmlas;
     ]
   in

@@ -5,6 +5,7 @@ type validate_result = {
   inductive : bool;
   p : VcGen.query_vc CPSet.t; (* proved queri set *)
   u : VcGen.query_vc CPSet.t; (* unproved queri set *)
+  allq : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) CPSet.t; (* all queries *)
 }
 
 (* Query-Comparator and Query-Set 
@@ -19,4 +20,4 @@ end
 module QuerySet : Set.S with type elt=QueryOT.t
 
 
-val validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t)) -> validate_result
+val validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t) * (ProverLib.Bp.query_category * PreLib.Cfg.vertex -> bool)) -> validate_result

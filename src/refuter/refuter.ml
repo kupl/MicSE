@@ -109,7 +109,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   in
   (* debug *) let _ = print_endline ("trx_bp_map size : " ^ (string_of_int (CPMap.length trx_bp_map))) in
   (* debug *) let _ = print_endline ("trx_bp_map entry-0 size : " ^ (string_of_int (CPSet.length (CPMap.find_exn trx_bp_map 0)))) in
-  (* debug *) let _ = print_endline ("trx_bp_map entry-1 size : " ^ (string_of_int (CPSet.length (CPMap.find_exn trx_bp_map 1)))) in
+  (*(* debug *) let _ = print_endline ("trx_bp_map entry-1 size : " ^ (string_of_int (CPSet.length (CPMap.find_exn trx_bp_map 1)))) in*)
   (* 3. Transaction BasicPath Concat & Refute Loop *)
   (* First, get the storage type. *)
   let stg_vtyp : Vlang.Ty.t =  

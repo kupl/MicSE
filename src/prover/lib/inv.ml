@@ -21,11 +21,12 @@ type invgen_info = {
     igi_loopv_set : PreLib.Cfg.vertex CPSet.t;  (* a vertex set contains every loop vertices *)
     igi_entryvtx : PreLib.Cfg.vertex; (* cfg entry vertex *)
     igi_exitvtx : PreLib.Cfg.vertex;  (* cfg exit vertex *)
+    igi_avs_pre : (PreLib.Cfg.vertex, Vlang.Component.t) CPMap.t;  (* available variable set (available variable "before" execute the stmt) *)
 }
 
 
 let inv_true_gen : invgen_info -> t
-=fun {igi_stgcomp=_; igi_glvar_comp=_; igi_loopv_set; igi_entryvtx=_; igi_exitvtx=_} -> begin
+=fun {igi_stgcomp=_; igi_glvar_comp=_; igi_loopv_set; igi_entryvtx=_; igi_exitvtx=_; igi_avs_pre=_} -> begin
   let open Vlang.Formula in
   { trx_inv = CPSet.singleton VF_true;
     loop_inv = CPSet.fold igi_loopv_set ~init:CPMap.empty ~f:(fun accm loopv -> PreLib.Cfg.t_map_add ~errtrace:("ProverLib.Inv.inv_true_gen") accm loopv (CPSet.singleton VF_true));
@@ -70,8 +71,24 @@ let gen_invgen_info_for_single_contract_verification : Pre.Lib.Cfg.t -> invgen_i
         | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _ -> CPSet.add accset v
         | _ -> accset
       )
-  end in
-  {igi_stgcomp=strg_comp; igi_glvar_comp=basic_glvar_comp; igi_loopv_set=loopvtx_set; igi_entryvtx=cfg.main_entry; igi_exitvtx=cfg.main_exit;}
+  end
+  and av_pre : (PreLib.Cfg.vertex, Vlang.Component.t) CPMap.t = 
+    (* "premap" : collected available-variable information *)
+    let premap = CPMap.map (Pre.Analyzer.AvailVar.run cfg) ~f:(fun (pre,_) -> Pre.Analyzer.AvailVar.abs_set_concr pre) in
+    (* "premap" again : remove the variable name "PreLib.Cfg.param_storage_name" 
+        "igi_avs_pre" is used for invariant synthesis, so the removal of global variables does not harm anything.
+    *)
+    let premap = CPMap.map premap ~f:(fun s -> CPSet.filter s ~f:(fun v -> v <> PreLib.Cfg.param_storage_name)) in
+    (* convert variable to component, using "Cfg.type_info", "Vlang.TypeUtil.ty_of_mty", and "Vlang.Component.comp_of_vexpr_t" *)
+    (* "get_vty" is a utility function to convert michelson variable to vlang type. *)
+    let get_vty : string -> Vlang.Ty.t
+    =fun v -> begin
+      let mty = PreLib.Cfg.t_map_find ~errtrace:("Inv.gen_invgen_info_for_single_contract_verification : av_pre : get_mty") cfg.type_info v in
+      Vlang.TypeUtil.ty_of_mty mty
+    end in
+    CPMap.map premap ~f:(fun s -> CPSet.map s ~f:(fun v -> Vlang.Component.comp_of_vexpr (Vlang.Expr.V_var (get_vty v, v))))
+  in
+  {igi_stgcomp=strg_comp; igi_glvar_comp=basic_glvar_comp; igi_loopv_set=loopvtx_set; igi_entryvtx=cfg.main_entry; igi_exitvtx=cfg.main_exit; igi_avs_pre=av_pre;}
 end (* function gen_invgen_info_for_single_contract_verification end *)
 
 let strengthen_worklist : (t * t CPSet.t * t CPSet.t) -> t CPSet.t

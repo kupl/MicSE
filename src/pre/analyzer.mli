@@ -17,6 +17,7 @@ module AvailVar : sig
   val abs_set_join : abs_set -> abs_set -> abs_set
   val abs_set_meet : abs_set -> abs_set -> abs_set
   val abs_set_eq : abs_set -> abs_set -> bool
+  val abs_set_concr : abs_set -> string CPSet.t (* concretize the set. it converts "Top" to "CPSet.empty" *)
 
   type t = (int, abs_set * abs_set) CPMap.t
   type worklist = vertex CPSet.t
