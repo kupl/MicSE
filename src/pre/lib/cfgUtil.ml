@@ -950,6 +950,9 @@ module LoopUnrolling = struct
   =fun p -> begin
     let open UnrollParam in
     let gen_emsg s : string = ("CfgUtil : LoopUnrolling : unroll : " ^ s) in
+    (* 0. remove unrelated edges in "p.cfg". WARNING: it shadows original name "p" *)
+    let n_cfg : Cfg.t = {p.cfg with flow=(Cfg.remove_edges_unrelated_to_loop_unrolling p.cfg.flow)} in
+    let p = {p with cfg=n_cfg} in
     (* 1. collect topology sorted loop dependencies *)
     let lni : (vertex, vertex CPSet.t) CPMap.t = loopnest_info p.cfg in
     (*let _ = print_endline ("DEBUG : unroll : lni = {" ^ (CPMap.fold lni ~init:"" ~f:(fun ~key:k ~data:d acc_str -> acc_str ^ "; " ^ (string_of_int k) ^ ": " ^ (CPSet.fold d ~init:"" ~f:(fun acc x -> acc ^ ", " ^ (string_of_int x))) )) ^ "}") in*)

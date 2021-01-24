@@ -298,6 +298,17 @@ let is_edge_check_skip : E.t -> bool
 let string_of_vertex : vertex -> string
 =fun vtx -> (string_of_int vtx)
 
+(* it removes If_skip and Loop_skip edges, (20210124) *)
+let remove_edges_unrelated_to_loop_unrolling : G.t -> G.t
+= let module CPSet = Core.Set.Poly in
+  fun flow -> begin
+  let all_edges : (V.t * E.t * V.t) CPSet.t = 
+    G.fold_vertex (fun v accs -> CPSet.union (CPSet.of_list (G.succ_e flow v)) accs) flow CPSet.empty
+  in
+  let unrelated_edges : (V.t * E.t * V.t) CPSet.t = CPSet.filter all_edges ~f:(fun (_,lbl,_) -> lbl = If_skip || lbl = Loop_skip) in
+  CPSet.fold unrelated_edges ~init:flow ~f:(fun flw e -> G.remove_edge_e flw e)
+end (* function remove_edges_unrelated_to_loop_unrolling end *)
+
 
 (*****************************************************************************)
 (*****************************************************************************)

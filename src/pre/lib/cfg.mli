@@ -174,6 +174,8 @@ val is_edge_check_skip : E.t -> bool
 
 val string_of_vertex : vertex -> string
 
+val remove_edges_unrelated_to_loop_unrolling : G.t -> G.t
+
 
 (*****************************************************************************)
 (*****************************************************************************)
