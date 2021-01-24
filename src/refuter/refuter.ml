@@ -1,7 +1,7 @@
 (* Refuter proceduere *)
 
 (* "refuted_queries" : Global variable which contains already refuted queries. Similar to "Prover.Results.unproved_queries". *)
-let refuted_queries : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) Core.Set.Poly.t ref = ref Core.Set.Poly.empty  (* for PROVER-REFUTER-REFUTER SYNC process *)
+let refuted_queries : (ProverLib.Bp.query_category * PreLib.Mich.loc) Core.Set.Poly.t ref = ref Core.Set.Poly.empty  (* for PROVER-REFUTER-REFUTER SYNC process *)
 
 (*
   [Overview]
@@ -73,7 +73,26 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   (* 1. Unrolling loops in the Cfg
       To remove any confusion, it shadows the name "cfg".
   *)
+  let param_cfg = cfg in
+  let {cfg=cfg; vtxrel=unrollcfg_vtxrel; _;} : CfgUtil.LoopUnrolling.UnrollParam.pt = 
+    CfgUtil.LoopUnrolling.unroll (CfgUtil.LoopUnrolling.construct_pt (cfg, cfgcon_counter, loop_ur_num))
+  in
+  let vtx_to_michloc : Cfg.vertex -> Mich.loc
+  =fun vtx -> begin
+    (* "vtx_to_michloc" : vertex -> michelson-location 
+        it should refer "unrollcfg_vtxrel", in current implementation.
+        this function considers that the "unrollcfg_vtxrel"'s data is singleton set.
+    *)
+    let s = PreLib.Cfg.t_map_find ~errtrace:("Refuter.main : vtx_to_michloc : vtxrel") unrollcfg_vtxrel vtx in
+    if CPSet.is_empty s then PreLib.Mich.Unknown else
+    (* INFO: "choose_exn" below is safe from exception. *)
+    let origin_vtx = CPSet.choose_exn s in
+    PreLib.Cfg.t_map_find ~errtrace:("Refuter.main : vtx_to_michloc : posinfo") param_cfg.pos_info origin_vtx
+  end in
+  (* 
+    (* deprecated since more specific unrolling procedure introduced above. *)
   let (cfg, _) : Cfg.t * Cfg.cfgcon_ctr = CfgUtil.LoopUnrolling.run (cfg, cfgcon_counter, loop_ur_num) in
+  *)
   (* 2. Generate BasicPaths N times *)
   (* Global-Variable-Env-Numbers : [0, N) *)
   let trx_bp_map : (int, Bp.t CPSet.t) CPMap.t =
@@ -281,8 +300,8 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
             or the query is already refuted (query in refuted_queries),
             then skip it (put it to ignored-query set).
         *)
-        let q_id : ProverLib.Bp.query_category * PreLib.Cfg.vertex = (q_picked.qvc_cat, q_picked.qvc_vtx) in
-        let is_q_proved_already : bool = !Prover.Results.is_prover_used && (CPSet.mem !Prover.Results.unproved_queries (q_picked.qvc_cat, q_picked.qvc_vtx)) in
+        let q_id : ProverLib.Bp.query_category * PreLib.Mich.loc = (q_picked.qvc_cat, vtx_to_michloc q_picked.qvc_vtx) in
+        let is_q_proved_already : bool = !Prover.Results.is_prover_used && (CPSet.mem !Prover.Results.unproved_queries q_id) in
         let is_q_refuted_already : bool = (CPSet.mem !refuted_queries q_id) in
         if (is_q_proved_already || is_q_refuted_already) then (foldf (r_acc, u_acc, (CPSet.add ig_acc q_picked)) rqset) else
         (* this fold-function separates refuted-queries and unrefuted/unknown-queries *)

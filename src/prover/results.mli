@@ -4,4 +4,4 @@
 
 val is_prover_used : bool ref
 
-val unproved_queries : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) Core.Set.Poly.t ref
+val unproved_queries : (ProverLib.Bp.query_category * PreLib.Mich.loc) Core.Set.Poly.t ref

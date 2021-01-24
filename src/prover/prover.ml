@@ -175,13 +175,13 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
       ret_opt = None;
     }
   in
-  (* 4. Store the proving result in Prover.Results storage, for refuter *)
+  (* 4. Store the proving result in Prover.Results storage, for refuter (PROVER-REFUTER-REFUTER SYNC) *)
   let _ = 
     (match run_result_opt with
     | None -> ((* Nothing happend *))
     | Some s ->
       Results.is_prover_used := true;
-      Results.unproved_queries := s.unproved_qs;
+      Results.unproved_queries := (s.unproved_qs |> CPSet.map ~f:(fun (cat, vtx) -> (cat, Cfg.t_map_find ~errtrace:("Prover.main : results.unproved_queries") cfg.pos_info vtx)));
     )
   in
   (* interpret prover result *)
