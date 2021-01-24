@@ -301,8 +301,9 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
             then skip it (put it to ignored-query set).
         *)
         let q_id : ProverLib.Bp.query_category * PreLib.Mich.loc = (q_picked.qvc_cat, vtx_to_michloc q_picked.qvc_vtx) in
-        let is_q_proved_already : bool = !Prover.Results.is_prover_used && (CPSet.mem !Prover.Results.unproved_queries q_id) in
-        let is_q_refuted_already : bool = (CPSet.mem !refuted_queries q_id) in
+        let is_q_loc_unknown : bool = Stdlib.snd q_id = PreLib.Mich.Unknown in
+        let is_q_proved_already : bool = Stdlib.not is_q_loc_unknown && !Prover.Results.is_prover_used && (CPSet.mem !Prover.Results.unproved_queries q_id) in
+        let is_q_refuted_already : bool = Stdlib.not is_q_loc_unknown && (CPSet.mem !refuted_queries q_id) in
         if (is_q_proved_already || is_q_refuted_already) then (foldf (r_acc, u_acc, (CPSet.add ig_acc q_picked)) rqset) else
         (* this fold-function separates refuted-queries and unrefuted/unknown-queries *)
         let q_validity, modelopt = Verifier.verify q_picked.qvc_fml in
