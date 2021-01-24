@@ -188,7 +188,9 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
           Stdlib.incr i;
           print_endline ("======== Proved Query #" ^ (Stdlib.string_of_int !i) ^ ", vtx=" ^ (Stdlib.string_of_int vtxnum) ^ ", category=" ^ (ProverLib.Bp.JsonRep.of_query_category category |> Yojson.Basic.to_string));
           print_endline ("==== Transaction Invariant (printed in optimized form):");
-          print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula inv.trx_inv)));  
+          print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula inv.trx_inv)));
+          (* print_endline ("==== Transaction Invariant (printed in NON-optimized form):");
+          print_endline (Vlang.Formula.to_string (Inv.inv_to_formula inv.trx_inv)); *)
           print_endline "==== Loop Invariant (printed in optimized form):";
           CPMap.iteri inv.loop_inv ~f:(fun ~key ~data -> print_endline ((Stdlib.string_of_int key) ^ " : " ^ (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula data)))));
         );

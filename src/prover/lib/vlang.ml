@@ -1621,11 +1621,12 @@ module Component = struct
   type t = comp CPSet.t
 
   let fold_precond : Formula.t list -> Formula.t
-  =fun flist -> begin 
-    List.fold_left
+  =fun flist -> begin
+    VF_and flist 
+    (* List.fold_left
       (fun accf f -> Formula.VF_imply (f, accf)) 
       VF_true
-      flist
+      flist *)
   end (* function fold_pecond end *)
   let fold_preconds : comp list -> Formula.t
   =fun clist -> begin
@@ -1656,7 +1657,8 @@ module Component = struct
     *)
     match cur_typ with
     | T_option i_ty -> begin
-        let comp_none = { precond_lst = cur_prec_lst; typ = cur_typ; body = V_none i_ty; } in
+        let none_precond = (Formula.VF_mich_if_none cur_body) :: cur_prec_lst in
+        let comp_none = { precond_lst = none_precond; typ = cur_typ; body = V_none i_ty; } in
         let some_precond = Formula.VF_not (VF_mich_if_none cur_body) :: cur_prec_lst in
         let comp_some = { precond_lst = some_precond; typ = cur_typ; body = V_some (V_unlift_option cur_body); } in
         let comp_some_unlifted = { precond_lst = some_precond; typ = i_ty; body = V_unlift_option cur_body; } in
