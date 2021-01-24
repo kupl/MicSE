@@ -6,6 +6,10 @@ val combination : 'a CPSet.t -> 'b CPSet.t -> ('a * 'b) CPSet.t
 
 val combination_self_two_diff : 'a list -> ('a * 'a) list
 
+val combination_self_two_diff_rf : 'a list -> ('a * 'a) list
+
+val combination_self_two_diff_rf_set : 'a CPSet.t -> ('a * 'a) CPSet.t
+
 
 
 (* "formula_mutez_equal" : every component should be mutez type. *)

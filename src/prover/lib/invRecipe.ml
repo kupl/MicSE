@@ -47,6 +47,20 @@ let combination_self_two_diff : 'a list -> ('a * 'a) list
   foldf [] lst
 end (* function combination_self_two_diff end *)
 
+(* combination_self_two_diff_rf [1;2;3] === [(1,2); (1,3); (2,3); (2,1); (3,1); (3,2)] (* order can be shuffled *) *)
+let combination_self_two_diff_rf : 'a list -> ('a * 'a) list
+= fun lst -> begin
+  let l = (combination_self_two_diff lst) in
+  List.fold_left (fun accl (x,y) -> (y,x) :: accl) l l
+end (* function combination_self_two_diff_rf end *)
+
+let combination_self_two_diff_rf_set : 'a CPSet.t -> ('a * 'a) CPSet.t
+=fun s -> begin
+  combination_self_two_diff_rf (CPSet.to_list s)
+  |> CPSet.of_list
+end (* function combination_self_two_diff_rf_set end *)
+
+
 (* "formula_mutez_equal" : every component should be mutez type. *)
 let mutez_equal : Vlang.Component.t -> Vlang.Formula.t CPSet.t
 = let open Vlang in
@@ -101,7 +115,7 @@ let int_ge : Vlang.Component.t -> Vlang.Formula.t CPSet.t
 = let open Vlang in
   let open Formula in
   fun compset -> begin
-  let cb : (Component.comp * Component.comp) CPSet.t = combination compset compset in
+  let cb : (Component.comp * Component.comp) CPSet.t = combination_self_two_diff_rf_set compset in
   CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_mich_if (V_geq_ib (V_sub_iii (c1.body, c2.body)))))
 end (* function int_ge end *)
 
@@ -110,7 +124,7 @@ let nat_ge : Vlang.Component.t -> Vlang.Formula.t CPSet.t
 = let open Vlang in
   let open Formula in
   fun compset -> begin
-  let cb : (Component.comp * Component.comp) CPSet.t = combination compset compset in
+  let cb : (Component.comp * Component.comp) CPSet.t = combination_self_two_diff_rf_set compset in
   CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_mich_if (V_geq_ib (V_sub_nni (c1.body, c2.body)))))
 end (* function nat_ge end *)
 
