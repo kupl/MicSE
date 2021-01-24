@@ -201,6 +201,13 @@ type t = {
                                                   - SUB
                                                   - MUL
                                                   - I_micse_check
+                                                  Added elements (20210124)
+                                                  - LSL
+                                                  - LSR
+                                                  - LOOP
+                                                  - LOOP_LEFT
+                                                  - MAP
+                                                  - ITER
                                                 *)
 }
 

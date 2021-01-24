@@ -1064,7 +1064,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vertex_info_6 = map_add "inst_to_cfg : I_map : vertex_info_6" vertex_info_5 loopend_v Cfg_skip in
     let type_info_1   = map_add "inst_to_cfg : I_map : type_info_1"   cfg.type_info newvar_ht_name (gen_t (Mich.T_pair (elem_typ, container_typ))) in
     let type_info_2   = map_add "inst_to_cfg : I_map : type_info_2"   type_info_1 newvar_name elem_typ in
-    let cfg_to_map_body_begin = {cfg with flow=flow_edg_added_to_map_body_begin; vertex_info=vertex_info_6; type_info=type_info_2;} in
+    let pos_info_1    = map_add "inst_to_cfg : I_map : pos_info_1"    cfg.pos_info map_v ist.pos in
+    let cfg_to_map_body_begin = {cfg with flow=flow_edg_added_to_map_body_begin; vertex_info=vertex_info_6; type_info=type_info_2; pos_info=pos_info_1} in
     let stack_info_to_map_body_begin = ns_cons newvar_name (ns_tl stack_info) in
     let (cfg_to_map_body_end, stack_info_to_map_body_end) = inst_to_cfg_handle_es counter (map_body_begin, map_body_end) (func_in_v, func_out_v) i (cfg_to_map_body_begin, stack_info_to_map_body_begin) in
     if (is_es stack_info_to_map_body_end)
@@ -1212,8 +1213,9 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vertex_info_ol_6 = map_add (gen_errmsg "vertex_info_ol_6") vertex_info_ol_5 loopend_v Cfg_skip in
     let type_info_ol_1   = map_add (gen_errmsg "type_info_ol_1") cfg.type_info hdtl (gen_t (Mich.T_pair (elemtyp, containertyp))) in
     let type_info_ol_2   = map_add (gen_errmsg "type_info_ol_2") type_info_ol_1 elem elemtyp in
+    let pos_info_1       = map_add (gen_errmsg "pos_info_1") cfg.pos_info iter_v ist.pos in
     let stack_info_ol_1  = ns_cons elem tl_stack_info in
-    let cfg_outline      = {cfg with flow=flow_edg_added_outline; vertex_info=vertex_info_ol_6; type_info=type_info_ol_2;} in
+    let cfg_outline      = {cfg with flow=flow_edg_added_outline; vertex_info=vertex_info_ol_6; type_info=type_info_ol_2; pos_info=pos_info_1} in
     (* construct cfg - add about "i" *)
     let (cfg_ol_end, stack_info_ol_end) = inst_to_cfg_handle_es counter (iter_body_begin, iter_body_end) (func_in_v, func_out_v) i (cfg_outline, stack_info_ol_1) in
     if (is_es stack_info_ol_end)
@@ -1450,8 +1452,9 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let vinfo_1 = map_add (gen_emsg "vinfo_1") cfg.vertex_info in_v (Cfg_loop var_1) in
     let vinfo_2 = map_add (gen_emsg "vinfo_2") vinfo_1 loopend_v Cfg_skip in
     (*let vinfo_2 = map_add (gen_emsg "vinfo_2") vinfo_1 body_end Cfg_skip in*)
+    let pinfo = map_add (gen_emsg "posinfo") cfg.pos_info in_v ist.pos in
     (* fill in the loop body *)
-    let cfg_body = {cfg with flow=flow_edg_added; vertex_info=vinfo_2;} in
+    let cfg_body = {cfg with flow=flow_edg_added; vertex_info=vinfo_2; pos_info=pinfo;} in
     let (cfg_body_end, stack_info_body_end) = inst_to_cfg_handle_es counter (body_begin, body_end) (func_in_v, func_out_v) i (cfg_body, tl_stack_info) in
     if (is_es stack_info_body_end)
     then (
@@ -1509,8 +1512,9 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     (* update flow *)
     let errmsg_gen s : string = ("inst_to_cfg : I_loop_left : " ^ s) in
     let (cfg_vtx_added, (unwrap_r, unwrap_l, body_begin, body_end, loopend_v)) = t_add_vtx_5 counter (cfg, ()) in
+    let (cfg_pinfo_added, _) = t_add_posinfo ~errtrace:(errmsg_gen "cfg_pinfo_added") (in_v, ist.pos) (cfg_vtx_added, ()) in
     let cfg_p_edg_added = begin (* cfg_p_ name for the (cfg_edg_added, (...)) pair *)
-      (cfg_vtx_added, ())
+    (cfg_pinfo_added, ())
       |> t_add_tedg (in_v, unwrap_l)
       |> t_add_fedg (in_v, unwrap_r)
       |> t_add_edgs [(unwrap_r, out_v); (unwrap_l, body_begin); (loopend_v, in_v)]
@@ -2179,7 +2183,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (v_2, ttl_si) = stack_hdtl tl_si in
     let t_r = gen_t Mich.T_nat in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
-    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_shiftL (v_1, v_2))) cfg_vr_added in
+    let (cfg_vtx_added, v_new) = t_add_typical_vertex (gen_emsg "cfg_vtx_added") counter (in_v, out_v) (Cfg_assign (v_r, E_shiftL (v_1, v_2))) cfg_vr_added in
+    let (cfg_ended, _) = t_add_posinfo ~errtrace:(gen_emsg "cfg_ended") (v_new, ist.pos) (cfg_vtx_added, v_new) in
     (cfg_ended, ns_cons v_r ttl_si)
 
   | I_lsr ->
@@ -2197,7 +2202,8 @@ let rec inst_to_cfg : cfgcon_ctr -> (Cfg.vertex * Cfg.vertex) -> (Cfg.vertex * C
     let (v_2, ttl_si) = stack_hdtl tl_si in
     let t_r = gen_t Mich.T_nat in
     let (cfg_vr_added, v_r) = t_add_nv_tinfo ~errtrace:(gen_emsg "vr_added") counter t_r (cfg, ()) in
-    let (cfg_ended, _) = t_add_typical_vertex (gen_emsg "cfg_ended") counter (in_v, out_v) (Cfg_assign (v_r, E_shiftR (v_1, v_2))) cfg_vr_added in
+    let (cfg_vtx_added, v_new) = t_add_typical_vertex (gen_emsg "cfg_vtx_added") counter (in_v, out_v) (Cfg_assign (v_r, E_shiftR (v_1, v_2))) cfg_vr_added in
+    let (cfg_ended, _) = t_add_posinfo ~errtrace:(gen_emsg "cfg_ended") (v_new, ist.pos) (cfg_vtx_added, v_new) in
     (cfg_ended, ns_cons v_r ttl_si)
 
   | I_or ->
