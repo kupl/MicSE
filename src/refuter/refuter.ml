@@ -1,7 +1,7 @@
 (* Refuter proceduere *)
 
 (* "refuted_queries" : Global variable which contains already refuted queries. Similar to "Prover.Results.unproved_queries". *)
-let refuted_queries : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) Core.Set.Poly.t ref = ref Core.Set.Poly.empty in  (* for PROVER-REFUTER-REFUTER SYNC process *)
+let refuted_queries : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) Core.Set.Poly.t ref = ref Core.Set.Poly.empty  (* for PROVER-REFUTER-REFUTER SYNC process *)
 
 (*
   [Overview]
