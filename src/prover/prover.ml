@@ -196,19 +196,34 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
         let i = ref 0 in
         CPSet.iter proved_qs ~f:(fun (inv, (category, vtxnum)) ->
           Stdlib.incr i;
-          print_endline ("======== Proved Query #" ^ (Stdlib.string_of_int !i) ^ ", vtx=" ^ (Stdlib.string_of_int vtxnum) ^ ", category=" ^ (ProverLib.Bp.JsonRep.of_query_category category |> Yojson.Basic.to_string));
+          print_endline ("======== Proved Query #" ^ (Stdlib.string_of_int !i)
+                          ^ ", vtx=" ^ (Stdlib.string_of_int vtxnum)
+                          ^ ", pos=" ^ (PreLib.Cfg.t_map_find ~errtrace:("Prover.main : result-pq : " ^ Stdlib.string_of_int vtxnum) cfg.pos_info vtxnum |> PreLib.Mich.string_of_loc) 
+                          ^ ", category=" ^ (ProverLib.Bp.JsonRep.of_query_category category |> Yojson.Basic.to_string)
+          );
           print_endline ("==== Transaction Invariant (printed in optimized form):");
           print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula inv.trx_inv)));
           (* print_endline ("==== Transaction Invariant (printed in NON-optimized form):");
           print_endline (Vlang.Formula.to_string (Inv.inv_to_formula inv.trx_inv)); *)
           print_endline "==== Loop Invariant (printed in optimized form):";
-          CPMap.iteri inv.loop_inv ~f:(fun ~key ~data -> print_endline ((Stdlib.string_of_int key) ^ " : " ^ (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula data)))));
+          CPMap.iteri 
+            inv.loop_inv 
+            ~f:(fun ~key ~data -> 
+                print_endline (
+                  "vtx=" ^ (Stdlib.string_of_int vtxnum)
+                  ^ ", pos=" ^ (PreLib.Cfg.t_map_find ~errtrace:("Prover.main : result-pq-li : " ^ Stdlib.string_of_int key) cfg.pos_info key |> PreLib.Mich.string_of_loc) 
+                  ^ " : " ^ (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula data))))
+            );
         );
         print_endline ("================ Unproved Queries ::");
         let i = ref 0 in
         CPSet.iter unproved_qs ~f:(fun (category, vtxnum) -> 
           Stdlib.incr i;
-          print_endline ("======== Unproved Query #" ^ (Stdlib.string_of_int !i) ^ ", vtx=" ^ (Stdlib.string_of_int vtxnum) ^ ", category=" ^ (ProverLib.Bp.JsonRep.of_query_category category |> Yojson.Basic.to_string));
+          print_endline ("======== Unproved Query #" ^ (Stdlib.string_of_int !i) 
+                          ^ ", vtx=" ^ (Stdlib.string_of_int vtxnum) 
+                          ^ ", pos=" ^ (PreLib.Cfg.t_map_find ~errtrace:("Prover.main : result-uq : " ^ Stdlib.string_of_int vtxnum) cfg.pos_info vtxnum |> PreLib.Mich.string_of_loc)
+                          ^ ", category=" ^ (ProverLib.Bp.JsonRep.of_query_category category |> Yojson.Basic.to_string)
+          );
         );
     ) (* TODO *)
   in
