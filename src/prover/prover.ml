@@ -1,5 +1,6 @@
 module BpGen = BpGen
 module InvGen = InvGen
+module Results = Results
 module Validator = Validator
 module VcGen = VcGen
 module Verifier = Verifier
@@ -173,6 +174,15 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
       istg_exists = Option.is_some init_stg_opt;
       ret_opt = None;
     }
+  in
+  (* 4. Store the proving result in Prover.Results storage, for refuter *)
+  let _ = 
+    (match run_result_opt with
+    | None -> ((* Nothing happend *))
+    | Some s ->
+      Results.is_prover_used := true;
+      Results.unproved_queries := s.unproved_qs;
+    )
   in
   (* interpret prover result *)
   let _ = 

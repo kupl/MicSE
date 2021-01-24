@@ -1,5 +1,6 @@
 module BpGen = BpGen
 module InvGen = InvGen
+module Results = Results
 module Validator = Validator
 module VcGen = VcGen
 module Verifier = Verifier

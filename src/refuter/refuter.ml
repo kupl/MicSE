@@ -1,5 +1,8 @@
 (* Refuter proceduere *)
 
+(* "refuted_queries" : Global variable which contains already refuted queries. Similar to "Prover.Results.unproved_queries". *)
+let refuted_queries : (ProverLib.Bp.query_category * PreLib.Cfg.vertex) Core.Set.Poly.t ref = ref Core.Set.Poly.empty in  (* for PROVER-REFUTER-REFUTER SYNC process *)
+
 (*
   [Overview]
   There are two main differences between prover and refuter.
@@ -261,32 +264,43 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
       |> CPSet.of_list
     in
     (* Refute Query. Similar to query-validation procedure in "Prover.Validator.validate" *)
-    let (pset, _) : (VcGen.query_vc * Smt.ZModel.t) CPSet.t * VcGen.query_vc CPSet.t =
+    let (pset, _, _) : (VcGen.query_vc * Smt.ZModel.t) CPSet.t * (VcGen.query_vc CPSet.t) * (VcGen.query_vc CPSet.t) =
       let open VcGen in
-      let rec foldf : ((VcGen.query_vc * Smt.ZModel.t) CPSet.t * VcGen.query_vc CPSet.t) -> (VcGen.query_vc CPSet.t) -> ((VcGen.query_vc * Smt.ZModel.t) CPSet.t * VcGen.query_vc CPSet.t)
-      (* refuted-query accumulator & unrefuted-query accumulator *)
-      =fun (r_acc, u_acc) qset -> begin
+      let rec foldf : ((VcGen.query_vc * Smt.ZModel.t) CPSet.t * (VcGen.query_vc CPSet.t) * (VcGen.query_vc CPSet.t)) -> (VcGen.query_vc CPSet.t) -> ((VcGen.query_vc * Smt.ZModel.t) CPSet.t * (VcGen.query_vc CPSet.t) * (VcGen.query_vc CPSet.t))
+      (* refuted-query accumulator & unrefuted-query accumulator & ignored-query accumulator *)
+      =fun (r_acc, u_acc, ig_acc) qset -> begin
         (* check if timeover *)
-        if Utils.Timer.is_timeout timer then (r_acc, CPSet.union u_acc qset) else
+        if Utils.Timer.is_timeout timer then (r_acc, CPSet.union u_acc qset, ig_acc) else
         (* if the qset empty then escape *)
-        if CPSet.is_empty qset then (r_acc, u_acc) else
+        if CPSet.is_empty qset then (r_acc, u_acc, ig_acc) else
         (* pick a query in qset *)
         let q_picked : VcGen.query_vc = CPSet.choose_exn qset in
         let rqset : VcGen.query_vc CPSet.t = CPSet.remove qset q_picked in
+        (* PROVER-REFUTER-REFUTER SYNC
+            if the query is already proved (Prover.Results.is_prover_used && (query is not in Prover.Results.unproved_queries))
+            or the query is already refuted (query in refuted_queries),
+            then skip it (put it to ignored-query set).
+        *)
+        let q_id : ProverLib.Bp.query_category * PreLib.Cfg.vertex = (q_picked.qvc_cat, q_picked.qvc_vtx) in
+        let is_q_proved_already : bool = !Prover.Results.is_prover_used && (CPSet.mem !Prover.Results.unproved_queries (q_picked.qvc_cat, q_picked.qvc_vtx)) in
+        let is_q_refuted_already : bool = (CPSet.mem !refuted_queries q_id) in
+        if (is_q_proved_already || is_q_refuted_already) then (foldf (r_acc, u_acc, (CPSet.add ig_acc q_picked)) rqset) else
         (* this fold-function separates refuted-queries and unrefuted/unknown-queries *)
         let q_validity, modelopt = Verifier.verify q_picked.qvc_fml in
         let (nracc, nuacc) =
           if Smt.ZSolver.is_invalid q_validity
           then (
+            (* PROVER-REFUTER-REFUTER SYNC - collect refuted query *)
+            let _ = refuted_queries := (CPSet.add !refuted_queries q_id) in
             (* WARNING: "Option.get" below might raise the exception "Invalid_argument" *)
             let mdl : Smt.ZModel.t = Option.get modelopt in
             (CPSet.add r_acc (q_picked, mdl), u_acc)
           )
           else (r_acc, CPSet.add u_acc q_picked)
         in
-        foldf (nracc, nuacc) rqset
+        foldf (nracc, nuacc, ig_acc) rqset
       end in
-      foldf (CPSet.empty, CPSet.empty) query_vcs
+      foldf (CPSet.empty, CPSet.empty, CPSet.empty) query_vcs
     in
     (* recursive call refuter *)
     refute (new_worklist_1, CPSet.union pset refuted_set) timer
