@@ -3,6 +3,9 @@
 (* "refuted_queries" : Global variable which contains already refuted queries. Similar to "Prover.Results.unproved_queries". *)
 let refuted_queries : (ProverLib.Bp.query_category * PreLib.Mich.loc) Core.Set.Poly.t ref = ref Core.Set.Poly.empty  (* for PROVER-REFUTER-REFUTER SYNC process *)
 
+(* "scenario_idx" : assign an integer to found scenario. *)
+let scenario_idx = ref 0
+
 (*
   [Overview]
   There are two main differences between prover and refuter.
@@ -303,7 +306,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
         *)
         let q_id : ProverLib.Bp.query_category * PreLib.Mich.loc = (q_picked.qvc_cat, vtx_to_michloc q_picked.qvc_vtx) in
         let is_q_loc_unknown : bool = Stdlib.snd q_id = PreLib.Mich.Unknown in
-        let is_q_proved_already : bool = Stdlib.not is_q_loc_unknown && !Prover.Results.is_prover_used && (CPSet.mem !Prover.Results.unproved_queries q_id) in
+        let is_q_proved_already : bool = Stdlib.not (Stdlib.not is_q_loc_unknown && !Prover.Results.is_prover_used && (CPSet.mem !Prover.Results.unproved_queries q_id)) in
         let is_q_refuted_already : bool = Stdlib.not is_q_loc_unknown && (CPSet.mem !refuted_queries q_id) in
         if (is_q_proved_already || is_q_refuted_already) then (foldf (r_acc, u_acc, (CPSet.add ig_acc q_picked)) rqset) else
         (* this fold-function separates refuted-queries and unrefuted/unknown-queries *)
@@ -338,7 +341,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
     print_endline ("Refuter runs " ^ (Stdlib.string_of_int (CPSet.length generated_complete_combination - CPSet.length unsearched_set)) ^ " basicpaths.");
     print_endline ("Refuter produces " ^ (Stdlib.string_of_int (CPSet.length refuted_set)) ^ " scenarios.");
     print_endline ("Scenarios :: ");
-    let scenario_idx = ref 0 in
+    
     CPSet.iter
       refuted_set
       ~f:(
