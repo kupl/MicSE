@@ -34,6 +34,9 @@ def read_env ():
   parser.add_argument ("-o", "--output", type=str, default="", help="output file name (default: same with benchmark option)")
   parser.add_argument ("-z", "--z3-time-budget", type=int, default=30, help="time budget for Z3 solver in second (default: 30s)")
   parser.add_argument ("-p", "--prover-time-budget", type=int, default=180, help="time budget for whole prover process in second (default: 180s)")
+  parser.add_argument ("-r", "--refuter-time-budget", type=int, default=180, help="time budget for whole refuter process in second (default: 180s)")
+  parser.add_argument ("-l", "--unroll-loop", type=int, default=1, help="number of loop unrolling (default: 1)")
+  parser.add_argument ("-t", "--trx-len", type=int, default=1, help="maximum length of transaction scenario (default: 1)")
   args = parser.parse_args ()
   # Initialize env
   ## Add env for benchmark directory path and candidates
@@ -53,6 +56,9 @@ def read_env ():
   ## Add env for time budget
   env['z3_time'] = args.z3_time_budget
   env['prover_time'] = args.prover_time_budget
+  env['refuter_time'] = args.refuter_time_budget
+  env['unroll_loop'] = args.unroll_loop
+  env['trx_len'] = args.trx_len
   return env
 
 
@@ -88,6 +94,9 @@ def run_f (idx, file, env, runrst, syncdata):
   cmd += ["-input", os.path.join (env['benchmark'], file)]
   cmd += ["-z3_timeout", str (env['z3_time'])]
   cmd += ["-prover_timeout", str (env['prover_time'])]
+  cmd += ["-refuter_timeout_t", str (env['refuter_time'])]
+  cmd += ["-unroll_l", str (env["unroll_loop"])]
+  cmd += ["-unroll_t", str (env["trx_len"])]
   # Job Started
   job = dict()
   job['idx'] = idx
