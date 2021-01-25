@@ -344,7 +344,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
       ~f:(
         fun (qvc, mdl) ->
         let _ = Stdlib.incr scenario_idx in
-        let trace = RefuterLib.Trace.gen cfg trx_ur_num !scenario_idx qvc mdl in
+        let trace = RefuterLib.Trace.gen cfg vtx_to_michloc trx_ur_num !scenario_idx qvc mdl in
         trace |> RefuterLib.Trace.to_string |> print_endline;
         (* print_newline ();
         print_endline (mdl |> ProverLib.Smt.ZModel.to_string) *)

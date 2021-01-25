@@ -17,10 +17,11 @@ type trx = {
 type t = {
   index : int;                                (* scenario index of trace *)
   query : Prover.VcGen.query_vc;              (* query information which violated by this trace *)
+  loc : PreLib.Mich.loc;                      (* location information which safety property is violated *)
   length : int;                               (* length of transaction trace *)
   trx_list : trx list;                        (* transaction information of this trace *)
 }
 
-val gen : PreLib.Cfg.t -> int -> int -> Prover.VcGen.query_vc -> ProverLib.Smt.ZModel.t -> t
+val gen : PreLib.Cfg.t -> (PreLib.Cfg.vertex -> PreLib.Mich.loc) -> int -> int -> Prover.VcGen.query_vc -> ProverLib.Smt.ZModel.t -> t
 
 val to_string : t -> string

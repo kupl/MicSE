@@ -17,16 +17,17 @@ type trx = {
 type t = {
   index : int;                                (* scenario index of trace *)
   query : Prover.VcGen.query_vc;              (* query information which violated by this trace *)
+  loc : PreLib.Mich.loc;                      (* location information which safety property is violated *)
   length : int;                               (* length of transaction trace *)
   trx_list : trx list;                        (* transaction information of this trace *)
 }
 
-let gen : PreLib.Cfg.t -> int -> int -> Prover.VcGen.query_vc -> ProverLib.Smt.ZModel.t -> t
+let gen : PreLib.Cfg.t -> (PreLib.Cfg.vertex -> PreLib.Mich.loc) -> int -> int -> Prover.VcGen.query_vc -> ProverLib.Smt.ZModel.t -> t
 = let open PreLib in
   let open ProverLib in
   let open Prover in
-  (* trx-length, scenario-index, query-information, smt-model *)
-  fun cfg len idx qvc model -> begin
+  (* trx-length, location-read-function scenario-index, query-information, smt-model *)
+  fun cfg read_loc len idx qvc model -> begin
     (* Set helper function for getting SMT expression of value as syntax sugar *)
     let read_value : Smt.ZSort.t -> string -> Smt.ZExpr.t
     =fun sort name -> begin
@@ -34,6 +35,8 @@ let gen : PreLib.Cfg.t -> int -> int -> Prover.VcGen.query_vc -> ProverLib.Smt.Z
       Smt.ZModel.eval var_expr ~model:model 
       |> (function | Some ee -> ee | None -> (Error "gen.read_value: variable not found") |> Stdlib.raise)
     end in (* helper function read_value end *)
+    (* Read location information from the query *)
+    let loc = read_loc qvc.qvc_vtx in
     (* Set the sorts *)
     let param_sort : Smt.ZSort.t = 
       Cfg.t_map_find 
@@ -79,16 +82,17 @@ let gen : PreLib.Cfg.t -> int -> int -> Prover.VcGen.query_vc -> ProverLib.Smt.Z
         transaction
       end) in
     (* Assemble the trace information *)
-    let trace : t = { index=idx; query=qvc; length=len; trx_list=trx_list; } in
+    let trace : t = { index=idx; query=qvc; loc=loc; length=len; trx_list=trx_list; } in
     trace
 end (* function gen end *)
 
 let to_string : t -> string
-= let open ProverLib in
+= let open PreLib in
+  let open ProverLib in
   (* transaction-trace *)
   fun trace -> begin
     let str = ("================ Scenario #" ^ (trace.index |> string_of_int) ^ "\n") in
-    let str = str ^ ("======== Vertex: " ^ (trace.query.qvc_vtx |> string_of_int) ^ "\n") in
+    let str = str ^ ("======== Location: " ^ (trace.loc |> Mich.string_of_loc) ^ "\n") in
     let str = str ^ ("======== Category: " ^ (trace.query.qvc_cat |> Bp.JsonRep.of_query_category |> Yojson.Basic.pretty_to_string) ^ "\n") in
     let str = str ^ ("======== Formula: \n" ^ (trace.query.qvc_fml |> Vlang.Formula.to_string) ^ "\n") in
     let str = str ^ ("======== Transactions: " ^ "\n") in
