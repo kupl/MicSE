@@ -338,20 +338,16 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
     print_endline ("Refuter runs " ^ (Stdlib.string_of_int (CPSet.length generated_complete_combination - CPSet.length unsearched_set)) ^ " basicpaths.");
     print_endline ("Refuter produces " ^ (Stdlib.string_of_int (CPSet.length refuted_set)) ^ " scenarios.");
     print_endline ("Scenarios :: ");
-    let a = ref 0 in
+    let scenario_idx = ref 0 in
     CPSet.iter
       refuted_set
       ~f:(
         fun (qvc, mdl) ->
-        Stdlib.incr a;
-        print_endline ("Scenario #" ^ string_of_int !a);
-        print_endline ("Vertex: " ^ string_of_int qvc.qvc_vtx);
-        print_endline ("Cateogry: " ^ (Bp.JsonRep.of_query_category qvc.qvc_cat |> Yojson.Basic.pretty_to_string));
-        print_endline ("Formula: ");
-        print_endline (qvc.qvc_fml |> Vlang.Formula.to_string);
-        print_endline ("Model : ");
-        print_endline (mdl |> Smt.ZModel.to_string);
-        print_newline ();
+        let _ = Stdlib.incr scenario_idx in
+        let trace = RefuterLib.Trace.gen cfg trx_ur_num !scenario_idx qvc mdl in
+        trace |> RefuterLib.Trace.to_string |> print_endline;
+        (* print_newline ();
+        print_endline (mdl |> ProverLib.Smt.ZModel.to_string) *)
       );
   ) in
   ()

@@ -6,4 +6,5 @@
     micse.pre
     micse.prover
     micse.prover.lib
+    micse.refuter.lib
     ))
