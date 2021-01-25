@@ -46,6 +46,20 @@ let z3_time_budget : int ref
 =ref 30 (* z3 time budgets in seconds *)
 let prover_time_budget : int ref
 =ref 180 (* prover time budgets in seconds *)
+let refuter_total_time_budget : int ref
+=ref 180 (* refuter time budgets in seconds *)
+let refuter_sub_time_budget : int ref
+=ref 180 (* Time budget for each "Refuter.main" function call. *)
+
+(* INT - Cfg Unrolling *)
+let loop_unroll_num : int ref
+=ref 1
+let transaction_unroll_num : int ref
+=ref 1
+
+(* FLAGS - Refuter *)
+let refuter_sub_time_budget_manually_set : bool ref
+=ref false  (* If the user set the "refuter_sub_time_budget" option, then set it true. This is used to automatically calculate "refuter_sub_time_budget" if it not set manually. *)
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -85,6 +99,10 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-initial_storage", (Arg.String (fun s -> initial_storage_file := s)), "File path for initial storage of input michelson program");
     ("-z3_timeout", (Arg.Int (fun i -> z3_time_budget := i)), "Time budget for z3 solver in seconds. (default: 30s)");
     ("-prover_timeout", (Arg.Int (fun i -> prover_time_budget := i)), "Time budget for prover in seconds. (default: 180s)");
+    ("-refuter_timeout_t", (Arg.Int (fun i -> refuter_total_time_budget := i)), "Timebudget for refuter total-time in seconds. (default: 180s)");
+    ("-refuter_timeout_s", (Arg.Int (fun i -> refuter_sub_time_budget_manually_set := true; refuter_sub_time_budget := i)), "Timebudget for \"Refuter.main\" function in seconds. If not set, it'll be automatically calculated. (default: 180s)");
+    ("-unroll_l", (Arg.Int (fun i -> loop_unroll_num := i)), "Set the number of loop unrolling. (default 1)");
+    ("-unroll_t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
   ]
 
 let create_options : unit -> unit
@@ -94,6 +112,10 @@ let create_options : unit -> unit
 
   (* Set custom options *)
   let _ = set_all_cfg_opt () in
+  
+  let _ =  
+    if !refuter_sub_time_budget_manually_set then () else (refuter_sub_time_budget := !refuter_total_time_budget / !transaction_unroll_num)
+  in
 
   ()
 end

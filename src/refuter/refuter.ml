@@ -69,7 +69,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   (* control-flow-graph, initial-storage-option, transaction-unrolling-number, loop-unrolling-number *)
   fun (cfg, cfgcon_counter) init_stg_opt trx_ur_num loop_ur_num -> begin
   (* 0. Set the timer *)
-  let timer = Utils.Timer.create ~budget:!Utils.Options.prover_time_budget in
+  let timer = Utils.Timer.create ~budget:!Utils.Options.refuter_sub_time_budget in
   (* 1. Unrolling loops in the Cfg
       To remove any confusion, it shadows the name "cfg".
   *)
@@ -356,3 +356,15 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   ) in
   ()
 end (* function main end *)
+
+
+(* "run_multiple n" runs the "main" function n times, changing the number of transaction-unrolling number *)
+let run_multiple : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> unit
+=fun (cfg, cfgcounter) init_stg_opt -> begin
+  let timer = Utils.Timer.create ~budget:!Utils.Options.refuter_total_time_budget in
+  for i = 1 to !Utils.Options.transaction_unroll_num do
+    if Utils.Timer.is_timeout timer then () else
+    main (cfg, cfgcounter) init_stg_opt i !Utils.Options.loop_unroll_num
+  done;
+  ()
+end (* function run_multiple end *)

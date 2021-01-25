@@ -31,6 +31,15 @@ val flag_vc_print : bool ref
 (* INT - Time Budgets *)
 val z3_time_budget : int ref
 val prover_time_budget : int ref
+val refuter_total_time_budget : int ref
+val refuter_sub_time_budget : int ref
+
+(* INT - Cfg Unrolling *)
+val loop_unroll_num : int ref
+val transaction_unroll_num : int ref
+
+(* FLAGS - Refuter *)
+val refuter_sub_time_budget_manually_set : bool ref
 
 (*****************************************************************************)
 (*****************************************************************************)
