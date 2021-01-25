@@ -84,7 +84,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
         this function considers that the "unrollcfg_vtxrel"'s data is singleton set.
     *)
     let s = PreLib.Cfg.t_map_find ~errtrace:("Refuter.main : vtx_to_michloc : vtxrel") unrollcfg_vtxrel vtx in
-    if CPSet.is_empty s then PreLib.Mich.Unknown else
+    if CPSet.is_empty s then (((*debug*) print_endline ("DEBUG : Refuter.main : vtx_to_michloc : set-is-empty : vtx=" ^ Stdlib.string_of_int vtx)); PreLib.Mich.Unknown) else
     (* INFO: "choose_exn" below is safe from exception. *)
     let origin_vtx = CPSet.choose_exn s in
     PreLib.Cfg.t_map_find ~errtrace:("Refuter.main : vtx_to_michloc : posinfo") param_cfg.pos_info origin_vtx
@@ -184,13 +184,14 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
         -> (trxstg-2 := trxstg-1) -> trxbp-2".
       The order of transaction-basicpath in the parameter list should be ordered well.
       If initial storage value does not exists, the first basic-node will not be inserted.
+      "concat_trxbps" is not a recursive function, since it uses "List.fold_left append_trxbp_back"
   *)
   let concat_trxbps : Bp.t list -> Bp.t
   =fun bplst -> begin
     match bplst with
     | [] -> Stdlib.failwith "Refuter.main : concat_trxbps : bplst match failed"
     | h :: t ->
-      (* "List.hd" used. exception "Stdlib.Failure" might occure here *)
+      (* "List.hd" used. exception "Stdlib.Failure" might occur here *)
       let headbn : Bp.basic_node = List.hd h.content in
       let (concatenated, _) : Bp.t * string = List.fold_left append_trxbp_back (h, !(headbn.glenv_ref).gv_storage) t in
       (match init_stg_opt with
