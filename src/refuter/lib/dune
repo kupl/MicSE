@@ -1,0 +1,9 @@
+(library
+  (name refuterLib)
+  (public_name micse.refuter.lib)
+  (libraries
+    core
+    yojson
+    micse.pre
+    micse.prover
+    micse.prover.lib))
