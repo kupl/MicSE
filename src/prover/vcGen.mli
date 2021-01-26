@@ -18,6 +18,12 @@ type v_cond = {
 
 type v_cond_ingr = ProverLib.Inv.t -> v_cond  (* path-vc and query_vcs will be constructed using the given invariant candidate. *)
 
+module NameEnv : sig
+  type t = (string, string) Core.Map.Poly.t
+
+  val new_var : string -> string
+end
+
 (* renaming process performed here *)
 val construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
 

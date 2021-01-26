@@ -64,7 +64,11 @@ let gen : PreLib.Cfg.t -> (PreLib.Cfg.vertex -> PreLib.Mich.loc) -> int -> int -
       |> Verifier.smtsort_of_vlangtyp in
     (* Get Transactions' information *)
     let trx_list : trx list = Core.List.init len ~f:(fun trx_idx -> begin
-        let stg_val : Smt.ZExpr.t = read_value storage_sort (GlVar.gen_storage trx_idx) in
+        (* Special case : initial-storage exists & idx=0 *)
+        let stg_vn : string = GlVar.gen_storage trx_idx in
+        let stg_varname : string = if !Utils.Options.initial_storage_file <> "" && trx_idx = 0 then VcGen.NameEnv.new_var stg_vn else stg_vn in
+        (* get ZExprs *)
+        let stg_val : Smt.ZExpr.t = read_value storage_sort (stg_varname) in
         let param_val : Smt.ZExpr.t = read_value param_sort (GlVar.gen_param trx_idx) in
         let sender_val : Smt.ZExpr.t = read_value sender_sort (GlVar.gen_sender trx_idx) in
         let source_val : Smt.ZExpr.t = read_value source_sort (GlVar.gen_source trx_idx) in
