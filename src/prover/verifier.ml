@@ -452,23 +452,26 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
           let e1_mul_e2 = Smt.ZMutez.create_mul soe1 soe2 in  (* e1 * e2 *)
           let e1_mul_e2_div_e1 = Smt.ZMutez.create_div e1_mul_e2 soe2 in (* (e1 * e2) / e1 *)
           let e1_is_zero = Smt.ZMutez.create_eq soe1 (Smt.ZMutez.zero_ ()) in (* e1 = 0 *)
+          let e2_is_zero = Smt.ZNat.create_eq (e2 |> soe) (Smt.ZNat.zero_ ()) in  (* e2 = 0 *)
           let e1_is_not_zero = Smt.ZFormula.create_and [ (* e1 != 0 /\ ((e1 * e2) / e1) = e2 *)
             (Smt.ZFormula.create_not e1_is_zero);
             (Smt.ZMutez.create_eq e1_mul_e2_div_e1 soe1)
           ] in
-          Smt.ZFormula.create_or [e1_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *)
+          Smt.ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *)
           (* Smt.ZMutez.check_mul_no_overflow (e1 |> soe) (e2 |> soe |> Smt.ZInt.to_zmutez) *)
         end
       | VF_mul_nmm_no_overflow (e1, e2) -> begin
           let soe1, soe2 = (e1 |> soe |> Smt.ZInt.to_zmutez), (e2 |> soe) in
           let e1_mul_e2 = Smt.ZMutez.create_mul soe1 soe2 in  (* e1 * e2 *)
           let e1_mul_e2_div_e1 = Smt.ZMutez.create_div e1_mul_e2 soe2 in (* (e1 * e2) / e1 *)
-          let e1_is_zero = Smt.ZMutez.create_eq soe1 (Smt.ZMutez.zero_ ()) in (* e1 = 0 *)
+          let e1_is_zero = Smt.ZNat.create_eq (e1 |> soe) (Smt.ZNat.zero_ ()) in  (* e1 = 0 *)
+          (*let e1_is_zero = Smt.ZMutez.create_eq soe1 (Smt.ZMutez.zero_ ()) in (* e1 = 0 *)*)
+          let e2_is_zero = Smt.ZMutez.create_eq (e2 |> soe) (Smt.ZMutez.zero_ ()) in (* e2 = 0 *)
           let e1_is_not_zero = Smt.ZFormula.create_and [ (* e1 != 0 /\ ((e1 * e2) / e1) = e2 *)
             (Smt.ZFormula.create_not e1_is_zero);
             (Smt.ZMutez.create_eq e1_mul_e2_div_e1 soe1)
           ] in
-          Smt.ZFormula.create_or [e1_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *)
+          Smt.ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *)
           (* Smt.ZMutez.check_mul_no_overflow (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe) *)
         end
       | VF_shiftL_nnn_rhs_in_256 _ -> err vf
