@@ -136,10 +136,10 @@ end (* function sp_for_main_exit_vtx end *)
 
 
 (* renaming process performed here *)
-let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
+let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> PreLib.Adt.data option -> v_cond_ingr
 = let open ProverLib.Bp in
   let open ProverLib.Vlang in
-  fun cfg {entry_vtx; exit_vtx; content; appeared_vars} -> begin
+  fun cfg {entry_vtx; exit_vtx; content; appeared_vars} init_stg_opt -> begin
     (* 1. evaluate strongest postcondition 
         - name_env : environment for naming
         - str_post : strongest postcondition. 
@@ -210,10 +210,41 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
       in
       (* construct a path verification-condition *)
       let pvc : ProverLib.Vlang.t = 
-        Formula.VF_imply (
-          Formula.VF_and [ProverLib.Inv.inv_to_formula entry_inv; sp_fold_result.sfa_str_post],
-          ProverLib.Inv.inv_to_formula exit_inv
-        )
+        (* We devide "pvc" into two parts, "normal_inductiveness" and "initial_stg_inductiveness".
+            "normal_inductiveness" has the formula of "(inv1 /\ sp) -> inv2", 
+            and "initial_stg_inductiveness" has the formula "((storage-variable = initial-storage-data) /\ sp) -> inv2",
+            if only there are initial-storage given and the entry-vertex is main-entry vertex.
+            else cases, "initial_stg_inductiveness" will be just "true".
+          With this implementation, the function "VcGen.construct_initstg_vc" will be regarded as useless function (wrong implementation).
+          Refuter deals with initial-storage with their own implementation, so the prover's method and refuter's method deals with this issue
+            is fully separated, not depends each other.
+        *)
+        let normal_inductiveness : ProverLib.Vlang.t = 
+          Formula.VF_imply (
+            Formula.VF_and [ProverLib.Inv.inv_to_formula entry_inv; sp_fold_result.sfa_str_post],
+            ProverLib.Inv.inv_to_formula exit_inv
+          ) in
+        let initial_stg_inductiveness : ProverLib.Vlang.t =
+          if Option.is_none init_stg_opt || entry_vtx <> cfg.main_entry then Formula.VF_true else
+          let stg_vtyp : Ty.t = 
+            PreLib.Cfg.t_map_find
+              ~errtrace:("Prover.VcGen.construct_verifier_vc : initial_stg_inductiveness")
+              cfg.type_info
+              PreLib.Cfg.param_storage_name
+            |> PreLib.Mich.get_d
+            |> TypeUtil.ty_of_michtyp
+            |> TypeUtil.get_innertyp2
+            |> Stdlib.snd
+          in
+          (* List.hd and Option.get used here. I guess they are safe. *)
+          let glenvref : ProverLib.GlVar.Env.t ref = (List.hd content).glenv_ref in
+          let stg_vdata : Expr.t = VlGen.create_expr_of_michdata (Option.get init_stg_opt) stg_vtyp in
+          let stg_constraint = Formula.VF_eq (Expr.V_var (stg_vtyp, !glenvref.gv_storage), stg_vdata) in
+          Formula.VF_imply (
+            Formula.VF_and [stg_constraint; sp_fold_result.sfa_str_post],
+            ProverLib.Inv.inv_to_formula exit_inv
+          ) in
+        Formula.VF_and [normal_inductiveness; initial_stg_inductiveness]
         (*
         (* Formula Optimization inserted to enhance formula readability *)
         |> ProverLib.VlangUtil.NaiveOpt.run

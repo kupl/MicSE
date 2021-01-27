@@ -155,7 +155,7 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
   (* 2. Verification Condition Construction 
       - Since CPSet cannot contain a function, we store (Inv.t -> v_cond) functions in list.
   *)
-  let vcgen : Bp.t -> (Inv.t -> VcGen.v_cond) = VcGen.construct_verifier_vc cfg in
+  let vcgen : Bp.t -> (Inv.t -> VcGen.v_cond) = (fun bp -> VcGen.construct_verifier_vc cfg bp init_stg_opt) in
   let vcl : (Inv.t -> VcGen.v_cond) list = CPSet.fold bps ~init:[] ~f:(fun accl bp -> (vcgen bp) :: accl) in
   (* 3. Invariant Synthesis & Prove Loop 
       - The formula "init_stg_cond inv-candidate" should be valid.

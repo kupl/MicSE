@@ -278,7 +278,13 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
     let bp_picked : Bp.t = bp_picked |> remove_assertion_except (trx_ur_num-1) in
     (* extract queries *)
     let query_vcs : VcGen.query_vc CPSet.t = 
-      let vcond : VcGen.v_cond = (VcGen.construct_verifier_vc cfg bp_picked) true_inv in
+      (* NOTE: about initial-storage : 
+          "VcGen.construct_verifier_vc" requires initial storage value and put it as path-vc.
+          - Refuter doesn't need path-vc since there are no need to check invariant inductiveness.
+          - Refuter already puts initial strorage value to "trxStorage-0" at the stage 3.1. "Concat Basicpath".
+          So we hardcoded "None" value to the place of initial-storage-option value.
+      *)
+      let vcond : VcGen.v_cond = (VcGen.construct_verifier_vc cfg bp_picked None) true_inv in
       vcond.query_vcs
       (* REMOVE DUPLICATED QUERIES (in one basicpath) *)
       |> CPSet.to_list

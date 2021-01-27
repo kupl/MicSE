@@ -25,6 +25,6 @@ module NameEnv : sig
 end
 
 (* renaming process performed here *)
-val construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> v_cond_ingr
+val construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> PreLib.Adt.data option -> v_cond_ingr
 
-val construct_initstg_vc : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> PreLib.Adt.data option -> (ProverLib.Inv.t -> ProverLib.Vlang.t)
+val construct_initstg_vc : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> PreLib.Adt.data option -> (ProverLib.Inv.t -> ProverLib.Vlang.t) (* deprecated *)

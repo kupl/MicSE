@@ -1,0 +1,75 @@
+# https://tzstats.com/KT1W148mcjmfvr9J2RvWcGHxsAFApq9mcfgT 20210127
+
+# storage
+#   (pair (pair (nat %replay_counter)
+#               (pair %key_info
+#                  (list %key_groups (pair (list %signatories key) (nat %group_threshold)))
+#                  (nat %overall_threshold)))
+#         (pair (pair %vesting
+#                  (pair %vesting_quantities (mutez %vested_balance) (mutez %vesting_increment))
+#                  (pair %vesting_schedule (timestamp %next_payout) (int %payout_interval)))
+#               (option %pour_info (pair (contract %pour_dest unit) (key %pour_authorizer))))) ;
+
+# I don't know why my parser requires to emit the last semicolon for last list element.
+
+(Pair 
+  (Pair 
+    5500
+    (Pair 
+      { (Pair 
+              { "edpkuELK9V2oRFS4jLe2YQ4V5byCthkbaJNJP6MTK4ZUuGNm67ie9m";  
+                "edpkvPtKSj6rUj8vgk7mQL9cc5yzPq7WSoRUesgNCs56Ba7Lqi8qsv";
+                "edpkvHZp888LXf2EsRZw6B8fxBRSh36d5e7B3QKWu2g8x2P2Bj5kFp";
+                "edpktuWWe3DBLExYQcaauEVqsWwHTvL25GLAxsNGAKnyDYbzn8QDoj"
+                } 
+              2);  
+        (Pair 
+              { "edpkukU3X6BGPo61EJxq2pNotDitPKsNiTnXRBCTRrBmV6phzVjkBL";  
+                "edpkuLcnRix5dbSGagjHLo8m3KX7jG7sXbVN54bwqm66NF8eVAL4Ya";
+                "edpkv4LkpcVF5n54EK9rXRwHg41UR8RLynqDmzXSbaXWC7Ak7JTLH1";
+                "edpkuFGXtpuFqteTiNr2qEqJoZrzswbpbGZg8HFmk7gnMF8bT1D1ww"
+                } 
+              2); 
+        (Pair 
+              { "edpkvGsZERUyBsRRi68B5zzeEjbpkGPuc8PHnoasjYyuJxj3MrGgr2";  
+                "edpktrRqiq2UXejkGF3hVsRgHK4fN4F1XP5r6kSCdnmCQUgAWtQk9V";
+                "edpktsA5mcRv6FaQXBESvNMWt4ooS3EMaxyj5t66LD3ueW9TUMGtB2";
+                "edpkuGvTYxGszVqQtz2kiTSGyYj6gRmNxtc8dMUFwahy3nru7W7n3z"
+                } 
+              2); 
+        (Pair 
+              { "edpkuwAdjBXVpwwn8KsJiJuLx7Ydk8MryrrRndYcLsCYUuJ8YKs9Ab";  
+                "edpkvUYVLhMMtcEMNSVQggXtUiM3i3DqoGCqaEztDNbViFofmbdW25";
+                "edpkux2Ry1hUciiHSd3YvXcfztidSx82D1c1LW1qpWPbge1kQrstuM";
+                "edpkvQPDiUefwRaCN9Pe8MfGPv7Mqu5ZL5Yyim9ov1m5VtM2aXdQMJ"
+                } 
+              2); 
+        (Pair 
+              { "edpkvS5QFv7KRGfa3b87gg9DBpxSm3NpSwnjhUjNBQrRUUR66F7C9g";  
+                "edpktm3zeGMzfzFuqgyYftt7uNyVRANTjrJCdU7bURwgGb9bRZwmJq";
+                "edpkucCnbeGPWNvGHeTQ5hENHPrc8txBBiQXNphu3jgv9KYbhQBovd";
+                "edpkuNjKKT48xBoT5asPrWdmuM1Yw8D93MwgFgVvtca8jb5pstzaCh"
+                } 
+              2); 
+        (Pair 
+              { "edpkukogJzCZSAfc5foRpEZGsryMjiXj77VxcFLzZoreB1vZWFeKc2";  
+                "edpkuSZ1GoM6MALh4fPZBrwDhGwY9vENEoyctcXuDK3yoiX4xWhMaA";
+                "edpkvXL9B32DcEbMNiMangcSFMvAd8NBwH8AfmRb6iBbHxLgx3J59P";
+                "edpkumCFhgS94cjZXiFnnq7MFsaWBz4Tp78AX2fZfhB9J9hcgcKxgy"
+                } 
+              2); 
+        (Pair 
+              { "edpkv9eiqPP8bxCPEem6BBUNokwwy64G7ARYov77oNyCfK6fP3H5hz";  
+                "edpktjDaR4gmEZNSnnuSWMmJ4fhYmMD4Lk1WkDCfWRWdbGHQ9eNT45";
+                "edpkuapDV7oaWqK5fStnPbhEm2g7kvhhtbBNs9hhq3KWXS2qcWcdNQ";
+                "edpkuzAzJ5yQeSHsfRqwkdGBELdJjAGGR6gw3Ar1iVVDvFef5e6Juk"
+                } 
+              2) 
+      } 
+      4 )) 
+  (Pair 
+    (Pair 
+      (Pair 200000000000000 19904130156) 
+      (Pair "2018-06-29T19:00:00Z" 2629800)) 
+    None)
+)
