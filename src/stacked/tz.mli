@@ -411,9 +411,6 @@ and mich_i =
   | MI_micse_check of mich_i cc   (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
 
-
-
-
 (*****************************************************************************)
 (*****************************************************************************)
 (* Blockchain                                                                *)
@@ -428,3 +425,42 @@ module Bc : sig
     last_time : Z.t;
   }
 end (* module Blockchain end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Formula                                                                   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type mich_f =
+  (* Logical Formula *)
+  | MF_true
+  | MF_false
+  | MF_not of mich_f
+  | MF_and of mich_f list
+  | MF_or of mich_f list
+  | MF_eq of mich_v cc * mich_v cc  (* 'a * 'a -> formula *)
+  | MF_imply of mich_f * mich_f
+  (* MicSE-Cfg Pattern Matching *)  
+  | MF_is_none of mich_v cc (* 'a option -> formula *)
+  | MF_is_left of mich_v cc (* ('a, 'b) or -> formula *)
+  | MF_is_cons of mich_v cc (* 'a list -> formula *)
+  (* Custom Formula for verifiying *)
+  | MF_add_mmm_no_overflow of (mich_v cc * mich_v cc)
+  | MF_sub_mmm_no_underflow of (mich_v cc * mich_v cc)
+  | MF_mul_mnm_no_overflow of (mich_v cc * mich_v cc)
+  | MF_mul_nmm_no_overflow of (mich_v cc * mich_v cc)
+  | MF_shiftL_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
+  | MF_shiftR_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
+  (* Custom Domain Formula for Invariant Generation *)
+  | MF_sigma_equal of (mich_v cc * mich_v cc)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Symbolic Stack                                                            *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(* type sym_stack = (mich_v list) *)
