@@ -75,26 +75,21 @@ type mich_t =
 (* Following components are entangled,
   - Michelson Values
   - Michelson Instruction
-  - Stack in Michelson
 *)
 
-type address = string
-and chain_id = string
-and contract = {
-  ctrt_address : address;
-  ctrt_balance : mutez;
-  ctrt_delegate : key_hash option;
+type contract = {
+  ctrt_address : mich_v cc; (* address *)
+  ctrt_balance : mich_v cc; (* mutez *)
+  ctrt_delegate : mich_v cc; (* key_hash option *)
   ctrt_param_ty : mich_t cc;
   ctrt_storage_ty : mich_t cc;
   ctrt_storage : mich_v cc;
   ctrt_code : mich_i cc;
 }
-and key_hash = string
-and mutez = Int64.t
 and operation =
-  | TO_create_contract of ((key_hash option * mutez * mich_v cc) * (mich_t cc * mich_t cc * mich_i cc))
-  | TO_transfer_tokens of (mich_v cc * mutez * contract)
-  | TO_set_delegate of (key_hash option)
+  | TO_create_contract of ((mich_v cc * mich_v cc * mich_v cc) * (mich_t cc * mich_t cc * mich_i cc)) (* (key_hash option * mutez * storage-val) * ('param-ty * 'storage-ty * code) *)
+  | TO_transfer_tokens of (mich_v cc * mich_v cc * mich_v cc) (* param-val * mutez * contract *)
+  | TO_set_delegate of (mich_v cc) (* key_hash option *)
 
 and mich_v = 
   (* Michelson Value *)
@@ -420,8 +415,8 @@ and mich_i =
 module Bc : sig
   (* blockchain *)
   type t = {
-    contracts : (address, contract) PMap.t;
-    chain_id : chain_id;
+    contracts : (mich_v cc, mich_v cc) PMap.t; (* (address, contract) PMap.t *)
+    chain_id : mich_v cc; (* chain_id *)
     last_time : Z.t;
   }
 end (* module Blockchain end *)
@@ -463,4 +458,8 @@ type mich_f =
 (*****************************************************************************)
 (*****************************************************************************)
 
-(* type sym_stack = (mich_v list) *)
+type sym_stack = {
+  ss_bchain : Bc.t; 
+  ss_stack : mich_v cc list;
+  ss_fmla : mich_f;
+}
