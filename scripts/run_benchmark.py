@@ -75,7 +75,7 @@ def multi_run (env):
   syncdata = manager.list([0,jobLen]) # (0 : terminatedJobCount, 1 : jobLen)
   # Make a multiprocessing Pool and run all
   idx_candidate_env_runrst_syncdata_list = [(idx, candidate, env, runrst, syncdata) for idx, candidate in enumerate(env['candidates'])]
-  pool = multiprocessing.Pool(processes=(max(multiprocessing.cpu_count()-1, 1)))
+  pool = multiprocessing.Pool(processes=(max(multiprocessing.cpu_count()-2, 1)))
   pool.starmap(run_f, idx_candidate_env_runrst_syncdata_list)
   # I don't know why, but close() and join() recommended at "https://stackoverflow.com/a/47683305"
   pool.close()
