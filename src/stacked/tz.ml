@@ -19,7 +19,7 @@ module PMap = Core.Map.Poly
 
 (* ccp for Code Component *)
 type ccp_pos = { col : int; lin : int; }
-type ccp_loc = Unknown | Pos of ccp_pos * ccp_pos
+type ccp_loc = CCLOC_Unknown | CCLOC_Pos of ccp_pos * ccp_pos
 type ccp_annot = 
   | CCA_typ of string (* :type_annot  *)
   | CCA_var of string (* @var_annot   *)
@@ -77,7 +77,7 @@ type mich_t =
   - Michelson Instruction
 *)
 
-type contract = {
+and contract = {
   ctrt_address : mich_v cc; (* address *)
   ctrt_balance : mich_v cc; (* mutez *)
   ctrt_delegate : mich_v cc; (* key_hash option *)
@@ -90,6 +90,24 @@ and operation =
   | TO_create_contract of ((mich_v cc * mich_v cc * mich_v cc) * (mich_t cc * mich_t cc * mich_i cc)) (* (key_hash option * mutez * storage-val) * ('param-ty * 'storage-ty * code) *)
   | TO_transfer_tokens of (mich_v cc * mich_v cc * mich_v cc) (* param-val * mutez * contract *)
   | TO_set_delegate of (mich_v cc) (* key_hash option *)
+
+and blockchain = {
+  (* (address, contract) map *)
+  bc_balance : mich_v cc; (* (address, mutez) map *)
+  bc_delegate : mich_v cc; (* (address, address option) map *)
+  bc_storage : (mich_v cc, mich_v cc) PMap.t; (* It should not be expressed dynamically, until the whole mich_v can be encoded to single sort in SMT. *)
+  bc_code : mich_v cc; (* (address, ((param*strg), (oplist*strg)) lambda) map *)
+  (* others *)
+  bc_chain_id : mich_v cc; (* chain-id *)
+  bc_last_time : mich_v cc; (* timestamp *)
+}
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Michelson Values & Instructions                                           *)
+(*****************************************************************************)
+(*****************************************************************************)
 
 and mich_v = 
   (* Michelson Value *)
@@ -406,25 +424,6 @@ and mich_i =
   | MI_micse_check of mich_i cc   (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
 
-
-
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Blockchain                                                                *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-module Bc = struct
-  (* blockchain *)
-  type t = {
-    contracts : (mich_v cc, mich_v cc) PMap.t; (* (address, contract) PMap.t *)
-    chain_id : mich_v cc; (* chain_id *)
-    last_time : Z.t;
-  }
-end (* module Blockchain end *)
-
-
 (*****************************************************************************)
 (*****************************************************************************)
 (* Formula                                                                   *)
@@ -461,9 +460,26 @@ type mich_f =
 (*****************************************************************************)
 (*****************************************************************************)
 
-type sym_stack = {
-  ss_bchain : Bc.t; 
-  ss_stack : mich_v cc list;
-  ss_fmla : mich_f;
+type sym_state = {
+  ss_fixstack : blockchain; (* fixed, concrete blockchain *)
+  ss_dynstack : blockchain; (* dynamic, unwritten blockchain *)
+  ss_exec_addrs : mich_v cc; (* address set of executed contracts *)
+  ss_oper_queue : mich_v cc; (* operation list, WARNING: MICSE does not support this feature strictly *)
+  ss_symstack : mich_v cc list; (* symbolic stack *)
+  ss_contraints : mich_f list;  (* AND-connected logical formula to constrain this state. *)
 }
 
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Utilities - Code Component                                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(* gen_dummy_cc wraps the given value with "Unknown" location and "[]" annotations *)
+let gen_dummy_cc : 'a -> 'a cc
+= fun x -> {
+  cc_loc = CCLOC_Unknown;
+  cc_anl = [];
+  cc_v = x;
+}

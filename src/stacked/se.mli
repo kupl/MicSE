@@ -1,10 +1,10 @@
-open Tz
+(* Symbolic Executer *)
 
 exception Error of string
 
-type run_inst_ret = {
-  path_vcs : sym_stack PSet.t;
-  query_vcs : sym_stack PSet.t;
+type state_set = {
+  running : Tz.sym_state Tz.PSet.t;
+  terminated : Tz.sym_state Tz.PSet.t;
 }
 
 
@@ -14,8 +14,8 @@ type run_inst_ret = {
 (*****************************************************************************)
 (*****************************************************************************)
 
-val run_inst : sym_stack PSet.t -> (Tz.mich_i cc) -> run_inst_ret
-val run_inst_i : sym_stack -> (Tz.mich_i cc) -> run_inst_ret
+val run_inst : state_set -> (Tz.mich_i Tz.cc) -> state_set
+val run_inst_i : Tz.sym_state -> (Tz.mich_i Tz.cc) -> state_set
 
 
 (*****************************************************************************)
@@ -24,4 +24,14 @@ val run_inst_i : sym_stack -> (Tz.mich_i cc) -> run_inst_ret
 (*****************************************************************************)
 (*****************************************************************************)
 
-val run_operation : Bc.t -> Tz.operation -> Bc.t
+val run_operation : state_set -> Tz.operation -> state_set
+val run_operation_i : Tz.sym_state -> Tz.operation -> state_set
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Main                                                                      *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val main : Tz.blockchain -> Tz.operation list -> state_set
