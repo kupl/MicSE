@@ -474,8 +474,8 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt.ZFormula.t
           Smt.ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *)
           (* Smt.ZMutez.check_mul_no_overflow (e1 |> soe |> Smt.ZInt.to_zmutez) (e2 |> soe) *)
         end
-      | VF_shiftL_nnn_rhs_in_256 _ -> err vf
-      | VF_shiftR_nnn_rhs_in_256 _ -> err vf
+      | VF_shiftL_nnn_rhs_in_256 (_, e2) -> Smt.ZNat.create_le (e2 |> soe) (256 |> Smt.ZNat.of_int)
+      | VF_shiftR_nnn_rhs_in_256 (_, e2) -> Smt.ZNat.create_le (e2 |> soe) (256 |> Smt.ZNat.of_int)
       (* Custom Domain Formula for Invariant Generation *)
       | VF_sigma_equal (_, _) -> Smt.ZBool.true_ () (* TODO *)
       | VF_mtzmap_partial_sum_equal (e1, el2, e3, rvar) -> 
