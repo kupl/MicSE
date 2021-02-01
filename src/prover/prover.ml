@@ -210,7 +210,7 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
             inv.loop_inv 
             ~f:(fun ~key ~data -> 
                 print_endline (
-                  "vtx=" ^ (Stdlib.string_of_int vtxnum)
+                  "vtx=" ^ (Stdlib.string_of_int key)
                   ^ ", pos=" ^ (PreLib.Cfg.t_map_find ~errtrace:("Prover.main : result-pq-li : " ^ Stdlib.string_of_int key) cfg.pos_info key |> PreLib.Mich.string_of_loc) 
                   ^ " : " ^ (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula data))))
             );
