@@ -2,8 +2,16 @@
 
 exception Error of string
 
+type query_category =
+  | Q_mutez_overflow
+  | Q_mutez_underflow
+  | Q_shiftleft_prohibited
+  | Q_shiftright_prohibited
+  | Q_assertion
+
 type state_set = {
   running : Tz.sym_state Tz.PSet.t;
+  queries : (Tz.sym_state * query_category) Tz.PSet.t;
   terminated : Tz.sym_state Tz.PSet.t;
 }
 
@@ -34,4 +42,4 @@ val run_operation_i : Tz.sym_state -> Tz.operation -> state_set
 (*****************************************************************************)
 (*****************************************************************************)
 
-val main : Tz.blockchain -> Tz.operation list -> state_set
+val main : Tz.blockchain -> string -> Tz.operation list -> state_set

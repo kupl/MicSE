@@ -87,9 +87,14 @@ and contract = {
   ctrt_code : mich_i cc;
 }
 and operation =
-  | TO_create_contract of ((mich_v cc * mich_v cc * mich_v cc) * (mich_t cc * mich_t cc * mich_i cc)) (* (key_hash option * mutez * storage-val) * ('param-ty * 'storage-ty * code) *)
-  | TO_transfer_tokens of (mich_v cc * mich_v cc * mich_v cc) (* param-val * mutez * contract *)
-  | TO_set_delegate of (mich_v cc) (* key_hash option *)
+  (* explicit *)
+  | TO_explicit_create_contract of ((mich_v cc * mich_v cc * mich_v cc) * (mich_t cc * mich_t cc * mich_i cc)) (* (key_hash option * mutez * storage-val) * ('param-ty * 'storage-ty * code) *)
+  | TO_explicit_transfer_tokens of (mich_v cc * mich_v cc * mich_v cc) (* param-val * mutez * contract *)
+  | TO_explicit_set_delegate of (mich_v cc) (* key_hash option *)
+  (* implicit *)
+  | TO_implicit_create_contract of ((mich_v cc * mich_v cc * mich_v cc) * (mich_t cc * mich_t cc * mich_i cc)) (* (key_hash option * mutez * storage-val) * ('param-ty * 'storage-ty * code) *)
+  | TO_implicit_transfer_tokens of (mich_v cc * mich_v cc * mich_v cc) (* param-val * mutez * contract *)
+  | TO_implicit_set_delegate of (mich_v cc) (* key_hash option *)
 
 and blockchain = {
   (* (address, contract) map *)
@@ -461,12 +466,14 @@ type mich_f =
 (*****************************************************************************)
 
 type sym_state = {
-  ss_fixstack : blockchain; (* fixed, concrete blockchain *)
-  ss_dynstack : blockchain; (* dynamic, unwritten blockchain *)
+  ss_fixchain : blockchain; (* fixed, concrete blockchain *)
+  ss_dynchain : blockchain; (* dynamic, unwritten blockchain *)
   ss_exec_addrs : mich_v cc; (* address set of executed contracts *)
   ss_oper_queue : mich_v cc; (* operation list, WARNING: MICSE does not support this feature strictly *)
+  ss_cur_source : mich_v cc; (* address, source of the operation *)
+  ss_cur_sender : mich_v cc; (* address, sender of the transfer-token operation *)
   ss_symstack : mich_v cc list; (* symbolic stack *)
-  ss_contraints : mich_f list;  (* AND-connected logical formula to constrain this state. *)
+  ss_constraints : mich_f list;  (* AND-connected logical formula to constrain this state. *)
 }
 
 
