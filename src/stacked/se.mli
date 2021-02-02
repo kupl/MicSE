@@ -3,8 +3,9 @@
 exception Error of string
 
 type query_category =
-  | Q_mutez_overflow
-  | Q_mutez_underflow
+  | Q_mutez_add_overflow
+  | Q_mutez_mul_overflow
+  | Q_mutez_sub_underflow
   | Q_shiftleft_prohibited
   | Q_shiftright_prohibited
   | Q_assertion
@@ -18,12 +19,21 @@ type state_set = {
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Utilities - State Set Mapping                                             *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val map_ss_running : (Tz.sym_state -> Tz.sym_state) -> state_set -> state_set
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Run Instruction                                                           *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-val run_inst : state_set -> (Tz.mich_i Tz.cc) -> state_set
-val run_inst_i : Tz.sym_state -> (Tz.mich_i Tz.cc) -> state_set
+val run_inst : (Tz.mich_i Tz.cc) -> state_set -> state_set
+val run_inst_i : (Tz.mich_i Tz.cc) -> Tz.sym_state -> state_set
 
 
 (*****************************************************************************)
@@ -32,8 +42,8 @@ val run_inst_i : Tz.sym_state -> (Tz.mich_i Tz.cc) -> state_set
 (*****************************************************************************)
 (*****************************************************************************)
 
-val run_operation : state_set -> Tz.operation -> state_set
-val run_operation_i : Tz.sym_state -> Tz.operation -> state_set
+val run_operation : Tz.operation -> state_set -> state_set
+val run_operation_i : Tz.operation -> Tz.sym_state -> state_set
 
 
 (*****************************************************************************)
