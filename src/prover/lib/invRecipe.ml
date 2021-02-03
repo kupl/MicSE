@@ -60,7 +60,7 @@ let combination_self_two_diff_rf_set : 'a CPSet.t -> ('a * 'a) CPSet.t
   |> CPSet.of_list
 end (* function combination_self_two_diff_rf_set end *)
 
-let imply_reducer = (function (VF_imply (VF_and [], x)) -> x | _ as f -> f)
+let imply_reducer = (function (Vlang.Formula.VF_imply (VF_and [], x)) -> x | _ as f -> f)
 
 
 (* "formula_mutez_equal" : every component should be mutez type. *)
