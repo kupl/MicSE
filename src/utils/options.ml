@@ -32,6 +32,8 @@ let flag_param_storage : bool ref
 =ref false (* print counter-example on unsafe-path *)
 
 (* FLAGS - Print components *)
+let flag_inst_count_print : bool ref
+=ref false
 let flag_adt_print : bool ref
 =ref false
 let flag_cfg_print_dot : bool ref
@@ -85,6 +87,7 @@ end
 let options : (Arg.key * Arg.spec * Arg.doc) list
 = [
     ("-input", (Arg.String (fun s -> input_file := s)), "File path for input michelson program.");
+    ("-inst_count", (Arg.Set flag_inst_count_print), "Print count of instruction in Michelson file.");
     ("-adt_print", (Arg.Set flag_adt_print), "Print parsed Michelson file.");
     ("-cfgopt", (Arg.Set flag_cfgopt_all), "Set all cfg optimization options");
     ("-cfgopt_rsv", (Arg.Set flag_cfgopt_rsv), "Remove all trivial skip vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");

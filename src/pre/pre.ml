@@ -9,6 +9,7 @@ let pre_process : string -> ((Cfg.t * PreLib.Cfg.cfgcon_ctr) * (Mich.data Mich.t
 =fun filepath -> begin
   (* Parse Michelson File *)
   let adt = Adt.parse filepath |> Mich.subst_standard_macro_all_pgm |> Mich.optm_all_pgm |> Mich.fill_position_all_pgm ~update_loc:false in
+  let _ = (if (!Utils.Options.flag_inst_count_print) then (("# of Instructions : " ^ (adt |> Mich.count_inst_pgm |> string_of_int)) |> print_endline) else ()) in
 
   (* FLAGS - Parsed Michelson File *)
   let _ : unit = (if (!Utils.Options.flag_adt_print) then (Mich.string_of_pgm_ol adt |> Stdlib.print_endline) else ()) in
