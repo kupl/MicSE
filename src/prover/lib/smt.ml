@@ -355,6 +355,9 @@ module ZInt = struct
   let one_ : unit -> t
   =fun () -> of_int (1)
 
+  let mutez_max_ : unit -> t
+  =fun () -> of_zarith (Z.shift_left Z.one (CONST._bit_mutez) |> Z.pred)
+
   let create_neg : t -> t
   =fun e -> e |> Z3.Arithmetic.mk_unary_minus (ZCtx.read ())
   let create_add : t list -> t

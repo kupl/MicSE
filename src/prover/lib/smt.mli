@@ -267,6 +267,8 @@ module ZInt : sig
   val zero_ : unit -> t
   val one_ : unit -> t
 
+  val mutez_max_ : unit -> t
+
   val create_neg : t -> t
   val create_add : t list -> t
   val create_sub : t list -> t
