@@ -112,7 +112,8 @@ and operation =
         - Mutez Overflow for real tezos token can occur after 156 years,
           Condition: (current-total-supply = 10^9 XTZ = 10^15 mutez), (inflation rate = 1.06/year), (mutez overflows from (2^63) mutez), (no XTZ burns for gas)
     *)
-  | TO_internal_symstack_prepare of (mich_v cc * mich_v cc) (* param-val * contract *)
+  | TO_internal_symstack_prepare of (mich_v cc) (* param-val *)
+  (* | TO_internal_run_code of (mich_v cc) (* target-addr *) *)
 
 and blockchain = {
   (* (address, contract) map *)
@@ -462,7 +463,8 @@ type mich_f =
   | MF_or of mich_f list
   | MF_eq of mich_v cc * mich_v cc  (* 'a * 'a -> formula *)
   | MF_imply of mich_f * mich_f
-  (* MicSE-Cfg Pattern Matching *)  
+  (* MicSE-Cfg Pattern Matching *)
+  | MF_is_true of mich_v cc (* bool -> formula *)
   | MF_is_none of mich_v cc (* 'a option -> formula *)
   | MF_is_left of mich_v cc (* ('a, 'b) or -> formula *)
   | MF_is_cons of mich_v cc (* 'a list -> formula *)

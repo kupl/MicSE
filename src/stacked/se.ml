@@ -46,10 +46,88 @@ let rec run_inst : (mich_i cc) -> state_set -> state_set
     )
 end (* function run_inst end *)
 
+(* It might raise unhandled exceptions if the given michelson program cannot pass Michelson type system. *)
 and run_inst_i : (mich_i cc) -> sym_state -> state_set
-= fun inst ss -> begin
-  match inst with
-  | _ -> (ignore (ss, inst)); Error "run_inst_i : match failed" |> raise
+= (* SUGAR - module name *)
+  let module CList = Core.List in
+  (* SUGAR - push to stack *)
+  let sstack_push : (mich_v cc list) -> (mich_v cc) -> (mich_v cc list) = fun sstack v -> (v :: sstack) in
+  let cons_tl_n : (mich_v cc list) -> int -> (mich_v cc) -> (mich_v cc list)
+  = fun sstack n v -> let (_, tl_n) = CList.split_n sstack n in (v :: tl_n)
+  in
+  (* let cons2_tl_n : (mich_v cc list) -> int -> (mich_v cc * mich_v cc) -> (mich_v cc list)
+  = fun sstack n (v1,v2) -> let (_, tl_n) = CList.split_n sstack n in (v1 :: v2 :: tl_n)
+  in *)
+  (* SUGAR - record update *)
+  let sstack_to_ss : sym_state -> (mich_v cc list) -> sym_state
+  = fun ss sstack -> {ss with ss_symstack=sstack}
+  in
+  let ss_to_srset : sym_state -> state_set
+  = fun ss -> {running=PSet.singleton(ss); queries=PSet.empty; terminated=PSet.empty}
+  in
+  let sstack_to_srset : sym_state -> (mich_v cc list) -> state_set
+  = fun ss sstack -> sstack |> sstack_to_ss ss |> ss_to_srset 
+  in
+  (* SUGAR - constraint update *)
+  let ss_add_constraint : sym_state -> mich_f -> sym_state
+  = fun ss fmla -> {ss with ss_constraints=(fmla :: ss.ss_constraints)}
+  in
+  (* SUGAR - state set *)
+  let sset_union_pointwise : state_set -> state_set -> state_set
+  = fun sset1 sset2 -> {
+    running = PSet.union sset1.running sset2.running;
+    queries = PSet.union sset2.queries sset2.queries;
+    terminated = PSet.union sset1.terminated sset2.terminated;
+  } in
+  (* FUNCTION BEGIN *)
+  fun inst ss -> begin
+  let gen_cc : 'a -> 'a cc
+  = fun x -> {
+    cc_loc = inst.cc_loc;
+    cc_anl = inst.cc_anl;
+    cc_v = x;
+  } in
+  let {ss_fixchain; ss_dynchain; ss_exec_addrs; ss_oper_queue; ss_cur_source; ss_cur_sender; ss_cur_ctaddr; ss_symstack; ss_constraints;} = ss in
+  match inst.cc_v with
+  | MI_seq (i1,i2) -> ss |> ss_to_srset |> run_inst i1 |> run_inst i2
+  | MI_drop zn ->
+    (CList.split_n ss_symstack (Z.to_int zn) |> Stdlib.snd)
+    |> sstack_to_srset ss
+  | MI_dup zn -> 
+    (CList.nth_exn ss_symstack (Z.to_int zn - 1)) :: ss_symstack
+    |> sstack_to_srset ss
+  | MI_swap ->
+    (match ss_symstack with
+      | h1 :: h2 :: tl -> (h2 :: h1 :: tl)
+      | _ -> Error "run_inst_i : MI_swap" |> raise)
+    |> sstack_to_srset ss
+  | MI_dig zn -> 
+    (match CList.split_n ss_symstack (Z.to_int zn) with
+      | (hdlst, (tlhd :: tltl)) -> (tlhd :: hdlst @ tltl)
+      | _ -> Error ("run_inst_i : MI_dig" ^ (zn |> Z.to_string)) |> raise)
+    |> sstack_to_srset ss
+  | MI_dug zn ->
+    (match CList.split_n ss_symstack (Z.to_int zn + 1) with
+      | ((hdhd :: hdtl), tl) -> (hdtl @ (hdhd :: tl))
+      | _ -> Error ("run_inst_i : MI_dug" ^ (zn |> Z.to_string)) |> raise)
+    |> sstack_to_srset ss
+  | MI_push (_,v) -> (v :: ss_symstack) |> sstack_to_srset ss
+  | MI_some -> (MV_some (CList.hd_exn ss_symstack) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_none t -> (MV_none t |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss 
+  | MI_unit -> (MV_unit |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_if_none (i1,i2) ->
+    let cond_constraint : mich_f = MF_is_true (CList.hd_exn ss_symstack) in
+    let then_br_sset : state_set = cond_constraint |> ss_add_constraint ss |> ss_to_srset |> run_inst i1 in
+    let else_br_sset : state_set = (MF_not cond_constraint) |> ss_add_constraint ss |> ss_to_srset |> run_inst i2 in
+    sset_union_pointwise then_br_sset else_br_sset
+  | MI_pair ->
+    (MV_pair (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_cc)
+    |> cons_tl_n ss_symstack 2
+    |> sstack_to_srset ss
+  | _ -> 
+    (ignore (ss_fixchain, ss_dynchain, ss_exec_addrs, ss_oper_queue, ss_cur_source, ss_cur_sender, ss_cur_ctaddr, ss_symstack, ss_constraints)); 
+    (ignore (ss, inst)); 
+    Error "run_inst_i : match failed" |> raise
 end (* function run_inst_i end *)
 
 
@@ -113,7 +191,9 @@ and run_operation_i : operation -> Tz.sym_state -> state_set
     (* 4. set current contract address *)
     |> map_ss_running (fun ss -> {ss with ss_cur_ctaddr=target_contract_addr})
     (* 5. initialize symstack *)
-    |> run_operation (TO_internal_symstack_prepare (param_val, target_contract))
+    |> run_operation (TO_internal_symstack_prepare (param_val))
+    (* 6. run contract code *)
+    (* |> run_operation (TO_internal_run_code (target_contract_addr)) *)
     |> ignore;(ignore (param_val, amount, target_contract)); Error "run_operation_i : TO_transer_tokens : not implemented" |> raise
   | TO_implicit_set_delegate (_, delegate_opt) ->
     let new_dynchain : blockchain = {ss.ss_dynchain with bc_delegate=(MV_update_xomm(ss.ss_cur_sender, delegate_opt, ss.ss_dynchain.bc_delegate) |> gen_dummy_cc)} in
@@ -155,15 +235,22 @@ and run_operation_i : operation -> Tz.sym_state -> state_set
     let running_state : sym_state = {ss with ss_dynchain=running_dynchain; ss_constraints=running_condition;} in
     (* return *)
     {running=(PSet.singleton running_state); queries=PSet.empty; terminated=PSet.empty;}
-  | TO_internal_symstack_prepare (param_val, target_contract) ->
-    (* It generates 1 running state and 1 terminated state.
-      - running: length-1 symstack "[<param-val, storage-val in dynamic-chain>]" applied && found-constraint added.
-      - terminated: not-found (None) constraint added.
+  | TO_internal_symstack_prepare (param_val) ->
+    (* It generates 1 running state OR 1 terminated state, since "bc_storage" is managed with PMap, not mich_v.
+      - running: length-1 symstack "[<param-val, storage-val in dynamic-chain>]" applied.
+      - terminated: if the storage value of the target-contract not found.
     *)
-    (* let target_contract_addr : mich_v cc = 
-    let storage_val_opt : mich_v cc = MV_get_xmoy () *)
-    ignore (param_val, target_contract); Error "run_operation_i : TO_internal_symstack_prepare : unimplmeneted" |> raise
-
+    let target_contract_addr : mich_v cc = ss.ss_cur_ctaddr in
+    let storage_val_opt : mich_v cc option = PMap.find ss.ss_dynchain.bc_storage target_contract_addr in
+    (match storage_val_opt with
+    | None -> {running=PSet.empty; queries=PSet.empty; terminated=(PSet.singleton ss);}
+    | Some sval ->
+      let param_storage_pair : mich_v cc = MV_pair (param_val, sval) |> gen_dummy_cc in
+      let running_state : sym_state = {ss with ss_symstack=[param_storage_pair]} in
+      {running=(PSet.singleton running_state); queries=PSet.empty; terminated=PSet.empty}
+    )
+  (* | TO_internal_run_code (target_addr) -> *)
+    (* It is the interface to call "Se.run_inst", since it might fails to find  *)
 end (* function run_operation_i end *)
 
 
