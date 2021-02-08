@@ -116,7 +116,7 @@ and run_inst_i : (mich_i cc) -> sym_state -> state_set
   | MI_none t -> (MV_none t |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss 
   | MI_unit -> (MV_unit |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_if_none (i1,i2) ->
-    let cond_constraint : mich_f = MF_is_true (CList.hd_exn ss_symstack) in
+    let cond_constraint : mich_f = MF_is_none (CList.hd_exn ss_symstack) in
     let then_br_sset : state_set = cond_constraint |> ss_add_constraint ss |> ss_to_srset |> run_inst i1 in
     let else_br_sset : state_set = (MF_not cond_constraint) |> ss_add_constraint ss |> ss_to_srset |> run_inst i2 in
     sset_union_pointwise then_br_sset else_br_sset
