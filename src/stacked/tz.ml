@@ -500,8 +500,13 @@ type sym_state = {
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Utilities - Code Component                                                *)
+(* Utilities                                                                 *)
 (*****************************************************************************)
+(*****************************************************************************)
+
+
+(*****************************************************************************)
+(* Code Component                                                            *)
 (*****************************************************************************)
 
 (* gen_dummy_cc wraps the given value with "Unknown" location and "[]" annotations *)
@@ -511,3 +516,231 @@ let gen_dummy_cc : 'a -> 'a cc
   cc_anl = [];
   cc_v = x;
 }
+
+
+(*****************************************************************************)
+(* Type                                                                      *)
+(*****************************************************************************)
+
+let rec typ_of_val : mich_v cc -> mich_t cc
+= fun v -> typ_of_val_i v.cc_v
+
+and typ_of_val_i : mich_v -> mich_t cc
+= fun v -> begin
+  let err () = Stdlib.failwith ( "typ_of_val_i : val=(" ^ "VALUE-PRINT-NOT-IMPLEMENTED" ^ ")" ) in
+  match v with
+  (*************************************************************************)
+  (* Symbol & Polymorphic                                                  *)
+  (*************************************************************************)
+  | MV_symbol (t,_) -> t
+  | MV_car v -> (function | MT_pair (t1,_) -> t1 | _ -> err ()) ((typ_of_val v).cc_v)
+  | MV_cdr v -> (function | MT_pair (_,t2) -> t2 | _ -> err ()) ((typ_of_val v).cc_v)
+  | MV_unlift_option v -> (function | MT_option t -> t | _ -> err ()) ((typ_of_val v).cc_v)
+  | MV_unlift_left v -> (function | MT_or (t1,_) -> t1 | _ -> err ()) ((typ_of_val v).cc_v)
+  | MV_unlift_right v -> (function | MT_or (_,t2) -> t2 | _ -> err ()) ((typ_of_val v).cc_v)
+  | MV_hd_l v -> (function | MT_list t -> t | _ -> err ()) ((typ_of_val v).cc_v)
+  | MV_exec (v1,_) -> (function | MT_lambda (_,t2) -> t2 | _ -> err ()) ((typ_of_val v1).cc_v)
+  (*************************************************************************)
+  (* Integer                                                               *)
+  (*************************************************************************)
+  | MV_lit_int _ -> MT_int |> gen_dummy_cc
+  | MV_neg_ni _ -> MT_int |> gen_dummy_cc
+  | MV_neg_ii _ -> MT_int |> gen_dummy_cc
+  | MV_not_ni _ -> MT_int |> gen_dummy_cc
+  | MV_not_ii _ -> MT_int |> gen_dummy_cc
+  | MV_add_nii _ -> MT_int |> gen_dummy_cc
+  | MV_add_ini _ -> MT_int |> gen_dummy_cc
+  | MV_add_iii _ -> MT_int |> gen_dummy_cc
+  | MV_sub_nni _ -> MT_int |> gen_dummy_cc
+  | MV_sub_nii _ -> MT_int |> gen_dummy_cc
+  | MV_sub_ini _ -> MT_int |> gen_dummy_cc
+  | MV_sub_iii _ -> MT_int |> gen_dummy_cc
+  | MV_sub_tti _ -> MT_int |> gen_dummy_cc
+  | MV_mul_nii _ -> MT_int |> gen_dummy_cc
+  | MV_mul_ini _ -> MT_int |> gen_dummy_cc
+  | MV_mul_iii _ -> MT_int |> gen_dummy_cc
+  | MV_compare _ -> MT_int |> gen_dummy_cc
+  | MV_int_of_nat _ -> MT_int |> gen_dummy_cc
+  (*************************************************************************)
+  (* Natural Number                                                        *)
+  (*************************************************************************)
+  | MV_lit_nat _ -> MT_nat |> gen_dummy_cc
+  | MV_abs_in _ -> MT_nat |> gen_dummy_cc
+  | MV_add_nnn _ -> MT_nat |> gen_dummy_cc
+  | MV_mul_nnn _ -> MT_nat |> gen_dummy_cc
+  | MV_shiftL_nnn _ -> MT_nat |> gen_dummy_cc
+  | MV_shiftR_nnn _ -> MT_nat |> gen_dummy_cc
+  | MV_and_nnn _ -> MT_nat |> gen_dummy_cc
+  | MV_and_inn _ -> MT_nat |> gen_dummy_cc
+  | MV_or_nnn _ -> MT_nat |> gen_dummy_cc
+  | MV_xor_nnn _ -> MT_nat |> gen_dummy_cc
+  | MV_size_s _ -> MT_nat |> gen_dummy_cc
+  | MV_size_m _ -> MT_nat |> gen_dummy_cc
+  | MV_size_l _ -> MT_nat |> gen_dummy_cc
+  | MV_size_str _ -> MT_nat |> gen_dummy_cc
+  | MV_size_b _ -> MT_nat |> gen_dummy_cc
+  (*************************************************************************)
+  (* String                                                                *)
+  (*************************************************************************)
+  | MV_lit_string _ -> MT_string |> gen_dummy_cc
+  | MV_concat_sss _ -> MT_string |> gen_dummy_cc
+  | MV_concat_list_s _ -> MT_string |> gen_dummy_cc
+  (*************************************************************************)
+  (* Bytes                                                                 *)
+  (*************************************************************************)
+  | MV_lit_bytes _ -> MT_bytes |> gen_dummy_cc
+  | MV_concat_bbb _ -> MT_bytes |> gen_dummy_cc
+  | MV_concat_list_b _ -> MT_bytes |> gen_dummy_cc
+  | MV_pack _ -> MT_bytes |> gen_dummy_cc
+  | MV_blake2b _ -> MT_bytes |> gen_dummy_cc
+  | MV_sha256 _ -> MT_bytes |> gen_dummy_cc
+  | MV_sha512 _ -> MT_bytes |> gen_dummy_cc
+  (*************************************************************************)
+  (* Mutez                                                                 *)
+  (*************************************************************************)
+  | MV_lit_mutez _ -> MT_mutez |> gen_dummy_cc
+  | MV_add_mmm _ -> MT_mutez |> gen_dummy_cc
+  | MV_sub_mmm _ -> MT_mutez |> gen_dummy_cc
+  | MV_mul_mnm _ -> MT_mutez |> gen_dummy_cc
+  | MV_mul_nmm _ -> MT_mutez |> gen_dummy_cc
+  (*************************************************************************)
+  (* Bool                                                                  *)
+  (*************************************************************************)
+  | MV_lit_bool _ -> MT_bool |> gen_dummy_cc
+  | MV_not_bb _ -> MT_bool |> gen_dummy_cc
+  | MV_and_bbb _ -> MT_bool |> gen_dummy_cc
+  | MV_or_bbb _ -> MT_bool |> gen_dummy_cc
+  | MV_xor_bbb _ -> MT_bool |> gen_dummy_cc
+  | MV_eq_ib _ -> MT_bool |> gen_dummy_cc
+  | MV_neq_ib _ -> MT_bool |> gen_dummy_cc
+  | MV_lt_ib _ -> MT_bool |> gen_dummy_cc
+  | MV_gt_ib _ -> MT_bool |> gen_dummy_cc
+  | MV_leq_ib _ -> MT_bool |> gen_dummy_cc
+  | MV_geq_ib _ -> MT_bool |> gen_dummy_cc
+  | MV_mem_xsb _ -> MT_bool |> gen_dummy_cc
+  | MV_mem_xmb _ -> MT_bool |> gen_dummy_cc
+  | MV_mem_xbmb _ -> MT_bool |> gen_dummy_cc
+  | MV_check_signature _ -> MT_bool |> gen_dummy_cc
+  (*************************************************************************)
+  (* Key Hash                                                              *)
+  (*************************************************************************)
+  | MV_lit_key_hash _ -> MT_key_hash |> gen_dummy_cc
+  | MV_hash_key _ -> MT_key_hash |> gen_dummy_cc
+  (*************************************************************************)
+  (* Timestamp                                                             *)
+  (*************************************************************************)
+  | MV_lit_timestamp_str _ -> MT_timestamp |> gen_dummy_cc
+  | MV_lit_timestamp_sec _ -> MT_timestamp |> gen_dummy_cc
+  | MV_add_tit _ -> MT_timestamp |> gen_dummy_cc
+  | MV_add_itt _ -> MT_timestamp |> gen_dummy_cc
+  | MV_sub_tit _ -> MT_timestamp |> gen_dummy_cc
+  (*************************************************************************)
+  (* Address                                                               *)
+  (*************************************************************************)
+  | MV_lit_address _ -> MT_address |> gen_dummy_cc
+  | MV_address_of_contract _ -> MT_address |> gen_dummy_cc
+  (*************************************************************************)
+  (* Key                                                                   *)
+  (*************************************************************************)
+  | MV_lit_key _ -> MT_key |> gen_dummy_cc
+  (*************************************************************************)
+  (* Unit                                                                  *)
+  (*************************************************************************)
+  | MV_unit -> MT_unit |> gen_dummy_cc
+  (*************************************************************************)
+  (* Signature                                                             *)
+  (*************************************************************************)
+  | MV_lit_signature_str _ -> MT_signature |> gen_dummy_cc
+  | MV_lit_signature_signed _ -> MT_signature |> gen_dummy_cc
+  (*************************************************************************)
+  (* Option                                                                *)
+  (*************************************************************************)
+  | MV_some v -> MT_option (typ_of_val v) |> gen_dummy_cc
+  | MV_none t -> MT_option t |> gen_dummy_cc
+  | MV_ediv_nnnn _ -> MT_option (MT_pair (gen_dummy_cc MT_nat, gen_dummy_cc MT_nat) |> gen_dummy_cc) |> gen_dummy_cc
+  | MV_ediv_niin _ -> MT_option (MT_pair (gen_dummy_cc MT_int, gen_dummy_cc MT_nat) |> gen_dummy_cc) |> gen_dummy_cc
+  | MV_ediv_inin _ -> MT_option (MT_pair (gen_dummy_cc MT_int, gen_dummy_cc MT_nat) |> gen_dummy_cc) |> gen_dummy_cc
+  | MV_ediv_iiin _ -> MT_option (MT_pair (gen_dummy_cc MT_int, gen_dummy_cc MT_nat) |> gen_dummy_cc) |> gen_dummy_cc
+  | MV_ediv_mnmm _ -> MT_option (MT_pair (gen_dummy_cc MT_mutez, gen_dummy_cc MT_mutez) |> gen_dummy_cc) |> gen_dummy_cc
+  | MV_ediv_mmnm _ -> MT_option (MT_pair (gen_dummy_cc MT_nat, gen_dummy_cc MT_mutez) |> gen_dummy_cc) |> gen_dummy_cc
+  | MV_get_xmoy (_,v2) -> (function | MT_map(_,t2) -> MT_option t2 | _ -> err ()) ((typ_of_val v2).cc_v) |> gen_dummy_cc
+  | MV_get_xbmo (_,v2) -> (function | MT_big_map(_,t2) -> MT_option t2 | _ -> err ()) ((typ_of_val v2).cc_v) |> gen_dummy_cc
+  | MV_slice_nnso _ -> MT_option (MT_string |> gen_dummy_cc) |> gen_dummy_cc
+  | MV_slice_nnbo _ -> MT_option (MT_bytes |> gen_dummy_cc) |> gen_dummy_cc
+  | MV_unpack (t,_) -> MT_option t |> gen_dummy_cc
+  | MV_contract_of_address (t,_) -> MT_option (MT_contract t |> gen_dummy_cc) |> gen_dummy_cc
+  | MV_isnat _ -> MT_option (MT_nat |> gen_dummy_cc) |> gen_dummy_cc
+  (*************************************************************************)
+  (* List                                                                  *)
+  (*************************************************************************)
+  | MV_lit_list (t,_) -> MT_list t |> gen_dummy_cc
+  | MV_nil t -> MT_list t |> gen_dummy_cc
+  | MV_cons (v,_) -> MT_list (typ_of_val v) |> gen_dummy_cc
+  | MV_tl_l v -> typ_of_val v
+  (*************************************************************************)
+  (* Set                                                                   *)
+  (*************************************************************************)
+  | MV_lit_set (t,_) -> MT_set t |> gen_dummy_cc
+  | MV_empty_set t -> MT_set t |> gen_dummy_cc
+  | MV_update_xbss (v,_,_) -> MT_set (typ_of_val v) |> gen_dummy_cc
+  (*************************************************************************)
+  (* Operation                                                             *)
+  (*************************************************************************)
+  | MV_create_contract _ -> MT_operation |> gen_dummy_cc
+  | MV_transfer_tokens _ -> MT_operation |> gen_dummy_cc
+  | MV_set_delegate _ -> MT_operation |> gen_dummy_cc
+  (*************************************************************************)
+  (* Contract                                                              *)
+  (*************************************************************************)
+  | MV_lit_contract c -> MT_contract c.ctrt_param_ty |> gen_dummy_cc
+  | MV_self t -> MT_contract t |> gen_dummy_cc
+  | MV_implicit_account _ -> MT_contract (gen_dummy_cc MT_unit) |> gen_dummy_cc
+  (*************************************************************************)
+  (* Pair                                                                  *)
+  (*************************************************************************)
+  | MV_pair (v1,v2) -> MT_pair (typ_of_val v1, typ_of_val v2) |> gen_dummy_cc
+  (*************************************************************************)
+  (* Or                                                                    *)
+  (*************************************************************************)
+  | MV_left (t,_) -> t
+  | MV_right (t,_) -> t
+  (*************************************************************************)
+  (* Lambda                                                                *)
+  (*************************************************************************)
+  | MV_lit_lambda (t1,t2,_) -> MT_lambda (t1,t2) |> gen_dummy_cc
+  | MV_lambda_unknown (t1,t2) -> MT_lambda (t1,t2) |> gen_dummy_cc
+  | MV_lambda_closure (v1,_) -> (
+    (match ((typ_of_val v1).cc_v) with
+      | MT_lambda (t1,t3) -> (match t1.cc_v with | MT_pair (_,t12) -> MT_lambda (t12,t3) | _ -> err ())
+      | _ -> err ())
+    |> gen_dummy_cc
+  )
+  (*************************************************************************)
+  (* Map                                                                   *)
+  (*************************************************************************)
+  | MV_lit_map (t1,t2,_) -> MT_map (t1,t2) |> gen_dummy_cc
+  | MV_empty_map (t1,t2) -> MT_map (t1,t2) |> gen_dummy_cc
+  | MV_update_xomm (v1,v2,_) -> (
+    let t1 = (typ_of_val v1).cc_v |> gen_dummy_cc in
+    (match ((typ_of_val v2).cc_v) with
+      | MT_option t2 -> MT_big_map (t1,t2)
+      | _ -> err ())
+    |> gen_dummy_cc
+  )
+  (*************************************************************************)
+  (* Big Map                                                               *)
+  (*************************************************************************)
+  | MV_lit_big_map (t1,t2,_) -> MT_big_map (t1,t2) |> gen_dummy_cc
+  | MV_empty_big_map (t1,t2) -> MT_big_map (t1,t2) |> gen_dummy_cc
+  | MV_update_xobmbm (v1,v2,_) -> (
+    let t1 = (typ_of_val v1).cc_v |> gen_dummy_cc in
+    (match ((typ_of_val v2).cc_v) with
+      | MT_option t2 -> MT_big_map (t1,t2)
+      | _ -> err ())
+    |> gen_dummy_cc
+  )
+  (*************************************************************************)
+  (* Chain Id                                                              *)
+  (*************************************************************************)
+  | MV_lit_chain_id _ -> MT_chain_id |> gen_dummy_cc
+end (* function typ_of_val_i end *)
