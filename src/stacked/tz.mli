@@ -486,6 +486,7 @@ type mich_f =
 (*****************************************************************************)
 
 type sym_state = {
+  (* operation-level states *)
   ss_fixchain : blockchain; (* fixed, concrete blockchain *)
   ss_dynchain : blockchain; (* dynamic, unwritten blockchain *)
   ss_exec_addrs : mich_v cc; (* address set of executed contracts *)
@@ -493,6 +494,10 @@ type sym_state = {
   ss_cur_source : mich_v cc; (* address, source of the operation *)
   ss_cur_sender : mich_v cc; (* address, sender of the transfer-token operation *)
   ss_cur_ctaddr : mich_v cc; (* address, the address of the current contract (while executing) *)
+  (* contract/instruction-level states *)
+  ss_curct_startloc : ccp_loc; (* location where the state starts while executing a contract *)
+  ss_curct_blockloc : ccp_loc; (* location where the state ends while executing a contract *)
+  ss_curct_startstack : mich_v cc list; (* symbolic stack where the state starts while executing a contract *)
   ss_symstack : mich_v cc list; (* symbolic stack *)
   ss_constraints : mich_f list;  (* AND-connected logical formula to constrain this state. *)
 }

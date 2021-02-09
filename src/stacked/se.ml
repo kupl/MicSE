@@ -55,9 +55,9 @@ and run_inst_i : (mich_i cc) -> sym_state -> state_set
   let cons_tl_n : (mich_v cc list) -> int -> (mich_v cc) -> (mich_v cc list)
   = fun sstack n v -> let (_, tl_n) = CList.split_n sstack n in (v :: tl_n)
   in
-  (* let cons2_tl_n : (mich_v cc list) -> int -> (mich_v cc * mich_v cc) -> (mich_v cc list)
+  let cons2_tl_n : (mich_v cc list) -> int -> (mich_v cc * mich_v cc) -> (mich_v cc list)
   = fun sstack n (v1,v2) -> let (_, tl_n) = CList.split_n sstack n in (v1 :: v2 :: tl_n)
-  in *)
+  in
   (* SUGAR - record update *)
   let sstack_to_ss : sym_state -> (mich_v cc list) -> sym_state
   = fun ss sstack -> {ss with ss_symstack=sstack}
@@ -87,7 +87,7 @@ and run_inst_i : (mich_i cc) -> sym_state -> state_set
     cc_anl = inst.cc_anl;
     cc_v = x;
   } in
-  let {ss_fixchain; ss_dynchain; ss_exec_addrs; ss_oper_queue; ss_cur_source; ss_cur_sender; ss_cur_ctaddr; ss_symstack; ss_constraints;} = ss in
+  let {ss_fixchain; ss_dynchain; ss_exec_addrs; ss_oper_queue; ss_cur_source; ss_cur_sender; ss_cur_ctaddr; ss_curct_startloc; ss_curct_blockloc; ss_curct_startstack; ss_symstack; ss_constraints;} = ss in
   match inst.cc_v with
   | MI_seq (i1,i2) -> ss |> ss_to_srset |> run_inst i1 |> run_inst i2
   | MI_drop zn ->
@@ -117,15 +117,85 @@ and run_inst_i : (mich_i cc) -> sym_state -> state_set
   | MI_unit -> (MV_unit |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_if_none (i1,i2) ->
     let cond_constraint : mich_f = MF_is_none (CList.hd_exn ss_symstack) in
-    let then_br_sset : state_set = cond_constraint |> ss_add_constraint ss |> ss_to_srset |> run_inst i1 in
-    let else_br_sset : state_set = (MF_not cond_constraint) |> ss_add_constraint ss |> ss_to_srset |> run_inst i2 in
+    let then_br_sset : state_set =
+      (CList.tl_exn ss_symstack)
+      |> sstack_to_ss (ss_add_constraint ss cond_constraint)
+      |> ss_to_srset
+      |> run_inst i1
+    in
+    let else_br_sset : state_set = 
+      (MV_unlift_option (CList.hd_exn ss_symstack) |> gen_cc)
+      |> cons_tl_n ss_symstack 1
+      |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
+      |> ss_to_srset
+      |> run_inst i2
+    in
     sset_union_pointwise then_br_sset else_br_sset
   | MI_pair ->
     (MV_pair (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_cc)
     |> cons_tl_n ss_symstack 2
     |> sstack_to_srset ss
+  | MI_car -> (MV_car (CList.hd_exn ss_symstack) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_cdr -> (MV_cdr (CList.hd_exn ss_symstack) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_left t -> (MV_left (t,(CList.hd_exn ss_symstack)) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_right t -> (MV_right (t,(CList.hd_exn ss_symstack)) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_if_left (i1,i2) ->
+    let cond_constraint : mich_f = MF_is_left (CList.hd_exn ss_symstack) in
+    let then_br_sset : state_set =
+      (MV_unlift_left (CList.hd_exn ss_symstack) |> gen_cc)
+      |> cons_tl_n ss_symstack 1
+      |> sstack_to_ss (ss_add_constraint ss cond_constraint)
+      |> ss_to_srset
+      |> run_inst i1
+    in
+    let else_br_sset : state_set =
+      (MV_unlift_right (CList.hd_exn ss_symstack) |> gen_cc)
+      |> cons_tl_n ss_symstack 1
+      |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
+      |> ss_to_srset
+      |> run_inst i2
+    in
+    sset_union_pointwise then_br_sset else_br_sset
+  | MI_nil t -> (MV_nil t |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_cons -> 
+    (MV_cons (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_cc)
+    |> cons_tl_n ss_symstack 2
+    |> sstack_to_srset ss
+  | MI_if_cons (i1,i2) ->
+    let cond_constraint : mich_f = MF_is_cons (CList.hd_exn ss_symstack) in
+    let then_br_sset : state_set =
+      let listv : mich_v cc = CList.hd_exn ss_symstack in
+      (gen_cc (MV_hd_l listv), gen_cc (MV_tl_l listv))
+      |> cons2_tl_n ss_symstack 1
+      |> sstack_to_ss (ss_add_constraint ss cond_constraint)
+      |> ss_to_srset
+      |> run_inst i1
+    in
+    let else_br_sset : state_set =
+      (CList.tl_exn ss_symstack)
+      |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
+      |> ss_to_srset
+      |> run_inst i2
+    in
+    sset_union_pointwise then_br_sset else_br_sset
+  | MI_size ->
+    let h = CList.hd_exn ss_symstack in
+    (match (typ_of_val h).cc_v with
+      | MT_set _ -> MV_size_s h
+      | MT_map _ -> MV_size_m h
+      | MT_list _ -> MV_size_l h
+      | MT_string -> MV_size_str h
+      | MT_bytes -> MV_size_b h
+      | _ -> Error "run_inst_i : MI_size" |> raise)
+    |> gen_cc
+    |> cons_tl_n ss_symstack 1
+    |> sstack_to_srset ss
+  | MI_empty_set t -> (MV_empty_set t |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_empty_map (t1,t2) -> (MV_empty_map (t1,t2) |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_empty_big_map (t1,t2) -> (MV_empty_big_map (t1,t2) |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  
   | _ -> 
-    (ignore (ss_fixchain, ss_dynchain, ss_exec_addrs, ss_oper_queue, ss_cur_source, ss_cur_sender, ss_cur_ctaddr, ss_symstack, ss_constraints)); 
+    (ignore (ss_fixchain, ss_dynchain, ss_exec_addrs, ss_oper_queue, ss_cur_source, ss_cur_sender, ss_cur_ctaddr, ss_curct_startloc, ss_curct_blockloc, ss_curct_startstack, ss_symstack, ss_constraints)); 
     (ignore (ss, inst)); 
     Error "run_inst_i : match failed" |> raise
 end (* function run_inst_i end *)
@@ -270,6 +340,9 @@ let main : blockchain -> string -> operation list -> state_set
     ss_cur_source = (MV_lit_address (gen_dummy_cc (MV_lit_key_hash source))) |> gen_dummy_cc;
     ss_cur_sender = (MV_lit_address (gen_dummy_cc (MV_lit_key_hash source))) |> gen_dummy_cc;
     ss_cur_ctaddr = (MV_lit_address (gen_dummy_cc (MV_lit_key_hash source))) |> gen_dummy_cc; (* dummy value *)
+    ss_curct_startloc = CCLOC_Unknown;
+    ss_curct_blockloc = CCLOC_Unknown;
+    ss_curct_startstack = [];
     ss_symstack = [];
     ss_constraints = [];
   } in
