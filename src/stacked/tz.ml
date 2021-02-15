@@ -479,7 +479,7 @@ type sym_state = {
   ss_exec_addrs : mich_v cc; (* address set of executed contracts *)
   ss_oper_queue : mich_v cc; (* operation list, WARNING: MICSE does not support this feature strictly *)
   (* the state for a single contract call *)
-  ss_optt : oper_transfertoken; (* trafer-token operation *)
+  ss_optt : oper_transfertoken; (* transfer-token operation *)
   ss_entry_mci : mich_cut_info; (* location and category where and when the state starts a (symbolic) execution *)
   ss_entry_symstack : mich_v cc list; (* symbolic stack where the state starts while executing a contract *)
   ss_block_mci : mich_cut_info; (* location and category where and when the state blocked *)
@@ -689,7 +689,7 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
   (*************************************************************************)
   (* Contract                                                              *)
   (*************************************************************************)
-  | MV_lit_contract c -> MT_contract c.ctrt_param_ty |> gen_cc
+  | MV_lit_contract (t,_) -> MT_contract t |> gen_cc
   | MV_self t -> MT_contract t |> gen_cc
   | MV_implicit_account _ -> MT_contract (gen_cc MT_unit) |> gen_cc
   (*************************************************************************)

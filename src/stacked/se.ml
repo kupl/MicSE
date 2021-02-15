@@ -94,6 +94,11 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   let sstack_to_srset : sym_state -> (mich_v cc list) -> state_set
   = fun ss sstack -> sstack |> sstack_to_ss ss |> ss_to_srset 
   in
+  let new_ss_for_loopinst : sym_state -> mich_cut_info -> (mich_v cc list) -> sym_state
+  = fun ss mci sstack -> {ss with ss_entry_mci=mci; ss_entry_symstack=sstack; ss_block_mci=mci; ss_symstack=sstack; ss_constraints=[];} 
+  in
+  let update_block_mci : mich_cut_info -> sym_state -> sym_state = fun mci ss -> {ss with ss_block_mci=mci} 
+  in
   (* SUGAR - constraint update *)
   let ss_add_constraint : sym_state -> mich_f -> sym_state
   = fun ss fmla -> {ss with ss_constraints=(fmla :: ss.ss_constraints)}
@@ -106,6 +111,10 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     queries = PSet.union sset1.queries sset2.queries;
     terminated = PSet.union sset1.terminated sset2.terminated;
   } in
+  let empty_sset : state_set = {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.empty} in
+  let move_running_to_blocked : mich_cut_info -> state_set -> state_set
+  = fun mci sset -> {sset with running=PSet.empty; blocked=(PSet.map sset.running ~f:(update_block_mci mci))} 
+  in
   (* FUNCTION BEGIN *)
   fun cache inst ss -> begin
   let gen_inst_cc : 'a -> 'a cc = gen_custom_cc inst in
@@ -142,9 +151,9 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       | _ -> Error ("run_inst_i : MI_dug" ^ (zn |> Z.to_string)) |> raise)
     |> sstack_to_srset ss
   | MI_push (_,v) -> (v :: ss_symstack) |> sstack_to_srset ss
-  | MI_some -> (MV_some (CList.hd_exn ss_symstack) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
-  | MI_none t -> (MV_none t |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss 
-  | MI_unit -> (MV_unit |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_some -> (MV_some (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_none t -> (MV_none t |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss 
+  | MI_unit -> (MV_unit |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_if_none (i1,i2) ->
     let cond_constraint : mich_f = MF_is_none (CList.hd_exn ss_symstack) in
     let then_br_sset : state_set =
@@ -154,7 +163,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> run_inst cache i1
     in
     let else_br_sset : state_set = 
-      (MV_unlift_option (CList.hd_exn ss_symstack) |> gen_cc)
+      (MV_unlift_option (CList.hd_exn ss_symstack) |> gen_inst_cc)
       |> cons_tl_n ss_symstack 1
       |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
       |> ss_to_srset
@@ -162,40 +171,40 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     in
     sset_union_pointwise then_br_sset else_br_sset
   | MI_pair ->
-    (MV_pair (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_cc)
+    (MV_pair (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
     |> cons_tl_n ss_symstack 2
     |> sstack_to_srset ss
-  | MI_car -> (MV_car (CList.hd_exn ss_symstack) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
-  | MI_cdr -> (MV_cdr (CList.hd_exn ss_symstack) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
-  | MI_left t -> (MV_left (t,(CList.hd_exn ss_symstack)) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
-  | MI_right t -> (MV_right (t,(CList.hd_exn ss_symstack)) |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_car -> (MV_car (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_cdr -> (MV_cdr (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_left t -> (MV_left (t,(CList.hd_exn ss_symstack)) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_right t -> (MV_right (t,(CList.hd_exn ss_symstack)) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_if_left (i1,i2) ->
     let cond_constraint : mich_f = MF_is_left (CList.hd_exn ss_symstack) in
     let then_br_sset : state_set =
-      (MV_unlift_left (CList.hd_exn ss_symstack) |> gen_cc)
+      (MV_unlift_left (CList.hd_exn ss_symstack) |> gen_inst_cc)
       |> cons_tl_n ss_symstack 1
       |> sstack_to_ss (ss_add_constraint ss cond_constraint)
       |> ss_to_srset
       |> run_inst cache i1
     in
     let else_br_sset : state_set =
-      (MV_unlift_right (CList.hd_exn ss_symstack) |> gen_cc)
+      (MV_unlift_right (CList.hd_exn ss_symstack) |> gen_inst_cc)
       |> cons_tl_n ss_symstack 1
       |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
       |> ss_to_srset
       |> run_inst cache i2
     in
     sset_union_pointwise then_br_sset else_br_sset
-  | MI_nil t -> (MV_nil t |> gen_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_nil t -> (MV_nil t |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_cons -> 
-    (MV_cons (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_cc)
+    (MV_cons (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
     |> cons_tl_n ss_symstack 2
     |> sstack_to_srset ss
   | MI_if_cons (i1,i2) ->
     let cond_constraint : mich_f = MF_is_cons (CList.hd_exn ss_symstack) in
     let then_br_sset : state_set =
       let listv : mich_v cc = CList.hd_exn ss_symstack in
-      (gen_cc (MV_hd_l listv), gen_cc (MV_tl_l listv))
+      (gen_inst_cc (MV_hd_l listv), gen_inst_cc (MV_tl_l listv))
       |> cons2_tl_n ss_symstack 1
       |> sstack_to_ss (ss_add_constraint ss cond_constraint)
       |> ss_to_srset
@@ -217,12 +226,12 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       | MT_string -> MV_size_str h
       | MT_bytes -> MV_size_b h
       | _ -> Error "run_inst_i : MI_size" |> raise)
-    |> gen_cc
+    |> gen_inst_cc
     |> cons_tl_n ss_symstack 1
     |> sstack_to_srset ss
-  | MI_empty_set t -> (MV_empty_set t |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
-  | MI_empty_map (t1,t2) -> (MV_empty_map (t1,t2) |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
-  | MI_empty_big_map (t1,t2) -> (MV_empty_big_map (t1,t2) |> gen_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_empty_set t -> (MV_empty_set t |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_empty_map (t1,t2) -> (MV_empty_map (t1,t2) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_empty_big_map (t1,t2) -> (MV_empty_big_map (t1,t2) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_map (i) ->
     let (outer_cutcat, inner_cutcat) : (mich_cut_category * mich_cut_category) = (MCC_ln_map, MCC_lb_map) in
     let block_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
@@ -232,26 +241,44 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let elem_t : mich_t cc = (
       match container_t.cc_v with
       | MT_list e -> e
-      | MT_map (kt,vt) -> MT_pair (kt,vt)
+      | MT_map (kt,vt) -> MT_pair (kt,vt) |> gen_custom_cc container_t
       | _ -> Error "run_inst_i : MI_map : elem_t" |> raise
     ) in
     (* 1. Make current state to blocked state *)
     let blocked_state : sym_state = {ss with ss_block_mci=block_mci} in
     (* 2. check if this loop instruction was entered already. if not, add it to the cache too. *)
     let entered_flag : bool = is_entered_loop cache block_mci in
-    let _ = if entered_flag then () else (add_entered_loop cache block_mci; add_entered_loop cache thenbr_mci) in
+    let _ = if entered_flag then () else (add_entered_loop cache block_mci; add_entered_loop cache thenbr_mci; add_entered_loop cache elsebr_mci) in
     (* 3. make then-branch (loop-body) running state and run *)
-    (* 3.1. if this map instruction is alreay in cache's entered_loop, then skip 2. *)
     let thenbr_sset : state_set =  
-      if entered_flag then {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.empty;} else 
+      (* if this map instruction is already in cache's entered_loop, then skip it. *)
+      if entered_flag then empty_sset else 
+      (* from "symstack for then-branch" to "state-set" *)
+      ((gen_new_symval_t elem_t) :: (CList.tl_exn ss_symstack |> gen_newvar_symstack_vs))
+      |> new_ss_for_loopinst ss thenbr_mci
+      |> run_inst_i cache i
+      (* convert every running states in inner_sset into blocked cases *)
+      |> move_running_to_blocked thenbr_mci
     in
     (* 3. make else-branch (loop-exit) running state *)
-
-    (* 2. If "i" in cache's entered_loop, make no running state. Else, enroll "i" in cache's entered_loop and make a running state. *)
-    (* 2.1. symbolic run for generated state *)
-    ()
+    let elsebr_ss : sym_state = 
+      new_ss_for_loopinst ss elsebr_mci (gen_newvar_symstack_vs ss_symstack)
+    in
+    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state)}
   | _ -> 
-    (ignore (ss_fixchain, ss_dynchain, ss_exec_addrs, ss_oper_queue, ss_cur_source, ss_cur_sender, ss_cur_ctaddr, ss_curct_startloc, ss_curct_blockloc, ss_curct_startstack, ss_symstack, ss_constraints)); 
+    (ignore (
+    { ss_fixchain;
+      ss_exop;
+      ss_dynchain;
+      ss_exec_addrs;
+      ss_oper_queue;
+      ss_optt;
+      ss_entry_mci;
+      ss_entry_symstack;
+      ss_block_mci;
+      ss_symstack;
+      ss_constraints;
+    }));
     (ignore (ss, inst)); 
     Error "run_inst_i : match failed" |> raise
 end (* function run_inst_i end *)
