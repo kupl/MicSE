@@ -20,6 +20,7 @@ type state_set = {
 
 type cache = {
   ch_entered_loop : Tz.mich_cut_info Tz.PSet.t;
+  ch_entered_lmbd : Tz.mich_cut_info Tz.PSet.t;
 }
 
 
@@ -33,6 +34,9 @@ val init_cache : unit -> cache ref
 
 val add_entered_loop : cache ref -> Tz.mich_cut_info -> unit
 val is_entered_loop : cache ref -> Tz.mich_cut_info -> bool
+
+val add_entered_lmbd : cache ref -> Tz.mich_cut_info -> unit
+val is_entered_lmbd : cache ref -> Tz.mich_cut_info -> bool
 
 
 (*****************************************************************************)

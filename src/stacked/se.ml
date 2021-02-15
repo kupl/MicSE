@@ -22,6 +22,7 @@ type state_set = {
 
 type cache = {
   ch_entered_loop : Tz.mich_cut_info Tz.PSet.t;
+  ch_entered_lmbd : Tz.mich_cut_info Tz.PSet.t;
 }
 
 
@@ -35,14 +36,23 @@ let init_cache : unit -> cache ref
 = fun () ->
   ref {
     ch_entered_loop = PSet.empty;
+    ch_entered_lmbd = PSet.empty;
   }
 
 let add_entered_loop : cache ref -> Tz.mich_cut_info -> unit
 = fun cache mci ->
   let newset = PSet.add !cache.ch_entered_loop mci in
-  (cache := {ch_entered_loop=newset})
+  (cache := {!cache with ch_entered_loop=newset})
 let is_entered_loop : cache ref -> Tz.mich_cut_info -> bool
 = fun cache mci -> PSet.mem !cache.ch_entered_loop mci
+
+let add_entered_lmbd : cache ref -> Tz.mich_cut_info -> unit
+= fun cache mci ->
+  let newset = PSet.add !cache.ch_entered_lmbd mci in
+  (cache := {!cache with ch_entered_lmbd=newset})
+let is_entered_lmbd : cache ref -> Tz.mich_cut_info -> bool
+= fun cache mci -> PSet.mem !cache.ch_entered_lmbd mci
+
 
 
 (*****************************************************************************)
@@ -79,9 +89,13 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   (* SUGAR - push to stack *)
   let sstack_push : (mich_v cc list) -> (mich_v cc) -> (mich_v cc list) = fun sstack v -> (v :: sstack) in
   let cons_tl_n : (mich_v cc list) -> int -> (mich_v cc) -> (mich_v cc list)
+    (* cons_tl_n sstack 1 v => (v :: sstack-tail) *)
+    (* cons_tl_n sstack 2 v => (v :: sstack-tailtail) *)
   = fun sstack n v -> let (_, tl_n) = CList.split_n sstack n in (v :: tl_n)
   in
   let cons2_tl_n : (mich_v cc list) -> int -> (mich_v cc * mich_v cc) -> (mich_v cc list)
+    (* cons2_tl_n sstack 1 v => (v1 :: v2 :: sstack-tail) *)
+    (* cons2_tl_n sstack 2 v => (v1 :: v2 :: sstack-tailtail) *)
   = fun sstack n (v1,v2) -> let (_, tl_n) = CList.split_n sstack n in (v1 :: v2 :: tl_n)
   in
   (* SUGAR - record update *)
@@ -195,7 +209,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> run_inst cache i2
     in
     sset_union_pointwise then_br_sset else_br_sset
-  | MI_nil t -> (MV_nil t |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_nil t -> (MV_nil t |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_cons -> 
     (MV_cons (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
     |> cons_tl_n ss_symstack 2
@@ -234,9 +248,9 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_empty_big_map (t1,t2) -> (MV_empty_big_map (t1,t2) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_map (i) ->
     let (outer_cutcat, inner_cutcat) : (mich_cut_category * mich_cut_category) = (MCC_ln_map, MCC_lb_map) in
-    let block_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
+    let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
     let thenbr_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=inner_cutcat} in
-    let elsebr_mci : mich_cut_info = block_mci in
+    let elsebr_mci : mich_cut_info = blocked_mci in
     let container_t : mich_t cc = CList.hd_exn ss_symstack |> typ_of_val in
     let elem_t : mich_t cc = (
       match container_t.cc_v with
@@ -245,16 +259,16 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       | _ -> Error "run_inst_i : MI_map : elem_t" |> raise
     ) in
     (* 1. Make current state to blocked state *)
-    let blocked_state : sym_state = {ss with ss_block_mci=block_mci} in
+    let blocked_state : sym_state = update_block_mci blocked_mci ss in
     (* 2. check if this loop instruction was entered already. if not, add it to the cache too. *)
-    let entered_flag : bool = is_entered_loop cache block_mci in
-    let _ = if entered_flag then () else (add_entered_loop cache block_mci; add_entered_loop cache thenbr_mci; add_entered_loop cache elsebr_mci) in
+    let entered_flag : bool = is_entered_loop cache blocked_mci in
+    let _ = if entered_flag then () else (List.iter (add_entered_loop cache) [blocked_mci; thenbr_mci; elsebr_mci]) in
     (* 3. make then-branch (loop-body) running state and run *)
     let thenbr_sset : state_set =  
       (* if this map instruction is already in cache's entered_loop, then skip it. *)
       if entered_flag then empty_sset else 
       (* from "symstack for then-branch" to "state-set" *)
-      ((gen_new_symval_t elem_t) :: (CList.tl_exn ss_symstack |> gen_newvar_symstack_vs))
+      ((gen_new_symval_t elem_t) :: (gen_newvar_symstack_vs (CList.tl_exn ss_symstack)))
       |> new_ss_for_loopinst ss thenbr_mci
       |> run_inst_i cache i
       (* convert every running states in inner_sset into blocked cases *)
@@ -262,9 +276,209 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     in
     (* 3. make else-branch (loop-exit) running state *)
     let elsebr_ss : sym_state = 
-      new_ss_for_loopinst ss elsebr_mci (gen_newvar_symstack_vs ss_symstack)
+      (gen_newvar_symstack_vs ss_symstack)
+      |> new_ss_for_loopinst ss elsebr_mci
     in
-    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state)}
+    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state);}
+  | MI_iter (i) ->
+    let (outer_cutcat, inner_cutcat) : (mich_cut_category * mich_cut_category) = (MCC_ln_iter, MCC_lb_iter) in
+    let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
+    let thenbr_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=inner_cutcat} in
+    let elsebr_mci : mich_cut_info = blocked_mci in
+    let container_t : mich_t cc = CList.hd_exn ss_symstack |> typ_of_val in
+    let elem_t : mich_t cc = (
+      match container_t.cc_v with
+      | MT_list e -> e
+      | MT_set e -> e
+      | MT_map (kt,vt) -> MT_pair (kt,vt) |> gen_custom_cc container_t
+      | _ -> Error "run_inst_i : MI_map : elem_t" |> raise
+    ) in
+    (* refer MI_map case for detailed explanation *)
+    let blocked_state : sym_state = update_block_mci blocked_mci ss in
+    let entered_flag : bool = is_entered_loop cache blocked_mci in
+    let _ = if entered_flag then () else (List.iter (add_entered_loop cache) [blocked_mci; thenbr_mci; elsebr_mci]) in
+    let thenbr_sset : state_set = 
+      if entered_flag then empty_sset else 
+      ((gen_new_symval_t elem_t) :: (gen_newvar_symstack_vs (CList.tl_exn ss_symstack)))
+      |> new_ss_for_loopinst ss thenbr_mci
+      |> run_inst_i cache i
+      |> move_running_to_blocked thenbr_mci
+    in
+    (* symstack for MI_iter's elsebr_ss is different from MI_map's symstack for else-branch *)
+    let elsebr_ss : sym_state =
+      (gen_newvar_symstack_vs (CList.tl_exn ss_symstack))
+      |> new_ss_for_loopinst ss elsebr_mci
+    in
+    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state;)}
+  | MI_mem ->
+    let (h, h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    (match (typ_of_val h2).cc_v with
+      | MT_set _ -> MV_mem_xsb (h,h2)
+      | MT_map _ -> MV_mem_xmb (h,h2)
+      | MT_big_map _ -> MV_mem_xbmb (h,h2)
+      | _ -> Error "run_inst_i : MI_mem" |> raise)
+    |> gen_inst_cc
+    |> cons_tl_n ss_symstack 2
+    |> sstack_to_srset ss
+  | MI_get ->
+    let (h, h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    (match (typ_of_val h2).cc_v with
+      | MT_map _ -> MV_get_xmoy (h,h2)
+      | MT_big_map _ -> MV_get_xbmo (h,h2)
+      | _ -> Error "run_inst_i : MI_get" |> raise)
+    |> gen_inst_cc
+    |> cons_tl_n ss_symstack 2
+    |> sstack_to_srset ss
+  | MI_update ->
+    let (h, h2, h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
+    (match (typ_of_val h3).cc_v with
+      | MT_set _ -> MV_update_xbss (h,h2,h3)
+      | MT_map _ -> MV_update_xomm (h,h2,h3)
+      | MT_big_map _ -> MV_update_xobmbm (h,h2,h3)
+      | _ -> Error "run_inst_i : MI_update" |> raise)
+    |> gen_inst_cc
+    |> cons_tl_n ss_symstack 3
+    |> sstack_to_srset ss
+  | MI_if (i1,i2) ->
+    let cond_constraint : mich_f = MF_is_true (CList.hd_exn ss_symstack) in
+    let then_br_sset : state_set =
+      (CList.tl_exn ss_symstack)
+      |> sstack_to_ss (ss_add_constraint ss cond_constraint)
+      |> ss_to_srset
+      |> run_inst cache i1
+    in
+    let else_br_sset : state_set =
+      (CList.tl_exn ss_symstack)
+      |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
+      |> ss_to_srset
+      |> run_inst cache i2
+    in
+    sset_union_pointwise then_br_sset else_br_sset
+  | MI_loop (i) ->
+    let (outer_cutcat, inner_cutcat) : (mich_cut_category * mich_cut_category) = (MCC_ln_loop, MCC_lb_loop) in
+    let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
+    let thenbr_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=inner_cutcat} in
+    let elsebr_mci : mich_cut_info = blocked_mci in
+    (* refer MI_map case for detailed explanation *)
+    let blocked_state : sym_state = update_block_mci blocked_mci ss in
+    let entered_flag : bool = is_entered_loop cache blocked_mci in
+    let _ = if entered_flag then () else (List.iter (add_entered_loop cache) [blocked_mci; thenbr_mci; elsebr_mci]) in
+    let thenbr_sset : state_set = 
+      if entered_flag then empty_sset else 
+      (gen_newvar_symstack_vs (CList.tl_exn ss_symstack))
+      |> new_ss_for_loopinst ss thenbr_mci
+      |> run_inst_i cache i
+      |> move_running_to_blocked thenbr_mci
+    in
+    (* symstack for MI_iter's elsebr_ss is different from MI_map's symstack for else-branch *)
+    let elsebr_ss : sym_state =
+      (gen_newvar_symstack_vs (CList.tl_exn ss_symstack))
+      |> new_ss_for_loopinst ss elsebr_mci
+    in
+    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state);}
+  | MI_loop_left (i) ->
+    let (outer_cutcat, inner_cutcat) : (mich_cut_category * mich_cut_category) = (MCC_ln_loopleft, MCC_lb_loopleft) in
+    let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
+    let thenbr_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=inner_cutcat} in
+    let elsebr_mci : mich_cut_info = blocked_mci in
+    (* refer MI_map case for detailed explanation *)
+    let container_t : mich_t cc = CList.hd_exn ss_symstack |> typ_of_val in
+    let (left_elem_t, right_elem_t) : mich_t cc * mich_t cc = (
+      match container_t.cc_v with
+      | MT_or (t1,t2) -> (t1,t2)
+      | _ -> Error "run_inst_i : MI_loop_left" |> raise
+    ) in
+    let blocked_state : sym_state = update_block_mci blocked_mci ss in
+    let entered_flag : bool = is_entered_loop cache blocked_mci in
+    let _ = if entered_flag then () else (List.iter (add_entered_loop cache) [blocked_mci; thenbr_mci; elsebr_mci]) in
+    let thenbr_sset : state_set =  
+      if entered_flag then empty_sset else 
+      ((gen_new_symval_t left_elem_t) :: (gen_newvar_symstack_vs (CList.tl_exn ss_symstack)))
+      |> new_ss_for_loopinst ss thenbr_mci
+      |> run_inst_i cache i
+      |> move_running_to_blocked thenbr_mci
+    in
+    (* 3. make else-branch (loop-exit) running state *)
+    let elsebr_ss : sym_state = 
+      ((gen_new_symval_t right_elem_t) :: (gen_newvar_symstack_vs (CList.tl_exn ss_symstack)))
+      |> new_ss_for_loopinst ss elsebr_mci
+    in
+    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state);}
+  | MI_lambda (t1,t2,i) ->
+    (*
+    (* perform symbolic execution for instruction-i *)
+    let funcbody_mci : mich_cut_info = {mci_loc=i.cc_loc; mci_cutcat=MCC_lb_lmbd;} in
+    let entered_flag : bool = is_entered_lmbd cache funcbody_mci in
+    let _ = if entered_flag then () else (add_entered_lmbd cache funcbody_mci) in
+    let funcbody_sset : state_set = 
+      if entered_flag then empty_sset else
+      [gen_new_symval_t t1]
+      |> new_ss_for_loopinst ss funcbody_mci
+      |> run_inst_i cache i
+      |> move_running_to_blocked funcbody_mci
+    in
+    *)
+    (MV_lit_lambda (t1,t2,i) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_exec ->
+    (* MicSE does not perform any symbolic execution for the body of the function in MI_exec case.
+      Thus it does not create any blocked state, just emit a running state that has one new variable on the top of the stack. *)
+    let lmbd_ty : mich_t cc = CList.nth_exn ss_symstack 1 |> typ_of_val in
+    let (_, ret_ty) : mich_t cc * mich_t cc = (
+      match lmbd_ty.cc_v with
+      | MT_lambda (t1,t2) -> (t1,t2)
+      | _ -> Error "run_inst_i : MI_exec" |> raise
+    ) in
+    (gen_new_symval_t ret_ty).cc_v
+    |> gen_inst_cc
+    |> cons_tl_n ss_symstack 1
+    |> sstack_to_srset ss
+  | MI_dip_n (zn, i) ->
+    let (hd, tl) = CList.split_n ss_symstack (Z.to_int zn) in
+    let i_sset : state_set = tl |> sstack_to_ss ss |> run_inst_i cache i in
+    let restored_running : sym_state PSet.t = PSet.map i_sset.running ~f:(fun x -> {x with ss_symstack=(hd @ x.ss_symstack)}) in
+    {i_sset with running=restored_running}
+  | MI_failwith -> {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.singleton(ss)}
+  | MI_cast _ -> 
+    (* Currently, it is enough to make "MI_cast"'s symbolic execution as identity function. *)
+    ss_to_srset ss
+  | MI_rename ->
+    let renamed_hd : mich_v cc = {(CList.hd_exn ss_symstack) with cc_anl=inst.cc_anl} in
+    (renamed_hd :: CList.tl_exn ss_symstack) |> sstack_to_srset ss
+  | MI_concat ->
+    let hd = CList.hd_exn ss_symstack in
+    (match (typ_of_val hd).cc_v with
+      | MT_string ->
+        (MV_concat_sss (hd, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
+        |> cons_tl_n ss_symstack 2
+        |> sstack_to_srset ss
+      | MT_bytes ->
+        (MV_concat_bbb (hd, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
+        |> cons_tl_n ss_symstack 2
+        |> sstack_to_srset ss
+      | MT_list et when et.cc_v = MT_string ->
+        (MV_concat_list_s hd |> gen_inst_cc)
+        |> cons_tl_n ss_symstack 1
+        |> sstack_to_srset ss
+      | MT_list et when et.cc_v = MT_bytes ->
+        (MV_concat_list_b hd |> gen_inst_cc)
+        |> cons_tl_n ss_symstack 1
+        |> sstack_to_srset ss
+      | _ -> Error "run_inst_i : MI_concat" |> raise
+    )
+  | MI_slice ->
+    let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
+    (match (typ_of_val h3).cc_v with
+      | MT_string -> (MV_slice_nnso (h,h2,h3) |> gen_inst_cc) |> cons_tl_n ss_symstack 3 |> sstack_to_srset ss
+      | MT_bytes -> (MV_slice_nnbo (h,h2,h3) |> gen_inst_cc) |> cons_tl_n ss_symstack 3 |> sstack_to_srset ss
+      | _ -> Error "run_inst_i : MI_slice" |> raise
+    )
+  | MI_pack ->
+    (MV_pack (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_unpack t ->
+    (MV_unpack (t, CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_add ->
+    (* if there are mutez addition, query should be generated *)
+    ss_to_srset ss (* PLACEHOLDER, TODO *)
   | _ -> 
     (ignore (
     { ss_fixchain;

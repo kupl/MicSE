@@ -453,18 +453,18 @@ type mich_f =
 (*****************************************************************************)
 
 type mich_cut_category =
-  | MCC_trx_entry
-  | MCC_trx_exit
-  | MCC_lmbd_entry
-  | MCC_lmbd_exit
-  | MCC_ln_loop       (* non-body of the loop location *)
-  | MCC_ln_loopleft   (* non-body of the loop location *)
-  | MCC_ln_map        (* non-body of the loop location *)
-  | MCC_ln_iter       (* non-body of the loop location *)
-  | MCC_lb_loop       (* body of the loop *)
-  | MCC_lb_loopleft   (* body of the loop *)
-  | MCC_lb_map        (* body of the loop *)
-  | MCC_lb_iter       (* body of the loop *)
+| MCC_trx_entry
+| MCC_trx_exit
+| MCC_ln_lmbd       (* non-body of the lambda function *)
+| MCC_lb_lmbd       (* body of the lambda function *)
+| MCC_ln_loop       (* non-body of the loop location *)
+| MCC_ln_loopleft   (* non-body of the loop location *)
+| MCC_ln_map        (* non-body of the loop location *)
+| MCC_ln_iter       (* non-body of the loop location *)
+| MCC_lb_loop       (* body of the loop *)
+| MCC_lb_loopleft   (* body of the loop *)
+| MCC_lb_map        (* body of the loop *)
+| MCC_lb_iter       (* body of the loop *)
 
 type mich_cut_info = {
   mci_loc : ccp_loc;
