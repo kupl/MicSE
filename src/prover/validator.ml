@@ -66,6 +66,8 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
   let indt_validity = indt_validity_i |> is_valid in
   if Stdlib.not indt_validity then ({inductive=false; p=CPSet.empty; u=CPSet.empty; allq=CPSet.empty}) else
   (* Validate Query *)
+  (* debug *) let _ = print_endline "DEBUG" in
+  (* debug *) let _ = List.iter (fun x -> x.VcGen.path_vc |> Vlang.string_of_formula |> print_endline) vcl in
   let qset : VcGen.query_vc list =
     List.fold_left 
       (* Design choice: CPSet.union has worse time complexity than Fold+Add, but not tested which one is better. *)

@@ -1,0 +1,6443 @@
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v87))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v87))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v88))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v88))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v103,v78))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v103,v78))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v78,v103))=B_True))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v78,v103))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v81=v91)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v81=v91)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v4=v59)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v4=v59)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v67=v73)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v67=v73)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v66=v68)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v66=v68)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v66=v70)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v66=v70)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v68=v70)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v68=v70)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v104=v64)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v104=v64)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v61=v62)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v61=v62)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v2=v3)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v2=v3)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v58=v65)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (v58=v65)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v103,v78))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v103,v78))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v78,v103))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v78,v103))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v103,v78))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v103,v78))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v78,v103))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v78,v103))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v103=v78))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v103=v78))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v85=v86))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v85=v86))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v85=v87))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v85=v87))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v85=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v85=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v85=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v85=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v86=v87))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v86=v87))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v86=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v86=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v86=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v86=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v87=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v87=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v87=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v87=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v88=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v88=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v92))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v92))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v96))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v96))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v97))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v97))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v69=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v92=v96))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v92=v96))
+True /\ ( -> (v92=v96))
+True /\ ( -> (v92=v96))
+True /\ ( -> (v92=v96))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v92=v96))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v92=v96))
+True /\ ( -> (v92=v96))
+True /\ ( -> (v92=v96))
+True /\ ( -> (v92=v96))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v92=v97))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v92=v97))
+True /\ ( -> (v92=v97))
+True /\ ( -> (v92=v97))
+True /\ ( -> (v92=v97))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v92=v97))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v92=v97))
+True /\ ( -> (v92=v97))
+True /\ ( -> (v92=v97))
+True /\ ( -> (v92=v97))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v92=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v92=v98))
+True /\ ( -> (v92=v98))
+True /\ ( -> (v92=v98))
+True /\ ( -> (v92=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v92=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v92=v98))
+True /\ ( -> (v92=v98))
+True /\ ( -> (v92=v98))
+True /\ ( -> (v92=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v92=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v92=v99))
+True /\ ( -> (v92=v99))
+True /\ ( -> (v92=v99))
+True /\ ( -> (v92=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v92=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v92=v99))
+True /\ ( -> (v92=v99))
+True /\ ( -> (v92=v99))
+True /\ ( -> (v92=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v96=v97))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v96=v97))
+True /\ ( -> (v96=v97))
+True /\ ( -> (v96=v97))
+True /\ ( -> (v96=v97))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v96=v97))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v96=v97))
+True /\ ( -> (v96=v97))
+True /\ ( -> (v96=v97))
+True /\ ( -> (v96=v97))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v96=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v96=v98))
+True /\ ( -> (v96=v98))
+True /\ ( -> (v96=v98))
+True /\ ( -> (v96=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v96=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v96=v98))
+True /\ ( -> (v96=v98))
+True /\ ( -> (v96=v98))
+True /\ ( -> (v96=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v96=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v96=v99))
+True /\ ( -> (v96=v99))
+True /\ ( -> (v96=v99))
+True /\ ( -> (v96=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v96=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v96=v99))
+True /\ ( -> (v96=v99))
+True /\ ( -> (v96=v99))
+True /\ ( -> (v96=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v97=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v97=v98))
+True /\ ( -> (v97=v98))
+True /\ ( -> (v97=v98))
+True /\ ( -> (v97=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v97=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v97=v98))
+True /\ ( -> (v97=v98))
+True /\ ( -> (v97=v98))
+True /\ ( -> (v97=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v97=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v97=v99))
+True /\ ( -> (v97=v99))
+True /\ ( -> (v97=v99))
+True /\ ( -> (v97=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v97=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v97=v99))
+True /\ ( -> (v97=v99))
+True /\ ( -> (v97=v99))
+True /\ ( -> (v97=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v98=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v98=v99))
+True /\ ( -> (v98=v99))
+True /\ ( -> (v98=v99))
+True /\ ( -> (v98=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v98=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v98=v99))
+True /\ ( -> (v98=v99))
+True /\ ( -> (v98=v99))
+True /\ ( -> (v98=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v100=v107))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v100=v107))
+True /\ ( -> (v100=v107))
+True /\ ( -> (v100=v107))
+True /\ ( -> (v100=v107))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v100=v107))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v100=v107))
+True /\ ( -> (v100=v107))
+True /\ ( -> (v100=v107))
+True /\ ( -> (v100=v107))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v100=v79))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v100=v79))
+True /\ ( -> (v100=v79))
+True /\ ( -> (v100=v79))
+True /\ ( -> (v100=v79))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v100=v79))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v100=v79))
+True /\ ( -> (v100=v79))
+True /\ ( -> (v100=v79))
+True /\ ( -> (v100=v79))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v107=v79))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v107=v79))
+True /\ ( -> (v107=v79))
+True /\ ( -> (v107=v79))
+True /\ ( -> (v107=v79))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v107=v79))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v107=v79))
+True /\ ( -> (v107=v79))
+True /\ ( -> (v107=v79))
+True /\ ( -> (v107=v79))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v60=v72))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v60=v72))
+True /\ ( -> (v60=v72))
+True /\ ( -> (v60=v72))
+True /\ ( -> (v60=v72))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v60=v72))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v60=v72))
+True /\ ( -> (v60=v72))
+True /\ ( -> (v60=v72))
+True /\ ( -> (v60=v72))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v60=v77))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v60=v77))
+True /\ ( -> (v60=v77))
+True /\ ( -> (v60=v77))
+True /\ ( -> (v60=v77))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v60=v77))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v60=v77))
+True /\ ( -> (v60=v77))
+True /\ ( -> (v60=v77))
+True /\ ( -> (v60=v77))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v60=v82))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v60=v82))
+True /\ ( -> (v60=v82))
+True /\ ( -> (v60=v82))
+True /\ ( -> (v60=v82))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v60=v82))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v60=v82))
+True /\ ( -> (v60=v82))
+True /\ ( -> (v60=v82))
+True /\ ( -> (v60=v82))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v72=v77))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v72=v77))
+True /\ ( -> (v72=v77))
+True /\ ( -> (v72=v77))
+True /\ ( -> (v72=v77))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v72=v77))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v72=v77))
+True /\ ( -> (v72=v77))
+True /\ ( -> (v72=v77))
+True /\ ( -> (v72=v77))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v72=v82))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v72=v82))
+True /\ ( -> (v72=v82))
+True /\ ( -> (v72=v82))
+True /\ ( -> (v72=v82))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v72=v82))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v72=v82))
+True /\ ( -> (v72=v82))
+True /\ ( -> (v72=v82))
+True /\ ( -> (v72=v82))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v77=v82))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v77=v82))
+True /\ ( -> (v77=v82))
+True /\ ( -> (v77=v82))
+True /\ ( -> (v77=v82))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v77=v82))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v77=v82))
+True /\ ( -> (v77=v82))
+True /\ ( -> (v77=v82))
+True /\ ( -> (v77=v82))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v74=v76))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v74=v76))
+True /\ ( -> (v74=v76))
+True /\ ( -> (v74=v76))
+True /\ ( -> (v74=v76))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v74=v76))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v74=v76))
+True /\ ( -> (v74=v76))
+True /\ ( -> (v74=v76))
+True /\ ( -> (v74=v76))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v105=v106))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v105=v106))
+True /\ ( -> (v105=v106))
+True /\ ( -> (v105=v106))
+True /\ ( -> (v105=v106))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v105=v106))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v105=v106))
+True /\ ( -> (v105=v106))
+True /\ ( -> (v105=v106))
+True /\ ( -> (v105=v106))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v83=v84))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v83=v84))
+True /\ ( -> (v83=v84))
+True /\ ( -> (v83=v84))
+True /\ ( -> (v83=v84))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v83=v84))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v83=v84))
+True /\ ( -> (v83=v84))
+True /\ ( -> (v83=v84))
+True /\ ( -> (v83=v84))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v83=v90))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v83=v90))
+True /\ ( -> (v83=v90))
+True /\ ( -> (v83=v90))
+True /\ ( -> (v83=v90))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v83=v90))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v83=v90))
+True /\ ( -> (v83=v90))
+True /\ ( -> (v83=v90))
+True /\ ( -> (v83=v90))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v84=v90))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v84=v90))
+True /\ ( -> (v84=v90))
+True /\ ( -> (v84=v90))
+True /\ ( -> (v84=v90))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v84=v90))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v84=v90))
+True /\ ( -> (v84=v90))
+True /\ ( -> (v84=v90))
+True /\ ( -> (v84=v90))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v101=v63))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v101=v63))
+True /\ ( -> (v101=v63))
+True /\ ( -> (v101=v63))
+True /\ ( -> (v101=v63))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v101=v63))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v101=v63))
+True /\ ( -> (v101=v63))
+True /\ ( -> (v101=v63))
+True /\ ( -> (v101=v63))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v5=v81))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v5=v81))
+True /\ ( -> (v5=v81))
+True /\ ( -> (v5=v81))
+True /\ ( -> (v5=v81))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v5=v81))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v5=v81))
+True /\ ( -> (v5=v81))
+True /\ ( -> (v5=v81))
+True /\ ( -> (v5=v81))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v5=v91))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v5=v91))
+True /\ ( -> (v5=v91))
+True /\ ( -> (v5=v91))
+True /\ ( -> (v5=v91))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v5=v91))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v5=v91))
+True /\ ( -> (v5=v91))
+True /\ ( -> (v5=v91))
+True /\ ( -> (v5=v91))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v81=v91))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v81=v91))
+True /\ ( -> (v81=v91))
+True /\ ( -> (v81=v91))
+True /\ ( -> (v81=v91))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v81=v91))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v81=v91))
+True /\ ( -> (v81=v91))
+True /\ ( -> (v81=v91))
+True /\ ( -> (v81=v91))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v4=v59))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v4=v59))
+True /\ ( -> (v4=v59))
+True /\ ( -> (v4=v59))
+True /\ ( -> (v4=v59))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v4=v59))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v4=v59))
+True /\ ( -> (v4=v59))
+True /\ ( -> (v4=v59))
+True /\ ( -> (v4=v59))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v67=v73))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v67=v73))
+True /\ ( -> (v67=v73))
+True /\ ( -> (v67=v73))
+True /\ ( -> (v67=v73))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v67=v73))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v67=v73))
+True /\ ( -> (v67=v73))
+True /\ ( -> (v67=v73))
+True /\ ( -> (v67=v73))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v66=v68))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v66=v68))
+True /\ ( -> (v66=v68))
+True /\ ( -> (v66=v68))
+True /\ ( -> (v66=v68))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v66=v68))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v66=v68))
+True /\ ( -> (v66=v68))
+True /\ ( -> (v66=v68))
+True /\ ( -> (v66=v68))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v66=v70))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v66=v70))
+True /\ ( -> (v66=v70))
+True /\ ( -> (v66=v70))
+True /\ ( -> (v66=v70))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v66=v70))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v66=v70))
+True /\ ( -> (v66=v70))
+True /\ ( -> (v66=v70))
+True /\ ( -> (v66=v70))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v68=v70))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v68=v70))
+True /\ ( -> (v68=v70))
+True /\ ( -> (v68=v70))
+True /\ ( -> (v68=v70))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v68=v70))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v68=v70))
+True /\ ( -> (v68=v70))
+True /\ ( -> (v68=v70))
+True /\ ( -> (v68=v70))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v104=v64))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v104=v64))
+True /\ ( -> (v104=v64))
+True /\ ( -> (v104=v64))
+True /\ ( -> (v104=v64))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v104=v64))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v104=v64))
+True /\ ( -> (v104=v64))
+True /\ ( -> (v104=v64))
+True /\ ( -> (v104=v64))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v61=v62))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v61=v62))
+True /\ ( -> (v61=v62))
+True /\ ( -> (v61=v62))
+True /\ ( -> (v61=v62))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v61=v62))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v61=v62))
+True /\ ( -> (v61=v62))
+True /\ ( -> (v61=v62))
+True /\ ( -> (v61=v62))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v2=v3))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v2=v3))
+True /\ ( -> (v2=v3))
+True /\ ( -> (v2=v3))
+True /\ ( -> (v2=v3))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v2=v3))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v2=v3))
+True /\ ( -> (v2=v3))
+True /\ ( -> (v2=v3))
+True /\ ( -> (v2=v3))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v58=v65))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v58=v65))
+True /\ ( -> (v58=v65))
+True /\ ( -> (v58=v65))
+True /\ ( -> (v58=v65))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (v58=v65))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (v58=v65))
+True /\ ( -> (v58=v65))
+True /\ ( -> (v58=v65))
+True /\ ( -> (v58=v65))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True))
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v60=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v60=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v60=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v60=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v72=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v72=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v72=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v72=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v77=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v77=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v74=v76)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v74=v76)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v105=v106)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v105=v106)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v83=v84)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v83=v84)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v83=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v83=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v84=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v84=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v101=v63)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v101=v63)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v5=v81)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v5=v81)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v5=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v5=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v81=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v81=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v4=v59)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v4=v59)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v67=v73)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v67=v73)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v66=v68)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v66=v68)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v66=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v66=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v68=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v68=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v104=v64)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v104=v64)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v61=v62)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v61=v62)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v2=v3)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v2=v3)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v58=v65)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v58=v65)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v102))
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v102))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v103=v78)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v103=v78)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v85=v86)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v85=v86)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v85=v87)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v85=v87)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v85=v88)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v85=v88)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v85=v89)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v85=v89)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v86=v87)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v86=v87)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v86=v88)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v86=v88)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v86=v89)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v86=v89)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v87=v88)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v87=v88)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v87=v89)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v87=v89)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v88=v89)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v88=v89)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v69=v92)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v69=v92)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v69=v96)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v69=v96)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v69=v97)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v69=v97)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v69=v98)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v69=v98)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v69=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v69=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v92=v96)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v92=v96)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v92=v97)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v92=v97)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v92=v98)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v92=v98)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v92=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v92=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v96=v97)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v96=v97)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v96=v98)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v96=v98)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v96=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v96=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v97=v98)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v97=v98)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v97=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v97=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v98=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v98=v99)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v102=v144)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v102=v144)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v100=v107)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v100=v107)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v100=v79)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v100=v79)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v107=v79)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v107=v79)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v60=v72)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v60=v72)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v60=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v60=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v60=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v60=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v72=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v72=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v72=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v72=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v77=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v77=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v74=v76)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v74=v76)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v105=v106)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v105=v106)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v83=v84)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v83=v84)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v83=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v83=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v84=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v84=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v101=v63)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v101=v63)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v5=v81)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v5=v81)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v5=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v5=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v81=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v81=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v4=v59)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v4=v59)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v67=v73)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v67=v73)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v66=v68)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v66=v68)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v66=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v66=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v68=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v68=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v104=v64)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v104=v64)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v61=v62)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v61=v62)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v2=v3)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v2=v3)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v58=v65)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (v58=v65)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v60=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v60=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v60=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v60=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v72=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v72=v77)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v72=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v72=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v77=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v77=v82)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v74=v76)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v74=v76)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v105=v106)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v105=v106)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v83=v84)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v83=v84)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v83=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v83=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v84=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v84=v90)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v101=v63)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v101=v63)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v5=v81)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v5=v81)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v5=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v5=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v81=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v81=v91)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v4=v59)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v4=v59)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v67=v73)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v67=v73)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v66=v68)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v66=v68)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v66=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v66=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v68=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v68=v70)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v104=v64)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v104=v64)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v61=v62)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v61=v62)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v2=v3)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v2=v3)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (v58=v65)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (v58=v65)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v85,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v86,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v87,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v88,v89))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v85))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v86))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v87))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v89,v88))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v103,v78))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v103,v78))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v78,v103))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> (GEQ(SUB(v78,v103))=B_True)) /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v102)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v102)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v103=v78))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v103=v78))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True /\ ( -> (v103=v78))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v85=v86))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v85=v86))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True /\ ( -> (v85=v86))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v85=v87))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v85=v87))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True /\ ( -> (v85=v87))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v85=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v85=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True /\ ( -> (v85=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v85=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v85=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True /\ ( -> (v85=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v86=v87))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v86=v87))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True /\ ( -> (v86=v87))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v86=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v86=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True /\ ( -> (v86=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v86=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v86=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True /\ ( -> (v86=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v87=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v87=v88))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True /\ ( -> (v87=v88))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v87=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v87=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True /\ ( -> (v87=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v88=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v88=v89))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True /\ ( -> (v88=v89))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v92))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v92))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True /\ ( -> (v69=v92))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v96))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v96))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True /\ ( -> (v69=v96))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v97))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v97))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True /\ ( -> (v69=v97))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v98))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True /\ ( -> (v69=v98))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v69=v99))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True /\ ( -> (v69=v99))
+True
+True
+True
+True
+True
+True
+True
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True
+True /\ ( -> (v92=v96))
+True /\ ( -> NoUnderflow_SUB(v102,v102)) /\ ( -> NoUnderflow_SUB(v102,v144)) /\ ( -> NoUnderflow_SUB(v144,v144))
+True
+True /\ ( -> (v92=v96))
+True /\ ( -> (v92=v96))
+True /\ ( -> (v92=v96))
+True /\ ( -> (v92=v96))
+True
+True
+True
+True
+True
+True
+True
