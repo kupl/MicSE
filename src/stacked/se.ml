@@ -6,11 +6,11 @@ exception Error of string
 
 type query_category =
   (* Each of them are indicator of "State -> Formula" function *)
-  | Q_mutez_add_overflow
-  | Q_mutez_mul_overflow
-  | Q_mutez_sub_underflow
-  | Q_shiftleft_prohibited
-  | Q_shiftright_prohibited
+  | Q_mutez_add_no_overflow
+  | Q_mutez_sub_no_underflow
+  | Q_mutez_mul_no_overflow
+  | Q_shiftleft_safe
+  | Q_shiftright_safe
   | Q_assertion
 
 type state_set = {
@@ -53,6 +53,24 @@ let add_entered_lmbd : cache ref -> Tz.mich_cut_info -> unit
 let is_entered_lmbd : cache ref -> Tz.mich_cut_info -> bool
 = fun cache mci -> PSet.mem !cache.ch_entered_lmbd mci
 
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Utilities - Query                                                         *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let state_query_reduce : Tz.sym_state * query_category -> Tz.mich_f
+= fun (ss, qc) -> begin
+  let (h,h2) = (Core.List.hd_exn ss.ss_symstack, Core.List.nth_exn ss.ss_symstack 1) in
+  match qc with
+  | Q_mutez_add_no_overflow -> MF_add_mmm_no_overflow (h,h2)
+  | Q_mutez_sub_no_underflow -> MF_sub_mmm_no_underflow (h,h2)
+  | Q_mutez_mul_no_overflow -> MF_mul_mnm_no_overflow (h,h2)
+  | Q_shiftleft_safe -> MF_shiftL_nnn_rhs_in_256 (h,h2)
+  | Q_shiftright_safe -> MF_shiftR_nnn_rhs_in_256 (h,h2)
+  | Q_assertion -> MF_is_true (Core.List.hd_exn ss.ss_symstack)
+end (* function state_query_reduce end *)
 
 
 (*****************************************************************************)
@@ -127,7 +145,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   } in
   let empty_sset : state_set = {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.empty} in
   let move_running_to_blocked : mich_cut_info -> state_set -> state_set
-  = fun mci sset -> {sset with running=PSet.empty; blocked=(PSet.map sset.running ~f:(update_block_mci mci))} 
+  = fun mci sset -> {sset with running=PSet.empty; blocked=(PSet.union (PSet.map sset.running ~f:(update_block_mci mci)) sset.blocked)} 
   in
   (* SUGAR - michelson value *)
   let mich_int_0 : mich_v cc = MV_lit_int Z.zero |> gen_dummy_cc in
@@ -419,6 +437,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> run_inst_i cache i
       |> move_running_to_blocked funcbody_mci
     in
+      ...
     *)
     (MV_lit_lambda (t1,t2,i) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_exec ->
@@ -497,7 +516,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       *)
       let added_state : sym_state = (MV_add_mmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint added_state (MF_add_mmm_no_overflow (h,h2)) in
-      let query : sym_state * query_category = (ss, Q_mutez_add_overflow) in
+      let query : sym_state * query_category = (ss, Q_mutez_add_no_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_add" |> raise
     )
@@ -520,7 +539,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       *)
       let subed_state : sym_state = (MV_sub_mmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint subed_state (MF_sub_mmm_no_underflow (h,h2)) in
-      let query : sym_state * query_category = (ss, Q_mutez_sub_underflow) in
+      let query : sym_state * query_category = (ss, Q_mutez_sub_no_underflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_sub" |> raise
     )
@@ -541,7 +560,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       *)
       let muled_state : sym_state = (MV_mul_mnm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint muled_state (MF_mul_mnm_no_overflow (h,h2)) in
-      let query : sym_state * query_category = (ss, Q_mutez_mul_overflow) in
+      let query : sym_state * query_category = (ss, Q_mutez_mul_no_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | MT_nat, MT_mutez ->
       (* for mutez addition, 
@@ -550,7 +569,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       *)
       let muled_state : sym_state = (MV_mul_nmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint muled_state (MF_mul_nmm_no_overflow (h,h2)) in
-      let query : sym_state * query_category = (ss, Q_mutez_mul_overflow) in
+      let query : sym_state * query_category = (ss, Q_mutez_mul_no_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_mul" |> raise
     )
@@ -589,7 +608,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
     let shifted_state : sym_state = (MV_shiftL_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_ss ss in
     let runstate : sym_state = ss_add_constraint shifted_state (MF_shiftL_nnn_rhs_in_256 (h,h2)) in
-    let query : sym_state * query_category = (ss, Q_shiftleft_prohibited) in
+    let query : sym_state * query_category = (ss, Q_shiftleft_safe) in
     {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
   | MI_lsr ->
     (* for right logical shift, 
@@ -599,7 +618,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
     let shifted_state : sym_state = (MV_shiftR_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_ss ss in
     let runstate : sym_state = ss_add_constraint shifted_state (MF_shiftR_nnn_rhs_in_256 (h,h2)) in
-    let query : sym_state * query_category = (ss, Q_shiftright_prohibited) in
+    let query : sym_state * query_category = (ss, Q_shiftright_safe) in
     {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
   | MI_or ->
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
@@ -716,158 +735,104 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     {(ss_to_srset ss) with queries=qset;}
 end (* function run_inst_i end *)
 
-(*
-(*****************************************************************************)
-(*****************************************************************************)
-(* Run Operation                                                             *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-let rec run_operation : operation -> state_set -> state_set
-= fun op ss_set -> begin
-  PSet.fold ss_set.running
-    ~init:{running=PSet.empty; queries=ss_set.queries; terminated=ss_set.terminated}
-    ~f:(
-      fun {running; queries; terminated} ss ->
-        let {running=ps; queries=qs; terminated=ts} = run_operation_i op ss in
-        {running=(PSet.union ps running); queries=(PSet.union qs queries); terminated=(PSet.union ts terminated)}
-    )
-end (* function run_operation end *)
-
-(* NOTE: the "ss_cur_sender" should be well-updated BEFORE run implicit operations. *)
-and run_operation_i : operation -> Tz.sym_state -> state_set
-= fun op ss -> begin
-  match op with
-  (*************************************************************************)
-  (* Explicit                                                              *)
-  (*************************************************************************)
-  | TO_explicit_create_contract (source_addr, (delegate_opt, balance_init, storage_v), (param_ty, storage_ty, code)) ->
-    (ignore (source_addr, delegate_opt, balance_init, storage_v, param_ty, storage_ty, code)); Error "run_operation_i : TO_explicit_create_contract : not implemented" |> raise
-  | TO_explicit_transfer_tokens (source_addr, param_val, amount, target_contract) ->
-    (ignore (source_addr, param_val, amount, target_contract)); Error "run_operation_i : TO_explicit_transer_tokens : not implemented" |> raise
-  | TO_explicit_set_delegate (_, delegate_opt) ->
-    let new_fixchain : blockchain = {ss.ss_fixchain with bc_delegate=(MV_update_xomm(ss.ss_cur_source, delegate_opt, ss.ss_fixchain.bc_delegate) |> gen_dummy_cc)} in
-    {running=PSet.singleton {ss with ss_fixchain=new_fixchain}; queries=PSet.empty; terminated=PSet.empty;}
-  (*************************************************************************)
-  (* Implicit                                                              *)
-  (*************************************************************************)
-  | TO_implicit_create_contract (sender_addr, (delegate_opt, balance_init, storage_v), (param_ty, storage_ty, code)) ->
-    (ignore (sender_addr, delegate_opt, balance_init, storage_v, param_ty, storage_ty, code)); Error "run_operation_i : TO_create_contract : not implemented" |> raise
-  | TO_implicit_transfer_tokens (sender_addr, param_val, amount, target_contract) ->
-    (*  1. set current sender
-        2. dynchain.balance[sender] -= amount
-        3. dynchain.balance[target] += amount
-        4. set current contract address
-        5. initialize symstack
-        6. run contract code
-        7. update dynchain's storage
-        8. put this contract into executed address set
-        (9. update operation-queue)
-        (10. (resolve remain operation-queue : set cur-sender, call "Se.run_operation", ...))
-    *)
-    (* 0. generates common components *)
-    let target_contract_addr : mich_v cc = MV_address_of_contract target_contract |> gen_dummy_cc in
-    {running=(PSet.singleton ss); queries=PSet.empty; terminated=PSet.empty}
-    (* 1. set current sender *)
-    |> map_ss_running (fun ss -> {ss with ss_cur_sender=sender_addr;})
-    (* 2. balance[sender] -= amount *)
-    |> run_operation (TO_internal_balance_sub (sender_addr, amount))
-    (* 3. balance[target] += amount *)
-    |> run_operation (TO_internal_balance_add (target_contract_addr, amount))
-    (* 4. set current contract address *)
-    |> map_ss_running (fun ss -> {ss with ss_cur_ctaddr=target_contract_addr})
-    (* 5. initialize symstack *)
-    |> run_operation (TO_internal_symstack_prepare (param_val))
-    (* 6. run contract code *)
-    (* |> run_operation (TO_internal_run_code (target_contract_addr)) *)
-    |> ignore;(ignore (param_val, amount, target_contract)); Error "run_operation_i : TO_transer_tokens : not implemented" |> raise
-  | TO_implicit_set_delegate (_, delegate_opt) ->
-    let new_dynchain : blockchain = {ss.ss_dynchain with bc_delegate=(MV_update_xomm(ss.ss_cur_sender, delegate_opt, ss.ss_dynchain.bc_delegate) |> gen_dummy_cc)} in
-    {running=PSet.singleton {ss with ss_dynchain=new_dynchain}; queries=PSet.empty; terminated=PSet.empty;}
-  (*************************************************************************)
-  (* Internal                                                              *)
-  (*************************************************************************)
-  | TO_internal_balance_sub (target_addr, amount) ->
-    (* It generates 1 running state and 1 terminated state.
-      - running: "dynchain.balance[target] -= amount" applied && no-underflow constraint added.
-      - terminated: underflow constraint added.
-    *)
-    let target_balance_before : mich_v cc = MV_get_xmoy (target_addr, ss.ss_dynchain.bc_balance) |> gen_dummy_cc in
-    let target_balance_after : mich_v cc = MV_sub_mmm (target_balance_before, amount) |> gen_dummy_cc in
-    let target_balance_no_underflow : mich_f = MF_sub_mmm_no_underflow (target_balance_before, amount) in
-    (* make terminated-state *)
-    let terminated_condition : mich_f list = (MF_not target_balance_no_underflow) :: ss.ss_constraints in
-    let terminated_state : sym_state = {ss with ss_constraints=terminated_condition;} in
-    (* make running-state *)
-    let target_balance_after_some : mich_v cc = MV_some target_balance_after |> gen_dummy_cc in
-    let updated_balance : mich_v cc = MV_update_xomm(target_addr, target_balance_after_some, ss.ss_dynchain.bc_balance) |> gen_dummy_cc in
-    let running_dynchain : blockchain = {ss.ss_dynchain with bc_balance=updated_balance} in
-    let running_condition : mich_f list = target_balance_no_underflow :: ss.ss_constraints in
-    let running_state : sym_state = {ss with ss_dynchain=running_dynchain; ss_constraints=running_condition;} in
-    (* return *)
-    {running=(PSet.singleton running_state); queries=PSet.empty; terminated=(PSet.singleton terminated_state);}
-  | TO_internal_balance_add (target_addr, amount) ->
-    (* It generates 1 running state.
-      - running: "dynchain.balance[target] += amount" applied && no-overflow constraint added.
-    *)
-    let target_balance_before : mich_v cc = MV_get_xmoy (target_addr, ss.ss_dynchain.bc_balance) |> gen_dummy_cc in
-    let target_balance_after : mich_v cc = MV_add_mmm (target_balance_before, amount) |> gen_dummy_cc in
-    let target_balance_no_overflow : mich_f = MF_add_mmm_no_overflow (target_balance_before, amount) in
-    (* make running-state *)
-    let target_balance_after_some : mich_v cc = MV_some target_balance_after |> gen_dummy_cc in
-    let updated_balance : mich_v cc = MV_update_xomm(target_addr, target_balance_after_some, ss.ss_dynchain.bc_balance) |> gen_dummy_cc in
-    let running_dynchain : blockchain = {ss.ss_dynchain with bc_balance=updated_balance} in
-    let running_condition : mich_f list = target_balance_no_overflow :: ss.ss_constraints in
-    let running_state : sym_state = {ss with ss_dynchain=running_dynchain; ss_constraints=running_condition;} in
-    (* return *)
-    {running=(PSet.singleton running_state); queries=PSet.empty; terminated=PSet.empty;}
-  | TO_internal_symstack_prepare (param_val) ->
-    (* It generates 1 running state OR 1 terminated state, since "bc_storage" is managed with PMap, not mich_v.
-      - running: length-1 symstack "[<param-val, storage-val in dynamic-chain>]" applied.
-      - terminated: if the storage value of the target-contract not found.
-    *)
-    let target_contract_addr : mich_v cc = ss.ss_cur_ctaddr in
-    let storage_val_opt : mich_v cc option = PMap.find ss.ss_dynchain.bc_storage target_contract_addr in
-    (match storage_val_opt with
-    | None -> {running=PSet.empty; queries=PSet.empty; terminated=(PSet.singleton ss);}
-    | Some sval ->
-      let param_storage_pair : mich_v cc = MV_pair (param_val, sval) |> gen_dummy_cc in
-      let running_state : sym_state = {ss with ss_symstack=[param_storage_pair]} in
-      {running=(PSet.singleton running_state); queries=PSet.empty; terminated=PSet.empty}
-    )
-  (* | TO_internal_run_code (target_addr) -> *)
-    (* It is the interface to call "Se.run_inst", since it might fails to find  *)
-end (* function run_operation_i end *)
-
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Main                                                                      *)
+(* Utilities - Run Instruction                                               *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-let main : blockchain -> string -> operation list -> state_set
-= fun bc source alist -> begin
-  let initial_sym_stack = {
-    ss_fixchain = bc;
-    ss_dynchain = bc;
-    ss_exec_addrs = (MV_lit_set (gen_dummy_cc MT_address, PSet.empty)) |> gen_dummy_cc;
-    ss_oper_queue = (MV_lit_list (gen_dummy_cc MT_operation, [])) |> gen_dummy_cc;
-    ss_cur_source = (MV_lit_address (gen_dummy_cc (MV_lit_key_hash source))) |> gen_dummy_cc;
-    ss_cur_sender = (MV_lit_address (gen_dummy_cc (MV_lit_key_hash source))) |> gen_dummy_cc;
-    ss_cur_ctaddr = (MV_lit_address (gen_dummy_cc (MV_lit_key_hash source))) |> gen_dummy_cc; (* dummy value *)
-    ss_curct_startloc = CCLOC_Unknown;
-    ss_curct_blockloc = CCLOC_Unknown;
-    ss_curct_startstack = [];
-    ss_symstack = [];
-    ss_constraints = [];
+(* "run_inst_in_fog" symbolic executes the given contract with no other information provided. *)
+let run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) -> (Tz.sym_state * (cache ref) * state_set)
+= (* SUGARS *)
+  let gdcc = gen_dummy_cc in
+  let addr_typ = gdcc MT_address
+    and chainid_typ = gdcc MT_chain_id
+    and mutez_typ = gdcc MT_mutez
+    and operation_typ = gdcc MT_operation
+    and opt_typ t = gdcc (MT_option t)
+    and timestamp_typ = gdcc MT_timestamp
+  in
+  let int_one = gdcc (MV_lit_int Z.one)
+    and empty_addr_set = gdcc (MV_empty_set addr_typ)
+    and empty_operation_list = gdcc (MV_nil operation_typ) 
+  in
+
+  fun (param_typ, storage_typ, inst) -> begin
+  
+  (* 0. address *)
+  let ctrt_addr : mich_v cc = gen_new_symval_t addr_typ in
+
+  (* 1. blockchain *)
+  let ctrt_storage : mich_v cc = gen_new_symval_t storage_typ in
+  let ctrt_balance : mich_v cc = gen_new_symval_t mutez_typ in
+  let ctrt_delegate : mich_v cc = gen_new_symval_t (opt_typ addr_typ) in
+  let balancemap : (mich_v cc, mich_v cc) PMap.t = PMap.singleton ctrt_addr ctrt_balance in
+  let delegatemap : (mich_v cc, mich_v cc) PMap.t = PMap.singleton ctrt_addr ctrt_delegate in
+  let blockchain_fix : blockchain = {
+    bc_storage = PMap.singleton ctrt_addr (gen_new_symval_t storage_typ);
+    bc_code = PMap.singleton ctrt_addr inst;
+    bc_balance = pmap_to_mtmap (addr_typ, mutez_typ, balancemap);
+    bc_delegate = pmap_to_mtmap (addr_typ, (opt_typ addr_typ), delegatemap);
+    bc_chain_id = gen_new_symval_t chainid_typ;
+    bc_last_blocktime = gen_new_symval_t timestamp_typ;
   } in
-  List.fold_left
-    (fun state_set op ->
-      let {running=r; queries=q; terminated=t} = run_operation op state_set in
-      {running=(PSet.union r state_set.running); queries=(PSet.union q state_set.queries); terminated=(PSet.union t state_set.terminated)}
-    )
-    {running=(PSet.singleton initial_sym_stack); queries=PSet.empty; terminated=PSet.empty}
-    alist
-end (* function main end *)
-*)
+
+  (* 2. transfer-token operation *)
+  let tt_amount : mich_v cc = gen_new_symval_t mutez_typ in
+  let tt_source : mich_v cc = gen_new_symval_t addr_typ in
+  let tt_param : mich_v cc = gen_new_symval_t param_typ in
+  let exop : explicit_operation = EXOP_transfer_token (ctrt_addr, tt_source, tt_amount, tt_param) in
+  let transfertoken_op : oper_transfertoken = {
+    optt_addr = ctrt_addr;
+    optt_source = tt_source;
+    optt_sender = gen_new_symval_t addr_typ;
+    optt_amount = tt_amount;
+    optt_param = tt_param;
+    optt_now = MV_add_tit (blockchain_fix.bc_last_blocktime, int_one) |> gdcc;
+  } in
+
+  (* 3. set dynamic-chain *)
+  let updated_balance : mich_v cc = MV_add_mmm (ctrt_balance, tt_amount) |> gdcc in
+  let updated_balancemap : (mich_v cc, mich_v cc) PMap.t = PMap.singleton ctrt_addr updated_balance in
+  let updated_balance_no_overflow : mich_f = MF_add_mmm_no_overflow (ctrt_balance, tt_amount) in  (* DON'T FORGET TO ADD THIS CONSTRAINT *)
+  let blockchain_dyn : blockchain = {blockchain_fix with bc_balance=(pmap_to_mtmap (addr_typ, mutez_typ, updated_balancemap));} in
+  
+  (* 4. symbolic state *)
+  let init_mci : mich_cut_info = {
+    mci_loc=inst.cc_loc;
+    mci_cutcat=MCC_trx_entry;
+  } in
+  let end_mci : mich_cut_info = {
+    mci_loc=inst.cc_loc;
+    mci_cutcat=MCC_trx_exit;
+  } in
+  let init_symstack : mich_v cc list = [MV_pair (tt_param, ctrt_storage) |> gdcc] in
+  let init_ss : sym_state = {
+    ss_fixchain=blockchain_fix;
+    ss_exop=exop;
+    ss_dynchain=blockchain_dyn;
+    ss_exec_addrs=empty_addr_set;
+    ss_oper_queue=empty_operation_list;
+    ss_optt=transfertoken_op;
+    ss_entry_mci=init_mci;
+    ss_entry_symstack=init_symstack;
+    ss_block_mci=init_mci;
+    ss_symstack=init_symstack;
+    ss_constraints=[updated_balance_no_overflow];
+  } in
+
+  (* run & block *)
+  let cache = init_cache () in
+  let run_result_0 : state_set = run_inst_i cache inst init_ss in
+  let run_result : state_set = {
+    run_result_0 with
+    running=PSet.empty;
+    blocked=(PSet.union (PSet.map run_result_0.running ~f:(fun ss -> {ss with ss_block_mci=end_mci})) run_result_0.blocked);
+  } in
+
+  (* return *)
+  (init_ss, cache, run_result)
+
+end (* function run_inst_in_fog end *)
+

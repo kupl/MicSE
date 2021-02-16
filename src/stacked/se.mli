@@ -4,11 +4,11 @@ exception Error of string
 
 type query_category =
   (* Each of them are indicator of "State -> Formula" function *)
-  | Q_mutez_add_overflow
-  | Q_mutez_mul_overflow
-  | Q_mutez_sub_underflow
-  | Q_shiftleft_prohibited
-  | Q_shiftright_prohibited
+  | Q_mutez_add_no_overflow
+  | Q_mutez_sub_no_underflow
+  | Q_mutez_mul_no_overflow
+  | Q_shiftleft_safe
+  | Q_shiftright_safe
   | Q_assertion
 
 type state_set = {
@@ -41,6 +41,15 @@ val is_entered_lmbd : cache ref -> Tz.mich_cut_info -> bool
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Utilities - Query                                                         *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+val state_query_reduce : Tz.sym_state * query_category -> Tz.mich_f
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Utilities - State Set Mapping                                             *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -57,22 +66,11 @@ val map_ss_running : (Tz.sym_state -> Tz.sym_state) -> state_set -> state_set
 val run_inst : cache ref -> (Tz.mich_i Tz.cc) -> state_set -> state_set
 val run_inst_i : cache ref -> (Tz.mich_i Tz.cc) -> Tz.sym_state -> state_set
 
-(*
-(*****************************************************************************)
-(*****************************************************************************)
-(* Run Operation                                                             *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-val run_operation : Tz.operation -> state_set -> state_set
-val run_operation_i : Tz.operation -> Tz.sym_state -> state_set
-
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Main                                                                      *)
+(* Utilities - Run Instruction                                               *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-val main : Tz.blockchain -> string -> Tz.operation list -> state_set
-*)
+val run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) -> (Tz.sym_state * (cache ref) * state_set)

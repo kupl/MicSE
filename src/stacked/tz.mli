@@ -393,10 +393,10 @@ and mich_i =
 
 and blockchain = {
   bc_storage : (mich_v cc, mich_v cc) PMap.t; (* It should not be expressed dynamically, until the whole mich_v can be encoded to single sort in SMT. *)  
+  bc_code : (mich_v cc, mich_i cc) PMap.t; (* (address, ((param*strg), (oplist*strg)) lambda) PMap.t *)
   (* (address, contract) map *)
   bc_balance : mich_v cc; (* (address, mutez) map *)
   bc_delegate : mich_v cc; (* (address, address option) map *)
-  bc_code : mich_v cc; (* (address, ((param*strg), (oplist*strg)) lambda) map *)
   (* others *)
   bc_chain_id : mich_v cc; (* chain-id *)
   bc_last_blocktime : mich_v cc; (* timestamp *)
@@ -525,3 +525,10 @@ val gen_new_symval_v : mich_v cc -> mich_v cc
 
 val gen_newvar_symstack_ts : (mich_t cc list) -> (mich_v cc list)
 val gen_newvar_symstack_vs : (mich_v cc list) -> (mich_v cc list)
+
+
+(*****************************************************************************)
+(* OCaml container -> Tz container                                           *)
+(*****************************************************************************)
+
+val pmap_to_mtmap : mich_t cc * mich_t cc * (mich_v cc, mich_v cc) PMap.t -> mich_v cc
