@@ -3,5 +3,6 @@
   (public_name micse.stacked)
   (libraries
     core
+    micse.pre
     zarith
     ))
