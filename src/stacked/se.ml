@@ -129,21 +129,23 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   let move_running_to_blocked : mich_cut_info -> state_set -> state_set
   = fun mci sset -> {sset with running=PSet.empty; blocked=(PSet.map sset.running ~f:(update_block_mci mci))} 
   in
+  (* SUGAR - michelson value *)
+  let mich_int_0 : mich_v cc = MV_lit_int Z.zero |> gen_dummy_cc in
   (* FUNCTION BEGIN *)
   fun cache inst ss -> begin
   let gen_inst_cc : 'a -> 'a cc = gen_custom_cc inst in
   let 
-    { ss_fixchain;
-      ss_exop;
-      ss_dynchain;
-      ss_exec_addrs;
-      ss_oper_queue;
-      ss_optt;
-      ss_entry_mci;
-      ss_entry_symstack;
-      ss_block_mci;
+    { ss_fixchain=_;
+      ss_exop=_;
+      ss_dynchain=_;
+      ss_exec_addrs=_;
+      ss_oper_queue=_;
+      ss_optt=_;
+      ss_entry_mci=_;
+      ss_entry_symstack=_;
+      ss_block_mci=_;
       ss_symstack;
-      ss_constraints;
+      ss_constraints=_;
     } = ss in
   match inst.cc_v with
   | MI_seq (i1,i2) -> ss |> ss_to_srset |> run_inst cache i1 |> run_inst cache i2
@@ -494,8 +496,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
           - non-overflow constraint should be added to running state
       *)
       let added_state : sym_state = (MV_add_mmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
-      let query : sym_state * query_category = (added_state, Q_mutez_add_overflow) in
-      let runstate : sym_state = ss_add_constraint ss (MF_add_mmm_no_overflow (h,h2)) in
+      let runstate : sym_state = ss_add_constraint added_state (MF_add_mmm_no_overflow (h,h2)) in
+      let query : sym_state * query_category = (ss, Q_mutez_add_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_add" |> raise
     )
@@ -517,8 +519,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
           - non-underflow constraint should be added to running state
       *)
       let subed_state : sym_state = (MV_sub_mmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
-      let query : sym_state * query_category = (subed_state, Q_mutez_sub_underflow) in
-      let runstate : sym_state = ss_add_constraint ss (MF_sub_mmm_no_underflow (h,h2)) in
+      let runstate : sym_state = ss_add_constraint subed_state (MF_sub_mmm_no_underflow (h,h2)) in
+      let query : sym_state * query_category = (ss, Q_mutez_sub_underflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_sub" |> raise
     )
@@ -538,8 +540,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
           - non-overflow constraint should be added to running state
       *)
       let muled_state : sym_state = (MV_mul_mnm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
-      let query : sym_state * query_category = (muled_state, Q_mutez_mul_overflow) in
-      let runstate : sym_state = ss_add_constraint ss (MF_mul_mnm_no_overflow (h,h2)) in
+      let runstate : sym_state = ss_add_constraint muled_state (MF_mul_mnm_no_overflow (h,h2)) in
+      let query : sym_state * query_category = (ss, Q_mutez_mul_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | MT_nat, MT_mutez ->
       (* for mutez addition, 
@@ -547,27 +549,171 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
           - non-overflow constraint should be added to running state
       *)
       let muled_state : sym_state = (MV_mul_nmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
-      let query : sym_state * query_category = (muled_state, Q_mutez_mul_overflow) in
-      let runstate : sym_state = ss_add_constraint ss (MF_mul_nmm_no_overflow (h,h2)) in
+      let runstate : sym_state = ss_add_constraint muled_state (MF_mul_nmm_no_overflow (h,h2)) in
+      let query : sym_state * query_category = (ss, Q_mutez_mul_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_mul" |> raise
     )
-  | _ -> 
-    (ignore (
-    { ss_fixchain;
-      ss_exop;
-      ss_dynchain;
-      ss_exec_addrs;
-      ss_oper_queue;
-      ss_optt;
-      ss_entry_mci;
-      ss_entry_symstack;
-      ss_block_mci;
-      ss_symstack;
-      ss_constraints;
-    }));
-    (ignore (ss, inst)); 
-    Error "run_inst_i : match failed" |> raise
+  | MI_ediv -> 
+    let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    let gen_srset : mich_v -> state_set
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    in
+    (match (typ_of_val h).cc_v, (typ_of_val h2).cc_v with
+    | MT_nat, MT_nat -> MV_ediv_nnnn (h,h2) |> gen_srset
+    | MT_nat, MT_int -> MV_ediv_niin (h,h2) |> gen_srset
+    | MT_int, MT_nat -> MV_ediv_inin (h,h2) |> gen_srset
+    | MT_int, MT_int -> MV_ediv_iiin (h,h2) |> gen_srset
+    | MT_mutez, MT_nat -> MV_ediv_mnmm (h,h2) |> gen_srset
+    | MT_mutez, MT_mutez -> MV_ediv_mmnm (h,h2) |> gen_srset
+    | _ -> Error "run_inst_i : MI_ediv" |> raise
+    )
+  | MI_abs -> (MV_abs_in (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_isnat -> (MV_isnat (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_int -> (MV_int_of_nat (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_neg ->
+    let h = CList.hd_exn ss_symstack in 
+    let gen_srset : mich_v -> state_set
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    in
+    (match (typ_of_val h).cc_v with
+    | MT_nat -> MV_neg_ni (h) |> gen_srset
+    | MT_int -> MV_neg_ii (h) |> gen_srset
+    | _ -> Error "run_inst_i : MI_neg" |> raise
+    )
+  | MI_lsl ->
+    (* for left logical shift, 
+        - query added
+        - in-bound constraint should be added to running state
+    *)
+    let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    let shifted_state : sym_state = (MV_shiftL_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_ss ss in
+    let runstate : sym_state = ss_add_constraint shifted_state (MF_shiftL_nnn_rhs_in_256 (h,h2)) in
+    let query : sym_state * query_category = (ss, Q_shiftleft_prohibited) in
+    {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
+  | MI_lsr ->
+    (* for right logical shift, 
+        - query added
+        - in-bound constraint should be added to running state
+    *)
+    let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    let shifted_state : sym_state = (MV_shiftR_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_ss ss in
+    let runstate : sym_state = ss_add_constraint shifted_state (MF_shiftR_nnn_rhs_in_256 (h,h2)) in
+    let query : sym_state * query_category = (ss, Q_shiftright_prohibited) in
+    {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
+  | MI_or ->
+    let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    let gen_srset : mich_v -> state_set
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    in
+    (match (typ_of_val h).cc_v, (typ_of_val h2).cc_v with
+    | MT_nat, MT_nat -> MV_or_nnn (h,h2) |> gen_srset
+    | MT_bool, MT_bool -> MV_or_bbb (h,h2) |> gen_srset
+    | _ -> Error "run_inst_i : MI_or" |> raise
+    )
+  | MI_and ->
+    let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    let gen_srset : mich_v -> state_set
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    in
+    (match (typ_of_val h).cc_v, (typ_of_val h2).cc_v with
+    | MT_nat, MT_nat -> MV_and_nnn (h,h2) |> gen_srset
+    | MT_int, MT_nat -> MV_and_inn (h,h2) |> gen_srset
+    | MT_bool, MT_bool -> MV_and_bbb (h,h2) |> gen_srset
+    | _ -> Error "run_inst_i : MI_and" |> raise
+    )
+  | MI_xor ->
+    let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    let gen_srset : mich_v -> state_set
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    in
+    (match (typ_of_val h).cc_v, (typ_of_val h2).cc_v with
+    | MT_nat, MT_nat -> MV_xor_nnn (h,h2) |> gen_srset
+    | MT_bool, MT_bool -> MV_xor_bbb (h,h2) |> gen_srset
+    | _ -> Error "run_inst_i : MI_xor" |> raise
+    )
+  | MI_not -> 
+    let h = CList.hd_exn ss_symstack in
+    let gen_srset : mich_v -> state_set
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    in
+    (match (typ_of_val h).cc_v with
+    | MT_nat -> MV_not_ni (h) |> gen_srset
+    | MT_int -> MV_not_ii (h) |> gen_srset
+    | MT_bool -> MV_not_bb (h) |> gen_srset
+    | _ -> Error "run_inst_i : MI_not" |> raise
+    )
+  | MI_compare ->
+    (MV_compare (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
+    |> cons_tl_n ss_symstack 1
+    |> sstack_to_srset ss
+  | MI_eq -> (MV_eq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_neq -> (MV_neq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_lt -> (MV_lt_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_gt -> (MV_lt_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_le -> (MV_leq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_ge -> (MV_geq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_self -> 
+    (MV_lit_contract ((typ_of_val ss.ss_optt.optt_param), ss.ss_optt.optt_addr) |> gen_inst_cc) 
+    |> sstack_push ss_symstack
+    |> sstack_to_srset ss
+  | MI_contract t ->
+    (MV_lit_contract (t, CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss 
+  | MI_transfer_tokens ->
+    let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
+    (MV_transfer_tokens (h,h2,h3) |> gen_inst_cc)
+    |> cons_tl_n ss_symstack 3
+    |> sstack_to_srset ss
+  | MI_set_delegate ->
+    (MV_set_delegate (CList.hd_exn ss_symstack) |> gen_inst_cc)
+    |> cons_tl_n ss_symstack 1
+    |> sstack_to_srset ss
+  | MI_create_account -> Error "run_inst_i : MI_create_account : deprecated instruction" |> raise
+  | MI_create_contract (t1,t2,i) -> 
+    let ctrt_input_typ : mich_t cc = MT_pair (t1,t2) |> gen_custom_cc inst in
+    let operlist_typ : mich_t cc = MT_list (gen_custom_cc inst MT_operation) |> gen_custom_cc inst in
+    let ctrt_output_typ : mich_t cc = MT_pair (operlist_typ, t2) |> gen_custom_cc inst in
+    let lambda : mich_v cc = MV_lit_lambda (ctrt_input_typ,ctrt_output_typ,i) |> gen_inst_cc in
+    let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
+    (MV_create_contract (ctrt_input_typ, ctrt_output_typ, lambda, h, h2, h3) |> gen_inst_cc)
+    |> cons_tl_n ss_symstack 3
+    |> sstack_to_srset ss
+  | MI_implicit_account ->
+    (MV_implicit_account (CList.hd_exn ss_symstack) |> gen_inst_cc)
+    |> cons_tl_n ss_symstack 1
+    |> sstack_to_srset ss
+  | MI_now -> (ss.ss_optt.optt_now) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_amount -> (ss.ss_optt.optt_amount) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_balance -> 
+    (match PMap.find ss.ss_dynchain.bc_storage ss.ss_optt.optt_addr with
+    | None -> Error "run_inst_i : MI_balance : balance not found" |> raise
+    | Some blce -> blce |> sstack_push ss_symstack |> sstack_to_srset ss
+    )
+  | MI_check_signature ->
+    let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
+    (MV_check_signature (h,h2,h3) |> gen_inst_cc)
+    |> cons_tl_n ss_symstack 3
+    |> sstack_to_srset ss
+  | MI_blake2b -> (MV_blake2b (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_sha256 -> (MV_sha256 (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_sha512 -> (MV_sha512 (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_hash_key -> (MV_hash_key (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_steps_to_quota -> Error "run_inst_i : MI_steps_to_quota : deprecated instruction" |> raise
+  | MI_source -> (ss.ss_optt.optt_source) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_sender -> (ss.ss_optt.optt_sender) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_address -> (MV_address_of_contract (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_chain_id -> (ss.ss_dynchain.bc_chain_id) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_unpair -> 
+    let h = CList.hd_exn ss_symstack in
+    (gen_inst_cc (MV_car h), gen_inst_cc (MV_cdr h))
+    |> cons2_tl_n ss_symstack 1
+    |> sstack_to_srset ss
+  | MI_micse_check (i) ->
+    (* dealing with micse-check
+        - bring running states from the result of "i", and convert them to queries.
+    *)
+    let qset : (sym_state * query_category) PSet.t = PSet.map (run_inst_i cache i ss).running ~f:(fun x -> (x,Q_assertion)) in
+    {(ss_to_srset ss) with queries=qset;}
 end (* function run_inst_i end *)
 
 (*
