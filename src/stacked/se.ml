@@ -477,8 +477,81 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_unpack t ->
     (MV_unpack (t, CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_add ->
-    (* if there are mutez addition, query should be generated *)
-    ss_to_srset ss (* PLACEHOLDER, TODO *)
+    let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    let gen_srset : mich_v -> state_set
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    in
+    (match (typ_of_val h).cc_v, (typ_of_val h2).cc_v with
+    | MT_nat, MT_int -> MV_add_nii (h,h2) |> gen_srset
+    | MT_int, MT_nat -> MV_add_ini (h,h2) |> gen_srset
+    | MT_int, MT_int -> MV_add_iii (h,h2) |> gen_srset
+    | MT_nat, MT_nat -> MV_add_nnn (h,h2) |> gen_srset
+    | MT_timestamp, MT_int -> MV_add_tit (h,h2) |> gen_srset
+    | MT_int, MT_timestamp -> MV_add_itt (h,h2) |> gen_srset
+    | MT_mutez, MT_mutez ->
+      (* for mutez addition, 
+          - query added
+          - non-overflow constraint should be added to running state
+      *)
+      let added_state : sym_state = (MV_add_mmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
+      let query : sym_state * query_category = (added_state, Q_mutez_add_overflow) in
+      let runstate : sym_state = ss_add_constraint ss (MF_add_mmm_no_overflow (h,h2)) in
+      {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
+    | _ -> Error "run_inst_i : MI_add" |> raise
+    )
+  | MI_sub ->
+    let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    let gen_srset : mich_v -> state_set
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    in
+    (match (typ_of_val h).cc_v, (typ_of_val h2).cc_v with
+    | MT_nat, MT_nat -> MV_sub_nni (h,h2) |> gen_srset
+    | MT_nat, MT_int -> MV_sub_nii (h,h2) |> gen_srset
+    | MT_int, MT_nat -> MV_sub_ini (h,h2) |> gen_srset
+    | MT_int, MT_int -> MV_sub_iii (h,h2) |> gen_srset
+    | MT_timestamp, MT_timestamp -> MV_sub_tti (h,h2) |> gen_srset
+    | MT_timestamp, MT_int -> MV_sub_tit (h,h2) |> gen_srset
+    | MT_mutez, MT_mutez ->
+      (* for mutez subtraction, 
+          - query added
+          - non-underflow constraint should be added to running state
+      *)
+      let subed_state : sym_state = (MV_sub_mmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
+      let query : sym_state * query_category = (subed_state, Q_mutez_sub_underflow) in
+      let runstate : sym_state = ss_add_constraint ss (MF_sub_mmm_no_underflow (h,h2)) in
+      {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
+    | _ -> Error "run_inst_i : MI_sub" |> raise
+    )
+  | MI_mul ->
+    let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
+    let gen_srset : mich_v -> state_set
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    in
+    (match (typ_of_val h).cc_v, (typ_of_val h2).cc_v with
+    | MT_nat, MT_nat -> MV_mul_nnn (h,h2) |> gen_srset
+    | MT_nat, MT_int -> MV_mul_nii (h,h2) |> gen_srset
+    | MT_int, MT_nat -> MV_mul_ini (h,h2) |> gen_srset
+    | MT_int, MT_int -> MV_mul_iii (h,h2) |> gen_srset
+    | MT_mutez, MT_nat ->
+      (* for mutez addition, 
+          - query added
+          - non-overflow constraint should be added to running state
+      *)
+      let muled_state : sym_state = (MV_mul_mnm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
+      let query : sym_state * query_category = (muled_state, Q_mutez_mul_overflow) in
+      let runstate : sym_state = ss_add_constraint ss (MF_mul_mnm_no_overflow (h,h2)) in
+      {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
+    | MT_nat, MT_mutez ->
+      (* for mutez addition, 
+          - query added
+          - non-overflow constraint should be added to running state
+      *)
+      let muled_state : sym_state = (MV_mul_nmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
+      let query : sym_state * query_category = (muled_state, Q_mutez_mul_overflow) in
+      let runstate : sym_state = ss_add_constraint ss (MF_mul_nmm_no_overflow (h,h2)) in
+      {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
+    | _ -> Error "run_inst_i : MI_mul" |> raise
+    )
   | _ -> 
     (ignore (
     { ss_fixchain;
