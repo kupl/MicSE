@@ -7,5 +7,6 @@ DS_Store
 .vscode
 tmp/
 
-# Benchmark outputs
+# Benchmark
 /scripts/output/
+/scripts/.env
