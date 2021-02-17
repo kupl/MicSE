@@ -4,5 +4,6 @@
   (libraries
     core
     micse.pre
+    micse.prover
     zarith
     ))

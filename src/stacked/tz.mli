@@ -83,7 +83,6 @@ and mich_v =
   | MV_unlift_left of mich_v cc  (* ('a, 'b) or -> 'a *)
   | MV_unlift_right of mich_v cc (* ('a, 'b) or -> 'b *) 
   | MV_hd_l of mich_v cc (* 'a list -> 'a *)
-  | MV_exec of mich_v cc * mich_v cc (* 'a * ('a, 'b) lambda -> 'b *)
 
   (*************************************************************************)
   (* Integer                                                               *)
@@ -512,6 +511,9 @@ val gen_custom_cc : 'ccbase cc -> 'a -> 'a cc
 (* It does not check whether the given term is well-typed or not, just find the appropriate type if possible *)
 val typ_of_val : mich_v cc -> mich_t cc
 val typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
+
+val get_innertyp : mich_t cc -> mich_t cc
+val get_innertyp2 : mich_t cc -> (mich_t cc * mich_t cc)
 
 
 (*****************************************************************************)

@@ -83,7 +83,6 @@ and mich_v =
   | MV_unlift_left of mich_v cc  (* ('a, 'b) or -> 'a *)
   | MV_unlift_right of mich_v cc (* ('a, 'b) or -> 'b *) 
   | MV_hd_l of mich_v cc (* 'a list -> 'a *)
-  | MV_exec of mich_v cc * mich_v cc (* 'a * ('a, 'b) lambda -> 'b *)
 
   (*************************************************************************)
   (* Integer                                                               *)
@@ -536,7 +535,6 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
   | MV_unlift_left v -> (function | MT_or (t1,_) -> t1 | _ -> err ()) ((typ_of_val v).cc_v)
   | MV_unlift_right v -> (function | MT_or (_,t2) -> t2 | _ -> err ()) ((typ_of_val v).cc_v)
   | MV_hd_l v -> (function | MT_list t -> t | _ -> err ()) ((typ_of_val v).cc_v)
-  | MV_exec (v1,_) -> (function | MT_lambda (_,t2) -> t2 | _ -> err ()) ((typ_of_val v1).cc_v)
   (*************************************************************************)
   (* Integer                                                               *)
   (*************************************************************************)
@@ -741,6 +739,18 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
   (*************************************************************************)
   | MV_lit_chain_id _ -> MT_chain_id |> gen_cc
 end (* function typ_of_val_i end *)
+
+let get_innertyp : mich_t cc -> mich_t cc
+= (fun ttt -> match ttt.cc_v with
+  | MT_option t | MT_list t | MT_set t | MT_contract t -> t
+  | _ -> Stdlib.failwith "Tz.get_innertyp"
+)
+
+let get_innertyp2 : mich_t cc -> (mich_t cc * mich_t cc)
+= (fun ttt -> match ttt.cc_v with
+  | MT_pair (t1, t2) | MT_or (t1, t2) | MT_lambda (t1, t2) | MT_map (t1, t2) | MT_big_map (t1, t2) -> (t1, t2)
+  | _ -> Stdlib.failwith "Tz.get_innertyp2"
+)
 
 
 (*****************************************************************************)
