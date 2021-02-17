@@ -447,15 +447,13 @@ type mich_f =
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Symbolic Stack                                                            *)
+(* Symbolic State                                                            *)
 (*****************************************************************************)
 (*****************************************************************************)
 
 type mich_cut_category =
 | MCC_trx_entry
 | MCC_trx_exit
-| MCC_ln_lmbd       (* non-body of the lambda function *)
-| MCC_lb_lmbd       (* body of the lambda function *)
 | MCC_ln_loop       (* non-body of the loop location *)
 | MCC_ln_loopleft   (* non-body of the loop location *)
 | MCC_ln_map        (* non-body of the loop location *)
@@ -781,3 +779,42 @@ let pmap_to_mtmap : mich_t cc * mich_t cc * (mich_v cc, mich_v cc) PMap.t -> mic
     ~init:(MV_empty_map (kt,vt) |> gdcc)
     ~f:(fun ~key ~data acc -> MV_update_xomm (key, MV_some data |> gdcc, acc) |> gdcc)
 end (* function pmap_to_mtmap end *)
+
+
+(*****************************************************************************)
+(* Invariant Application form for each mich_cut_category                     *)
+(*****************************************************************************)
+
+(* Currently, we regard the invariant uses the base stack elements only *)
+let inv_app_guide_entry : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
+= let module CList = Core.List in
+  fun inv_f ss -> begin
+  let sstack : mich_v cc list = ss.ss_entry_symstack in
+  match ss.ss_entry_mci.mci_cutcat with
+  | MCC_trx_entry     -> inv_f sstack
+  | MCC_trx_exit      -> Stdlib.failwith "inv_app_guide_entry : MCC_trx_exit : unexpected"
+  | MCC_ln_loop       -> inv_f sstack
+  | MCC_ln_loopleft   -> inv_f (CList.tl_exn sstack)
+  | MCC_ln_map        -> inv_f (CList.tl_exn sstack)
+  | MCC_ln_iter       -> inv_f sstack
+  | MCC_lb_loop       -> inv_f sstack
+  | MCC_lb_loopleft   -> inv_f (CList.tl_exn sstack)
+  | MCC_lb_map        -> inv_f (CList.tl_exn sstack)
+  | MCC_lb_iter       -> inv_f (CList.tl_exn sstack)
+end (* function inv_app_guide_entry end *)
+let inv_app_guide_block : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
+= let module CList = Core.List in
+  fun inv_f ss -> begin
+  let sstack : mich_v cc list = ss.ss_symstack in
+  match ss.ss_block_mci.mci_cutcat with
+  | MCC_trx_entry     -> Stdlib.failwith "inv_app_guide_block : MCC_trx_entry : unexpected"
+  | MCC_trx_exit      -> inv_f sstack
+  | MCC_ln_loop       -> inv_f (CList.tl_exn sstack)
+  | MCC_ln_loopleft   -> inv_f (CList.tl_exn sstack)
+  | MCC_ln_map        -> inv_f (CList.tl_exn sstack)
+  | MCC_ln_iter       -> inv_f (CList.tl_exn sstack)
+  | MCC_lb_loop       -> inv_f (CList.tl_exn sstack)
+  | MCC_lb_loopleft   -> inv_f (CList.tl_exn sstack)
+  | MCC_lb_map        -> inv_f (CList.tl_exn sstack)
+  | MCC_lb_iter       -> inv_f sstack
+end (* function inv_app_guide_exit end *)

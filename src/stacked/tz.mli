@@ -447,15 +447,13 @@ type mich_f =
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Symbolic Stack                                                            *)
+(* Symbolic State                                                            *)
 (*****************************************************************************)
 (*****************************************************************************)
 
 type mich_cut_category =
   | MCC_trx_entry
   | MCC_trx_exit
-  | MCC_ln_lmbd       (* non-body of the lambda function *)
-  | MCC_lb_lmbd       (* body of the lambda function *)
   | MCC_ln_loop       (* non-body of the loop location *)
   | MCC_ln_loopleft   (* non-body of the loop location *)
   | MCC_ln_map        (* non-body of the loop location *)
@@ -534,3 +532,11 @@ val gen_newvar_symstack_vs : (mich_v cc list) -> (mich_v cc list)
 (*****************************************************************************)
 
 val pmap_to_mtmap : mich_t cc * mich_t cc * (mich_v cc, mich_v cc) PMap.t -> mich_v cc
+
+
+(*****************************************************************************)
+(* Invariant Application form for each mich_cut_category                     *)
+(*****************************************************************************)
+
+val inv_app_guide_entry : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
+val inv_app_guide_block : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
