@@ -41,3 +41,25 @@ module T2S : sig
   val cv_mvcc : Tz.mich_v Tz.cc -> ProverLib.Smt.ZExpr.t
   val cv_mf : Tz.mich_f -> ProverLib.Smt.ZFormula.t
 end (* module T2S end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Tz to Json                                                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module T2J : sig
+  type js = Yojson.Safe.t
+  val cv_pos : Tz.ccp_pos -> js
+  val cv_loc : Tz.ccp_loc -> js
+  val cv_annot : Tz.ccp_annot -> js
+  val cv_cc : ('a -> js) -> 'a Tz.cc -> js
+  val cv_mt : Tz.mich_t -> js
+  val cv_mv : Tz.mich_v -> js
+  val cv_mi : Tz.mich_i -> js
+  val cv_mtcc : Tz.mich_t Tz.cc -> js
+  val cv_mvcc : Tz.mich_v Tz.cc -> js
+  val cv_micc : Tz.mich_i Tz.cc -> js
+  val cv_mf : Tz.mich_f -> js
+end (* module T2J end *)
