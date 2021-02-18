@@ -39,3 +39,11 @@ let f_count_sset : Se.state_set -> unit
   Printf.printf "#running=%d, #blocked=%d, #queries=%d, #terminated=%d\n" (sz running) (sz blocked) (sz queries) (sz terminated)
 end (* function f_count_sset end *)
 
+let f_print_blocked_paths_pretty : Se.state_set -> unit
+= fun sset -> begin
+  let strop_j = TzCvt.T2J.cv_p1_ss_strop (Tz.PSet.choose_exn sset.blocked) in
+  let paths_j = Tz.PSet.map sset.blocked ~f:(TzCvt.T2J.cv_p1_ss_path) in
+  print_endline (strop_j |> Yojson.Safe.to_basic |> Yojson.Basic.pretty_to_string);
+  (Tz.PSet.iter paths_j ~f:(fun x -> x |> Yojson.Safe.to_basic |> Yojson.Basic.pretty_to_string |> print_endline))
+end (* function f_print_sset end *)
+

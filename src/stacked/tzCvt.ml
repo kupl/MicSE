@@ -634,7 +634,7 @@ module T2J = struct
   ) (* function cv_annot end *)
   let cv_cc : ('a -> js) -> 'a Tz.cc -> js
   = (fun f x ->
-    `Tuple [cv_loc x.cc_loc; `List (List.map cv_annot x.cc_anl); f x.cc_v ]
+    `Assoc [cc_loc, cv_loc x.cc_loc; cc_anl, `List (List.map cv_annot x.cc_anl); cc_val, f x.cc_v;]
   ) (* function cv_cc end *)
   let rec cv_mt : Tz.mich_t -> js
   = let s t = Some (cv_mtcc t) in
@@ -672,7 +672,8 @@ module T2J = struct
     (*************************************************************************)
     (* Symbol & Polymorphic                                                  *)
     (*************************************************************************)
-    | MV_symbol (t,v)     -> `Variant (v_symbol,        Some (`Tuple [cv_mtcc t; `String v]))
+    (* | MV_symbol (t,v)     -> `Variant (v_symbol,        Some (`Tuple [cv_mtcc t; `String v])) *)
+    | MV_symbol (t,v)     -> `Variant (v_symbol,        Some (`Tuple [cv_mt t.cc_v; `String v]))
     | MV_car e            -> `Variant (v_car,           s e)
     | MV_cdr e            -> `Variant (v_cdr,           s e)
     | MV_unlift_option e  -> `Variant (v_unlift_option, s e)
@@ -1085,6 +1086,34 @@ module T2J = struct
       jc_ss_constraints,    `List (List.map cv_mf ss.ss_constraints);
     ]
   end (* function cv_ss end *)
+
+
+(*************************************************************************)
+(* P1 : Debugging info for Prover                                        *)
+(*************************************************************************)
+
+  let cv_p1_ss_strop : Tz.sym_state -> js
+  = fun ss -> begin
+    let strg : Tz.mich_v Tz.cc =
+      (Tz.PMap.find ss.ss_dynchain.bc_storage ss.ss_optt.optt_addr)
+      |> (function | Some s -> s | None -> Stdlib.failwith "TzCvt.T2J.cv_p1_ss_bcop") 
+    in
+    `Assoc [
+      jc_bc_storage,        cv_mvcc strg;
+      jc_ss_optt,           cv_oper_transfertoken ss.ss_optt;
+    ]
+  end (* function cv_p1_ss_strop end *)
+
+  let cv_p1_ss_path : Tz.sym_state -> js
+  = fun ss -> begin
+    `Assoc [
+      jc_ss_entry_mci,      cv_mich_cut_info ss.ss_entry_mci;
+      jc_ss_entry_symstack, `List (List.map cv_mvcc ss.ss_entry_symstack);
+      jc_ss_block_mci,      cv_mich_cut_info ss.ss_block_mci;
+      jc_ss_symstack,       `List (List.map cv_mvcc ss.ss_symstack);
+      jc_ss_constraints,    `List (List.map cv_mf ss.ss_constraints);
+    ]
+  end (* function cv_p1_ss_path end *)
 end (* module T2J end *)
 
 

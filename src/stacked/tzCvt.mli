@@ -69,6 +69,9 @@ module T2J : sig
   val cv_mich_cut_category : Tz.mich_cut_category -> js
   val cv_mich_cut_info : Tz.mich_cut_info -> js
   val cv_ss : Tz.sym_state -> js
+
+  val cv_p1_ss_strop : Tz.sym_state -> js
+  val cv_p1_ss_path : Tz.sym_state -> js
 end (* module T2J end *)
 
 

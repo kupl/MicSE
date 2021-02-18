@@ -17,3 +17,4 @@ val gen_sset : PreLib.Adt.t -> (PreLib.Adt.data option) -> ((Tz.mich_v Tz.cc opt
 (*****************************************************************************)
 
 val f_count_sset : Se.state_set -> unit
+val f_print_blocked_paths_pretty : Se.state_set -> unit

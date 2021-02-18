@@ -6,11 +6,14 @@
 (*****************************************************************************)
 (*****************************************************************************)
 
-let cc_l_unk = "Unk"
-let cc_l_pos = "Pos"
+let cc_l_unk = "U"
+let cc_l_pos = "P"
 let cc_a_typ = ":"
 let cc_a_var = "@"
 let cc_a_fld = "%"
+let cc_loc = "Loc"
+let cc_anl = "Ann"
+let cc_val = "value"
 
 
 (*****************************************************************************)
@@ -55,7 +58,7 @@ let t_address = "address"
 (* Symbol & Polymorphic                                                  *)
 (*************************************************************************)
 
-let v_symbol = "v"
+let v_symbol = "var"
 let v_car = "car"
 let v_cdr = "cdr"
 let v_unlift_option = "ul_option"

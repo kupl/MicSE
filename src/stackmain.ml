@@ -11,7 +11,8 @@ let main : unit -> unit
     Stacked.Prove.gen_sset pgmfilecontent strgfilecontentopt
   in
   let _ = ignore (tz_init_stg_opt, init_ss, cache) in
-  Stacked.Prove.f_count_sset sset
+  Stacked.Prove.f_count_sset sset;
+  Stacked.Prove.f_print_blocked_paths_pretty sset
 end
 
 let _ = begin
