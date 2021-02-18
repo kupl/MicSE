@@ -25,6 +25,8 @@ type cache = {
   ch_entered_lmbd : Tz.mich_cut_info Tz.PSet.t;
 }
 
+type invmap = (Tz.mich_cut_info, ((Tz.mich_v Tz.cc list) -> Tz.mich_f)) Tz.PMap.t
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -81,6 +83,25 @@ end (* function state_query_reduce end *)
 
 let map_ss_running : (Tz.sym_state -> Tz.sym_state) -> state_set -> state_set
 = fun map_f {running; blocked; queries; terminated} -> {running=(Tz.PSet.map running ~f:map_f); blocked; queries; terminated;}
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Utilities - Invmap                                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let true_invmap_of_blocked_sset : Tz.sym_state Tz.PSet.t -> invmap
+= let pm_add_if_possible k v pmap = PMap.add pmap ~key:k ~data:v |> (function | `Ok m -> m | `Duplicate -> pmap) in
+  let true_f = (function _ -> MF_true) in
+  fun blocked_set -> begin
+  PSet.fold blocked_set ~init:PMap.empty 
+    ~f:(fun accm bl_ss -> 
+      accm 
+      |> pm_add_if_possible bl_ss.ss_entry_mci true_f
+      |> pm_add_if_possible bl_ss.ss_block_mci true_f
+    )
+end (* function true_invmap_from_blocked end *)
 
 
 (*****************************************************************************)
@@ -836,3 +857,30 @@ let run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) 
 
 end (* function run_inst_in_fog end *)
 
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Generate Inductiveness & Query Formula                                    *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let inv_induct_fmla : (Tz.sym_state Tz.PSet.t) -> invmap -> (Tz.mich_f Tz.PSet.t)
+= fun blocked_sset invm -> begin
+  PSet.map blocked_sset 
+    ~f:(fun bl_ss ->
+      match (PMap.find invm bl_ss.ss_entry_mci, PMap.find invm bl_ss.ss_block_mci) with
+      | (Some inv_entry, Some inv_block) ->
+          MF_imply (inv_app_guide_entry inv_entry bl_ss, inv_app_guide_block inv_block bl_ss)
+      | _ -> Error "inv_induct_fmla : cannot find invariant" |> raise
+    )
+end (* function inv_induct_fmla end *)
+let inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
+= fun query_ssp invm -> begin
+  let query_ss = Stdlib.fst query_ssp in
+  let inv_entry = PMap.find invm query_ss.ss_entry_mci 
+                  |> (function | Some v -> v | None -> Error "inv_query_fmla : inv_entry : not-found" |> raise) 
+  in
+  let entry_fmla = inv_app_guide_entry inv_entry query_ss in
+  let query = state_query_reduce query_ssp in
+  MF_imply (entry_fmla, query)
+end (* function inv_query_fmla end *)
