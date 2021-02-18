@@ -438,3 +438,80 @@ let f_shiftL_nnn_rhs_in_256 = "shiftL_nnn_rhs_in_256"
 let f_shiftR_nnn_rhs_in_256 = "shiftR_nnn_rhs_in_256"
 let f_sigma_equal = "sigma_equal"
 
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Blockchain, Operation                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let jc_bc_storage = "bc_storage"
+let jc_bc_code = "bc_code"
+let jc_bc_balance = "bc_balance"
+let jc_bc_delegate = "bc_delegate"
+let jc_bc_chain_id = "bc_chain_id"
+let jc_bc_last_blocktime = "bc_last_blocktime"
+
+let exop_transfer_token = "exop_transfer_token"
+
+let jc_optt_addr = "optt_addr"
+let jc_optt_source = "optt_source"
+let jc_optt_sender = "optt_sender"
+let jc_optt_amount = "optt_amount"
+let jc_optt_param = "optt_param"
+let jc_optt_now = "optt_now"
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Cut Category, Cut Info, and Symbolic State                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let mcc_trx_entry = "mcc_trx_entry"
+let mcc_trx_exit = "mcc_trx_exit"
+let mcc_ln_loop = "mcc_ln_loop"
+let mcc_ln_loopleft = "mcc_ln_loopleft"
+let mcc_ln_map = "mcc_ln_map"
+let mcc_ln_iter = "mcc_ln_iter"
+let mcc_lb_loop = "mcc_lb_loop"
+let mcc_lb_loopleft = "mcc_lb_loopleft"
+let mcc_lb_map = "mcc_lb_map"
+let mcc_lb_iter = "mcc_lb_iter"
+
+let jc_mci_loc = "mci_loc"
+let jc_mci_cutcat = "mci_cutcat"
+
+let jc_ss_fixchain = "ss_fixchain"
+let jc_ss_exop = "ss_exop"
+let jc_ss_dynchain = "ss_dynchain"
+let jc_ss_exec_addrs = "ss_exec_addrs"
+let jc_ss_oper_queue = "ss_oper_queue"
+let jc_ss_optt = "ss_optt"
+let jc_ss_entry_mci = "ss_entry_mci"
+let jc_ss_entry_symstack = "ss_entry_symstack"
+let jc_ss_block_mci = "ss_block_mci"
+let jc_ss_symstack = "ss_symstack"
+let jc_ss_constraints = "ss_constraints"
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Names in module Se                                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let q_mutez_add_no_overflow = "q_mutez_add_no_overflow"
+let q_mutez_sub_no_underflow = "q_mutez_sub_no_underflow"
+let q_mutez_mul_no_overflow = "q_mutez_mul_no_overflow"
+let q_shiftleft_safe = "q_shiftleft_safe"
+let q_shiftright_safe = "q_shiftright_safe"
+let q_assertion = "q_assertion"
+
+let jc_running = "running"
+let jc_blocked = "blocked"
+let jc_queries = "queries"
+let jc_terminated = "terminated"
+
+let jc_ch_entered_loop = "ch_entered_loop"
+let jc_ch_entered_lmbd = "ch_entered_lmbd"

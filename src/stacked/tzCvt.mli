@@ -62,4 +62,25 @@ module T2J : sig
   val cv_mvcc : Tz.mich_v Tz.cc -> js
   val cv_micc : Tz.mich_i Tz.cc -> js
   val cv_mf : Tz.mich_f -> js
+
+  val cv_bc : Tz.blockchain -> js
+  val cv_exop : Tz.explicit_operation -> js
+  val cv_oper_transfertoken : Tz.oper_transfertoken -> js
+  val cv_mich_cut_category : Tz.mich_cut_category -> js
+  val cv_mich_cut_info : Tz.mich_cut_info -> js
+  val cv_ss : Tz.sym_state -> js
 end (* module T2J end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Se to Json                                                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module S2J : sig
+  type js = Yojson.Safe.t
+  val cv_qc : Se.query_category -> js
+  val cv_sset : Se.state_set -> js
+  val cv_cache : (Se.cache ref) -> js
+end (* module S2J end *)

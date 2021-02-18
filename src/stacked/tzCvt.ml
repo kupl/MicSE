@@ -1018,5 +1018,106 @@ module T2J = struct
     | MF_shiftR_nnn_rhs_in_256  (v1,v2)   -> `Variant (f_shiftR_nnn_rhs_in_256, sv2 v1 v2)
     | MF_sigma_equal            (v1,v2)   -> `Variant (f_sigma_equal,           sv2 v1 v2)
     ) (* function cv_mf end *)
+
+  
+  
+  let cv_bc : Tz.blockchain -> js
+  = let m2pl m : js list = Tz.PMap.fold m ~init:[] ~f:(fun ~key ~data accl -> `Tuple [cv_mvcc key; cv_mvcc data] :: accl) in
+    let m2pli m : js list = Tz.PMap.fold m ~init:[] ~f:(fun ~key ~data accl -> `Tuple [cv_mvcc key; cv_micc data] :: accl) in
+    fun bc -> begin
+    `Assoc [
+      jc_bc_storage,  `List (m2pl bc.bc_storage);
+      jc_bc_code,     `List (m2pli bc.bc_code);
+      jc_bc_balance,  cv_mvcc bc.bc_balance;
+      jc_bc_delegate, cv_mvcc bc.bc_delegate;
+      jc_bc_chain_id, cv_mvcc bc.bc_chain_id;
+      jc_bc_last_blocktime, cv_mvcc bc.bc_last_blocktime;
+    ]
+  end (* function cv_bc end *)
+  let cv_exop : Tz.explicit_operation -> js
+  = (function
+    | EXOP_transfer_token (e1, e2, e3, e4) -> `Variant (exop_transfer_token, Some (`Tuple [cv_mvcc e1; cv_mvcc e2; cv_mvcc e3; cv_mvcc e4;]))
+    ) (* function cv_exop end *)
+  let cv_oper_transfertoken : Tz.oper_transfertoken -> js
+  = fun ot -> begin
+    `Assoc [
+      jc_optt_addr,   cv_mvcc ot.optt_addr;
+      jc_optt_source, cv_mvcc ot.optt_source;
+      jc_optt_sender, cv_mvcc ot.optt_sender;
+      jc_optt_amount, cv_mvcc ot.optt_amount;
+      jc_optt_param,  cv_mvcc ot.optt_param ;
+      jc_optt_now,    cv_mvcc ot.optt_now;
+    ]
+  end (* function cv_oper_transfertoken end *)
+  let cv_mich_cut_category : Tz.mich_cut_category -> js
+  = (function
+    | MCC_trx_entry     -> `Variant (mcc_trx_entry,   None)
+    | MCC_trx_exit      -> `Variant (mcc_trx_exit,    None)
+    | MCC_ln_loop       -> `Variant (mcc_ln_loop,     None)
+    | MCC_ln_loopleft   -> `Variant (mcc_ln_loopleft, None)
+    | MCC_ln_map        -> `Variant (mcc_ln_map,      None)
+    | MCC_ln_iter       -> `Variant (mcc_ln_iter,     None)
+    | MCC_lb_loop       -> `Variant (mcc_lb_loop,     None)
+    | MCC_lb_loopleft   -> `Variant (mcc_lb_loopleft, None)
+    | MCC_lb_map        -> `Variant (mcc_lb_map,      None)
+    | MCC_lb_iter       -> `Variant (mcc_lb_iter,     None)
+    ) (* function cv_mich_cut_category end *)
+  let cv_mich_cut_info : Tz.mich_cut_info -> js
+  = fun m -> begin
+    `Assoc [
+      jc_mci_loc,     cv_loc m.mci_loc;
+      jc_mci_cutcat,  cv_mich_cut_category m.mci_cutcat;
+    ]
+  end (* function cv_mich_cut_info end *)
+  let cv_ss : Tz.sym_state -> js
+  = fun ss -> begin
+    `Assoc [
+      jc_ss_fixchain,       cv_bc ss.ss_fixchain;    
+      jc_ss_exop,           cv_exop ss.ss_exop;
+      jc_ss_dynchain,       cv_bc ss.ss_dynchain;
+      jc_ss_exec_addrs,     cv_mvcc ss.ss_exec_addrs;
+      jc_ss_oper_queue,     cv_mvcc ss.ss_oper_queue;
+      jc_ss_optt,           cv_oper_transfertoken ss.ss_optt;
+      jc_ss_entry_mci,      cv_mich_cut_info ss.ss_entry_mci;
+      jc_ss_entry_symstack, `List (List.map cv_mvcc ss.ss_entry_symstack);
+      jc_ss_block_mci,      cv_mich_cut_info ss.ss_block_mci;
+      jc_ss_symstack,       `List (List.map cv_mvcc ss.ss_symstack);
+      jc_ss_constraints,    `List (List.map cv_mf ss.ss_constraints);
+    ]
+  end (* function cv_ss end *)
 end (* module T2J end *)
+
+
+module S2J = struct
+  type js = Yojson.Safe.t
+  open Jc
+  let cv_qc : Se.query_category -> js
+  = (function
+    | Q_mutez_add_no_overflow -> `Variant (q_mutez_add_no_overflow, None)
+    | Q_mutez_sub_no_underflow -> `Variant (q_mutez_sub_no_underflow, None)
+    | Q_mutez_mul_no_overflow -> `Variant (q_mutez_mul_no_overflow, None)
+    | Q_shiftleft_safe -> `Variant (q_shiftleft_safe, None)
+    | Q_shiftright_safe -> `Variant (q_shiftright_safe, None)
+    | Q_assertion -> `Variant (q_assertion, None)
+    ) (* function cv_qc end *)
+  let cv_sset : Se.state_set -> js
+  = let s2l s = Tz.PSet.map s ~f:(T2J.cv_ss) |> Tz.PSet.to_list in
+    let sqs2l s = Tz.PSet.map s ~f:(fun (ss, qc) -> `Tuple [T2J.cv_ss ss; cv_qc qc;]) |> Tz.PSet.to_list in
+    fun sset -> begin
+    `Assoc [
+      jc_running,     `List (s2l sset.running);
+      jc_blocked,     `List (s2l sset.blocked);
+      jc_queries,     `List (sqs2l sset.queries);
+      jc_terminated,  `List (s2l sset.terminated);
+    ]
+  end (* function cv_sset end *)
+  let cv_cache : (Se.cache ref) -> js
+  = let s2l s = Tz.PSet.map s ~f:(T2J.cv_mich_cut_info) |> Tz.PSet.to_list in
+    fun c -> begin
+    `Assoc [
+      jc_ch_entered_loop, `List (s2l !c.ch_entered_loop);
+      jc_ch_entered_lmbd, `List (s2l !c.ch_entered_lmbd);
+    ]
+  end (* function cv_cache end *)
+end (* module S2J end *)
 
