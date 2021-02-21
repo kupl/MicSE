@@ -316,11 +316,13 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> move_running_to_blocked thenbr_mci
     in
     (* 3. make else-branch (loop-exit) running state *)
-    let elsebr_ss : sym_state = 
+    let elsebr_sset : state_set = 
+      if entered_flag then empty_sset else
       (gen_newvar_symstack_vs ss_symstack)
       |> new_ss_for_loopinst ss elsebr_mci
+      |> ss_to_srset
     in
-    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state);}
+    sset_union_pointwise {thenbr_sset with blocked=(PSet.add thenbr_sset.blocked blocked_state)} elsebr_sset
   | MI_iter (i) ->
     let (outer_cutcat, inner_cutcat) : (mich_cut_category * mich_cut_category) = (MCC_ln_iter, MCC_lb_iter) in
     let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
@@ -346,11 +348,13 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> move_running_to_blocked thenbr_mci
     in
     (* symstack for MI_iter's elsebr_ss is different from MI_map's symstack for else-branch *)
-    let elsebr_ss : sym_state =
+    let elsebr_sset : state_set =
+      if entered_flag then empty_sset else
       (gen_newvar_symstack_vs (CList.tl_exn ss_symstack))
       |> new_ss_for_loopinst ss elsebr_mci
+      |> ss_to_srset
     in
-    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state;)}
+    sset_union_pointwise {thenbr_sset with blocked=(PSet.add thenbr_sset.blocked blocked_state)} elsebr_sset
   | MI_mem ->
     let (h, h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
     (match (typ_of_val h2).cc_v with
@@ -412,11 +416,13 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> move_running_to_blocked thenbr_mci
     in
     (* symstack for MI_iter's elsebr_ss is different from MI_map's symstack for else-branch *)
-    let elsebr_ss : sym_state =
+    let elsebr_sset : state_set =
+      if entered_flag then empty_sset else
       (gen_newvar_symstack_vs (CList.tl_exn ss_symstack))
       |> new_ss_for_loopinst ss elsebr_mci
+      |> ss_to_srset
     in
-    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state);}
+    sset_union_pointwise {thenbr_sset with blocked=(PSet.add thenbr_sset.blocked blocked_state)} elsebr_sset
   | MI_loop_left (i) ->
     let (outer_cutcat, inner_cutcat) : (mich_cut_category * mich_cut_category) = (MCC_ln_loopleft, MCC_lb_loopleft) in
     let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
@@ -440,11 +446,13 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> move_running_to_blocked thenbr_mci
     in
     (* 3. make else-branch (loop-exit) running state *)
-    let elsebr_ss : sym_state = 
+    let elsebr_sset : state_set = 
+      if entered_flag then empty_sset else
       ((gen_new_symval_t right_elem_t) :: (gen_newvar_symstack_vs (CList.tl_exn ss_symstack)))
       |> new_ss_for_loopinst ss elsebr_mci
+      |> ss_to_srset
     in
-    {thenbr_sset with running=(PSet.add thenbr_sset.running elsebr_ss); blocked=(PSet.add thenbr_sset.blocked blocked_state);}
+    sset_union_pointwise {thenbr_sset with blocked=(PSet.add thenbr_sset.blocked blocked_state)} elsebr_sset
   | MI_lambda (t1,t2,i) ->
     (*
     (* perform symbolic execution for instruction-i *)

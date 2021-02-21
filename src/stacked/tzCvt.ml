@@ -1100,6 +1100,7 @@ module T2J = struct
     in
     `Assoc [
       jc_bc_storage,        cv_mvcc strg;
+      jc_bc_balance,        cv_mvcc ss.ss_dynchain.bc_balance;
       jc_ss_optt,           cv_oper_transfertoken ss.ss_optt;
     ]
   end (* function cv_p1_ss_strop end *)
