@@ -45,7 +45,7 @@ end (* module T2S end *)
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Tz to Json                                                                *)
+(* Tz/Se to Json                                                             *)
 (*****************************************************************************)
 (*****************************************************************************)
 
@@ -75,15 +75,41 @@ module T2J : sig
 end (* module T2J end *)
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Se to Json                                                                *)
-(*****************************************************************************)
-(*****************************************************************************)
-
 module S2J : sig
   type js = Yojson.Safe.t
   val cv_qc : Se.query_category -> js
   val cv_sset : Se.state_set -> js
   val cv_cache : (Se.cache ref) -> js
 end (* module S2J end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Tz to Json (No CC for mich_t, mich_v, mich_i, and mich_f)                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module T2Jnocc : sig
+  type js = Yojson.Safe.t
+  val cv_pos : Tz.ccp_pos -> js
+  val cv_loc : Tz.ccp_loc -> js
+  val cv_annot : Tz.ccp_annot -> js
+  val cv_cc : ('a -> js) -> 'a Tz.cc -> js
+  val cv_mt : Tz.mich_t -> js
+  val cv_mv : Tz.mich_v -> js
+  val cv_mi : Tz.mich_i -> js
+  val cv_mtcc : Tz.mich_t Tz.cc -> js
+  val cv_mvcc : Tz.mich_v Tz.cc -> js
+  val cv_micc : Tz.mich_i Tz.cc -> js
+  val cv_mf : Tz.mich_f -> js
+
+  val cv_bc : Tz.blockchain -> js
+  val cv_exop : Tz.explicit_operation -> js
+  val cv_oper_transfertoken : Tz.oper_transfertoken -> js
+  val cv_mich_cut_category : Tz.mich_cut_category -> js
+  val cv_mich_cut_info : Tz.mich_cut_info -> js
+  val cv_ss : Tz.sym_state -> js
+
+  val cv_p1_ss_strop : Tz.sym_state -> js
+  val cv_p1_ss_path : Tz.sym_state -> js
+end (* moduel T2Jnocc end *)

@@ -1151,3 +1151,510 @@ module S2J = struct
   end (* function cv_cache end *)
 end (* module S2J end *)
 
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Tz to Json (No CC)                                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module T2Jnocc = struct
+  type js = Yojson.Safe.t
+  open Jc
+  let cv_pos : Tz.ccp_pos -> js
+  = fun {col; lin} -> `Tuple [`Int lin; `Int col] (* function cv_pos end *)
+  let cv_loc : Tz.ccp_loc -> js
+  = (function
+    | CCLOC_Unknown -> `Variant (cc_l_unk, None)
+    | CCLOC_Pos (p1, p2) -> `Variant (cc_l_pos, Some (`Tuple [cv_pos p1; cv_pos p2]))
+  ) (* function cv_loc end *)
+  let cv_annot : Tz.ccp_annot -> js
+  = (function
+    | CCA_typ s -> `Variant (cc_a_typ, Some (`String s))
+    | CCA_var s -> `Variant (cc_a_var, Some (`String s))
+    | CCA_fld s -> `Variant (cc_a_fld, Some (`String s))
+  ) (* function cv_annot end *)
+  let cv_cc : ('a -> js) -> 'a Tz.cc -> js
+  = (fun f x ->
+    `Assoc [cc_loc, cv_loc x.cc_loc; cc_anl, `List (List.map cv_annot x.cc_anl); cc_val, f x.cc_v;]
+  ) (* function cv_cc end *)
+  let rec cv_mt : Tz.mich_t -> js
+  = let s t = Some (cv_mtcc t) in
+    let s2 t1 t2 = Some (`Tuple [cv_mtcc t1; cv_mtcc t2;]) in
+    (function
+    | MT_key              -> `Variant (t_key, None)
+    | MT_unit             -> `Variant (t_unit, None)
+    | MT_signature        -> `Variant (t_signature, None)
+    | MT_option t         -> `Variant (t_option, s t)
+    | MT_list t           -> `Variant (t_list, s t)
+    | MT_set t            -> `Variant (t_set, s t)
+    | MT_operation        -> `Variant (t_operation, None)
+    | MT_contract t       -> `Variant (t_contract, s t)
+    | MT_pair (t1, t2)    -> `Variant (t_pair, s2 t1 t2)
+    | MT_or (t1, t2)      -> `Variant (t_or, s2 t1 t2)
+    | MT_lambda (t1, t2)  -> `Variant (t_lambda, s2 t1 t2)
+    | MT_map (t1, t2)     -> `Variant (t_map, s2 t1 t2)
+    | MT_big_map (t1, t2) -> `Variant (t_big_map, s2 t1 t2)
+    | MT_chain_id         -> `Variant (t_chain_id, None)
+    | MT_int              -> `Variant (t_int, None)
+    | MT_nat              -> `Variant (t_nat, None)
+    | MT_string           -> `Variant (t_string, None)
+    | MT_bytes            -> `Variant (t_bytes, None)
+    | MT_mutez            -> `Variant (t_mutez, None)
+    | MT_bool             -> `Variant (t_bool, None)
+    | MT_key_hash         -> `Variant (t_key_hash, None)
+    | MT_timestamp        -> `Variant (t_timestamp, None)
+    | MT_address          -> `Variant (t_address, None)
+    ) (* function cv_mt end *)
+  and cv_mv : Tz.mich_v -> js
+  = let s e = Some (cv_mvcc e) in
+    let s2 e1 e2 = Some (`Tuple [cv_mvcc e1; cv_mvcc e2;]) in
+    let s3 e1 e2 e3 = Some (`Tuple [cv_mvcc e1; cv_mvcc e2; cv_mvcc e3;]) in
+    (function
+    (*************************************************************************)
+    (* Symbol & Polymorphic                                                  *)
+    (*************************************************************************)
+    (* | MV_symbol (t,v)     -> `Variant (v_symbol,        Some (`Tuple [cv_mtcc t; `String v])) *)
+    | MV_symbol (t,v)     -> `Variant (v_symbol,        Some (`Tuple [cv_mt t.cc_v; `String v]))
+    | MV_car e            -> `Variant (v_car,           s e)
+    | MV_cdr e            -> `Variant (v_cdr,           s e)
+    | MV_unlift_option e  -> `Variant (v_unlift_option, s e)
+    | MV_unlift_left e    -> `Variant (v_unlift_left,   s e)
+    | MV_unlift_right e   -> `Variant (v_unlift_right,  s e)
+    | MV_hd_l e           -> `Variant (v_hd_l,          s e)
+  
+    (*************************************************************************)
+    (* Integer                                                               *)
+    (*************************************************************************)
+    | MV_lit_int zn       -> `Variant (v_lit_int,     Some (`Intlit (Z.to_string zn)))
+    | MV_neg_ni e         -> `Variant (v_neg_ni,      s e)
+    | MV_neg_ii e         -> `Variant (v_neg_ii,      s e)
+    | MV_not_ni e         -> `Variant (v_not_ni,      s e)
+    | MV_not_ii e         -> `Variant (v_not_ii,      s e)
+    | MV_add_nii (e1, e2) -> `Variant (v_add_nii,     s2 e1 e2)
+    | MV_add_ini (e1, e2) -> `Variant (v_add_ini,     s2 e1 e2)
+    | MV_add_iii (e1, e2) -> `Variant (v_add_iii,     s2 e1 e2)
+    | MV_sub_nni (e1, e2) -> `Variant (v_sub_nni,     s2 e1 e2)
+    | MV_sub_nii (e1, e2) -> `Variant (v_sub_nii,     s2 e1 e2)
+    | MV_sub_ini (e1, e2) -> `Variant (v_sub_ini,     s2 e1 e2)
+    | MV_sub_iii (e1, e2) -> `Variant (v_sub_iii,     s2 e1 e2)
+    | MV_sub_tti (e1, e2) -> `Variant (v_sub_tti,     s2 e1 e2)
+    | MV_mul_nii (e1, e2) -> `Variant (v_mul_nii,     s2 e1 e2)
+    | MV_mul_ini (e1, e2) -> `Variant (v_mul_ini,     s2 e1 e2)
+    | MV_mul_iii (e1, e2) -> `Variant (v_mul_iii,     s2 e1 e2)
+    | MV_compare (e1, e2) -> `Variant (v_compare,     s2 e1 e2)
+    | MV_int_of_nat e     -> `Variant (v_int_of_nat,  s e)
+  
+    (*************************************************************************)
+    (* Natural Number                                                        *)
+    (*************************************************************************)
+    | MV_lit_nat zn           -> `Variant (v_lit_nat,     Some (`Intlit (Z.to_string zn)))
+    | MV_abs_in e             -> `Variant (v_abs_in,      s e)
+    | MV_add_nnn (e1, e2)     -> `Variant (v_add_nnn,     s2 e1 e2)
+    | MV_mul_nnn (e1, e2)     -> `Variant (v_mul_nnn,     s2 e1 e2)
+    | MV_shiftL_nnn (e1, e2)  -> `Variant (v_shiftL_nnn,  s2 e1 e2)
+    | MV_shiftR_nnn (e1, e2)  -> `Variant (v_shiftR_nnn,  s2 e1 e2)
+    | MV_and_nnn (e1, e2)     -> `Variant (v_and_nnn,     s2 e1 e2)
+    | MV_and_inn (e1, e2)     -> `Variant (v_and_inn,     s2 e1 e2)
+    | MV_or_nnn (e1, e2)      -> `Variant (v_or_nnn,      s2 e1 e2)
+    | MV_xor_nnn (e1, e2)     -> `Variant (v_xor_nnn,     s2 e1 e2)
+    | MV_size_s e             -> `Variant (v_size_s,      s e)
+    | MV_size_m e             -> `Variant (v_size_m,      s e)
+    | MV_size_l e             -> `Variant (v_size_l,      s e)
+    | MV_size_str e           -> `Variant (v_size_str,    s e)
+    | MV_size_b e             -> `Variant (v_size_b,      s e)
+  
+    (*************************************************************************)
+    (* String                                                                *)
+    (*************************************************************************)
+    | MV_lit_string s         -> `Variant (v_lit_string,    Some (`String s))
+    | MV_concat_sss (e1, e2)  -> `Variant (v_concat_sss,    s2 e1 e2)
+    | MV_concat_list_s e      -> `Variant (v_concat_list_s, s e)
+  
+    (*************************************************************************)
+    (* Bytes                                                                 *)
+    (*************************************************************************)
+    | MV_lit_bytes s          -> `Variant (v_lit_bytes,     Some (`String s))
+    | MV_concat_bbb (e1, e2)  -> `Variant (v_concat_bbb,    s2 e1 e2)
+    | MV_concat_list_b e      -> `Variant (v_concat_list_b, s e)
+    | MV_pack e               -> `Variant (v_pack,          s e)
+    | MV_blake2b e            -> `Variant (v_blake2b,       s e)
+    | MV_sha256  e            -> `Variant (v_sha256,        s e)
+    | MV_sha512  e            -> `Variant (v_sha512,        s e)
+  
+    (*************************************************************************)
+    (* Mutez                                                                 *)
+    (*************************************************************************)
+    | MV_lit_mutez zn     -> `Variant (v_lit_mutez, Some (`Intlit (Z.to_string zn)))
+    | MV_add_mmm (e1, e2) -> `Variant (v_add_mmm,   s2 e1 e2)
+    | MV_sub_mmm (e1, e2) -> `Variant (v_sub_mmm,   s2 e1 e2)
+    | MV_mul_mnm (e1, e2) -> `Variant (v_mul_mnm,   s2 e1 e2)
+    | MV_mul_nmm (e1, e2) -> `Variant (v_mul_nmm,   s2 e1 e2)
+  
+    (*************************************************************************)
+    (* Bool                                                                  *)
+    (*************************************************************************)
+    | MV_lit_bool b                 -> `Variant (v_lit_bool,        Some (`Bool b))
+    | MV_not_bb e                   -> `Variant (v_not_bb,          s e)
+    | MV_and_bbb (e1, e2)           -> `Variant (v_and_bbb,         s2 e1 e2)
+    | MV_or_bbb  (e1, e2)           -> `Variant (v_or_bbb,          s2 e1 e2)
+    | MV_xor_bbb (e1, e2)           -> `Variant (v_xor_bbb,         s2 e1 e2)
+    | MV_eq_ib   (e1, e2)           -> `Variant (v_eq_ib,           s2 e1 e2)
+    | MV_neq_ib  (e1, e2)           -> `Variant (v_neq_ib,          s2 e1 e2)
+    | MV_lt_ib   (e1, e2)           -> `Variant (v_lt_ib,           s2 e1 e2)
+    | MV_gt_ib   (e1, e2)           -> `Variant (v_gt_ib,           s2 e1 e2)
+    | MV_leq_ib  (e1, e2)           -> `Variant (v_leq_ib,          s2 e1 e2)
+    | MV_geq_ib  (e1, e2)           -> `Variant (v_geq_ib,          s2 e1 e2)
+    | MV_mem_xsb (e1, e2)           -> `Variant (v_mem_xsb,         s2 e1 e2)
+    | MV_mem_xmb (e1, e2)           -> `Variant (v_mem_xmb,         s2 e1 e2)
+    | MV_mem_xbmb (e1, e2)          -> `Variant (v_mem_xbmb,        s2 e1 e2)
+    | MV_check_signature (e1,e2,e3) -> `Variant (v_check_signature, s3 e1 e2 e3)
+  
+    (*************************************************************************)
+    (* Key Hash                                                              *)
+    (*************************************************************************)
+    | MV_lit_key_hash s -> `Variant (v_lit_key_hash, Some (`String s))
+    | MV_hash_key e     -> `Variant (v_hash_key    , s e)
+  
+    (*************************************************************************)
+    (* Timestamp                                                             *)
+    (*************************************************************************)
+    | MV_lit_timestamp_str s  -> `Variant (v_lit_timestamp_str, Some (`String s))
+    | MV_lit_timestamp_sec zn -> `Variant (v_lit_timestamp_sec, Some (`Intlit (Z.to_string zn)))
+    | MV_add_tit (e1, e2)     -> `Variant (v_add_tit,           s2 e1 e2)
+    | MV_add_itt (e1, e2)     -> `Variant (v_add_itt,           s2 e1 e2)
+    | MV_sub_tit (e1, e2)     -> `Variant (v_sub_tit,           s2 e1 e2)
+  
+    (*************************************************************************)
+    (* Address                                                               *)
+    (*************************************************************************)
+    | MV_lit_address e          -> `Variant (v_lit_address,         s e)
+    | MV_address_of_contract e  -> `Variant (v_address_of_contract, s e)
+  
+    (*************************************************************************)
+    (* Key                                                                   *)
+    (*************************************************************************)
+    | MV_lit_key s -> `Variant (v_lit_key, Some (`String s))
+  
+    (*************************************************************************)
+    (* Unit                                                                  *)
+    (*************************************************************************)
+    | MV_unit -> `Variant (v_unit, None)
+  
+    (*************************************************************************)
+    (* Signature                                                             *)
+    (*************************************************************************)
+    | MV_lit_signature_str s            -> `Variant (v_lit_signature_str,     Some (`String s))
+    | MV_lit_signature_signed (e1, e2)  -> `Variant (v_lit_signature_signed,  s2 e1 e2)
+  
+    (*************************************************************************)
+    (* Option                                                                *)
+    (*************************************************************************)
+    | MV_some e                     -> `Variant (v_some,                s e)
+    | MV_none t                     -> `Variant (v_none,                Some (cv_mtcc t))
+    | MV_ediv_nnnn (e1, e2)         -> `Variant (v_ediv_nnnn,           s2 e1 e2)
+    | MV_ediv_niin (e1, e2)         -> `Variant (v_ediv_niin,           s2 e1 e2)
+    | MV_ediv_inin (e1, e2)         -> `Variant (v_ediv_inin,           s2 e1 e2)
+    | MV_ediv_iiin (e1, e2)         -> `Variant (v_ediv_iiin,           s2 e1 e2)
+    | MV_ediv_mnmm (e1, e2)         -> `Variant (v_ediv_mnmm,           s2 e1 e2)
+    | MV_ediv_mmnm (e1, e2)         -> `Variant (v_ediv_mmnm,           s2 e1 e2)
+    | MV_get_xmoy (e1, e2)          -> `Variant (v_get_xmoy,            s2 e1 e2)
+    | MV_get_xbmo (e1, e2)          -> `Variant (v_get_xbmo,            s2 e1 e2)
+    | MV_slice_nnso (e1, e2, e3)    -> `Variant (v_slice_nnso,          s3 e1 e2 e3)
+    | MV_slice_nnbo (e1, e2, e3)    -> `Variant (v_slice_nnbo,          s3 e1 e2 e3)
+    | MV_unpack (t, e)              -> `Variant (v_unpack,              Some (`Tuple [cv_mtcc t; cv_mvcc e;]))
+    | MV_contract_of_address (t,e)  -> `Variant (v_contract_of_address, Some (`Tuple [cv_mtcc t; cv_mvcc e;]))
+    | MV_isnat e                    -> `Variant (v_isnat,               s e)
+  
+    (*************************************************************************)
+    (* List                                                                  *)
+    (*************************************************************************)
+    | MV_lit_list (t, el) -> `Variant (v_lit_list,  Some (`Tuple [cv_mtcc t; `List (List.map cv_mvcc el);]))
+    | MV_nil t            -> `Variant (v_nil,       Some (cv_mtcc t))
+    | MV_cons (e1, e2)    -> `Variant (v_cons,      s2 e1 e2)
+    | MV_tl_l e           -> `Variant (v_tl_l,      s e)
+  
+    (*************************************************************************)
+    (* Set                                                                   *)
+    (*************************************************************************)
+    | MV_lit_set (elt, e)         -> `Variant (v_lit_set,     Some (`Tuple [cv_mtcc elt; `List (Tz.PSet.map e ~f:(cv_mvcc) |> Tz.PSet.to_list)]))
+    | MV_empty_set elt            -> `Variant (v_empty_set,   Some (cv_mtcc elt))
+    | MV_update_xbss (e1, e2, e3) -> `Variant (v_update_xbss, s3 e1 e2 e3)
+  
+    (*************************************************************************)
+    (* Operation                                                             *)
+    (*************************************************************************)
+    | MV_create_contract (pt, st, e1, e2, e3, e4) -> `Variant (v_create_contract, Some (`Tuple [cv_mtcc pt; cv_mtcc st; cv_mvcc e1; cv_mvcc e2; cv_mvcc e3; cv_mvcc e4;]))
+    | MV_transfer_tokens (e1, e2, e3)             -> `Variant (v_transfer_tokens, s3 e1 e2 e3)
+    | MV_set_delegate e                           -> `Variant (v_set_delegate,    s e)
+  
+    (*************************************************************************)
+    (* Contract                                                              *)
+    (*************************************************************************)
+    | MV_lit_contract (t, e)  -> `Variant (v_lit_contract,      Some (`Tuple [cv_mtcc t; cv_mvcc e]))
+    | MV_self t               -> `Variant (v_self,              Some (cv_mtcc t))
+    | MV_implicit_account e   -> `Variant (v_implicit_account,  s e)
+  
+    (*************************************************************************)
+    (* Pair                                                                  *)
+    (*************************************************************************)
+    | MV_pair (e1, e2) -> `Variant (v_pair, s2 e1 e2)
+  
+    (*************************************************************************)
+    (* Or                                                                    *)
+    (*************************************************************************)
+    | MV_left (t, e)  -> `Variant (v_left, Some (`Tuple [cv_mtcc t; cv_mvcc e]))
+    | MV_right (t, e) -> `Variant (v_right, Some (`Tuple [cv_mtcc t; cv_mvcc e]))
+  
+    (*************************************************************************)
+    (* Lambda                                                                *)
+    (*************************************************************************)
+    | MV_lit_lambda (pt, rt, i)  -> `Variant (v_lit_lambda,     Some (`Tuple [cv_mtcc pt; cv_mtcc rt; cv_micc i;]))
+    | MV_lambda_unknown (pt, rt) -> `Variant (v_lambda_unknown, Some (`Tuple [cv_mtcc pt; cv_mtcc rt;]))
+    | MV_lambda_closure (e1, e2) -> `Variant (v_lambda_closure, s2 e1 e2)
+  
+    (*************************************************************************)
+    (* Map                                                                   *)
+    (*************************************************************************)
+    | MV_lit_map (kt, vt, e)      -> let m2pl m : js list = Tz.PMap.fold m ~init:[] ~f:(fun ~key ~data accl -> `Tuple [cv_mvcc key; cv_mvcc data] :: accl) in
+                                     `Variant (v_lit_map,     Some (`Tuple [cv_mtcc kt; cv_mtcc vt; `List (m2pl e);]))
+    | MV_empty_map (kt, vt)       -> `Variant (v_empty_map,   Some (`Tuple [cv_mtcc kt; cv_mtcc vt;]))
+    | MV_update_xomm (e1, e2, e3) -> `Variant (v_update_xomm, s3 e1 e2 e3)
+  
+    (*************************************************************************)
+    (* Big Map                                                               *)
+    (*************************************************************************)
+    | MV_lit_big_map (kt, vt, e)    -> let m2pl m : js list = Tz.PMap.fold m ~init:[] ~f:(fun ~key ~data accl -> `Tuple [cv_mvcc key; cv_mvcc data] :: accl) in
+                                       `Variant (v_lit_big_map,   Some (`Tuple [cv_mtcc kt; cv_mtcc vt; `List (m2pl e);]))
+    | MV_empty_big_map (kt, vt)     -> `Variant (v_empty_big_map, Some (`Tuple [cv_mtcc kt; cv_mtcc vt;]))
+    | MV_update_xobmbm (e1, e2, e3) -> `Variant (v_update_xobmbm, s3 e1 e2 e3)
+  
+    (*************************************************************************)
+    (* Chain Id                                                              *)
+    (*************************************************************************)
+    | MV_lit_chain_id s -> `Variant (v_lit_chain_id, Some (`String s))
+    ) (* function cv_mv end *)
+  and cv_mi : Tz.mich_i -> js
+  = let ss1 i = Some (cv_micc i) in
+    let ss2 i1 i2 = Some (`Tuple [cv_micc i1; cv_micc i2;]) in
+    let zz1 zn = Some (`Intlit (Z.to_string zn)) in
+    let tt1 t = Some (cv_mtcc t) in
+    let tt2 t1 t2 = Some (`Tuple [cv_mtcc t1; cv_mtcc t2;]) in
+    let t2s1 t1 t2 i = Some (`Tuple [cv_mtcc t1; cv_mtcc t2; cv_micc i;]) in
+    ( function
+    | MI_seq (i1,i2)                -> `Variant (i_seq,               ss2 i1 i2)
+    | MI_drop zn                    -> `Variant (i_drop,              zz1 zn)
+    | MI_dup zn                     -> `Variant (i_dup,               zz1 zn)
+    | MI_swap                       -> `Variant (i_swap,              None)
+    | MI_dig zn                     -> `Variant (i_dig,               zz1 zn)
+    | MI_dug zn                     -> `Variant (i_dug,               zz1 zn)
+    | MI_push (t,v)                 -> `Variant (i_push,              Some (`Tuple [cv_mtcc t; cv_mvcc v;]))
+    | MI_some                       -> `Variant (i_some,              None)
+    | MI_none t                     -> `Variant (i_none,              tt1 t)
+    | MI_unit                       -> `Variant (i_unit,              None)
+    | MI_if_none (i1,i2)            -> `Variant (i_if_none,           ss2 i1 i2)
+    | MI_pair                       -> `Variant (i_pair,              None)
+    | MI_car                        -> `Variant (i_car,               None)
+    | MI_cdr                        -> `Variant (i_cdr,               None)
+    | MI_left t                     -> `Variant (i_left,              tt1 t)
+    | MI_right t                    -> `Variant (i_right,             tt1 t)
+    | MI_if_left (i1,i2)            -> `Variant (i_if_left,           ss2 i1 i2)
+    | MI_nil t                      -> `Variant (i_nil,               tt1 t)
+    | MI_cons                       -> `Variant (i_cons,              None)
+    | MI_if_cons (i1,i2)            -> `Variant (i_if_cons,           ss2 i1 i2)
+    | MI_size                       -> `Variant (i_size,              None)
+    | MI_empty_set t                -> `Variant (i_empty_set,         tt1 t)
+    | MI_empty_map (t1,t2)          -> `Variant (i_empty_map,         tt2 t1 t2)
+    | MI_empty_big_map (t1,t2)      -> `Variant (i_empty_big_map,     tt2 t1 t2)
+    | MI_map (i)                    -> `Variant (i_map,               ss1 i)
+    | MI_iter (i)                   -> `Variant (i_iter,              ss1 i)
+    | MI_mem                        -> `Variant (i_mem,               None)
+    | MI_get                        -> `Variant (i_get,               None)
+    | MI_update                     -> `Variant (i_update,            None)
+    | MI_if (i1,i2)                 -> `Variant (i_if,                ss2 i1 i2)
+    | MI_loop (i)                   -> `Variant (i_loop,              ss1 i)
+    | MI_loop_left (i)              -> `Variant (i_loop_left,         ss1 i)
+    | MI_lambda (t1,t2,i)           -> `Variant (i_lambda,            t2s1 t1 t2 i)
+    | MI_exec                       -> `Variant (i_exec,              None)
+    | MI_dip_n (zn, i)              -> `Variant (i_dip_n,             Some (`Tuple [`Intlit (Z.to_string zn); cv_micc i;]))
+    | MI_failwith                   -> `Variant (i_failwith,          None)
+    | MI_cast t                     -> `Variant (i_cast,              tt1 t)
+    | MI_rename                     -> `Variant (i_rename,            None)
+    | MI_concat                     -> `Variant (i_concat,            None)
+    | MI_slice                      -> `Variant (i_slice,             None)
+    | MI_pack                       -> `Variant (i_pack,              None)
+    | MI_unpack t                   -> `Variant (i_unpack,            tt1 t)
+    | MI_add                        -> `Variant (i_add,               None)
+    | MI_sub                        -> `Variant (i_sub,               None)
+    | MI_mul                        -> `Variant (i_mul,               None)
+    | MI_ediv                       -> `Variant (i_ediv,              None)
+    | MI_abs                        -> `Variant (i_abs,               None)
+    | MI_isnat                      -> `Variant (i_isnat,             None)
+    | MI_int                        -> `Variant (i_int,               None)
+    | MI_neg                        -> `Variant (i_neg,               None)
+    | MI_lsl                        -> `Variant (i_lsl,               None)
+    | MI_lsr                        -> `Variant (i_lsr,               None)
+    | MI_or                         -> `Variant (i_or,                None)
+    | MI_and                        -> `Variant (i_and,               None)
+    | MI_xor                        -> `Variant (i_xor,               None)
+    | MI_not                        -> `Variant (i_not,               None)
+    | MI_compare                    -> `Variant (i_compare,           None)
+    | MI_eq                         -> `Variant (i_eq,                None)
+    | MI_neq                        -> `Variant (i_neq,               None)
+    | MI_lt                         -> `Variant (i_lt,                None)
+    | MI_gt                         -> `Variant (i_gt,                None)
+    | MI_le                         -> `Variant (i_le,                None)
+    | MI_ge                         -> `Variant (i_ge,                None)
+    | MI_self                       -> `Variant (i_self,              None)
+    | MI_contract t                 -> `Variant (i_contract,          tt1 t)
+    | MI_transfer_tokens            -> `Variant (i_transfer_tokens,   None)
+    | MI_set_delegate               -> `Variant (i_set_delegate,      None)
+    | MI_create_account             -> `Variant (i_create_account,    None)
+    | MI_create_contract (t1,t2,i)  -> `Variant (i_create_contract,   t2s1 t1 t2 i)
+    | MI_implicit_account           -> `Variant (i_implicit_account,  None)
+    | MI_now                        -> `Variant (i_now,               None)
+    | MI_amount                     -> `Variant (i_amount,            None)
+    | MI_balance                    -> `Variant (i_balance,           None)
+    | MI_check_signature            -> `Variant (i_check_signature,   None)
+    | MI_blake2b                    -> `Variant (i_blake2b,           None)
+    | MI_sha256                     -> `Variant (i_sha256,            None)
+    | MI_sha512                     -> `Variant (i_sha512,            None)
+    | MI_hash_key                   -> `Variant (i_hash_key,          None)
+    | MI_steps_to_quota             -> `Variant (i_steps_to_quota,    None)
+    | MI_source                     -> `Variant (i_source,            None)
+    | MI_sender                     -> `Variant (i_sender,            None)
+    | MI_address                    -> `Variant (i_address,           None)
+    | MI_chain_id                   -> `Variant (i_chain_id,          None)
+    | MI_unpair                     -> `Variant (i_unpair,            None)
+    | MI_micse_check (i)            -> `Variant (i_micse_check,       ss1 i)
+
+    ) (* function cv_mi end *)
+  and cv_mtcc : Tz.mich_t Tz.cc -> js
+  = fun x -> cv_mt x.cc_v (* function cv_mtcc end *)
+  and cv_mvcc : Tz.mich_v Tz.cc -> js
+  = fun x -> cv_mv x.cc_v (* function cv_mvcc end *)
+  and cv_micc : Tz.mich_i Tz.cc -> js
+  = fun x -> cv_mi x.cc_v (* function cv_micc end *)
+  let rec cv_mf : Tz.mich_f -> js
+  = let sf f = Some (cv_mf f) in
+    let sf2 f1 f2 = Some (`Tuple [cv_mf f1; cv_mf f2;]) in
+    let sfl fl = Some (`List (List.map cv_mf fl)) in
+    let sv v = Some (cv_mvcc v) in
+    let sv2 v1 v2 = Some (`Tuple [cv_mvcc v1; cv_mvcc v2;]) in
+    (function
+    | MF_true                             -> `Variant (f_true,                  None)
+    | MF_false                            -> `Variant (f_false,                 None)
+    | MF_not                    f         -> `Variant (f_not,                   sf f)
+    | MF_and                    fl        -> `Variant (f_and,                   sfl fl)
+    | MF_or                     fl        -> `Variant (f_or,                    sfl fl)
+    | MF_eq                     (v1,v2)   -> `Variant (f_eq,                    sv2 v1 v2)
+    | MF_imply                  (f1,f2)   -> `Variant (f_imply,                 sf2 f1 f2)
+    | MF_is_true                v         -> `Variant (f_is_true,               sv v)
+    | MF_is_none                v         -> `Variant (f_is_none,               sv v)
+    | MF_is_left                v         -> `Variant (f_is_left,               sv v)
+    | MF_is_cons                v         -> `Variant (f_is_cons,               sv v)
+    | MF_add_mmm_no_overflow    (v1,v2)   -> `Variant (f_add_mmm_no_overflow,   sv2 v1 v2)
+    | MF_sub_mmm_no_underflow   (v1,v2)   -> `Variant (f_sub_mmm_no_underflow,  sv2 v1 v2)
+    | MF_mul_mnm_no_overflow    (v1,v2)   -> `Variant (f_mul_mnm_no_overflow,   sv2 v1 v2)
+    | MF_mul_nmm_no_overflow    (v1,v2)   -> `Variant (f_mul_nmm_no_overflow,   sv2 v1 v2)
+    | MF_shiftL_nnn_rhs_in_256  (v1,v2)   -> `Variant (f_shiftL_nnn_rhs_in_256, sv2 v1 v2)
+    | MF_shiftR_nnn_rhs_in_256  (v1,v2)   -> `Variant (f_shiftR_nnn_rhs_in_256, sv2 v1 v2)
+    | MF_sigma_equal            (v1,v2)   -> `Variant (f_sigma_equal,           sv2 v1 v2)
+    ) (* function cv_mf end *)
+
+
+
+    let cv_bc : Tz.blockchain -> js
+    = let m2pl m : js list = Tz.PMap.fold m ~init:[] ~f:(fun ~key ~data accl -> `Tuple [cv_mvcc key; cv_mvcc data] :: accl) in
+      let m2pli m : js list = Tz.PMap.fold m ~init:[] ~f:(fun ~key ~data accl -> `Tuple [cv_mvcc key; cv_micc data] :: accl) in
+      fun bc -> begin
+      `Assoc [
+        jc_bc_storage,  `List (m2pl bc.bc_storage);
+        jc_bc_code,     `List (m2pli bc.bc_code);
+        jc_bc_balance,  cv_mvcc bc.bc_balance;
+        jc_bc_delegate, cv_mvcc bc.bc_delegate;
+        jc_bc_chain_id, cv_mvcc bc.bc_chain_id;
+        jc_bc_last_blocktime, cv_mvcc bc.bc_last_blocktime;
+      ]
+    end (* function cv_bc end *)
+    let cv_exop : Tz.explicit_operation -> js
+    = (function
+      | EXOP_transfer_token (e1, e2, e3, e4) -> `Variant (exop_transfer_token, Some (`Tuple [cv_mvcc e1; cv_mvcc e2; cv_mvcc e3; cv_mvcc e4;]))
+      ) (* function cv_exop end *)
+    let cv_oper_transfertoken : Tz.oper_transfertoken -> js
+    = fun ot -> begin
+      `Assoc [
+        jc_optt_addr,   cv_mvcc ot.optt_addr;
+        jc_optt_source, cv_mvcc ot.optt_source;
+        jc_optt_sender, cv_mvcc ot.optt_sender;
+        jc_optt_amount, cv_mvcc ot.optt_amount;
+        jc_optt_param,  cv_mvcc ot.optt_param ;
+        jc_optt_now,    cv_mvcc ot.optt_now;
+      ]
+    end (* function cv_oper_transfertoken end *)
+    let cv_mich_cut_category : Tz.mich_cut_category -> js
+    = (function
+      | MCC_trx_entry     -> `Variant (mcc_trx_entry,   None)
+      | MCC_trx_exit      -> `Variant (mcc_trx_exit,    None)
+      | MCC_ln_loop       -> `Variant (mcc_ln_loop,     None)
+      | MCC_ln_loopleft   -> `Variant (mcc_ln_loopleft, None)
+      | MCC_ln_map        -> `Variant (mcc_ln_map,      None)
+      | MCC_ln_iter       -> `Variant (mcc_ln_iter,     None)
+      | MCC_lb_loop       -> `Variant (mcc_lb_loop,     None)
+      | MCC_lb_loopleft   -> `Variant (mcc_lb_loopleft, None)
+      | MCC_lb_map        -> `Variant (mcc_lb_map,      None)
+      | MCC_lb_iter       -> `Variant (mcc_lb_iter,     None)
+      ) (* function cv_mich_cut_category end *)
+    let cv_mich_cut_info : Tz.mich_cut_info -> js
+    = fun m -> begin
+      `Assoc [
+        jc_mci_loc,     cv_loc m.mci_loc;
+        jc_mci_cutcat,  cv_mich_cut_category m.mci_cutcat;
+      ]
+    end (* function cv_mich_cut_info end *)
+    let cv_ss : Tz.sym_state -> js
+    = fun ss -> begin
+      `Assoc [
+        jc_ss_fixchain,       cv_bc ss.ss_fixchain;    
+        jc_ss_exop,           cv_exop ss.ss_exop;
+        jc_ss_dynchain,       cv_bc ss.ss_dynchain;
+        jc_ss_exec_addrs,     cv_mvcc ss.ss_exec_addrs;
+        jc_ss_oper_queue,     cv_mvcc ss.ss_oper_queue;
+        jc_ss_optt,           cv_oper_transfertoken ss.ss_optt;
+        jc_ss_entry_mci,      cv_mich_cut_info ss.ss_entry_mci;
+        jc_ss_entry_symstack, `List (List.map cv_mvcc ss.ss_entry_symstack);
+        jc_ss_block_mci,      cv_mich_cut_info ss.ss_block_mci;
+        jc_ss_symstack,       `List (List.map cv_mvcc ss.ss_symstack);
+        jc_ss_constraints,    `List (List.map cv_mf ss.ss_constraints);
+      ]
+    end (* function cv_ss end *)
+
+  (*************************************************************************)
+  (* P1 : Debugging info for Prover                                        *)
+  (*************************************************************************)
+
+  let cv_p1_ss_strop : Tz.sym_state -> js
+  = fun ss -> begin
+    let strg : Tz.mich_v Tz.cc =
+      (Tz.PMap.find ss.ss_dynchain.bc_storage ss.ss_optt.optt_addr)
+      |> (function | Some s -> s | None -> Stdlib.failwith "TzCvt.T2J.cv_p1_ss_bcop") 
+    in
+    `Assoc [
+      jc_bc_storage,        cv_mvcc strg;
+      jc_bc_balance,        cv_mvcc ss.ss_dynchain.bc_balance;
+      jc_ss_optt,           cv_oper_transfertoken ss.ss_optt;
+    ]
+  end (* function cv_p1_ss_strop end *)
+
+  let cv_p1_ss_path : Tz.sym_state -> js
+  = fun ss -> begin
+    `Assoc [
+      jc_ss_entry_mci,      cv_mich_cut_info ss.ss_entry_mci;
+      jc_ss_entry_symstack, `List (List.map cv_mvcc ss.ss_entry_symstack);
+      jc_ss_block_mci,      cv_mich_cut_info ss.ss_block_mci;
+      jc_ss_symstack,       `List (List.map cv_mvcc ss.ss_symstack);
+      jc_ss_constraints,    `List (List.map cv_mf ss.ss_constraints);
+    ]
+  end (* function cv_p1_ss_path end *)
+end (* moduel T2Jnocc end *)
