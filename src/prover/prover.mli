@@ -24,9 +24,11 @@ type run_env = {
   ret_opt : run_ret option;
 }
 
+type prover_ret = run_ret
+
 val collect_really_proved_queries_with_inv : ProverLib.Inv.t -> Validator.validate_result -> run_ret
 val update_runret_opt : (run_ret option * run_ret option) -> run_ret option
 
 val run : run_env -> run_ret option
 
-val main : PreLib.Cfg.t -> PreLib.Adt.data option -> run_ret option
+val main : PreLib.Cfg.t -> PreLib.Adt.data option -> prover_ret option

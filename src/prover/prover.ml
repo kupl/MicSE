@@ -29,6 +29,7 @@ type run_env = {
   ret_opt : run_ret option;
 }
 
+type prover_ret = run_ret
 
 (* let init_naive_timeout_func : unit -> (unit -> bool)
 =fun () -> begin
@@ -131,7 +132,7 @@ let rec run : run_env -> run_ret option
 end (* function run end *)
 
 
-let main : PreLib.Cfg.t -> PreLib.Adt.data option -> run_ret option
+let main : PreLib.Cfg.t -> PreLib.Adt.data option -> prover_ret option
 = let open PreLib in
   let open ProverLib in
   let module CPSet = Core.Set.Poly in

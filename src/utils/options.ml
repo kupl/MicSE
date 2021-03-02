@@ -4,8 +4,15 @@
 (*****************************************************************************)
 (*****************************************************************************)
 
+(* String - Input *)
 let input_file : string ref
 =ref ""
+
+(* STRING - Output *)
+let json_output_file : string ref
+=ref ""
+let json_output_flag : bool ref
+=ref false
 
 (* STRING - Initial Storage Value *)
 let initial_storage_file : string ref
@@ -86,26 +93,27 @@ end
 
 let options : (Arg.key * Arg.spec * Arg.doc) list
 = [
-    ("-input", (Arg.String (fun s -> input_file := s)), "File path for input michelson program.");
-    ("-inst_count", (Arg.Set flag_inst_count_print), "Print count of instruction in Michelson file.");
-    ("-adt_print", (Arg.Set flag_adt_print), "Print parsed Michelson file.");
-    ("-cfgopt", (Arg.Set flag_cfgopt_all), "Set all cfg optimization options");
-    ("-cfgopt_rsv", (Arg.Set flag_cfgopt_rsv), "Remove all trivial skip vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
-    ("-cfgopt_rfv", (Arg.Set flag_cfgopt_rfv), "Remove all trivial fail vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
-    ("-cfgopt_rssov", (Arg.Set flag_cfgopt_rssov), "Remove vertex with simple stack operations (Cfg_drop, Cfg_swap, Cfg_dig, Cfg_dug statements). If that vertex has one pred-edge and one succ-edge, remove that vertex. WARNING: It might overwrite vertex-information in Cfg");
-    ("-cfg_print_dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
-    ("-bpopt_rsi", (Arg.Set flag_bpopt_rsi), "Remove all trivial skip instructions in bp printing.");
-    ("-bp_print", (Arg.Set flag_bp_print), "Print all basic paths.");
-    ("-bp_print_unpretty", (Arg.Clear flag_bp_print_pretty), "Do not pretty-printing for \"bp_print\" option.");
-    ("-vc_print", (Arg.Set flag_vc_print), "Print all verification conditions.");
-    ("-param_storage", (Arg.Set flag_param_storage), "Print counter-example from unsafe-path");
-    ("-initial_storage", (Arg.String (fun s -> initial_storage_file := s)), "File path for initial storage of input michelson program");
-    ("-z3_timeout", (Arg.Int (fun i -> z3_time_budget := i)), "Time budget for z3 solver in seconds. (default: 30s)");
-    ("-prover_timeout", (Arg.Int (fun i -> prover_time_budget := i)), "Time budget for prover in seconds. (default: 180s)");
-    ("-refuter_timeout_t", (Arg.Int (fun i -> refuter_total_time_budget := i)), "Timebudget for refuter total-time in seconds. (default: 180s)");
-    ("-refuter_timeout_s", (Arg.Int (fun i -> refuter_sub_time_budget_manually_set := true; refuter_sub_time_budget := i)), "Timebudget for \"Refuter.main\" function in seconds. If not set, it'll be automatically calculated. (default: 180s)");
-    ("-unroll_l", (Arg.Int (fun i -> loop_unroll_num := i)), "Set the number of loop unrolling. (default 1)");
-    ("-unroll_t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
+    ("--input", (Arg.String (fun s -> input_file := s)), "File path for input michelson program.");
+    ("--json-out", (Arg.String (fun s -> (json_output_flag := true; json_output_file := s))), "File path for output json file.");
+    ("--inst-count", (Arg.Set flag_inst_count_print), "Print count of instruction in Michelson file.");
+    ("--adt-print", (Arg.Set flag_adt_print), "Print parsed Michelson file.");
+    ("--cfgopt", (Arg.Set flag_cfgopt_all), "Set all cfg optimization options");
+    ("--cfgopt-rsv", (Arg.Set flag_cfgopt_rsv), "Remove all trivial skip vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
+    ("--cfgopt-rfv", (Arg.Set flag_cfgopt_rfv), "Remove all trivial fail vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
+    ("--cfgopt-rssov", (Arg.Set flag_cfgopt_rssov), "Remove vertex with simple stack operations (Cfg_drop, Cfg_swap, Cfg_dig, Cfg_dug statements). If that vertex has one pred-edge and one succ-edge, remove that vertex. WARNING: It might overwrite vertex-information in Cfg");
+    ("--cfg-print-dot", (Arg.Set flag_cfg_print_dot), "Print control flow graph in 'dot' format.");
+    ("--bpopt-rsi", (Arg.Set flag_bpopt_rsi), "Remove all trivial skip instructions in bp printing.");
+    ("--bp-print", (Arg.Set flag_bp_print), "Print all basic paths.");
+    ("--bp-print-unpretty", (Arg.Clear flag_bp_print_pretty), "Do not pretty-printing for \"bp_print\" option.");
+    ("--vc-print", (Arg.Set flag_vc_print), "Print all verification conditions.");
+    ("--param-storage", (Arg.Set flag_param_storage), "Print counter-example from unsafe-path");
+    ("--initial-storage", (Arg.String (fun s -> initial_storage_file := s)), "File path for initial storage of input michelson program");
+    ("--z3-timeout", (Arg.Int (fun i -> z3_time_budget := i)), "Time budget for z3 solver in seconds. (default: 30s)");
+    ("--prover-timeout", (Arg.Int (fun i -> prover_time_budget := i)), "Time budget for prover in seconds. (default: 180s)");
+    ("--refuter-timeout-t", (Arg.Int (fun i -> refuter_total_time_budget := i)), "Timebudget for refuter total-time in seconds. (default: 180s)");
+    ("--refuter-timeout-s", (Arg.Int (fun i -> refuter_sub_time_budget_manually_set := true; refuter_sub_time_budget := i)), "Timebudget for \"Refuter.main\" function in seconds. If not set, it'll be automatically calculated. (default: 180s)");
+    ("--unroll-l", (Arg.Int (fun i -> loop_unroll_num := i)), "Set the number of loop unrolling. (default 1)");
+    ("--unroll-t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
   ]
 
 let create_options : unit -> unit

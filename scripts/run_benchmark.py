@@ -120,15 +120,15 @@ def run_f (idx, file, env, runrst, syncdata):
   file = os.path.join (env['benchmark'], file)
   strg_file = os.path.join (env['benchmark'], file).replace (".tz", "_storage.tz")
   cmd = ["./_build/install/default/bin/micse"]
-  cmd += ["-input", file]
-  cmd += ["-inst_count"]
-  cmd += ["-z3_timeout", str (env['z3_time'])]
-  cmd += ["-prover_timeout", str (env['prover_time'])]
-  cmd += ["-refuter_timeout_s", str (env['refuter_time'])]
-  cmd += ["-unroll_l", str (env["unroll_loop"])]
-  cmd += ["-unroll_t", str (env["trx_len"])]
+  cmd += ["--input", file]
+  cmd += ["--inst-count"]
+  cmd += ["--z3-timeout", str (env['z3_time'])]
+  cmd += ["--prover-timeout", str (env['prover_time'])]
+  cmd += ["--refuter-timeout-s", str (env['refuter_time'])]
+  cmd += ["--unroll-l", str (env["unroll_loop"])]
+  cmd += ["--unroll-t", str (env["trx_len"])]
   if env['init_strg'] and os.path.isfile (strg_file):
-    cmd += ["-initial_storage", strg_file]
+    cmd += ["--initial-storage", strg_file]
   # Job Started
   job = dict()
   job['file'] = file
