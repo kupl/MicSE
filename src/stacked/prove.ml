@@ -59,16 +59,17 @@ let check_inv_inductiveness :
   Utils.Timer.t ref 
   -> Tz.sym_state Tz.PSet.t 
   -> Se.invmap 
-  -> (bool * (Tz.sym_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) option)
+  -> (bool * (Tz.sym_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) option * Utils.Timer.time)
 = fun timer blocked_sset invm -> begin
-  Tz.PSet.fold blocked_sset ~init:(true, None)
-    ~f:(fun (accb, accopt) bl_ss -> 
+  Tz.PSet.fold blocked_sset ~init:(true, None, Utils.Timer.read_interval timer)
+    ~f:(fun (accb, accopt, etime) bl_ss -> 
       (* If the prover time budget runs out, raise ProverTimeout *)
       if Utils.Timer.is_timeout timer then Stdlib.raise (ProverTimeout timer) else
       (* If the invariant-map already fails to show inductiveness, skip the rest (when accb = false) *)
-      if Stdlib.not accb then (accb, accopt) else
+      if Stdlib.not accb then (accb, accopt, etime) else
       let vld_r : ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option = Se.inv_induct_fmla_i bl_ss invm |> check_validity in
-      if ProverLib.Smt.ZSolver.is_valid (Stdlib.fst vld_r) then (true, None) else (false, Some (bl_ss, vld_r))
+      let elapsed_time : Utils.Timer.time = Utils.Timer.read_interval timer in
+      if ProverLib.Smt.ZSolver.is_valid (Stdlib.fst vld_r) then (true, None, elapsed_time) else (false, Some (bl_ss, vld_r), elapsed_time)
     )
 end (* function check_inv_inductiveness end *)
 
@@ -92,8 +93,8 @@ let solve_queries :
   Utils.Timer.t ref 
   -> (Tz.sym_state * Se.query_category) Tz.PSet.t 
   -> Se.invmap 
-  -> ((Tz.mich_cut_info * Se.query_category), (Tz.sym_state * Se.query_category) Tz.PSet.t) Tz.PMap.t
-      * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) Tz.PSet.t
+  -> ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
+      * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Utils.Timer.time) Tz.PSet.t
       * (Tz.sym_state * Se.query_category) Tz.PSet.t
 = fun timer ss_qcat_set invm -> begin
   (* Gather same-position queries using Tz.ss_block_mci *)
@@ -111,34 +112,47 @@ let solve_queries :
       if Utils.Timer.is_timeout timer then (acc_solved_smap, acc_failed_sset, acc_untouched_sset) else
       (* Fold: Solve each query in queryset *)
       let (qset_solved_sset, qset_failed_sset) : 
-        (Tz.sym_state * Se.query_category) Tz.PSet.t
-        * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) Tz.PSet.t
+        ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t
+        * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Utils.Timer.time) Tz.PSet.t
       = Tz.PSet.fold data ~init:(Tz.PSet.empty, Tz.PSet.empty)
           ~f:(fun (acc_qset_solved_sset, acc_qset_failed_sset) query_ss_cat ->
             (* check timeout *)
             if Utils.Timer.is_timeout timer then (acc_qset_solved_sset, acc_qset_failed_sset) else
             (* Solve the validity of the given query (query_ss_cat) *)
             let vld_r : ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option = Se.inv_query_fmla query_ss_cat invm |> check_validity in
+            let elapsed_time : Utils.Timer.time = Utils.Timer.read_interval timer in
             (* If valid, put the query to "solved-sset", else to "failed_sset" *)
             if ProverLib.Smt.ZSolver.is_valid (Stdlib.fst vld_r) 
-            then (Tz.PSet.add acc_qset_solved_sset query_ss_cat, acc_qset_failed_sset)
-            else (acc_qset_solved_sset, Tz.PSet.add acc_qset_failed_sset (query_ss_cat, vld_r))
+            then (Tz.PSet.add acc_qset_solved_sset (query_ss_cat, elapsed_time), acc_qset_failed_sset)
+            else (acc_qset_solved_sset, Tz.PSet.add acc_qset_failed_sset (query_ss_cat, vld_r, elapsed_time))
           )
       in
       (* check if all queries in "data" solved *)
-      let is_all_solved = (Tz.PSet.length data = Tz.PSet.length qset_solved_sset) in
+      let is_all_solved : bool = (Tz.PSet.length data = Tz.PSet.length qset_solved_sset) in
       (* If all queries in the same position solved, accumulate them to "acc_solved_smap". Else, accumulate them to "acc_failed_set". *)
-      let new_acc_solved_smap = (if is_all_solved then Tz.PMap.add_exn acc_solved_smap ~key:key ~data:data else acc_solved_smap) in
+      let new_acc_solved_smap = (if is_all_solved then Tz.PMap.add_exn acc_solved_smap ~key:key ~data:(qset_solved_sset) else acc_solved_smap) in
       let new_acc_failed_sset = (
         if is_all_solved then acc_failed_sset else 
-        let failform_of_solved = Tz.PSet.map qset_solved_sset ~f:(fun x -> (x, (ProverLib.Smt.ZSolver.VAL, None))) in
+        let failform_of_solved = Tz.PSet.map qset_solved_sset ~f:(fun (x, etime) -> (x, (ProverLib.Smt.ZSolver.VAL, None), etime)) in
         Tz.PSet.union (Tz.PSet.union failform_of_solved qset_failed_sset) acc_failed_sset
       ) in
       (* Remove queries from untouched query set *)
-      let new_acc_untouched_sset = Tz.PSet.diff (Tz.PSet.diff acc_untouched_sset qset_solved_sset) (Tz.PSet.map qset_failed_sset ~f:Stdlib.fst) in
+      let qset_solved_notime_form = Tz.PSet.map qset_solved_sset ~f:(Stdlib.fst) in
+      let qset_failed_notime_form = Tz.PSet.map qset_failed_sset ~f:(fun (x, _, _) -> x) in
+      let new_acc_untouched_sset = Tz.PSet.diff (Tz.PSet.diff acc_untouched_sset qset_solved_notime_form) qset_failed_notime_form in
       (new_acc_solved_smap, new_acc_failed_sset, new_acc_untouched_sset)
     )
 end (* function solve_queries_wl end *)
+
+
+let remove_solved_queries :
+  (Tz.sym_state * Se.query_category) Tz.PSet.t
+  -> ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
+  -> (Tz.sym_state * Se.query_category) Tz.PSet.t
+= fun all_queries solved_queries -> begin
+  Tz.PMap.fold solved_queries ~init:all_queries
+    ~f:(fun ~key:_ ~data acc_remain_queries -> Tz.PSet.diff acc_remain_queries (Tz.PSet.map data ~f:(Stdlib.fst)))
+end (* function remove_solved_queries end *)
 
 
 (*****************************************************************************)
