@@ -31,7 +31,7 @@ let pre_process : string -> pre_ret
   let cfg_rfv_optimized = (if (!Utils.Options.flag_cfgopt_rfv) then (CfgUtil.remove_meaningless_fail_vertices_fixpoint cfg_rsv_optimized) else (cfg_rsv_optimized)) in
   let cfg_optimized = cfg_rfv_optimized in
   
-  let _ : unit = (if (!Utils.Options.flag_cfg_print_dot) then print_endline (CfgUtil.cfg_to_dotformat cfg_optimized) else ()) in
+  let _ : unit = (if (!Utils.Options.flag_cfg_print_dot) then print_endline (cfg_optimized |> CfgUtil.Dot.of_cfg |> CfgUtil.Dot.to_string) else ()) in
 
   {
     cfg=cfg_optimized;

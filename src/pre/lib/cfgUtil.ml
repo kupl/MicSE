@@ -244,97 +244,109 @@ let appeared_varlst_stmt : Cfg.stmt -> string list
 end (* function appeared_varlst_stmt *)
 
 
+(*****************************************************************************)
+(*****************************************************************************)
+(* Dot Graph                                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Print                                                                     *)
-(*****************************************************************************)
-(*****************************************************************************)
+module Dot = struct
+  type t = {
+    flow: string list;
+    vi: string list;
+  }
 
-let cfg_to_dotformat : t -> string
-= let only_label_str s : string = ( "label=\"" ^ s ^ "\"" ) in
-  let get_lhs_varname : stmt -> string = begin function
-    | Cfg_assign (x, _) -> x
-    | _ -> fail "cfg_to_dotformat : get_lhs_varname : match failed"
-  end in
-  (* FUNCTION BEGIN *)
-  fun cfg -> begin
-  (* flow *)
-  let flow_fold_func : G.E.t -> string list -> string list
-  =fun (in_v, e_label, out_v) acc -> begin
+  let concat : ?sep:string -> string list -> string
+  = fun ?(sep=" : ") sl -> begin
+    sl
+    |> Core.List.filter ~f:(fun s -> s <> "")
+    |> Core.String.concat ~sep
+  end
+
+  let make_label : ?style:string -> ?shape:string -> string -> string
+  = fun ?(style="") ?(shape="") name -> begin
+    if name = "" then ""
+    else
+      let body = if shape = "" then [] else ("shape=" ^ shape)::[] in
+      let body = if style = "" then body else ("style=" ^ style)::body in
+      let body = ("label=\"" ^ name ^ "\"")::body in
+      "[" ^ concat ~sep:", " body ^ "]"
+  end
+
+  let fold_flow : G.E.t -> string list -> string list
+  = fun (in_v, e_label, out_v) acc -> begin
     let body_s = (string_of_int in_v) ^ " -> " ^ (string_of_int out_v) in
     (* edge label and style *)
-    let edge_s = match e_label with | Normal -> "" | If_true -> "[label=\"True\"]" | If_false -> "[label=\"False\"]" | Failed -> "[label=\"Failed\", style=dotted]" | If_skip -> "[label=\"If_skip\", style=dotted]" | Loop_skip -> "[label=\"Loop_skip\", style=dotted]" | Check_skip -> "[label=\"Check_skip\", style=dotted]" in
-    (body_s ^ " " ^ edge_s ^ ";") :: acc
-  end in
-  let flow_s = begin
-    G.fold_edges_e flow_fold_func cfg.flow []
-    |> List.map (fun x -> "    " ^ x)
-    |> String.concat "\n"
-  end in
-  (* before enter "each vertex", convert lambda_id_map into two maps to search easily *)
-  let (lmbd_entry_map, lmbd_exit_map) = lmbd_map_to_two_sets cfg in
-  (* each vertex *)
-  let vi_fold_func : G.V.t -> string list -> string list
-  =fun v acc -> begin
+    let edge_s = (
+      match e_label with
+      | Normal -> make_label ""
+      | If_true -> make_label "True"
+      | If_false -> make_label "False"
+      | Failed -> make_label "Failed" ~style:"dotted" 
+      | If_skip -> make_label "If_skip" ~style:"dotted"
+      | Loop_skip -> make_label "Loop_skip" ~style:"dotted"
+      | Check_skip -> make_label "Check_skip" ~style:"dotted") in
+    (concat ~sep:" " [body_s; edge_s; ";"]) :: acc
+  end
+
+  let fold_vi : Cfg.t -> G.V.t -> string list -> string list
+  = let get_lhs_varname : stmt -> string = begin function
+    | Cfg_assign (x, _) -> x
+    | _ -> fail (concat ["cfg_to_dotformat"; "get_lhs_varname"; "match failed"])
+    end in
+    fun cfg v acc -> begin
+    let (lmbd_entry_map, lmbd_exit_map) = lmbd_map_to_two_sets cfg in
     let vs = string_of_int v in
-    let is_main_entry = v = cfg.main_entry in
-    let is_main_exit  = v = cfg.main_exit  in
-    let vi : stmt = t_map_find ~errtrace:"cfg_to_dotformat : vi_fold_func : vi" cfg.vertex_info v in
+    let is_main_entry = (v = cfg.main_entry) in
+    let is_main_exit  = (v = cfg.main_exit)  in
+    let vi = t_map_find ~errtrace:(concat ["cfg_to_dotformat"; "vi_fold_func"; "vi"]) cfg.vertex_info v in
     (* vertex label-string *)
     let lb_str : string = 
-      if is_main_entry then (vs ^ " : MAIN-ENTRY")  (* The contents of the MAIN_ENTRY are expected to be Cfg_skip *)
+      if is_main_entry then (concat [vs; "MAIN-ENTRY"])  (* The contents of the MAIN_ENTRY are expected to be Cfg_skip *)
       else ( 
-        if is_main_exit then (let vn = get_lhs_varname vi in (vs ^ " : MAIN-EXIT : " ^ vn))  (* The contents of the MAIN_EXIT are expected to be Cfg_assign (v_i, (E_itself v_i)) *)
+        if is_main_exit then (concat [vs; "MAIN-EXIT"; (get_lhs_varname vi)])  (* The contents of the MAIN_EXIT are expected to be Cfg_assign (v_i, (E_itself v_i)) *)
         else (
           match (CPMap.find lmbd_entry_map v, CPMap.find lmbd_exit_map v) with
-          | Some _, Some _ -> fail "cfg_to_dotformat : vi_fold_func : lb_str : cpmap.find : both found : cannot be reached in normal situation."
+          | Some _, Some _ -> fail (concat ["cfg_to_dotformat"; "vi_fold_func"; "lb_str"; "cpmap.find"; "both found"; "cannot be reached in normal situation."])
           (* lambda entry/exit vertices *)
-          | Some (id, _), None -> (vs ^ " : LAMBDA-" ^ (string_of_int id) ^ "-ENTRY")   (* The contents of the MAIN_ENTRY are expected to be Cfg_skip *)
-          | None, Some (id, _) -> let vn = get_lhs_varname vi in (vs ^ " : LAMBDA-" ^ (string_of_int id) ^ "-EXIT : " ^ vn) (* The contents of the MAIN_EXIT are expected to be Cfg_assign (v_i, (E_itself v_i)) *)
+          | Some (id, _), None -> (concat [vs; ("LAMBDA-" ^ (string_of_int id) ^ "-ENTRY")])   (* The contents of the MAIN_ENTRY are expected to be Cfg_skip *)
+          | None, Some (id, _) -> (concat [vs; ("LAMBDA-" ^ (string_of_int id) ^ "-EXIT"); (get_lhs_varname vi)]) (* The contents of the MAIN_EXIT are expected to be Cfg_assign (v_i, (E_itself v_i)) *)
           (* otherwise - default vertex label *)
-          | None, None ->
-            let vis : string = stmt_to_str vi in
-            (vs ^ " : " ^ vis)
-        )
-      )
-    in
+          | None, None -> (concat [vs; (stmt_to_str vi)]))) in
     (* vertex shape *)
-    if (is_main_entry || is_main_exit) then (vs ^ " [shape=doubleoctagon, " ^ (only_label_str lb_str) ^ "];") :: acc
+    if (is_main_entry || is_main_exit) then (concat ~sep:" " [vs; (make_label lb_str ~shape:"doubleoctagon"); ";"])::acc
     else (
       match (CPMap.find lmbd_entry_map v, CPMap.find lmbd_exit_map v) with
-      | Some _, Some _ -> fail "cfg_to_dotformat : vi_fold_func : cpmap.find : both found : cannot be reached in normal situation."
+      | Some _, Some _ -> fail (concat ["cfg_to_dotformat"; "vi_fold_func"; "cpmap.find"; "both found"; "cannot be reached in normal situation."])
       (* lambda entry/exit vertices *)
       | Some _, None
-      | None, Some _ -> (vs ^ " [shape=octagon, " ^ (only_label_str lb_str) ^ "];") :: acc
+      | None, Some _ -> (concat ~sep:" " [vs; (make_label lb_str ~shape:"octagon"); ";"]) :: acc
       (* otherwise - default vertex shape *)
       | None, None -> (
           match vi with
           | Cfg_if _ | Cfg_if_none _ | Cfg_if_left _ | Cfg_if_cons _
           | Cfg_loop _ | Cfg_loop_left _ | Cfg_map _ | Cfg_iter _
-            -> (vs ^ " [shape=diamond, " ^ (only_label_str lb_str) ^ "];") :: acc
+            -> (concat ~sep:" " [vs; (make_label lb_str ~shape:"diamond"); ";"]) :: acc
           | Cfg_assign _
-            -> (vs ^ " [shape=box, " ^ (only_label_str lb_str) ^ "];") :: acc
+            -> (concat ~sep:" " [vs; (make_label lb_str ~shape:"box"); ";"]) :: acc
           | Cfg_failwith _
-            -> (vs ^ " [shape=cds, " ^ (only_label_str lb_str) ^ "];") :: acc
-          | _ -> (vs ^ " [" ^ (only_label_str lb_str) ^ "];") :: acc
-        )
-    )
-  end in
-  let vi_s = begin
-    G.fold_vertex vi_fold_func cfg.flow []
-    |> List.map (fun x -> "    " ^ x)
-    |> String.concat "\n"
-  end in
-  (* entire graph *)
-  let main_s = begin
+            -> (concat ~sep:" " [vs; (make_label lb_str ~shape:"cds"); ";"]) :: acc
+          | _ -> (concat ~sep:" " [vs; (make_label lb_str); ";"]) :: acc))
+  end
+
+  let of_cfg : Cfg.t -> t
+  = fun cfg -> begin
+    { flow=(G.fold_edges_e fold_flow cfg.flow []);
+      vi=(G.fold_vertex (fold_vi cfg) cfg.flow []);}
+  end
+
+  let to_string : t -> string
+  = fun t -> begin
     "digraph G {\n"
-    ^ flow_s
-    ^ "\n"
-    ^ vi_s
-    ^ "\n}"
-  end in
-  main_s
+    ^ "\t" ^ (t.flow |> Core.String.concat ~sep:"\n\t") ^ "\n"
+    ^ "\t" ^ (t.vi |> Core.String.concat ~sep:"\n\t") ^ "\n"
+    ^ "}"
+  end
 end
 
 
