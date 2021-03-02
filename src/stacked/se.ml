@@ -487,7 +487,10 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let i_sset : state_set = tl |> sstack_to_ss ss |> run_inst_i cache i in
     let restored_running : sym_state PSet.t = PSet.map i_sset.running ~f:(fun x -> {x with ss_symstack=(hd @ x.ss_symstack)}) in
     {i_sset with running=restored_running}
-  | MI_failwith -> {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.singleton(ss)}
+  | MI_failwith -> 
+    let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=MCC_trx_exit} in
+    update_block_mci blocked_mci ss
+    |> (fun x -> {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.singleton(x)})
   | MI_cast _ -> 
     (* Currently, it is enough to make "MI_cast"'s symbolic execution as identity function. *)
     ss_to_srset ss
