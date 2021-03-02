@@ -131,7 +131,7 @@ let rec run : run_env -> run_ret option
 end (* function run end *)
 
 
-let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
+let main : PreLib.Cfg.t -> PreLib.Adt.data option -> run_ret option
 = let open PreLib in
   let open ProverLib in
   let module CPSet = Core.Set.Poly in
@@ -184,48 +184,5 @@ let main : PreLib.Cfg.t -> PreLib.Adt.data option -> unit
       Results.unproved_queries := (s.unproved_qs |> CPSet.map ~f:(fun (cat, vtx) -> (cat, Cfg.t_map_find ~errtrace:("Prover.main : results.unproved_queries") cfg.pos_info vtx)));
     )
   in
-  (* interpret prover result *)
-  let _ = 
-    (match run_result_opt with
-    | None -> print_endline "Failure to create invariant that satisfies inductiveness. This log means that Z3 timeout is set too short to prove inductiveness of invariant-True."
-    | Some {all_qs; proved_qs; unproved_qs} -> 
-        print_endline ("# of Total Queries : " ^ (Stdlib.string_of_int (CPSet.length all_qs)));
-        print_endline ("# of Proved Queries : " ^ (Stdlib.string_of_int (CPSet.length proved_qs)));
-        print_endline ("# of Unproved Queries : " ^ (Stdlib.string_of_int (CPSet.length unproved_qs)));
-        print_endline ("================ Proved Queries ::");
-        let i = ref 0 in
-        CPSet.iter proved_qs ~f:(fun (inv, (category, vtxnum)) ->
-          Stdlib.incr i;
-          print_endline ("======== Proved Query #" ^ (Stdlib.string_of_int !i)
-                          ^ ", vtx=" ^ (Stdlib.string_of_int vtxnum)
-                          ^ ", pos=" ^ (PreLib.Cfg.t_map_find ~errtrace:("Prover.main : result-pq : " ^ Stdlib.string_of_int vtxnum) cfg.pos_info vtxnum |> PreLib.Mich.string_of_loc) 
-                          ^ ", category=" ^ (ProverLib.Bp.JsonRep.of_query_category category |> Yojson.Basic.to_string)
-          );
-          print_endline ("==== Transaction Invariant (printed in optimized form):");
-          print_endline (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula inv.trx_inv)));
-          (* print_endline ("==== Transaction Invariant (printed in NON-optimized form):");
-          print_endline (Vlang.Formula.to_string (Inv.inv_to_formula inv.trx_inv)); *)
-          print_endline "==== Loop Invariant (printed in optimized form):";
-          CPMap.iteri 
-            inv.loop_inv 
-            ~f:(fun ~key ~data -> 
-                print_endline (
-                  "vtx=" ^ (Stdlib.string_of_int key)
-                  ^ ", pos=" ^ (PreLib.Cfg.t_map_find ~errtrace:("Prover.main : result-pq-li : " ^ Stdlib.string_of_int key) cfg.pos_info key |> PreLib.Mich.string_of_loc) 
-                  ^ " : " ^ (Vlang.Formula.to_string (VlangUtil.NaiveOpt.run (Inv.inv_to_formula data))))
-            );
-        );
-        print_endline ("================ Unproved Queries ::");
-        let i = ref 0 in
-        CPSet.iter unproved_qs ~f:(fun (category, vtxnum) -> 
-          Stdlib.incr i;
-          print_endline ("======== Unproved Query #" ^ (Stdlib.string_of_int !i) 
-                          ^ ", vtx=" ^ (Stdlib.string_of_int vtxnum) 
-                          ^ ", pos=" ^ (PreLib.Cfg.t_map_find ~errtrace:("Prover.main : result-uq : " ^ Stdlib.string_of_int vtxnum) cfg.pos_info vtxnum |> PreLib.Mich.string_of_loc)
-                          ^ ", category=" ^ (ProverLib.Bp.JsonRep.of_query_category category |> Yojson.Basic.to_string)
-          );
-        );
-    ) (* TODO *)
-  in
-  ()
+  run_result_opt
 end (* function prove end *)
