@@ -15,9 +15,9 @@
 
 (license MIT)
 
-(authors "Jisuk Byun <grayplc@korea.ac.kr>" "Heewoong Jang <jormal@korea.ac.kr>")
+(authors "Jisuk Byun <jisukbyun@korea.ac.kr>" "Heewoong Jang <jormal@korea.ac.kr>")
 
-(maintainers "Jisuk Byun <grayplc@korea.ac.kr>" "Heewoong Jang <jormal@korea.ac.kr>")
+(maintainers "Jisuk Byun <jisukbyun@korea.ac.kr>" "Heewoong Jang <jormal@korea.ac.kr>")
 
 (package
   (name micse)
