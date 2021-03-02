@@ -519,9 +519,11 @@ val get_innertyp2 : mich_t cc -> (mich_t cc * mich_t cc)
 (*****************************************************************************)
 
 val new_symbol_counter : Z.t ref
+val gen_new_symname_s : string -> string
 val gen_new_symname : unit -> string
 val gen_new_symval_t : mich_t cc -> mich_v cc
 val gen_new_symval_v : mich_v cc -> mich_v cc
+val gen_new_symval_ts : mich_t cc -> string -> mich_v cc
 
 val gen_newvar_symstack_ts : (mich_t cc list) -> (mich_v cc list)
 val gen_newvar_symstack_vs : (mich_v cc list) -> (mich_v cc list)

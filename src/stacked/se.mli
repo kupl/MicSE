@@ -93,5 +93,6 @@ val run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) 
 (*****************************************************************************)
 (*****************************************************************************)
 
+val inv_induct_fmla_i : Tz.sym_state -> invmap -> Tz.mich_f
 val inv_induct_fmla : (Tz.sym_state Tz.PSet.t) -> invmap -> (Tz.mich_f Tz.PSet.t)
 val inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f

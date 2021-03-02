@@ -793,32 +793,32 @@ let run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) 
   fun (param_typ, storage_typ, inst) -> begin
   
   (* 0. address *)
-  let ctrt_addr : mich_v cc = gen_new_symval_t addr_typ in
+  let ctrt_addr : mich_v cc = gen_new_symval_ts addr_typ "vaddr" in
 
   (* 1. blockchain *)
-  let ctrt_storage : mich_v cc = gen_new_symval_t storage_typ in
-  let ctrt_balance : mich_v cc = gen_new_symval_t mutez_typ in
-  let ctrt_delegate : mich_v cc = gen_new_symval_t (opt_typ addr_typ) in
+  let ctrt_storage : mich_v cc = gen_new_symval_ts storage_typ "vstorage" in
+  let ctrt_balance : mich_v cc = gen_new_symval_ts mutez_typ "vbalance" in
+  let ctrt_delegate : mich_v cc = gen_new_symval_ts (opt_typ addr_typ) "vdelegate" in
   let balancemap : (mich_v cc, mich_v cc) PMap.t = PMap.singleton ctrt_addr ctrt_balance in
   let delegatemap : (mich_v cc, mich_v cc) PMap.t = PMap.singleton ctrt_addr ctrt_delegate in
   let blockchain_fix : blockchain = {
-    bc_storage = PMap.singleton ctrt_addr (gen_new_symval_t storage_typ);
+    bc_storage = PMap.singleton ctrt_addr ctrt_storage;
     bc_code = PMap.singleton ctrt_addr inst;
     bc_balance = pmap_to_mtmap (addr_typ, mutez_typ, balancemap);
     bc_delegate = pmap_to_mtmap (addr_typ, (opt_typ addr_typ), delegatemap);
-    bc_chain_id = gen_new_symval_t chainid_typ;
-    bc_last_blocktime = gen_new_symval_t timestamp_typ;
+    bc_chain_id = gen_new_symval_ts chainid_typ "vchainid";
+    bc_last_blocktime = gen_new_symval_ts timestamp_typ "vlastblocktime";
   } in
 
   (* 2. transfer-token operation *)
-  let tt_amount : mich_v cc = gen_new_symval_t mutez_typ in
-  let tt_source : mich_v cc = gen_new_symval_t addr_typ in
-  let tt_param : mich_v cc = gen_new_symval_t param_typ in
+  let tt_amount : mich_v cc = gen_new_symval_ts mutez_typ "vamount" in
+  let tt_source : mich_v cc = gen_new_symval_ts addr_typ "vsource" in
+  let tt_param : mich_v cc = gen_new_symval_ts param_typ "vparam" in
   let exop : explicit_operation = EXOP_transfer_token (ctrt_addr, tt_source, tt_amount, tt_param) in
   let transfertoken_op : oper_transfertoken = {
     optt_addr = ctrt_addr;
     optt_source = tt_source;
-    optt_sender = gen_new_symval_t addr_typ;
+    optt_sender = gen_new_symval_ts addr_typ "vsender";
     optt_amount = tt_amount;
     optt_param = tt_param;
     optt_now = MV_add_tit (blockchain_fix.bc_last_blocktime, int_one) |> gdcc;
@@ -875,15 +875,16 @@ end (* function run_inst_in_fog end *)
 (*****************************************************************************)
 (*****************************************************************************)
 
+let inv_induct_fmla_i : Tz.sym_state -> invmap -> Tz.mich_f
+= fun blocked_ss invm -> begin
+  match (PMap.find invm blocked_ss.ss_entry_mci, PMap.find invm blocked_ss.ss_block_mci) with
+  | (Some inv_entry, Some inv_block) ->
+      MF_imply (inv_app_guide_entry inv_entry blocked_ss, inv_app_guide_block inv_block blocked_ss)
+  | _ -> Error "inv_induct_fmla : cannot find invariant" |> raise
+end (* function inv_induct_fmla_i end *) 
 let inv_induct_fmla : (Tz.sym_state Tz.PSet.t) -> invmap -> (Tz.mich_f Tz.PSet.t)
 = fun blocked_sset invm -> begin
-  PSet.map blocked_sset 
-    ~f:(fun bl_ss ->
-      match (PMap.find invm bl_ss.ss_entry_mci, PMap.find invm bl_ss.ss_block_mci) with
-      | (Some inv_entry, Some inv_block) ->
-          MF_imply (inv_app_guide_entry inv_entry bl_ss, inv_app_guide_block inv_block bl_ss)
-      | _ -> Error "inv_induct_fmla : cannot find invariant" |> raise
-    )
+  PSet.map blocked_sset ~f:(fun bl_ss -> inv_induct_fmla_i bl_ss invm)
 end (* function inv_induct_fmla end *)
 let inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
 = fun query_ssp invm -> begin

@@ -756,10 +756,13 @@ let get_innertyp2 : mich_t cc -> (mich_t cc * mich_t cc)
 (*****************************************************************************)
 
 let new_symbol_counter = ref Z.zero
-let gen_new_symname () = ((new_symbol_counter := Z.succ !new_symbol_counter); "v" ^ (Z.to_string !new_symbol_counter))
+
+let gen_new_symname_s s = ((new_symbol_counter := Z.succ !new_symbol_counter); s ^ (Z.to_string !new_symbol_counter))
+let gen_new_symname () = gen_new_symname_s "v"
 
 let gen_new_symval_t = fun t -> {t with cc_v=(MV_symbol(t, gen_new_symname ()))}
 let gen_new_symval_v = fun v -> {v with cc_v=(MV_symbol(typ_of_val v, gen_new_symname ()))}
+let gen_new_symval_ts = fun t s -> {t with cc_v=(MV_symbol(t, gen_new_symname_s s))}
 
 let gen_newvar_symstack_ts : (mich_t cc list) -> (mich_v cc list)
 = fun tlist -> List.map gen_new_symval_t tlist
