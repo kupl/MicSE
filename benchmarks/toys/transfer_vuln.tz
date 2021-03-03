@@ -1,0 +1,19 @@
+parameter (pair (address %receiver) (mutez %value));
+storage   (pair (map %balance address mutez) (mutez %totalSupply));
+code { 
+  UNPAIR; UNPAIR; DIP 2 { UNPAIR };
+  # bal_r = if param.receiver not in balance.key then 0 else balance[param.receiver]
+  DUP 3; DUP 2; GET; IF_NONE { PUSH mutez 0 } {};
+  # bal_s = if sender not in balance.key then fail else balance[sender]
+  DUP 4; SENDER; GET; IF_NONE { FAIL } {};
+  # if not bal_s >= param.value then fail
+  DUP 4; DUP 2; COMPARE; GE; IF {} { FAIL };
+  # balance[sender] = bal_s - param.value
+  DIP { DIG 3 ; SENDER ; DUP 5 }; SUB; SOME; SWAP; UPDATE;
+  # bal_r + param.value
+  DUG 3; DIP { SWAP }; ADD; 
+  # check bal_r + param.value <= totalSupply
+  #__MICSE_CHECK { DIP {DROP; DROP }; COMPARE; LE };
+  # balance[param.receiver] = bal_r + param.value
+  SOME; SWAP; UPDATE;
+  PAIR; NIL operation; PAIR };

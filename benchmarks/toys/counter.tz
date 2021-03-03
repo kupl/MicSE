@@ -1,0 +1,11 @@
+parameter unit;
+storage   int;
+code {
+  DROP; PUSH int 2; PUSH int 3; PUSH bool True; # true : 3 : 2 : [BOT]
+  # if true then 3 + 2 else 3 - 2
+  IF {ADD;} {SUB;}; # 5 : [BOT]
+  # while (top) = (top) { (top) = (top) - 1 }
+  DUP; NEQ;       # true : 2 : [BOT]
+  LOOP { PUSH int (-1); ADD;  # [0, 4] : [BOT]
+    DUP; EQ;  # (true or false) : [0, 4] : [BOT]
+  }; NIL operation; PAIR; };

@@ -1,0 +1,10 @@
+parameter (or (nat %donateFood) (unit %feedTurtle));
+storage   (pair (nat %foodTotal) (nat %turtleSize));
+code {
+  UNPAIR; IF_LEFT { # EntryPoint: donateFood
+    # storage.foodTotal = parameter.donateFood + storage.foodTotal
+    DIP { UNPAIR }; ADD; PAIR;
+  } { # EntryPoint: feedTurtle
+    # storage.turtleSize = storage.turtleSize << storage.foodTotal
+    DROP; DUP; CAR; DIP { SWAP; LSL; }; PAIR;
+  }; NIL operation; PAIR; };
