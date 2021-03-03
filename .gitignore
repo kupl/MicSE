@@ -1,6 +1,7 @@
 # Build directories
 _build
 .merlin
+/bin
 
 # Etc
 DS_Store
