@@ -1,6 +1,6 @@
 (* Prover *)
 
-exception ProverTimeout of Utils.Timer.t ref
+exception Error of string
 
 
 (*****************************************************************************)
@@ -44,6 +44,7 @@ let check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt
 (* 
   Input
   - Timer
+  - Initial Storage (optional)
   - Every blocked symbolic-states
   - Invariant Map
 
@@ -57,14 +58,30 @@ let check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt
 *)
 let check_inv_inductiveness : 
   Utils.Timer.t ref 
+  -> (Tz.mich_v Tz.cc * Tz.sym_state) option
   -> Tz.sym_state Tz.PSet.t 
   -> Se.invmap 
   -> (bool * (Tz.sym_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) option * Utils.Timer.time)
-= fun timer blocked_sset invm -> begin
+= fun timer init_stg_ss_opt blocked_sset invm -> begin
+  (* If initial storage exists, check if the transaction invariant satisfies the initial storage *)
+  let init_stg_sat : bool = 
+    (match init_stg_ss_opt with
+    | None -> true
+    | Some (istg, init_ss) ->
+      (match Tz.PMap.find invm init_ss.ss_entry_mci with
+        | None -> Error "check_inv_inductiveness : init_stg_sat" |> raise
+        | Some inv_f ->
+          let sat_f : Tz.mich_f = inv_f [Tz.MV_pair (init_ss.ss_optt.optt_param, istg) |> Tz.gen_dummy_cc] in
+          check_validity sat_f |> Stdlib.fst |> ProverLib.Smt.ZSolver.is_valid
+      )
+    ) 
+  in
+  if Stdlib.not init_stg_sat then (false, None, Utils.Timer.read_interval timer) else
+  (* check inductiveness by checking each paths *)
   Tz.PSet.fold blocked_sset ~init:(true, None, Utils.Timer.read_interval timer)
     ~f:(fun (accb, accopt, etime) bl_ss -> 
       (* If the prover time budget runs out, raise ProverTimeout *)
-      if Utils.Timer.is_timeout timer then Stdlib.raise (ProverTimeout timer) else
+      if Utils.Timer.is_timeout timer then (false, None, etime) else
       (* If the invariant-map already fails to show inductiveness, skip the rest (when accb = false) *)
       if Stdlib.not accb then (accb, accopt, etime) else
       let vld_r : ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option = Se.inv_induct_fmla_i bl_ss invm |> check_validity in
@@ -98,12 +115,8 @@ let solve_queries :
       * (Tz.sym_state * Se.query_category) Tz.PSet.t
 = fun timer ss_qcat_set invm -> begin
   (* Gather same-position queries using Tz.ss_block_mci *)
-  let spos_qmap : ((Tz.mich_cut_info * Se.query_category), (Tz.sym_state * Se.query_category) Tz.PSet.t) Tz.PMap.t = 
-    Tz.PSet.fold ss_qcat_set ~init:(Tz.PMap.empty)
-      ~f:(fun accmap (ss, qcat) ->
-        Tz.PMap.change accmap (ss.ss_block_mci, qcat) 
-          ~f:(function None -> Some (Tz.PSet.singleton (ss, qcat)) | Some s -> Some (Tz.PSet.add s (ss, qcat)))
-      )
+  let spos_qmap : ((Tz.mich_cut_info * Se.query_category), (Tz.sym_state * Se.query_category) Tz.PSet.t) Tz.PMap.t =
+    Tz.pmap_of_pset ss_qcat_set ~key_f:(fun (ss, qcat) -> (ss.ss_block_mci, qcat)) ~data_f:(fun x -> x)
   in
   (* Fold: Solve each queryset *)
   Tz.PMap.fold spos_qmap ~init:(Tz.PMap.empty, Tz.PSet.empty, ss_qcat_set)
@@ -175,3 +188,81 @@ let f_print_blocked_paths_pretty : Se.state_set -> unit
   (Tz.PSet.iter paths_j ~f:(fun x -> x |> Yojson.Safe.to_basic |> Yojson.Basic.pretty_to_string |> print_endline))
 end (* function f_print_sset end *)
 
+let f_print_query_solved_result_simple_pretty : 
+  ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
+    * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Utils.Timer.time) Tz.PSet.t
+    * (Tz.sym_state * Se.query_category) Tz.PSet.t
+  -> unit
+= fun (solved_map, failed_set, untouched_set) -> begin
+  (* Size calculation *)
+  let solved_queries_size : int = Tz.PMap.fold solved_map ~init:0 ~f:(fun ~key:_ ~data acc -> acc + Tz.PSet.length data) in
+  let (failed_size, untouched_size) = (Tz.PSet.length failed_set, Tz.PSet.length untouched_set) in
+  (* Get query results *)
+  let solved_queries : ((Tz.mich_cut_info * Se.query_category) * (Utils.Timer.time Tz.PSet.t)) list = 
+    solved_map
+    |> Tz.PMap.map ~f:(fun data -> Tz.PSet.map data ~f:(fun (_, tm) -> tm))
+    |> Tz.PMap.fold ~init:[] ~f:(fun ~key ~data accl -> (key, data) :: accl)
+  in
+  let failed_queries : ((Tz.mich_cut_info * Se.query_category) * ((ProverLib.Smt.ZSolver.validity * Utils.Timer.time) Tz.PSet.t)) list =
+    failed_set
+    |> Tz.pmap_of_pset ~key_f:(fun ((ss,qc),(_,_),_) -> (ss.Tz.ss_block_mci,qc)) ~data_f:(fun (_,(vl,_),tm) -> (vl,tm))
+    |> Tz.PMap.fold ~init:[] ~f:(fun ~key ~data accl -> (key, data) :: accl)
+  in
+  let untouched_queries : (Tz.mich_cut_info * Se.query_category) list = Tz.PSet.map untouched_set ~f:(fun (ss, qc) -> (ss.ss_block_mci, qc)) |> Tz.PSet.to_list in
+  (* Print Sizes *)
+  let _ : unit = 
+    Printf.printf 
+      "#Total: %d\n#Solved: %d\n#FailedSet: %d\n#UntouchedSet: %d\n"
+      (solved_queries_size + failed_size + untouched_size) solved_queries_size failed_size untouched_size
+  in
+  (* Print Queries *)
+  let _ : unit = 
+    (* Print the number of queries *)
+    let _ : unit =
+      let (slen, flen, ulen) = (List.length solved_queries, List.length failed_queries, List.length untouched_queries) in
+      Printf.printf
+        "#Total Q: %d\n#Solved Q: %d\n#Failed Q: %d\n#Untouched Q: %d\n"
+        (slen + flen + ulen) slen flen ulen
+    in
+    (* Print solved_queries *)
+    let _ : unit =
+      let sqjl = 
+        List.map 
+          (fun ((mci, qc), tset) -> 
+            `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
+                    "query-category", TzCvt.S2J.cv_qc qc;
+                    "times", `List (Tz.PSet.map tset ~f:(fun t -> `Int t) |> Tz.PSet.to_list);]
+          ) 
+          solved_queries
+      in
+      `List sqjl |> Yojson.Safe.pretty_to_string |> print_endline
+    in
+    (* Print failed_queries *)
+    let _ : unit = 
+      let sqjl =
+        List.map
+          (fun ((mci, qc), vtset) ->
+            `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
+                    "query-category", TzCvt.S2J.cv_qc qc;
+                    "validity/times", `List (Tz.PSet.map vtset ~f:(fun (v,t) -> `Tuple [`String (ProverLib.Smt.ZSolver.string_of_validity v); `Int t]) |> Tz.PSet.to_list);]
+          )
+          failed_queries
+      in
+      `List sqjl |> Yojson.Safe.pretty_to_string |> print_endline
+    in
+    (* Print untouched_queries *)
+    let _ : unit =
+      let sqjl = 
+        List.map
+          (fun (mci, qc) ->
+            `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
+                    "query-category", TzCvt.S2J.cv_qc qc;]
+          )
+          untouched_queries
+      in
+      `List sqjl |> Yojson.Safe.pretty_to_string |> print_endline
+    in
+    ()
+  in
+  ()
+end (* function f_print_query_solved_result_simple_pretty end *)

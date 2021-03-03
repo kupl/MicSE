@@ -494,6 +494,21 @@ type sym_state = {
 
 
 (*****************************************************************************)
+(* Common Datatype                                                           *)
+(*****************************************************************************)
+
+let pmap_of_pset : 'a PSet.t -> key_f:('a -> 'key) -> data_f:('a -> 'data) -> ('key, 'data PSet.t) PMap.t
+= fun set ~key_f ~data_f -> begin
+  PSet.fold set ~init:(PMap.empty)
+    ~f:(fun accmap elem ->
+      let (key, data) = (key_f elem, data_f elem) in
+      PMap.change accmap key 
+        ~f:(function | None -> Some (PSet.singleton data) | Some s -> Some (PSet.add s data))
+    )
+end (* function pmap_of_pset end *)
+
+
+(*****************************************************************************)
 (* Code Component                                                            *)
 (*****************************************************************************)
 
