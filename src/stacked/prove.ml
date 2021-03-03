@@ -112,8 +112,8 @@ let solve_queries :
   Utils.Timer.t ref 
   -> (Tz.sym_state * Se.query_category) Tz.PSet.t 
   -> Se.invmap 
-  -> ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
-      * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Utils.Timer.time) Tz.PSet.t
+  -> ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
+      * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t
       * (Tz.sym_state * Se.query_category) Tz.PSet.t
 = fun timer ss_qcat_set invm -> begin
   (* Gather same-position queries using Tz.ss_block_mci *)
@@ -127,20 +127,21 @@ let solve_queries :
       if Utils.Timer.is_timeout timer then (acc_solved_smap, acc_failed_sset, acc_untouched_sset) else
       (* Fold: Solve each query in queryset *)
       let (qset_solved_sset, qset_failed_sset) : 
-        ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t
-        * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Utils.Timer.time) Tz.PSet.t
+        ((Tz.sym_state * Se.query_category) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t
+        * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t
       = Tz.PSet.fold data ~init:(Tz.PSet.empty, Tz.PSet.empty)
           ~f:(fun (acc_qset_solved_sset, acc_qset_failed_sset) query_ss_cat ->
             (* check timeout *)
             if Utils.Timer.is_timeout timer then (acc_qset_solved_sset, acc_qset_failed_sset) else
             (* Solve the validity of the given query (query_ss_cat) *)
             let start_time : Utils.Timer.time = Utils.Timer.read_interval timer in
-            let vld_r : ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option = Se.inv_query_fmla query_ss_cat invm |> check_validity in
+            let fmla = Se.inv_query_fmla query_ss_cat invm in
+            let vld_r : ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option = check_validity fmla in
             let elapsed_time : Utils.Timer.time = Utils.Timer.read_interval timer - start_time in
             (* If valid, put the query to "solved-sset", else to "failed_sset" *)
             if ProverLib.Smt.ZSolver.is_valid (Stdlib.fst vld_r) 
-            then (Tz.PSet.add acc_qset_solved_sset (query_ss_cat, elapsed_time), acc_qset_failed_sset)
-            else (acc_qset_solved_sset, Tz.PSet.add acc_qset_failed_sset (query_ss_cat, vld_r, elapsed_time))
+            then (Tz.PSet.add acc_qset_solved_sset (query_ss_cat, fmla, elapsed_time), acc_qset_failed_sset)
+            else (acc_qset_solved_sset, Tz.PSet.add acc_qset_failed_sset (query_ss_cat, vld_r, fmla, elapsed_time))
           )
       in
       (* check if all queries in "data" solved *)
@@ -149,12 +150,12 @@ let solve_queries :
       let new_acc_solved_smap = (if is_all_solved then Tz.PMap.add_exn acc_solved_smap ~key:key ~data:(qset_solved_sset) else acc_solved_smap) in
       let new_acc_failed_sset = (
         if is_all_solved then acc_failed_sset else 
-        let failform_of_solved = Tz.PSet.map qset_solved_sset ~f:(fun (x, etime) -> (x, (ProverLib.Smt.ZSolver.VAL, None), etime)) in
+        let failform_of_solved = Tz.PSet.map qset_solved_sset ~f:(fun (x, fmla, etime) -> (x, (ProverLib.Smt.ZSolver.VAL, None), fmla, etime)) in
         Tz.PSet.union (Tz.PSet.union failform_of_solved qset_failed_sset) acc_failed_sset
       ) in
       (* Remove queries from untouched query set *)
-      let qset_solved_notime_form = Tz.PSet.map qset_solved_sset ~f:(Stdlib.fst) in
-      let qset_failed_notime_form = Tz.PSet.map qset_failed_sset ~f:(fun (x, _, _) -> x) in
+      let qset_solved_notime_form = Tz.PSet.map qset_solved_sset ~f:(fun (x, _, _) -> x) in
+      let qset_failed_notime_form = Tz.PSet.map qset_failed_sset ~f:(fun (x, _, _, _) -> x) in
       let new_acc_untouched_sset = Tz.PSet.diff (Tz.PSet.diff acc_untouched_sset qset_solved_notime_form) qset_failed_notime_form in
       (new_acc_solved_smap, new_acc_failed_sset, new_acc_untouched_sset)
     )
@@ -163,11 +164,11 @@ end (* function solve_queries_wl end *)
 
 let remove_solved_queries :
   (Tz.sym_state * Se.query_category) Tz.PSet.t
-  -> ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
+  -> ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
   -> (Tz.sym_state * Se.query_category) Tz.PSet.t
 = fun all_queries solved_queries -> begin
   Tz.PMap.fold solved_queries ~init:all_queries
-    ~f:(fun ~key:_ ~data acc_remain_queries -> Tz.PSet.diff acc_remain_queries (Tz.PSet.map data ~f:(Stdlib.fst)))
+    ~f:(fun ~key:_ ~data acc_remain_queries -> Tz.PSet.diff acc_remain_queries (Tz.PSet.map data ~f:(fun (x,_,_) -> x)))
 end (* function remove_solved_queries end *)
 
 
@@ -200,8 +201,8 @@ let f_print_queries_pretty : Se.state_set -> unit
 end (* function f_print_queries_pretty *)
 
 let f_print_query_solved_result_simple_pretty : 
-  ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
-    * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Utils.Timer.time) Tz.PSet.t
+  ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
+    * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t
     * (Tz.sym_state * Se.query_category) Tz.PSet.t
   -> unit
 = fun (solved_map, failed_set, untouched_set) -> begin
@@ -209,17 +210,21 @@ let f_print_query_solved_result_simple_pretty :
   let solved_queries_size : int = Tz.PMap.fold solved_map ~init:0 ~f:(fun ~key:_ ~data acc -> acc + Tz.PSet.length data) in
   let (failed_size, untouched_size) = (Tz.PSet.length failed_set, Tz.PSet.length untouched_set) in
   (* Get query results *)
-  let solved_queries : ((Tz.mich_cut_info * Se.query_category) * (Utils.Timer.time Tz.PSet.t)) list = 
+  let solved_queries : ((Tz.mich_cut_info * Se.query_category) * ((Utils.Timer.time * Tz.mich_f) Tz.PSet.t)) list = 
     solved_map
-    |> Tz.PMap.map ~f:(fun data -> Tz.PSet.map data ~f:(fun (_, tm) -> tm))
+    |> Tz.PMap.map ~f:(fun data -> Tz.PSet.map data ~f:(fun (_, fmla, tm) -> (tm, fmla)))
     |> Tz.PMap.fold ~init:[] ~f:(fun ~key ~data accl -> (key, data) :: accl)
   in
-  let failed_queries : ((Tz.mich_cut_info * Se.query_category) * ((ProverLib.Smt.ZSolver.validity * Utils.Timer.time) Tz.PSet.t)) list =
+  let failed_queries : ((Tz.mich_cut_info * Se.query_category) * ((ProverLib.Smt.ZSolver.validity * Utils.Timer.time * Tz.mich_f) Tz.PSet.t)) list =
     failed_set
-    |> Tz.pmap_of_pset ~key_f:(fun ((ss,qc),(_,_),_) -> (ss.Tz.ss_block_mci,qc)) ~data_f:(fun (_,(vl,_),tm) -> (vl,tm))
+    |> Tz.pmap_of_pset ~key_f:(fun ((ss,qc),(_,_),_,_) -> (ss.Tz.ss_block_mci,qc)) ~data_f:(fun (_,(vl,_),fmla,tm) -> (vl,tm,fmla))
     |> Tz.PMap.fold ~init:[] ~f:(fun ~key ~data accl -> (key, data) :: accl)
   in
-  let untouched_queries : (Tz.mich_cut_info * Se.query_category) list = Tz.PSet.map untouched_set ~f:(fun (ss, qc) -> (ss.ss_block_mci, qc)) |> Tz.PSet.to_list in
+  let untouched_queries : ((Tz.mich_cut_info * Se.query_category) * int) list = 
+    Tz.PSet.map untouched_set ~f:(fun (ss, qc) -> (ss.ss_block_mci, qc)) 
+    |> Tz.PSet.map ~f:(fun x -> let cnt = Tz.PSet.count untouched_set ~f:(fun (ss, qc) -> (ss.ss_block_mci, qc) = x) in (x, cnt))
+    |> Tz.PSet.to_list 
+  in
   (* Print Sizes *)
   let _ : unit = 
     Printf.printf 
@@ -240,32 +245,42 @@ let f_print_query_solved_result_simple_pretty :
       print_newline ();
       print_endline "<< SOLVED >>";
       print_newline ();
-      let sqjl = 
-        List.map 
-          (fun ((mci, qc), tset) -> 
-            `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
-                    "query-category", TzCvt.S2J.cv_qc qc;
-                    "times", `List (Tz.PSet.map tset ~f:(fun t -> `Int t) |> Tz.PSet.to_list);]
-          ) 
-          solved_queries
-      in
-      `List sqjl |> Yojson.Safe.pretty_to_string |> print_endline
+      List.iter 
+        (fun ((mci, qc), tfset) ->
+          `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
+                  "query-category", TzCvt.S2J.cv_qc qc;]
+          |> Yojson.Safe.pretty_to_string |> print_endline;
+          ();
+          Tz.PSet.iter 
+            ~f:(fun (t,fmla) ->
+              `Tuple [`Int t; TzCvt.T2Jnocc.cv_mf fmla] 
+              |> Yojson.Safe.to_string 
+              |> print_endline
+            )
+            tfset
+        ) 
+        solved_queries
     in
     (* Print failed_queries *)
     let _ : unit = 
       print_newline ();
-      print_endline "<< FAILED & UNTOUCHED >>";
+      print_endline "<< FAILED >>";
       print_newline ();
-      let sqjl =
-        List.map
-          (fun ((mci, qc), vtset) ->
-            `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
-                    "query-category", TzCvt.S2J.cv_qc qc;
-                    "validity/times", `List (Tz.PSet.map vtset ~f:(fun (v,t) -> `Tuple [`String (ProverLib.Smt.ZSolver.string_of_validity v); `Int t]) |> Tz.PSet.to_list);]
+      List.iter 
+      (fun ((mci, qc), vtfset) ->
+        `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
+                "query-category", TzCvt.S2J.cv_qc qc;]
+        |> Yojson.Safe.pretty_to_string |> print_endline;
+        ();
+        Tz.PSet.iter 
+          ~f:(fun (v, t,fmla) ->
+            `Tuple [`String (ProverLib.Smt.ZSolver.string_of_validity v);`Int t; TzCvt.T2Jnocc.cv_mf fmla] 
+            |> Yojson.Safe.to_string 
+            |> print_endline
           )
-          failed_queries
-      in
-      `List sqjl |> Yojson.Safe.pretty_to_string |> print_endline
+          vtfset
+      ) 
+      failed_queries
     in
     (* Print untouched_queries *)
     let _ : unit =
@@ -274,13 +289,14 @@ let f_print_query_solved_result_simple_pretty :
       print_newline ();
       let sqjl = 
         List.map
-          (fun (mci, qc) ->
+          (fun ((mci, qc), cnt) ->
             `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
-                    "query-category", TzCvt.S2J.cv_qc qc;]
+                    "query-category", TzCvt.S2J.cv_qc qc;
+                    "count", `Int cnt;]
           )
           untouched_queries
       in
-      `List sqjl |> Yojson.Safe.pretty_to_string |> print_endline
+      `List sqjl |> Yojson.Safe.to_string |> print_endline
     in
     ()
   in
