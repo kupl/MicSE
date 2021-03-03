@@ -5,7 +5,7 @@
 - [MicSE (in development)](#micse-in-development)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
-  - [Usage](#usage)
+  - [Documents](#documents)
   - [Development](#development)
     - [Prerequisite](#prerequisite)
       - [System packages](#system-packages)
@@ -22,8 +22,9 @@ MicSE provides automated runtime safety property verifier for Michelson.
 - *Prover* (=verifier)
 - *Refuter* (=tester, will be provided)
 
-## Usage
+## Documents
 
+- [Usage](./doc/USAGE.md)
 
 ## Development
 
