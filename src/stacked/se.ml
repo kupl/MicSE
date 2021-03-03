@@ -3,6 +3,7 @@
 open Tz
 
 exception Error of string
+exception DebugInstSS of (Tz.mich_i Tz.cc * Tz.sym_state)
 
 type query_category =
   (* Each of them are indicator of "State -> Formula" function *)
@@ -152,6 +153,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   in
   let update_block_mci : mich_cut_info -> sym_state -> sym_state = fun mci ss -> {ss with ss_block_mci=mci} 
   in
+  let update_queryblock_mci : Tz.ccp_loc -> sym_state -> sym_state = fun loc ss -> {ss with ss_block_mci={mci_loc=loc; mci_cutcat=Tz.MCC_query}}
+  in
   (* SUGAR - constraint update *)
   let ss_add_constraint : sym_state -> mich_f -> sym_state
   = fun ss fmla -> {ss with ss_constraints=(fmla :: ss.ss_constraints)}
@@ -172,6 +175,16 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   let mich_int_0 : mich_v cc = MV_lit_int Z.zero |> gen_dummy_cc in
   (* FUNCTION BEGIN *)
   fun cache inst ss -> begin
+  (* DEBUG START *) 
+  (* let _ = 
+    let cv_pos : Tz.ccp_pos -> Yojson.Safe.t
+    = fun {col; lin} -> `Tuple [`Int lin; `Int col] (* function cv_pos end *) in
+    List.length ss.ss_symstack |> print_int;
+    print_string "  ";
+    (function CCLOC_Unknown -> `Variant (Jc.cc_l_unk, None) | CCLOC_Pos (p1, p2) -> `Variant (Jc.cc_l_pos, Some (`Tuple [cv_pos p1; cv_pos p2]))) inst.cc_loc
+    |> Yojson.Safe.pretty_to_string |> print_endline
+  in *)
+  (* DEBUG END *)
   let gen_inst_cc : 'a -> 'a cc = gen_custom_cc inst in
   let 
     { ss_fixchain=_;
@@ -189,7 +202,14 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   match inst.cc_v with
   | MI_seq (i1,i2) -> ss |> ss_to_srset |> run_inst cache i1 |> run_inst cache i2
   | MI_drop zn -> (CList.split_n ss_symstack (Z.to_int zn) |> Stdlib.snd) |> sstack_to_srset ss
-  | MI_dup zn -> (CList.nth_exn ss_symstack (Z.to_int zn - 1)) :: ss_symstack |> sstack_to_srset ss
+  (* | MI_dup zn -> (CList.nth_exn ss_symstack (Z.to_int zn - 1)) :: ss_symstack |> sstack_to_srset ss *)
+  | MI_dup zn -> 
+    (
+      try 
+      (CList.nth_exn ss_symstack (Z.to_int zn - 1)) :: ss_symstack |> sstack_to_srset ss
+      with
+      | _ -> DebugInstSS (inst, ss) |> raise
+    )
   | MI_swap ->
     (match ss_symstack with
       | h1 :: h2 :: tl -> (h2 :: h1 :: tl)
@@ -226,9 +246,14 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     in
     sset_union_pointwise then_br_sset else_br_sset
   | MI_pair ->
-    (MV_pair (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
+    (* (MV_pair (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
     |> cons_tl_n ss_symstack 2
-    |> sstack_to_srset ss
+    |> sstack_to_srset ss *)
+    (try (MV_pair (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
+    |> cons_tl_n ss_symstack 2
+    |> sstack_to_srset ss 
+  with | _ ->DebugInstSS (inst, ss) |> raise
+    )
   | MI_car -> (MV_car (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_cdr -> (MV_cdr (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_left t -> (MV_left (t,(CList.hd_exn ss_symstack)) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
@@ -371,6 +396,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       | MT_map _ -> MV_get_xmoy (h,h2)
       | MT_big_map _ -> MV_get_xbmo (h,h2)
       | _ -> Error "run_inst_i : MI_get" |> raise)
+      (* | _ -> DebugSS ss |> raise) *)
     |> gen_inst_cc
     |> cons_tl_n ss_symstack 2
     |> sstack_to_srset ss
@@ -548,7 +574,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       *)
       let added_state : sym_state = (MV_add_mmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint added_state (MF_add_mmm_no_overflow (h,h2)) in
-      let query : sym_state * query_category = (ss, Q_mutez_add_no_overflow) in
+      let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
+      let query : sym_state * query_category = (query_ss, Q_mutez_add_no_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_add" |> raise
     )
@@ -571,9 +598,11 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       *)
       let subed_state : sym_state = (MV_sub_mmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint subed_state (MF_sub_mmm_no_underflow (h,h2)) in
-      let query : sym_state * query_category = (ss, Q_mutez_sub_no_underflow) in
+      let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
+      let query : sym_state * query_category = (query_ss, Q_mutez_sub_no_underflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_sub" |> raise
+    (* | _ -> DebugInstSS (inst, ss) |> raise *)
     )
   | MI_mul ->
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
@@ -592,7 +621,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       *)
       let muled_state : sym_state = (MV_mul_mnm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint muled_state (MF_mul_mnm_no_overflow (h,h2)) in
-      let query : sym_state * query_category = (ss, Q_mutez_mul_no_overflow) in
+      let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
+      let query : sym_state * query_category = (query_ss, Q_mutez_mul_no_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | MT_nat, MT_mutez ->
       (* for mutez addition, 
@@ -601,7 +631,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       *)
       let muled_state : sym_state = (MV_mul_nmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint muled_state (MF_mul_nmm_no_overflow (h,h2)) in
-      let query : sym_state * query_category = (ss, Q_mutez_mul_no_overflow) in
+      let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
+      let query : sym_state * query_category = (query_ss, Q_mutez_mul_no_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_mul" |> raise
     )
@@ -640,7 +671,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
     let shifted_state : sym_state = (MV_shiftL_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_ss ss in
     let runstate : sym_state = ss_add_constraint shifted_state (MF_shiftL_nnn_rhs_in_256 (h,h2)) in
-    let query : sym_state * query_category = (ss, Q_shiftleft_safe) in
+    let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
+    let query : sym_state * query_category = (query_ss, Q_shiftleft_safe) in
     {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
   | MI_lsr ->
     (* for right logical shift, 
@@ -650,7 +682,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
     let shifted_state : sym_state = (MV_shiftR_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_ss ss in
     let runstate : sym_state = ss_add_constraint shifted_state (MF_shiftR_nnn_rhs_in_256 (h,h2)) in
-    let query : sym_state * query_category = (ss, Q_shiftright_safe) in
+    let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
+    let query : sym_state * query_category = (query_ss, Q_shiftright_safe) in
     {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
   | MI_or ->
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
@@ -686,7 +719,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_not -> 
     let h = CList.hd_exn ss_symstack in
     let gen_srset : mich_v -> state_set
-    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_srset ss
+    = fun mv -> (mv |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
     in
     (match (typ_of_val h).cc_v with
     | MT_nat -> MV_not_ni (h) |> gen_srset
@@ -696,7 +729,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     )
   | MI_compare ->
     (MV_compare (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
-    |> cons_tl_n ss_symstack 1
+    |> cons_tl_n ss_symstack 2
     |> sstack_to_srset ss
   | MI_eq -> (MV_eq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_neq -> (MV_neq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
@@ -725,9 +758,10 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let operlist_typ : mich_t cc = MT_list (gen_custom_cc inst MT_operation) |> gen_custom_cc inst in
     let ctrt_output_typ : mich_t cc = MT_pair (operlist_typ, t2) |> gen_custom_cc inst in
     let lambda : mich_v cc = MV_lit_lambda (ctrt_input_typ,ctrt_output_typ,i) |> gen_inst_cc in
+    let new_addr : mich_v cc = gen_new_symval_t (gen_custom_cc inst MT_address) in
     let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
-    (MV_create_contract (ctrt_input_typ, ctrt_output_typ, lambda, h, h2, h3) |> gen_inst_cc)
-    |> cons_tl_n ss_symstack 3
+    ((MV_create_contract (ctrt_input_typ, ctrt_output_typ, lambda, h, h2, h3, new_addr) |> gen_inst_cc), new_addr)
+    |> cons2_tl_n ss_symstack 3
     |> sstack_to_srset ss
   | MI_implicit_account ->
     (MV_implicit_account (CList.hd_exn ss_symstack) |> gen_inst_cc)
@@ -735,11 +769,11 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> sstack_to_srset ss
   | MI_now -> (ss.ss_optt.optt_now) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_amount -> (ss.ss_optt.optt_amount) |> sstack_push ss_symstack |> sstack_to_srset ss
-  | MI_balance -> 
-    (match PMap.find ss.ss_dynchain.bc_storage ss.ss_optt.optt_addr with
-    | None -> Error "run_inst_i : MI_balance : balance not found" |> raise
-    | Some blce -> blce |> sstack_push ss_symstack |> sstack_to_srset ss
-    )
+  | MI_balance -> (MV_get_xmoy (ss.ss_optt.optt_addr, ss.ss_dynchain.bc_balance) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+      (* (match PMap.find ss.ss_dynchain.bc_balance ss.ss_optt.optt_addr with
+      | None -> Error "run_inst_i : MI_balance : balance not found" |> raise
+      | Some blce -> blce |> sstack_push ss_symstack |> sstack_to_srset ss
+      ) *)
   | MI_check_signature ->
     let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
     (MV_check_signature (h,h2,h3) |> gen_inst_cc)
@@ -763,7 +797,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     (* dealing with micse-check
         - bring running states from the result of "i", and convert them to queries.
     *)
-    let qset : (sym_state * query_category) PSet.t = PSet.map (run_inst_i cache i ss).running ~f:(fun x -> (x,Q_assertion)) in
+    let qset : (sym_state * query_category) PSet.t = PSet.map (run_inst_i cache i ss).running ~f:(fun x -> ((update_queryblock_mci inst.cc_loc x), Q_assertion)) in
     {(ss_to_srset ss) with queries=qset;}
 end (* function run_inst_i end *)
 
@@ -879,7 +913,7 @@ let inv_induct_fmla_i : Tz.sym_state -> invmap -> Tz.mich_f
 = fun blocked_ss invm -> begin
   match (PMap.find invm blocked_ss.ss_entry_mci, PMap.find invm blocked_ss.ss_block_mci) with
   | (Some inv_entry, Some inv_block) ->
-      MF_imply (inv_app_guide_entry inv_entry blocked_ss, inv_app_guide_block inv_block blocked_ss)
+      MF_imply (MF_and ((inv_app_guide_entry inv_entry blocked_ss) :: blocked_ss.ss_constraints), inv_app_guide_block inv_block blocked_ss)
   | _ -> Error "inv_induct_fmla : cannot find invariant" |> raise
 end (* function inv_induct_fmla_i end *) 
 let inv_induct_fmla : (Tz.sym_state Tz.PSet.t) -> invmap -> (Tz.mich_f Tz.PSet.t)
@@ -894,5 +928,5 @@ let inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
   in
   let entry_fmla = inv_app_guide_entry inv_entry query_ss in
   let query = state_query_reduce query_ssp in
-  MF_imply (entry_fmla, query)
+  MF_imply (MF_and (entry_fmla :: query_ss.ss_constraints), query)
 end (* function inv_query_fmla end *)

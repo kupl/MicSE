@@ -245,7 +245,7 @@ and mich_v =
   (*************************************************************************)
   (* Operation                                                             *)
   (*************************************************************************)
-  | MV_create_contract of mich_t cc * mich_t cc * mich_v cc * mich_v cc * mich_v cc * mich_v cc (* ('param) * ('strg) * (('param, 'strg) pair, (operation list, 'strg) pair) lambda * key_hash option * mutez * 'strg -> operation *)
+  | MV_create_contract of mich_t cc * mich_t cc * mich_v cc * mich_v cc * mich_v cc * mich_v cc * mich_v cc (* ('param) * ('strg) * (('param, 'strg) pair, (operation list, 'strg) pair) lambda * key_hash option * mutez * 'strg * address -> operation *)
   | MV_transfer_tokens of mich_v cc * mich_v cc * mich_v cc  (* 'a * mutez * 'a contract -> operation *)
   | MV_set_delegate of mich_v cc (* key_hash option -> operation *)
 
@@ -462,6 +462,7 @@ type mich_cut_category =
 | MCC_lb_loopleft   (* body of the loop *)
 | MCC_lb_map        (* body of the loop *)
 | MCC_lb_iter       (* body of the loop *)
+| MCC_query
 
 type mich_cut_info = {
   mci_loc : ccp_loc;
@@ -819,6 +820,7 @@ let inv_app_guide_entry : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
   | MCC_lb_loopleft   -> inv_f (CList.tl_exn sstack)
   | MCC_lb_map        -> inv_f (CList.tl_exn sstack)
   | MCC_lb_iter       -> inv_f (CList.tl_exn sstack)
+  | MCC_query         -> Stdlib.failwith "inv_app_guide_entry : MCC_query : unexpected"
 end (* function inv_app_guide_entry end *)
 let inv_app_guide_block : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
 = let module CList = Core.List in
@@ -835,4 +837,5 @@ let inv_app_guide_block : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
   | MCC_lb_loopleft   -> inv_f (CList.tl_exn sstack)
   | MCC_lb_map        -> inv_f (CList.tl_exn sstack)
   | MCC_lb_iter       -> inv_f sstack
+  | MCC_query         -> Stdlib.failwith "inv_app_guide_block : MCC_query : unexpected"
 end (* function inv_app_guide_exit end *)

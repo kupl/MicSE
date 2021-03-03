@@ -42,6 +42,7 @@ val remove_solved_queries :
 
 val f_count_sset : Se.state_set -> unit
 val f_print_blocked_paths_pretty : Se.state_set -> unit
+val f_print_queries_pretty : Se.state_set -> unit
 val f_print_query_solved_result_simple_pretty :
   ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
   * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Utils.Timer.time) Tz.PSet.t

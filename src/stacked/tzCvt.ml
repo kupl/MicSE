@@ -132,8 +132,10 @@ module M2T = struct
     | I_chain_id      -> MI_chain_id
     | I_unpair        -> MI_unpair
     (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
+    | I_noop          -> MI_drop (Z.of_int 0)
     | I_micse_check i -> MI_micse_check (cv_instt i)
     (* Error case - Macros & Undefined *)
+    (* | _ as inst -> Error ("cv_inst : " ^ (PreLib.Mich.string_of_instt_ol (PreLib.Mich.gen_t inst))) |> raise *)
     | _ -> Error "cv_inst" |> raise
     )
   and cv_instt : inst t -> Tz.mich_i Tz.cc = fun x -> cv_t {x with d=(cv_inst x.d)}
@@ -842,9 +844,9 @@ module T2J = struct
     (*************************************************************************)
     (* Operation                                                             *)
     (*************************************************************************)
-    | MV_create_contract (pt, st, e1, e2, e3, e4) -> `Variant (v_create_contract, Some (`Tuple [cv_mtcc pt; cv_mtcc st; cv_mvcc e1; cv_mvcc e2; cv_mvcc e3; cv_mvcc e4;]))
-    | MV_transfer_tokens (e1, e2, e3)             -> `Variant (v_transfer_tokens, s3 e1 e2 e3)
-    | MV_set_delegate e                           -> `Variant (v_set_delegate,    s e)
+    | MV_create_contract (pt, st, e1, e2, e3, e4, e5) -> `Variant (v_create_contract, Some (`Tuple [cv_mtcc pt; cv_mtcc st; cv_mvcc e1; cv_mvcc e2; cv_mvcc e3; cv_mvcc e4; cv_mvcc e5]))
+    | MV_transfer_tokens (e1, e2, e3)                 -> `Variant (v_transfer_tokens, s3 e1 e2 e3)
+    | MV_set_delegate e                               -> `Variant (v_set_delegate,    s e)
   
     (*************************************************************************)
     (* Contract                                                              *)
@@ -1062,6 +1064,7 @@ module T2J = struct
     | MCC_lb_loopleft   -> `Variant (mcc_lb_loopleft, None)
     | MCC_lb_map        -> `Variant (mcc_lb_map,      None)
     | MCC_lb_iter       -> `Variant (mcc_lb_iter,     None)
+    | MCC_query         -> `Variant (mcc_query,       None)
     ) (* function cv_mich_cut_category end *)
   let cv_mich_cut_info : Tz.mich_cut_info -> js
   = fun m -> begin
@@ -1385,9 +1388,9 @@ module T2Jnocc = struct
     (*************************************************************************)
     (* Operation                                                             *)
     (*************************************************************************)
-    | MV_create_contract (pt, st, e1, e2, e3, e4) -> `Variant (v_create_contract, Some (`Tuple [cv_mtcc pt; cv_mtcc st; cv_mvcc e1; cv_mvcc e2; cv_mvcc e3; cv_mvcc e4;]))
-    | MV_transfer_tokens (e1, e2, e3)             -> `Variant (v_transfer_tokens, s3 e1 e2 e3)
-    | MV_set_delegate e                           -> `Variant (v_set_delegate,    s e)
+    | MV_create_contract (pt, st, e1, e2, e3, e4, e5) -> `Variant (v_create_contract, Some (`Tuple [cv_mtcc pt; cv_mtcc st; cv_mvcc e1; cv_mvcc e2; cv_mvcc e3; cv_mvcc e4; cv_mvcc e5;]))
+    | MV_transfer_tokens (e1, e2, e3)                 -> `Variant (v_transfer_tokens, s3 e1 e2 e3)
+    | MV_set_delegate e                               -> `Variant (v_set_delegate,    s e)
   
     (*************************************************************************)
     (* Contract                                                              *)
@@ -1605,6 +1608,7 @@ module T2Jnocc = struct
       | MCC_lb_loopleft   -> `Variant (mcc_lb_loopleft, None)
       | MCC_lb_map        -> `Variant (mcc_lb_map,      None)
       | MCC_lb_iter       -> `Variant (mcc_lb_iter,     None)
+      | MCC_query         -> `Variant (mcc_query,       None)
       ) (* function cv_mich_cut_category end *)
     let cv_mich_cut_info : Tz.mich_cut_info -> js
     = fun m -> begin

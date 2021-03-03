@@ -481,6 +481,7 @@ let mcc_lb_loop = "mcc_lb_loop"
 let mcc_lb_loopleft = "mcc_lb_loopleft"
 let mcc_lb_map = "mcc_lb_map"
 let mcc_lb_iter = "mcc_lb_iter"
+let mcc_query = "mcc_query"
 
 let jc_mci_loc = "mci_loc"
 let jc_mci_cutcat = "mci_cutcat"

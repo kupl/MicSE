@@ -77,15 +77,17 @@ let check_inv_inductiveness :
     ) 
   in
   if Stdlib.not init_stg_sat then (false, None, Utils.Timer.read_interval timer) else
+  let start_time : Utils.Timer.time = Utils.Timer.read_interval timer in
+  let get_elapsed_time : unit -> Utils.Timer.time = fun () -> Utils.Timer.read_interval timer - start_time in
   (* check inductiveness by checking each paths *)
-  Tz.PSet.fold blocked_sset ~init:(true, None, Utils.Timer.read_interval timer)
+  Tz.PSet.fold blocked_sset ~init:(true, None, get_elapsed_time ())
     ~f:(fun (accb, accopt, etime) bl_ss -> 
       (* If the prover time budget runs out, raise ProverTimeout *)
       if Utils.Timer.is_timeout timer then (false, None, etime) else
       (* If the invariant-map already fails to show inductiveness, skip the rest (when accb = false) *)
       if Stdlib.not accb then (accb, accopt, etime) else
       let vld_r : ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option = Se.inv_induct_fmla_i bl_ss invm |> check_validity in
-      let elapsed_time : Utils.Timer.time = Utils.Timer.read_interval timer in
+      let elapsed_time : Utils.Timer.time = get_elapsed_time () in
       if ProverLib.Smt.ZSolver.is_valid (Stdlib.fst vld_r) then (true, None, elapsed_time) else (false, Some (bl_ss, vld_r), elapsed_time)
     )
 end (* function check_inv_inductiveness end *)
@@ -132,8 +134,9 @@ let solve_queries :
             (* check timeout *)
             if Utils.Timer.is_timeout timer then (acc_qset_solved_sset, acc_qset_failed_sset) else
             (* Solve the validity of the given query (query_ss_cat) *)
+            let start_time : Utils.Timer.time = Utils.Timer.read_interval timer in
             let vld_r : ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option = Se.inv_query_fmla query_ss_cat invm |> check_validity in
-            let elapsed_time : Utils.Timer.time = Utils.Timer.read_interval timer in
+            let elapsed_time : Utils.Timer.time = Utils.Timer.read_interval timer - start_time in
             (* If valid, put the query to "solved-sset", else to "failed_sset" *)
             if ProverLib.Smt.ZSolver.is_valid (Stdlib.fst vld_r) 
             then (Tz.PSet.add acc_qset_solved_sset (query_ss_cat, elapsed_time), acc_qset_failed_sset)
@@ -184,9 +187,17 @@ let f_print_blocked_paths_pretty : Se.state_set -> unit
 = fun sset -> begin
   let strop_j = TzCvt.T2Jnocc.cv_p1_ss_strop (Tz.PSet.choose_exn sset.blocked) in
   let paths_j = Tz.PSet.map sset.blocked ~f:(TzCvt.T2Jnocc.cv_p1_ss_path) in
-  print_endline (strop_j |> Yojson.Safe.to_basic |> Yojson.Basic.pretty_to_string);
-  (Tz.PSet.iter paths_j ~f:(fun x -> x |> Yojson.Safe.to_basic |> Yojson.Basic.pretty_to_string |> print_endline))
+  print_endline (strop_j |> Yojson.Safe.pretty_to_string);
+  (Tz.PSet.iter paths_j ~f:(fun x -> x |> Yojson.Safe.pretty_to_string |> print_endline))
 end (* function f_print_sset end *)
+
+let f_print_queries_pretty : Se.state_set -> unit
+= fun sset -> begin
+  let strop_j = TzCvt.T2Jnocc.cv_p1_ss_strop (Tz.PSet.choose_exn sset.queries |> Stdlib.fst) in
+  let queries_j = Tz.PSet.map sset.queries ~f:(fun (ss, qc) -> `Assoc ["query-cat", TzCvt.S2J.cv_qc qc; "sym-state", TzCvt.T2Jnocc.cv_p1_ss_path ss]) in
+  print_endline (strop_j |> Yojson.Safe.pretty_to_string);
+  (Tz.PSet.iter queries_j ~f:(fun x -> x |> Yojson.Safe.pretty_to_string |> print_endline))
+end (* function f_print_queries_pretty *)
 
 let f_print_query_solved_result_simple_pretty : 
   ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
@@ -212,7 +223,7 @@ let f_print_query_solved_result_simple_pretty :
   (* Print Sizes *)
   let _ : unit = 
     Printf.printf 
-      "#Total: %d\n#Solved: %d\n#FailedSet: %d\n#UntouchedSet: %d\n"
+      "#Total: %d\n#SolvedElem: %d\n#FailedSetElem: %d\n#UntouchedSetElem: %d\n"
       (solved_queries_size + failed_size + untouched_size) solved_queries_size failed_size untouched_size
   in
   (* Print Queries *)
@@ -226,6 +237,9 @@ let f_print_query_solved_result_simple_pretty :
     in
     (* Print solved_queries *)
     let _ : unit =
+      print_newline ();
+      print_endline "<< SOLVED >>";
+      print_newline ();
       let sqjl = 
         List.map 
           (fun ((mci, qc), tset) -> 
@@ -239,6 +253,9 @@ let f_print_query_solved_result_simple_pretty :
     in
     (* Print failed_queries *)
     let _ : unit = 
+      print_newline ();
+      print_endline "<< FAILED & UNTOUCHED >>";
+      print_newline ();
       let sqjl =
         List.map
           (fun ((mci, qc), vtset) ->
@@ -252,6 +269,9 @@ let f_print_query_solved_result_simple_pretty :
     in
     (* Print untouched_queries *)
     let _ : unit =
+      print_newline ();
+      print_endline "<< UNTOUCHED >>";
+      print_newline ();
       let sqjl = 
         List.map
           (fun (mci, qc) ->
