@@ -744,7 +744,23 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> sstack_push ss_symstack
     |> sstack_to_srset ss
   | MI_contract t ->
-    (MV_lit_contract (t, CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss 
+    (* In the concrete execution, Michelson-VM will seek fixed-blockchain if there are any contract exists.
+      However, it is impossible to encode such information in Tz.bc_code.
+      So it is the best to branch current running-state, one for None and the other for Some (new-contract).
+      Tz.sym_state should be modified to contain a new kind of constraint, such as 
+      "we already say that the fixed-chain contains a contract of the address 'kt1abcdef'." (* TODO !!!! *)
+    *)
+    let found_br_sset : state_set =
+      (MV_some (MV_lit_contract (t, CList.hd_exn ss_symstack) |> gen_inst_cc) |> gen_inst_cc)
+      |> cons_tl_n ss_symstack 1
+      |> sstack_to_srset ss
+    in
+    let not_found_br_sset : state_set =
+      (MV_none (MT_contract t |> gen_custom_cc inst) |> gen_inst_cc)
+      |> cons_tl_n ss_symstack 1
+      |> sstack_to_srset ss
+    in
+    sset_union_pointwise found_br_sset not_found_br_sset
   | MI_transfer_tokens ->
     let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
     (MV_transfer_tokens (h,h2,h3) |> gen_inst_cc)
@@ -773,10 +789,9 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_amount -> (ss.ss_optt.optt_amount) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_balance -> 
     let blce_opt : mich_v cc = MV_get_xmoy (ss.ss_optt.optt_addr, ss.ss_dynchain.bc_balance) |> gen_inst_cc in
-    let run_state : sym_state = ss_add_constraint ss (MF_not (MF_is_none blce_opt)) in
     (MV_unlift_option blce_opt |> gen_inst_cc)
     |> sstack_push ss_symstack
-    |> sstack_to_ss run_state
+    |> sstack_to_ss (ss_add_constraint ss (MF_not (MF_is_none blce_opt)))
     |> ss_to_srset
   | MI_check_signature ->
     let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
