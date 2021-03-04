@@ -85,7 +85,7 @@ $ (PROJECT_DIR)/bin/micse_prover --input (FILE_PATH)
 
 #### JSON Output Format
 
-```json
+```txt
 {
   "file": "", // Input File Path
   "instructions": 0, // Number of Instructions
