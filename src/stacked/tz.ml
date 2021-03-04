@@ -732,7 +732,7 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
   | MV_update_xomm (v1,v2,_) -> (
     let t1 = (typ_of_val v1).cc_v |> gen_cc in
     (match ((typ_of_val v2).cc_v) with
-      | MT_option t2 -> MT_big_map (t1,t2)
+      | MT_option t2 -> MT_map (t1,t2)
       | _ -> err ())
     |> gen_cc
   )

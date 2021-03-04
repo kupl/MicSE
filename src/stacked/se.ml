@@ -769,11 +769,14 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> sstack_to_srset ss
   | MI_now -> (ss.ss_optt.optt_now) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_amount -> (ss.ss_optt.optt_amount) |> sstack_push ss_symstack |> sstack_to_srset ss
-  | MI_balance -> (MV_get_xmoy (ss.ss_optt.optt_addr, ss.ss_dynchain.bc_balance) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
-      (* (match PMap.find ss.ss_dynchain.bc_balance ss.ss_optt.optt_addr with
-      | None -> Error "run_inst_i : MI_balance : balance not found" |> raise
-      | Some blce -> blce |> sstack_push ss_symstack |> sstack_to_srset ss
-      ) *)
+  | MI_balance -> 
+    let blce_opt : mich_v cc = MV_get_xmoy (ss.ss_optt.optt_addr, ss.ss_dynchain.bc_balance) |> gen_inst_cc in
+    let _ = try (typ_of_val blce_opt) with | _ -> failwith "fjiji" in
+    let run_state : sym_state = ss_add_constraint ss (MF_not (MF_is_none blce_opt)) in
+    (MV_unlift_option blce_opt |> gen_inst_cc)
+    |> sstack_push ss_symstack
+    |> sstack_to_ss run_state
+    |> ss_to_srset
   | MI_check_signature ->
     let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
     (MV_check_signature (h,h2,h3) |> gen_inst_cc)

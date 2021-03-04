@@ -296,7 +296,7 @@ let f_print_query_solved_result_simple_pretty :
           )
           untouched_queries
       in
-      `List sqjl |> Yojson.Safe.to_string |> print_endline
+      `List sqjl |> Yojson.Safe.pretty_to_string |> print_endline
     in
     ()
   in
