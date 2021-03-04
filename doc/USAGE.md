@@ -114,7 +114,7 @@ $ (PROJECT_DIR)/bin/micse_prover --input (FILE_PATH)
 
 #### Example
 
-- **Input:** [`transfer_safe.tz`](../benchmarks/toys/transfer_safe.tz)
+- **Input:** [`add1_guarded.tz`](../benchmarks/toys/add1_guarded.tz)
 - **Output:**
 
 ```txt
