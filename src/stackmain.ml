@@ -40,11 +40,19 @@ let f_show_trueinv_solving : unit -> unit
   let _ = ignore (tz_init_stg_opt, init_ss, cache) in
   Stacked.Prove.f_count_sset sset;
   print_newline ();
-  Stacked.Prove.solve_queries 
-    (Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget))
-    sset.queries
-    (Stacked.Se.true_invmap_of_blocked_sset sset.Stacked.Se.blocked)
-  |> Stacked.Prove.f_print_query_solved_result_simple_pretty
+  (
+    try
+      Stacked.Prove.solve_queries 
+        (Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget))
+        sset.queries
+        (Stacked.Se.true_invmap_of_blocked_sset sset.Stacked.Se.blocked)
+      |> Stacked.Prove.f_print_query_solved_result_simple_pretty
+    with 
+    | Stacked.TzCvt.T2S.SMT_Encode_Error_f (vf, _) ->
+      Stacked.TzCvt.T2Jnocc.cv_mf vf
+      |> Yojson.Safe.pretty_to_string |> print_endline
+      ; Stdlib.failwith "Stacked.TzCvt.T2S.SMT_Encode_Error_f"
+  )
 end (* function f_show_trueinv_solving *)
 
 let main : unit -> unit

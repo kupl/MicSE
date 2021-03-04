@@ -1,0 +1,34 @@
+#running=0, #blocked=6, #queries=2, #terminated=7
+
+<"is_none":
+  <"lit_contract":
+    (<"unit">,
+     <"car":
+       <"ul_right":
+         <"car":
+           <"pair":
+             (<"var":
+                (<"or":
+                   (<"unit">, <"pair": (<"address">, <"list": <"address">>)>)
+                 >,
+                 "vparam9")
+              >,
+              <"var":
+                (<"pair":
+                   (<"pair":
+                      (<"pair":
+                         (<"pair": (<"list": <"address">>, <"mutez">)>,
+                          <"address">)
+                       >,
+                       <"mutez">)
+                    >,
+                    <"nat">)
+                 >,
+                 "vstorage2")
+              >)
+           >
+         >
+       >
+     >)
+  >
+>

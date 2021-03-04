@@ -7,7 +7,8 @@ type query_category =
   (* Each of them are indicator of "State -> Formula" function *)
   | Q_mutez_add_no_overflow
   | Q_mutez_sub_no_underflow
-  | Q_mutez_mul_no_overflow
+  | Q_mutez_mul_mnm_no_overflow
+  | Q_mutez_mul_nmm_no_overflow
   | Q_shiftleft_safe
   | Q_shiftright_safe
   | Q_assertion

@@ -1128,7 +1128,8 @@ module S2J = struct
   = (function
     | Q_mutez_add_no_overflow -> `Variant (q_mutez_add_no_overflow, None)
     | Q_mutez_sub_no_underflow -> `Variant (q_mutez_sub_no_underflow, None)
-    | Q_mutez_mul_no_overflow -> `Variant (q_mutez_mul_no_overflow, None)
+    | Q_mutez_mul_mnm_no_overflow -> `Variant (q_mutez_mul_mnm_no_overflow, None)
+    | Q_mutez_mul_nmm_no_overflow -> `Variant (q_mutez_mul_nmm_no_overflow, None)
     | Q_shiftleft_safe -> `Variant (q_shiftleft_safe, None)
     | Q_shiftright_safe -> `Variant (q_shiftright_safe, None)
     | Q_assertion -> `Variant (q_assertion, None)

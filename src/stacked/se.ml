@@ -9,7 +9,8 @@ type query_category =
   (* Each of them are indicator of "State -> Formula" function *)
   | Q_mutez_add_no_overflow
   | Q_mutez_sub_no_underflow
-  | Q_mutez_mul_no_overflow
+  | Q_mutez_mul_mnm_no_overflow
+  | Q_mutez_mul_nmm_no_overflow
   | Q_shiftleft_safe
   | Q_shiftright_safe
   | Q_assertion
@@ -69,7 +70,8 @@ let state_query_reduce : Tz.sym_state * query_category -> Tz.mich_f
   match qc with
   | Q_mutez_add_no_overflow -> MF_add_mmm_no_overflow (h,h2)
   | Q_mutez_sub_no_underflow -> MF_sub_mmm_no_underflow (h,h2)
-  | Q_mutez_mul_no_overflow -> MF_mul_mnm_no_overflow (h,h2)
+  | Q_mutez_mul_mnm_no_overflow -> MF_mul_mnm_no_overflow (h,h2)
+  | Q_mutez_mul_nmm_no_overflow -> MF_mul_nmm_no_overflow (h,h2)
   | Q_shiftleft_safe -> MF_shiftL_nnn_rhs_in_256 (h,h2)
   | Q_shiftright_safe -> MF_shiftR_nnn_rhs_in_256 (h,h2)
   | Q_assertion -> MF_is_true (Core.List.hd_exn ss.ss_symstack)
@@ -622,7 +624,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       let muled_state : sym_state = (MV_mul_mnm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint muled_state (MF_mul_mnm_no_overflow (h,h2)) in
       let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
-      let query : sym_state * query_category = (query_ss, Q_mutez_mul_no_overflow) in
+      let query : sym_state * query_category = (query_ss, Q_mutez_mul_mnm_no_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | MT_nat, MT_mutez ->
       (* for mutez addition, 
@@ -632,7 +634,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       let muled_state : sym_state = (MV_mul_nmm (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
       let runstate : sym_state = ss_add_constraint muled_state (MF_mul_nmm_no_overflow (h,h2)) in
       let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
-      let query : sym_state * query_category = (query_ss, Q_mutez_mul_no_overflow) in
+      let query : sym_state * query_category = (query_ss, Q_mutez_mul_nmm_no_overflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
     | _ -> Error "run_inst_i : MI_mul" |> raise
     )
@@ -771,7 +773,6 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_amount -> (ss.ss_optt.optt_amount) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_balance -> 
     let blce_opt : mich_v cc = MV_get_xmoy (ss.ss_optt.optt_addr, ss.ss_dynchain.bc_balance) |> gen_inst_cc in
-    let _ = try (typ_of_val blce_opt) with | _ -> failwith "fjiji" in
     let run_state : sym_state = ss_add_constraint ss (MF_not (MF_is_none blce_opt)) in
     (MV_unlift_option blce_opt |> gen_inst_cc)
     |> sstack_push ss_symstack
