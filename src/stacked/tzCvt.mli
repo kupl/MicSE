@@ -31,8 +31,8 @@ end (* module M2T end *)
 module T2S : sig
   exception Not_Implemented_f of Tz.mich_f
   exception Not_Implemented_e of (Tz.mich_v Tz.cc)
-  exception SMT_Encode_Error_f of (Tz.mich_f * string)
-  exception SMT_Encode_Error_e of (Tz.mich_v Tz.cc * string)
+  exception SMT_Encode_Error_f of (Tz.mich_f * string * int)
+  exception SMT_Encode_Error_e of (Tz.mich_v Tz.cc * string * int)
 
   val cv_mt : Tz.mich_t -> ProverLib.Smt.ZSort.t
   val cv_mtcc : Tz.mich_t Tz.cc -> ProverLib.Smt.ZSort.t

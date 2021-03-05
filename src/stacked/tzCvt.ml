@@ -218,8 +218,8 @@ module T2S = struct
 
   exception Not_Implemented_f of Tz.mich_f
   exception Not_Implemented_e of (Tz.mich_v Tz.cc)
-  exception SMT_Encode_Error_f of (mich_f * string)
-  exception SMT_Encode_Error_e of (mich_v cc * string)
+  exception SMT_Encode_Error_f of (mich_f * string * int)
+  exception SMT_Encode_Error_e of (mich_v cc * string * int)
 
   let rec cv_mt : mich_t -> ZSort.t = 
     (let sot = cv_mtcc in (* syntax sugar *)
@@ -547,7 +547,7 @@ module T2S = struct
     | MV_lit_chain_id _ -> err eee
     ) (* function cv_mv end *)
 
-  and cv_mvcc : mich_v cc -> ZExpr.t = (fun x -> cv_mv x.cc_v)
+  and cv_mvcc : mich_v cc -> ZExpr.t = (fun x -> try cv_mv x.cc_v with | ZError s -> SMT_Encode_Error_e (x, s, Stdlib.__LINE__) |> raise)
   let rec cv_mf : mich_f -> ZFormula.t =
     (fun vf -> try
       (match vf with
@@ -566,7 +566,7 @@ module T2S = struct
       | MF_is_cons e -> begin
           match (typ_of_val e).cc_v with
           | MT_list _ -> ZList.is_cons (cv_mvcc e)
-          | _ -> SMT_Encode_Error_f (vf, "Wrong IS_CONS checking") |> raise
+          | _ -> SMT_Encode_Error_f (vf, "Wrong IS_CONS checking", Stdlib.__LINE__) |> raise
         end
       (* Custom Formula for verifiying *)
       | MF_add_mmm_no_overflow (e1, e2) -> begin
@@ -600,13 +600,13 @@ module T2S = struct
           ] in
           ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *)
         end
-      | MF_shiftL_nnn_rhs_in_256 (_, e2) -> ZMutez.create_le (cv_mvcc e2) (ZMutez.of_int 256)
-      | MF_shiftR_nnn_rhs_in_256 (_, e2) -> ZMutez.create_le (cv_mvcc e2) (ZMutez.of_int 256)
+      | MF_shiftL_nnn_rhs_in_256 (_, e2) -> ZNat.create_le (cv_mvcc e2) (ZNat.of_int 256)
+      | MF_shiftR_nnn_rhs_in_256 (_, e2) -> ZNat.create_le (cv_mvcc e2) (ZNat.of_int 256)
       (* Custom Domain Formula for Invariant Generation *)
       | MF_sigma_equal _ -> ZBool.true_ () (* TODO *)
       )
     with
-    | ZError s -> SMT_Encode_Error_f (vf, s) |> raise
+    | ZError s -> SMT_Encode_Error_f (vf, s, Stdlib.__LINE__) |> raise
     ) (* function cv_mf end *)
 end (* module T2S end *)
 
