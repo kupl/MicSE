@@ -4,6 +4,7 @@ open Tz
 
 exception Error of string
 exception DebugInstSS of (Tz.mich_i Tz.cc * Tz.sym_state)
+exception DebugTT of (Tz.mich_t * Tz.mich_t)
 
 type query_category =
   (* Each of them are indicator of "State -> Formula" function *)
@@ -501,7 +502,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     ) in
     (gen_new_symval_t ret_ty).cc_v
     |> gen_inst_cc
-    |> cons_tl_n ss_symstack 1
+    |> cons_tl_n ss_symstack 2
     |> sstack_to_srset ss
   | MI_dip_n (zn, i) ->
     let (hd, tl) = CList.split_n ss_symstack (Z.to_int zn) in
@@ -596,8 +597,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
       let query : sym_state * query_category = (query_ss, Q_mutez_sub_no_underflow) in
       {empty_sset with running=(PSet.singleton runstate); queries=(PSet.singleton query);}
-    | _ -> Error "run_inst_i : MI_sub" |> raise
-    (* | _ -> DebugInstSS (inst, ss) |> raise *)
+    (* | _ -> Error "run_inst_i : MI_sub" |> raise *)
+    | t1, t2 -> DebugTT (t1, t2) |> raise
     )
   | MI_mul ->
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in

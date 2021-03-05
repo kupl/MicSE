@@ -2,6 +2,7 @@
 
 exception Error of string
 exception DebugInstSS of (Tz.mich_i Tz.cc * Tz.sym_state)
+exception DebugTT of (Tz.mich_t * Tz.mich_t)
 
 type query_category =
   (* Each of them are indicator of "State -> Formula" function *)
