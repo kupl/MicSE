@@ -33,7 +33,7 @@ let f_show_trueinv_solving : unit -> unit
       with
       | Stacked.Se.DebugInstSS (i,ss) -> Stacked.TzCvt.T2J.cv_micc i |> Yojson.Safe.pretty_to_string |> print_endline
                           ; `List (List.map Stacked.TzCvt.T2Jnocc.cv_mvcc ss.ss_symstack) |> Yojson.Safe.pretty_to_string |> print_endline
-                          ; Stdlib.failwith "Stacked.Se.DebugInst"
+                          ; Stdlib.failwith "Stacked.Se.DebugInstSS"
     )
 
   in

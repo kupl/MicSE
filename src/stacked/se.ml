@@ -204,14 +204,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   match inst.cc_v with
   | MI_seq (i1,i2) -> ss |> ss_to_srset |> run_inst cache i1 |> run_inst cache i2
   | MI_drop zn -> (CList.split_n ss_symstack (Z.to_int zn) |> Stdlib.snd) |> sstack_to_srset ss
-  (* | MI_dup zn -> (CList.nth_exn ss_symstack (Z.to_int zn - 1)) :: ss_symstack |> sstack_to_srset ss *)
-  | MI_dup zn -> 
-    (
-      try 
-      (CList.nth_exn ss_symstack (Z.to_int zn - 1)) :: ss_symstack |> sstack_to_srset ss
-      with
-      | _ -> DebugInstSS (inst, ss) |> raise
-    )
+  | MI_dup zn -> (CList.nth_exn ss_symstack (Z.to_int zn - 1)) :: ss_symstack |> sstack_to_srset ss
   | MI_swap ->
     (match ss_symstack with
       | h1 :: h2 :: tl -> (h2 :: h1 :: tl)
@@ -671,7 +664,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
         - in-bound constraint should be added to running state
     *)
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
-    let shifted_state : sym_state = (MV_shiftL_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_ss ss in
+    let shifted_state : sym_state = (MV_shiftL_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
     let runstate : sym_state = ss_add_constraint shifted_state (MF_shiftL_nnn_rhs_in_256 (h,h2)) in
     let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
     let query : sym_state * query_category = (query_ss, Q_shiftleft_safe) in
@@ -682,7 +675,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
         - in-bound constraint should be added to running state
     *)
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
-    let shifted_state : sym_state = (MV_shiftR_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_ss ss in
+    let shifted_state : sym_state = (MV_shiftR_nnn (h,h2) |> gen_inst_cc) |> cons_tl_n ss_symstack 2 |> sstack_to_ss ss in
     let runstate : sym_state = ss_add_constraint shifted_state (MF_shiftR_nnn_rhs_in_256 (h,h2)) in
     let query_ss : sym_state = ss |> update_queryblock_mci inst.cc_loc in
     let query : sym_state * query_category = (query_ss, Q_shiftright_safe) in

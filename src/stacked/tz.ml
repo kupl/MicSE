@@ -537,18 +537,18 @@ end
 
 and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
 = fun gen_cc v -> begin
-  let err () = Stdlib.failwith ( "typ_of_val_i : val=(" ^ "VALUE-PRINT-NOT-IMPLEMENTED" ^ ")" ) in
+  let err (line : int) = Stdlib.failwith ( "typ_of_val_i : LINE = " ^ (Stdlib.string_of_int line) ) in
   match v with
   (*************************************************************************)
   (* Symbol & Polymorphic                                                  *)
   (*************************************************************************)
   | MV_symbol (t,_) -> t
-  | MV_car v -> (function | MT_pair (t1,_) -> t1 | _ -> err ()) ((typ_of_val v).cc_v)
-  | MV_cdr v -> (function | MT_pair (_,t2) -> t2 | _ -> err ()) ((typ_of_val v).cc_v)
-  | MV_unlift_option v -> (function | MT_option t -> t | _ -> err ()) ((typ_of_val v).cc_v)
-  | MV_unlift_left v -> (function | MT_or (t1,_) -> t1 | _ -> err ()) ((typ_of_val v).cc_v)
-  | MV_unlift_right v -> (function | MT_or (_,t2) -> t2 | _ -> err ()) ((typ_of_val v).cc_v)
-  | MV_hd_l v -> (function | MT_list t -> t | _ -> err ()) ((typ_of_val v).cc_v)
+  | MV_car v -> (function | MT_pair (t1,_) -> t1 | _ -> err Stdlib.__LINE__) ((typ_of_val v).cc_v)
+  | MV_cdr v -> (function | MT_pair (_,t2) -> t2 | _ -> err Stdlib.__LINE__) ((typ_of_val v).cc_v)
+  | MV_unlift_option v -> (function | MT_option t -> t | _ -> err Stdlib.__LINE__) ((typ_of_val v).cc_v)
+  | MV_unlift_left v -> (function | MT_or (t1,_) -> t1 | _ -> err Stdlib.__LINE__) ((typ_of_val v).cc_v)
+  | MV_unlift_right v -> (function | MT_or (_,t2) -> t2 | _ -> err Stdlib.__LINE__) ((typ_of_val v).cc_v)
+  | MV_hd_l v -> (function | MT_list t -> t | _ -> err Stdlib.__LINE__) ((typ_of_val v).cc_v)
   (*************************************************************************)
   (* Integer                                                               *)
   (*************************************************************************)
@@ -672,8 +672,8 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
   | MV_ediv_iiin _ -> MT_option (MT_pair (gen_cc MT_int, gen_cc MT_nat) |> gen_cc) |> gen_cc
   | MV_ediv_mnmm _ -> MT_option (MT_pair (gen_cc MT_mutez, gen_cc MT_mutez) |> gen_cc) |> gen_cc
   | MV_ediv_mmnm _ -> MT_option (MT_pair (gen_cc MT_nat, gen_cc MT_mutez) |> gen_cc) |> gen_cc
-  | MV_get_xmoy (_,v2) -> (function | MT_map(_,t2) -> MT_option t2 | _ -> err ()) ((typ_of_val v2).cc_v) |> gen_cc
-  | MV_get_xbmo (_,v2) -> (function | MT_big_map(_,t2) -> MT_option t2 | _ -> err ()) ((typ_of_val v2).cc_v) |> gen_cc
+  | MV_get_xmoy (_,v2) -> (function | MT_map(_,t2) -> MT_option t2 | _ -> err Stdlib.__LINE__) ((typ_of_val v2).cc_v) |> gen_cc
+  | MV_get_xbmo (_,v2) -> (function | MT_big_map(_,t2) -> MT_option t2 | _ -> err Stdlib.__LINE__) ((typ_of_val v2).cc_v) |> gen_cc
   | MV_slice_nnso _ -> MT_option (MT_string |> gen_cc) |> gen_cc
   | MV_slice_nnbo _ -> MT_option (MT_bytes |> gen_cc) |> gen_cc
   | MV_unpack (t,_) -> MT_option t |> gen_cc
@@ -720,8 +720,8 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
   | MV_lambda_unknown (t1,t2) -> MT_lambda (t1,t2) |> gen_cc
   | MV_lambda_closure (v1,_) -> (
     (match ((typ_of_val v1).cc_v) with
-      | MT_lambda (t1,t3) -> (match t1.cc_v with | MT_pair (_,t12) -> MT_lambda (t12,t3) | _ -> err ())
-      | _ -> err ())
+      | MT_lambda (t1,t3) -> (match t1.cc_v with | MT_pair (_,t12) -> MT_lambda (t12,t3) | _ -> err Stdlib.__LINE__)
+      | _ -> err Stdlib.__LINE__)
     |> gen_cc
   )
   (*************************************************************************)
@@ -733,7 +733,7 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
     let t1 = (typ_of_val v1).cc_v |> gen_cc in
     (match ((typ_of_val v2).cc_v) with
       | MT_option t2 -> MT_map (t1,t2)
-      | _ -> err ())
+      | _ -> err Stdlib.__LINE__)
     |> gen_cc
   )
   (*************************************************************************)
@@ -745,7 +745,7 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
     let t1 = (typ_of_val v1).cc_v |> gen_cc in
     (match ((typ_of_val v2).cc_v) with
       | MT_option t2 -> MT_big_map (t1,t2)
-      | _ -> err ())
+      | _ -> err Stdlib.__LINE__)
     |> gen_cc
   )
   (*************************************************************************)
