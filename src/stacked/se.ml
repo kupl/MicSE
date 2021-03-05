@@ -730,7 +730,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_eq -> (MV_eq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_neq -> (MV_neq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_lt -> (MV_lt_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
-  | MI_gt -> (MV_lt_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_gt -> (MV_gt_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_le -> (MV_leq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_ge -> (MV_geq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_self -> 
