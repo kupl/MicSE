@@ -193,6 +193,7 @@ module M2T = struct
     | T_timestamp,        D_string s -> MV_lit_timestamp_str s
     | T_timestamp,        D_int zn -> MV_lit_timestamp_sec zn
     | T_address,          D_string s -> MV_lit_address (MV_lit_key_hash s |> gen_dummy_cc)
+    | T_contract t,       D_string s when t.PreLib.Mich.d = PreLib.Mich.T_unit -> MV_implicit_account (MV_lit_key_hash s |> gen_dummy_cc)
     | _ -> Error "cv_data : match failed" |> raise
     (* unused *)
     (* | T_operation,        D_ -> *)
