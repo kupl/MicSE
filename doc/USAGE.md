@@ -4,51 +4,11 @@
 
 - [Usage of MicSE](#usage-of-micse)
   - [Table of Contents](#table-of-contents)
-  - [Build](#build)
-    - [Install build packages](#install-build-packages)
-    - [Clone, Build](#clone-build)
   - [Run](#run)
     - [MicSE Prover](#micse-prover)
       - [Options](#options)
       - [JSON Output Format](#json-output-format)
       - [Example](#example)
-
-## Build
-
-### Install build packages
-
-MicSE uses these packages.
-
-| System Package Name | Version |
-| :------------------ | :-----: |
-| make                |  4.2.1  |
-| ocaml               | 4.10.0  |
-| opam                |  2.0.4  |
-
-| Opam Package Name | Version |
-| :---------------- | :-----: |
-| Batteries         |    -    |
-| Core              | 0.14.0  |
-| Dune              |  2.4.0  |
-| Menhir            |    -    |
-| Ptime             |    -    |
-| Ocamlgraph        |    -    |
-| Yojson            |    -    |
-| Z3                |  4.8.9  |
-| Zarith            |    -    |
-
-### Clone, Build
-
-We are not providing the version build file now.
-To use the tool of MicSE, you have to clone this repository and build it manually.
-
-```bash
-$ git clone https://github.com/kupl/MicSE.git
-$ cd MicSE
-$ make
-dune build
-...
-```
 
 ## Run
 
@@ -59,7 +19,7 @@ Binary execution files are located at `(PROJECT_DIR)/bin` directory.
 ```bash
 $ (PROJECT_DIR)/bin/micse_prover --input (FILE_PATH)
 # of Instructions : _
-# of Total Queries : _
+# of Total Queries : _ 
 # of Proved Queries : _
 # of Unproved Queries : _
 ================ Proved Queries ::

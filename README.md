@@ -24,6 +24,7 @@ MicSE provides automated runtime safety property verifier for Michelson.
 
 ## Documents
 
+- [Installation](./doc/INSTALLATION.md)
 - [Usage](./doc/USAGE.md)
 
 ## Development
