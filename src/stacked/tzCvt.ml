@@ -347,8 +347,8 @@ module T2S = struct
     (* Mutez                                                                 *)
     (*************************************************************************)
     | MV_lit_mutez zn -> ZMutez.of_zarith zn
-    | MV_add_mmm (e1, e2) -> ZMutez.create_mul (cv_mvcc e1) (cv_mvcc e2)
-    | MV_sub_mmm (e1, e2) -> ZMutez.create_mul (cv_mvcc e1) (cv_mvcc e2)
+    | MV_add_mmm (e1, e2) -> ZMutez.create_add (cv_mvcc e1) (cv_mvcc e2)
+    | MV_sub_mmm (e1, e2) -> ZMutez.create_sub (cv_mvcc e1) (cv_mvcc e2)
     | MV_mul_mnm (e1, e2) -> ZMutez.create_mul (cv_mvcc e1) (cv_mvcc e2 |> ZNat.to_zmutez)
     | MV_mul_nmm (e1, e2) -> ZMutez.create_mul (cv_mvcc e1 |> ZNat.to_zmutez) (cv_mvcc e2)
   
