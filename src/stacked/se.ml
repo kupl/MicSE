@@ -338,6 +338,11 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     in
     (* 3. make else-branch (loop-exit) running state *)
     let elsebr_sset : state_set = 
+      (* TODO : BUGGY CASE : 
+        This implementation does not consider any type-converted cases.
+        For example, MAP instruction can modifies top integer list to natural number list.
+        Converted type should be gathered while calculating "thenbr_sset".
+      *)
       if entered_flag then empty_sset else
       (gen_newvar_symstack_vs ss_symstack)
       |> new_ss_for_loopinst ss elsebr_mci
