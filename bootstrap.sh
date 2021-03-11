@@ -48,13 +48,15 @@ for pkg in "batteries 2.9.0" "dune 2.4.0" "core 0.14.0" "menhir 20200624" "ocaml
   pkg_pair=( $pkg );
   pkg_name=${pkg_pair[0]};
   pkg_version=${pkg_pair[1]}
-  if [[ ! -d "${OPAM_LIB_DIR%%/}/$pkg_name" ]]; then
-    echo "[NOTE] $pkg_name: Installation started."
-    opam install -y -j $CORES "$pkg_name>=$pkg_version" >/dev/null
-    echo "[NOTE] $pkg_name: Installed successfully."
-  else
-    echo "[NOTE] $pkg_name: Already installed."
-  fi
+  echo "[NOTE] $pkg_name: Install"
+  opam install -y -j $CORES "$pkg_name>=$pkg_version" >/dev/null
+  # if [[ ! -d "${OPAM_LIB_DIR%%/}/$pkg_name" ]]; then
+  #   echo "[NOTE] $pkg_name: Installation started."
+  #   opam install -y -j $CORES "$pkg_name>=$pkg_version" >/dev/null
+  #   echo "[NOTE] $pkg_name: Installed successfully."
+  # else
+  #   echo "[NOTE] $pkg_name: Already installed."
+  # fi
 done
 echo "[NOTE] End-up Setup OCAML Dependencies"
 
