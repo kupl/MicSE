@@ -25,7 +25,7 @@ Vagrant.configure("2") do |config|
 
   # Provisioning
   config.vm.provision "bootstrap", type: "shell",
-      privileged: true, run: "always" do |bs|
+      privileged: false, run: "always" do |bs|
     bs.path = "bootstrap.sh"
   end
 end
