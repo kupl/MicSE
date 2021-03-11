@@ -15,9 +15,9 @@
 
 ## Introduction
 
-MicSE, Michelson Symbolic vErifier, is the tool for verifying and testing the integrity of smart contracts written in Michelson. Michelson is the smart-contract-programming language used in [Tezos Blockchain](https://tezos.foundation).
+MicSE is a tool for verifying and testing Tezos smart contracts written in Michelson. Michelson is a native smart contract language of the [Tezos Blockchain](https://tezos.foundation).
 
-MicSE provides automated runtime safety property verifier for Michelson.
+MicSE can verify the absence of runtime failures of Michelson programs, e.g., no arithmetic overflow. Also, MicSE supports verification of user-provided assertions. 
 
 - *Prover* (=verifier)
 - *Refuter* (=tester, will be provided)
@@ -54,7 +54,7 @@ We are following [Angular's commitizen rules](https://github.com/angular/angular
 
 ## About
 
-This project is funded by Tezos Foundation Grants as [Verification and Testing Infrastructure for Tezos Contracts](https://tezos.foundation/fourth-cohort-grants/).
+This project is funded by Tezos Foundation: [Verification and Testing Infrastructure for Tezos Contracts](https://tezos.foundation/fourth-cohort-grants/).
 
 Authored and maintained by **Jisuk Byun**, **Heewoong Jang**
 
