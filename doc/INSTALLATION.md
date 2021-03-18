@@ -30,18 +30,18 @@ you can modify following parts of [`Vagrantfile`](../Vagrantfile) for such purpo
 
 ```ruby
 ...
-Vagrant.configure("2") do |config|
-  ...
-  # Default Disksize: 16GB
-  config.disksize.size = "16GB" # THIS PART FOR SIZE OF DISK
+# Default Disk Size: 40GB
+config.disksize.size = "40GB"
 
-  # Provider settings: VirtualBox
-  config.vm.provider "virtualbox" do |vb|
-    ...
-    vb.memory = 4096 # THIS PART FOR SIZE OF MEMORY
-    vb.cpus = 4 # THIS PART FOR NUMBER OF CORE
-  end
+# Provider settings: VirtualBox
+config.vm.provider "virtualbox" do |vb|
   ...
+  # Default Memory Size: 4GB
+  vb.memory = 4096
+  # Default Cores: 4
+  vb.cpus = 4
+end
+...
 ```
 
 ### Manage Virtual Machine
