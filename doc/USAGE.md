@@ -342,12 +342,12 @@ MtzMap_PSE(CAR(-trxStorage-0),(v25,v10),CDR(-trxStorage-0),__MTZMAP_SUM_R_(CAR(-
 }
 ```
 
-## User Custom Safety Property
+## Specifying Custom Safety Properties
 
-Users of MicSE can add custom safety property on the input Michelson code using the **`#__MICSE_CHECK {(instruction)}`** statement in only one line.
-It works like a virtual assertion statement that checks whether the top of the stack is true value or not.
+Given a Michelson program without any annotations, MicSE basically attemps to verify the absence of arithmetic overflow.
+However, MicSE also supports verification of custom safety properties using the **`#__MICSE_CHECK {(instruction)}`** statement, where **instruction** denotes arbitrary Michelson instructions that produce boolean values. That is, for each user-provided assertion, MicSE attempts to prove that the top of the stack is the true value.
+The **`#__MICSE_CHECK {(instruction)}`** statement should be given as a single-line comment. An example usage is given below. 
 
-MicSE separates execution of **`#__MICSE_CHECK {(instruction)}`** statement from original execution. So, it does not harm any original program's semantics both in Michelson VM and MicSE.
 
 ### Example
 
@@ -374,7 +374,7 @@ code {
         # (%balance'[%receiver] + %value) :: %balance' :: %receiver :: %totalSupply :: []
 
 
-  # [This notation should be in only one line]
+  # [The user-provided assertion below should be a single-line comment]
   #__MICSE_CHECK { \
     DIP {DROP; DROP }; \
         # (%balance'[%receiver] + %value) :: %totalSupply :: []
