@@ -9,6 +9,8 @@
       - [Options](#options)
       - [JSON Output Format](#json-output-format)
       - [Example](#example)
+  - [User Custom Safety Property](#user-custom-safety-property)
+    - [Example](#example-1)
 
 ## Run
 
@@ -30,7 +32,7 @@ $ (PROJECT_DIR)/bin/micse_prover --input (FILE_PATH)
 
 - **Input:**
   - Michelson program code
-  - (Optional) User custom safety property
+  - (Optional) [User custom safety property](#user-custom-safety-property)
   - (Optional) Initial storage data
 - **Output:**
   - Prove result of each safety property
@@ -338,4 +340,56 @@ MtzMap_PSE(CAR(-trxStorage-0),(v25,v10),CDR(-trxStorage-0),__MTZMAP_SUM_R_(CAR(-
     ]
   }
 }
+```
+
+## User Custom Safety Property
+
+Users of MicSE can add custom safety property on the input Michelson code using the **`#__MICSE_CHECK {(instruction)}`** statement in only one line.
+It works like a virtual assertion statement that checks whether the top of the stack is true value or not.
+
+MicSE separates execution of **`#__MICSE_CHECK {(instruction)}`** statement from original execution. So, it does not harm any original program's semantics both in Michelson VM and MicSE.
+
+### Example
+
+``` michelson
+parameter (pair (address %receiver) (mutez %value));
+storage   (pair (map %balance address mutez) (mutez %totalSupply));
+code { 
+  UNPAIR; UNPAIR; DIP 2 { UNPAIR };
+        # %receiver :: %value :: %balance :: %totalSupply :: []
+
+  DUP 3; SENDER; GET; IF_NONE { FAIL } {};
+        # %balance[@sender] :: %receiver :: %value :: %balance :: %totalSupply :: []
+
+  DUP 3; DUP 2; COMPARE; GE; IF {} { FAIL };
+        # %balance[@sender] :: %receiver :: %value :: %balance :: %totalSupply :: []
+
+  DIP { DIG 2; DUP 3 }; SUB; SOME; SENDER; UPDATE;
+        # %balance' :: %receiver :: %value :: %totalSupply :: []
+
+  DUP; DUP 3; GET; IF_NONE { PUSH mutez 0 } {};
+        # %balance'[%receiver] :: %balance' :: %receiver :: %value :: %totalSupply :: []
+
+  DIP { DIG 2 }; ADD;
+        # (%balance'[%receiver] + %value) :: %balance' :: %receiver :: %totalSupply :: []
+
+
+  # [This notation should be in only one line]
+  #__MICSE_CHECK { \
+    DIP {DROP; DROP }; \
+        # (%balance'[%receiver] + %value) :: %totalSupply :: []
+
+    COMPARE; \
+        # int :: []
+
+    LE };
+        # bool :: []
+  # [This notation should be in only one line]
+        # (%balance'[%receiver] + %value) :: %balance' :: %receiver :: %totalSupply :: []
+
+
+  SOME; DIG 2; UPDATE;
+        # %balance'' :: %totalSupply :: []
+  PAIR; NIL operation; PAIR };
+        # (pair [] (pair %balance'' %totalSupply)) :: []
 ```
