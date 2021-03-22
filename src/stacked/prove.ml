@@ -5,6 +5,30 @@ exception Error of string
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Types                                                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type 'a set = 'a Tz.PSet.t
+type ('a, 'b) map = ('a, 'b) Tz.PMap.t
+
+type query_state = Tz.sym_state * Se.query_category
+type query_id = Tz.mich_cut_info * Se.query_category
+
+type solved_query_state = (query_state * Tz.mich_f * Utils.Timer.time) 
+type failed_query_state = (query_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time)
+
+type worklist = Se.invmap set
+
+type ret = {
+  solved_map: (query_id, solved_query_state set) map;
+  failed_set: failed_query_state set;
+  untouched_set: query_state set;
+}
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Utilities                                                                 *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -59,7 +83,7 @@ let check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt
 let check_inv_inductiveness : 
   Utils.Timer.t ref 
   -> (Tz.mich_v Tz.cc * Tz.sym_state) option
-  -> Tz.sym_state Tz.PSet.t 
+  -> Tz.sym_state set
   -> Se.invmap 
   -> (bool * (Tz.sym_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) option * Utils.Timer.time)
 = fun timer init_stg_ss_opt blocked_sset invm -> begin
@@ -110,18 +134,16 @@ end (* function check_inv_inductiveness end *)
 *)
 let solve_queries : 
   Utils.Timer.t ref 
-  -> (Tz.sym_state * Se.query_category) Tz.PSet.t 
-  -> Se.invmap 
-  -> ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
-      * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t
-      * (Tz.sym_state * Se.query_category) Tz.PSet.t
+  -> query_state set
+  -> Se.invmap
+  -> ret
 = fun timer ss_qcat_set invm -> begin
   (* Gather same-position queries using Tz.ss_block_mci *)
   let spos_qmap : ((Tz.mich_cut_info * Se.query_category), (Tz.sym_state * Se.query_category) Tz.PSet.t) Tz.PMap.t =
     Tz.pmap_of_pset ss_qcat_set ~key_f:(fun (ss, qcat) -> (ss.ss_block_mci, qcat)) ~data_f:(fun x -> x)
   in
   (* Fold: Solve each queryset *)
-  Tz.PMap.fold spos_qmap ~init:(Tz.PMap.empty, Tz.PSet.empty, ss_qcat_set)
+  let smap, fset, uset = Tz.PMap.fold spos_qmap ~init:(Tz.PMap.empty, Tz.PSet.empty, ss_qcat_set)
     ~f:(fun ~key ~data (acc_solved_smap, acc_failed_sset, acc_untouched_sset) ->
       (* check timeout *)
       if Utils.Timer.is_timeout timer then (acc_solved_smap, acc_failed_sset, acc_untouched_sset) else
@@ -158,14 +180,15 @@ let solve_queries :
       let qset_failed_notime_form = Tz.PSet.map qset_failed_sset ~f:(fun (x, _, _, _) -> x) in
       let new_acc_untouched_sset = Tz.PSet.diff (Tz.PSet.diff acc_untouched_sset qset_solved_notime_form) qset_failed_notime_form in
       (new_acc_solved_smap, new_acc_failed_sset, new_acc_untouched_sset)
-    )
+    ) in
+  { solved_map=smap; failed_set=fset; untouched_set=uset }
 end (* function solve_queries_wl end *)
 
 
 let remove_solved_queries :
-  (Tz.sym_state * Se.query_category) Tz.PSet.t
-  -> ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
-  -> (Tz.sym_state * Se.query_category) Tz.PSet.t
+  query_state set
+  -> (query_id, solved_query_state set) map
+  -> query_state set
 = fun all_queries solved_queries -> begin
   Tz.PMap.fold solved_queries ~init:all_queries
     ~f:(fun ~key:_ ~data acc_remain_queries -> Tz.PSet.diff acc_remain_queries (Tz.PSet.map data ~f:(fun (x,_,_) -> x)))
@@ -200,12 +223,8 @@ let f_print_queries_pretty : Se.state_set -> unit
   (Tz.PSet.iter queries_j ~f:(fun x -> x |> Yojson.Safe.pretty_to_string |> print_endline))
 end (* function f_print_queries_pretty *)
 
-let f_print_query_solved_result_simple_pretty : 
-  ((Tz.mich_cut_info * Se.query_category), ((Tz.sym_state * Se.query_category) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t) Tz.PMap.t
-    * ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Tz.PSet.t
-    * (Tz.sym_state * Se.query_category) Tz.PSet.t
-  -> unit
-= fun (solved_map, failed_set, untouched_set) -> begin
+let f_print_query_solved_result_simple_pretty : ret -> unit
+= fun { solved_map; failed_set; untouched_set } -> begin
   (* Size calculation *)
   let solved_queries_size : int = Tz.PMap.fold solved_map ~init:0 ~f:(fun ~key:_ ~data acc -> acc + Tz.PSet.length data) in
   let (failed_size, untouched_size) = (Tz.PSet.length failed_set, Tz.PSet.length untouched_set) in
@@ -302,3 +321,55 @@ let f_print_query_solved_result_simple_pretty :
   in
   ()
 end (* function f_print_query_solved_result_simple_pretty end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Main function                                                             *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(*  Input
+    - Initial Storage (Tz Form, Option)
+    - Initial Symbolic State
+    - State Set (Symbolic Execution Result)
+    
+    Output
+    - Solved query symbolic-states
+      - The query symbolic-state can be returned only if the whole same-position queries are solved at once.
+    - Failed query symbolic-states
+    - Untouched query symbolic-states
+
+    System-Effect
+    - Utils.Options.z3_time_budget (internally restricts z3 time limit)
+    - Utils.Options.prover_time_budget (total prover time limit - timeout will return accumulated result)
+*)
+let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
+= fun (tz_init_stg_opt, init_ss) sset -> begin
+  let init_stg_ss_opt : (Tz.mich_v Tz.cc * Tz.sym_state) option =
+    Option.bind tz_init_stg_opt (fun init_stg -> Some (init_stg, init_ss)) in
+  let w_init : worklist =
+    sset.Se.blocked
+    |> Se.true_invmap_of_blocked_sset
+    |> Tz.PSet.singleton in
+  let res_init : ret = { solved_map=Tz.PMap.empty; failed_set=Tz.PSet.empty; untouched_set=sset.queries } in
+  let timer : Utils.Timer.t ref =
+    Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget) in
+  let rec prove_loop : worklist -> ret -> ret = fun w prev_res -> begin
+    if Utils.Timer.is_timeout timer || Tz.PSet.is_empty w then prev_res else
+    let inv_cand : Se.invmap =
+      w |> Tz.PSet.choose
+      |> (function Some i -> i | None -> Error "main : prove_loop" |> Stdlib.raise) in
+    let w' : worklist = Tz.PSet.remove w inv_cand in
+    let inductive, _, _ = check_inv_inductiveness timer init_stg_ss_opt sset.blocked inv_cand in
+    if inductive then
+      let res : ret = solve_queries timer sset.queries inv_cand in
+      if Tz.PSet.length res.failed_set = 0 && Tz.PSet.length res.untouched_set = 0 then res
+      else
+        (* TODO: Invariant Synthesize and Refining Worklist *)
+        prove_loop w' res
+    else prove_loop w' prev_res
+    end in
+  let res : ret = prove_loop w_init res_init in
+  res
+end (* function main end *)

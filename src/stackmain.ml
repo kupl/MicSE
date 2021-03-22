@@ -46,11 +46,15 @@ let f_show_trueinv_solving : unit -> unit
   print_newline ();
   (
     try
-      Stacked.Prove.solve_queries 
+      Stacked.Prove.main
+        (tz_init_stg_opt, init_ss)
+        sset
+      |> Stacked.Prove.f_print_query_solved_result_simple_pretty
+      (* Stacked.Prove.solve_queries 
         (Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget))
         sset.queries
         (Stacked.Se.true_invmap_of_blocked_sset sset.Stacked.Se.blocked)
-      |> Stacked.Prove.f_print_query_solved_result_simple_pretty
+      |> Stacked.Prove.f_print_query_solved_result_simple_pretty *)
     with 
     | Stacked.TzCvt.T2S.SMT_Encode_Error_f (vf, _, line) ->
       Stacked.TzCvt.T2Jnocc.cv_mf vf
