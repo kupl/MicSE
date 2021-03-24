@@ -345,7 +345,21 @@ end (* function f_print_query_solved_result_simple_pretty end *)
     - Utils.Options.prover_time_budget (total prover time limit - timeout will return accumulated result)
 *)
 let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
-= fun (tz_init_stg_opt, init_ss) sset -> begin
+= let extract_unsolved_queries : ret -> query_state set (* Gather not solved queries from the previous result *)
+  = fun prev_res -> begin
+    let qset_failed_notime_form = Tz.PSet.map prev_res.failed_set ~f:(fun (x, _, _, _) -> x) in
+    Tz.PSet.union qset_failed_notime_form prev_res.untouched_set
+  end in (* function extract_unsolved_queries end *)
+  let union_result : prev_res:ret -> cur_res:ret -> ret (* Union solved query into current result *)
+  = let pm_add_if_possible k v pmap = Tz.PMap.add pmap ~key:k ~data:v |> (function | `Ok m -> m | `Duplicate -> pmap) in (* syntax sugar *)
+    fun ~prev_res ~cur_res -> begin
+    let new_solved_map : (query_id, solved_query_state set) map = 
+      cur_res.solved_map 
+      |> Tz.PMap.fold ~init:prev_res.solved_map ~f:(fun ~key ~data acc_sm -> (
+          pm_add_if_possible key data acc_sm)) in
+    { cur_res with solved_map=new_solved_map }
+  end in (* function union_result end *)
+  fun (tz_init_stg_opt, init_ss) sset -> begin
   let init_stg_ss_opt : (Tz.mich_v Tz.cc * Tz.sym_state) option =
     Option.bind tz_init_stg_opt (fun init_stg -> Some (init_stg, init_ss)) in
   let w_init : worklist =
@@ -363,7 +377,9 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
     let w' : worklist = Tz.PSet.remove w inv_cand in
     let inductive, _, _ = check_inv_inductiveness timer init_stg_ss_opt sset.blocked inv_cand in
     if inductive then
-      let res : ret = solve_queries timer sset.queries inv_cand in
+      let uqset : query_state set = extract_unsolved_queries prev_res in
+      let cur_res : ret = solve_queries timer uqset inv_cand in
+      let res : ret = union_result ~prev_res ~cur_res in
       if Tz.PSet.length res.failed_set = 0 && Tz.PSet.length res.untouched_set = 0 then res
       else
         (* TODO: Invariant Synthesize and Refining Worklist *)
