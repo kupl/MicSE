@@ -6,5 +6,5 @@ code {
     DIP { UNPAIR }; ADD; PAIR;
   } { # EntryPoint: feedTurtle
     # storage.turtleSize = storage.turtleSize << storage.foodTotal
-    DROP; DUP; CAR; DIP { SWAP; LSL; }; PAIR;
+    DROP; DUP; CAR; DUP; DIP { SWAP; CDR; LSL; }; PAIR;
   }; NIL operation; PAIR; };
