@@ -192,7 +192,7 @@ let bp_of_vtxlst : ProverLib.GlVar.Env.t ref -> PreLib.Cfg.t -> (PreLib.Cfg.vert
       | Cfg_dug
       | Cfg_micse_check_entry -> ([cstr_bn BI_skip], None)
     end in
-    let new_bp = (cur_instlst @ assume_instlst) @ acc_bnl in
+    let new_bp = ((cur_instlst |> Core.List.rev) @ assume_instlst) @ acc_bnl in
     (* 2.5. collect appeared variable list *)
     let appeared_varlst : string list = PreLib.CfgUtil.appeared_varlst_stmt cur_stmt in
     let appeared_vvarlst : ProverLib.Vlang.Expr.t list = 

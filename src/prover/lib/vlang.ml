@@ -594,6 +594,7 @@ module Formula = struct
   | VF_mich_iter_m of Expr.t (* ('k, 'v) map -> formula *)
   | VF_mich_micse_check_value of Expr.t (* bool -> formula *)
   (* Custom Formula for verifiying *)
+  | VF_mutez_bound of Expr.t
   | VF_add_mmm_no_overflow of (Expr.t * Expr.t)
   | VF_sub_mmm_no_underflow of (Expr.t * Expr.t)
   | VF_mul_mnm_no_overflow of (Expr.t * Expr.t)
@@ -618,6 +619,7 @@ module Formula = struct
       | VF_eq (e1, e2)    -> "("      ^ (e1 |> ets) ^ "=" ^ (e2 |> ets) ^ ")"
       | VF_imply (e1, e2) -> "("      ^ (e1 |> ts) ^ " -> " ^ (e2 |> ts) ^ ")"
       (* MicSE-Cfg Specific Boolean *)  
+      | VF_mutez_bound e1             -> "("  ^ (e1 |> ets) ^ "IS_MUTEZ"         ^ ")"
       | VF_mich_if e1                 -> "("  ^ (e1 |> ets) ^ "=" ^ "B_True"     ^ ")"
       | VF_mich_if_none e1            -> "("  ^ (e1 |> ets) ^ "=" ^ "NONE"       ^ ")"
       | VF_mich_if_left e1            -> "("  ^ (e1 |> ets) ^ "IS_LEFT"          ^ ")"
@@ -1515,6 +1517,7 @@ module RecursiveMappingExprTemplate = struct
     | VF_eq (e1, e2) -> VF_eq (re e1, re e2)
     | VF_imply (f1, f2) -> VF_imply (rf f1, rf f2)
     (* MicSE-Cfg Specific Boolean *)  
+    | VF_mutez_bound e -> VF_mutez_bound (re e)
     | VF_mich_if e -> VF_mich_if (re e)
     | VF_mich_if_none e -> VF_mich_if_none (re e)
     | VF_mich_if_left e -> VF_mich_if_left (re e)
@@ -1556,6 +1559,7 @@ module RecursiveMappingExprTemplate = struct
     | VF_eq (e1, e2) -> VF_eq (re e1, re e2)
     | VF_imply (f1, f2) -> VF_imply (rf f1, rf f2)
     (* MicSE-Cfg Specific Boolean *)  
+    | VF_mutez_bound e -> VF_mutez_bound (re e)
     | VF_mich_if e -> VF_mich_if (re e)
     | VF_mich_if_none e -> VF_mich_if_none (re e)
     | VF_mich_if_left e -> VF_mich_if_left (re e)

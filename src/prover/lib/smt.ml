@@ -457,7 +457,8 @@ module ZInt = struct
   end
 
   let to_zmutez : t -> ZExpr.t
-  =fun e -> e |> Z3.Arithmetic.Integer.mk_int2bv (ZCtx.read ()) (CONST._bit_mutez)
+  =fun e -> e
+  (* =fun e -> e |> Z3.Arithmetic.Integer.mk_int2bv (ZCtx.read ()) (CONST._bit_mutez) *)
 end
 
 
@@ -480,42 +481,58 @@ module ZMutez = struct
   type t = ZExpr.t
 
   let sort : unit -> ZSort.t
-  =fun () -> Z3.BitVector.mk_sort (ZCtx.read ()) (CONST._bit_mutez)
+  = fun () -> ZInt.sort ()
+  (* =fun () -> Z3.BitVector.mk_sort (ZCtx.read ()) (CONST._bit_mutez) *)
 
   let of_zarith : Z.t -> t
-  =fun n -> Z3.BitVector.mk_numeral (ZCtx.read ()) (Z.to_string n) (CONST._bit_mutez)
+  = ZInt.of_zarith
+  (* =fun n -> Z3.BitVector.mk_numeral (ZCtx.read ()) (Z.to_string n) (CONST._bit_mutez) *)
   let of_int : int -> t
-  =fun n -> Z3.BitVector.mk_numeral (ZCtx.read ()) (string_of_int n) (CONST._bit_mutez)
+  = ZInt.of_int
+  (* =fun n -> Z3.BitVector.mk_numeral (ZCtx.read ()) (string_of_int n) (CONST._bit_mutez) *)
 
+  let max_ : unit -> t
+  = ZInt.mutez_max_
   let zero_ : unit -> t
-  =fun () -> of_int (0)
+  = ZInt.zero_
+  (* =fun () -> of_int (0) *)
 
   let create_add : t -> t -> t
-  =fun e1 e2 -> Z3.BitVector.mk_add (ZCtx.read ()) e1 e2
+  = fun e1 e2 -> ZInt.create_add [e1; e2]
+  (* =fun e1 e2 -> Z3.BitVector.mk_add (ZCtx.read ()) e1 e2 *)
   let create_sub : t -> t -> t
-  =fun e1 e2 -> Z3.BitVector.mk_sub (ZCtx.read ()) e1 e2
+  = fun e1 e2 -> ZInt.create_sub [e1; e2]
+  (* =fun e1 e2 -> Z3.BitVector.mk_sub (ZCtx.read ()) e1 e2 *)
   let create_mul : t -> t -> t
-  =fun e1 e2 -> Z3.BitVector.mk_mul (ZCtx.read ()) e1 e2
+  = fun e1 e2 -> ZInt.create_mul [e1; e2]
+  (* =fun e1 e2 -> Z3.BitVector.mk_mul (ZCtx.read ()) e1 e2 *)
   let create_div : t -> t -> t
-  =fun e1 e2 -> Z3.BitVector.mk_udiv (ZCtx.read ()) e1 e2
+  = ZInt.create_div
+  (* =fun e1 e2 -> Z3.BitVector.mk_udiv (ZCtx.read ()) e1 e2 *)
   let create_mod : t -> t -> t
-  =fun e1 e2 -> Z3.BitVector.mk_urem (ZCtx.read ()) e1 e2
+  = ZInt.create_mod
+  (* =fun e1 e2 -> Z3.BitVector.mk_urem (ZCtx.read ()) e1 e2 *)
 
   let create_eq : t -> t -> ZBool.t
-  =ZBool.create_eq
+  = ZBool.create_eq
   let create_neq : t -> t -> ZBool.t
-  =ZBool.create_neq
+  = ZBool.create_neq
   let create_lt : t -> t -> ZBool.t
-  =fun e1 e2 -> Z3.BitVector.mk_ult (ZCtx.read ()) e1 e2
+  = ZInt.create_lt
+  (* =fun e1 e2 -> Z3.BitVector.mk_ult (ZCtx.read ()) e1 e2 *)
   let create_le : t -> t -> ZBool.t
-  =fun e1 e2 -> Z3.BitVector.mk_ule (ZCtx.read ()) e1 e2
+  = ZInt.create_le
+  (* =fun e1 e2 -> Z3.BitVector.mk_ule (ZCtx.read ()) e1 e2 *)
   let create_gt : t -> t -> ZBool.t
-  =fun e1 e2 -> Z3.BitVector.mk_ugt (ZCtx.read ()) e1 e2
+  = ZInt.create_gt
+  (* =fun e1 e2 -> Z3.BitVector.mk_ugt (ZCtx.read ()) e1 e2 *)
   let create_ge : t -> t -> ZBool.t
-  =fun e1 e2 -> Z3.BitVector.mk_uge (ZCtx.read ()) e1 e2
+  = ZInt.create_ge
+  (* =fun e1 e2 -> Z3.BitVector.mk_uge (ZCtx.read ()) e1 e2 *)
 
   let create_cmp : t -> t -> ZInt.t
-  =fun e1 e2 -> begin
+  = ZInt.create_cmp
+  (* =fun e1 e2 -> begin
     ZExpr.create_ite
       ~cond:(create_eq e1 e2)
       ~t:(ZInt.zero_ ())
@@ -523,17 +540,36 @@ module ZMutez = struct
             ~cond:(create_lt e1 e2)
             ~t:(ZInt.minus_one_ ())
             ~f:(ZInt.one_ ()))
-  end
+  end *)
 
   let to_zint : t -> ZInt.t
-  =fun e -> Z3.BitVector.mk_bv2int (ZCtx.read ()) e false
+  = fun e1 -> e1
+  (* =fun e -> Z3.BitVector.mk_bv2int (ZCtx.read ()) e false *)
 
+  let create_bound : t -> ZBool.t
+  = fun e1 -> begin
+    let lower = create_le (zero_ ()) e1 in
+    let upper = create_lt e1 (max_ ()) in
+    ZBool.create_and lower upper
+  end (* function create_bound end *)
   let check_add_no_overflow : t -> t -> ZBool.t
-  =fun e1 e2 -> Z3.BitVector.mk_add_no_overflow (ZCtx.read ()) e1 e2 false
+  = fun e1 e2 -> begin
+    let addition = create_add e1 e2 in
+    create_lt addition (max_ ())
+  end (* function check_add_no_overflow end *)
+  (* =fun e1 e2 -> Z3.BitVector.mk_add_no_overflow (ZCtx.read ()) e1 e2 false *)
   let check_mul_no_overflow : t -> t -> ZBool.t
-  =fun e1 e2 -> Z3.BitVector.mk_mul_no_overflow (ZCtx.read ()) e1 e2 false
+  = fun e1 e2 -> begin
+    let multiplication = create_mul e1 e2 in
+    create_lt multiplication (max_ ())
+  end (* function check_mul_no_overflow end *)
+  (* =fun e1 e2 -> Z3.BitVector.mk_mul_no_overflow (ZCtx.read ()) e1 e2 false *)
   let check_sub_no_underflow : t -> t -> ZBool.t
-  =fun e1 e2 -> Z3.BitVector.mk_sub_no_underflow (ZCtx.read ()) e1 e2 false
+  = fun e1 e2 -> begin
+    let subtraction = create_sub e1 e2 in
+    create_le (zero_ ()) subtraction
+  end (* function check_sub_no_underflow end *)
+  (* =fun e1 e2 -> Z3.BitVector.mk_sub_no_underflow (ZCtx.read ()) e1 e2 false *)
 end
 
 

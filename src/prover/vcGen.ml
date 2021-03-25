@@ -109,7 +109,9 @@ let sp : sp_fold_acc -> ProverLib.Bp.basic_node -> sp_fold_acc
       let new_nenv = NameEnv.update sfa_name_env v in
       let v' = NameEnv.get new_nenv v in
       let newfml = Formula.VF_eq (V_var (t, v'), e') in
-      {sfa_name_env=new_nenv; sfa_str_post=(VF_and [sfa_str_post; newfml]); sfa_queries}
+      let f = match t with T_mutez -> Formula.VF_mutez_bound (V_var (t, v')) | _ -> Formula.VF_true in
+      {sfa_name_env=new_nenv; sfa_str_post=(VF_and [sfa_str_post; newfml; f]); sfa_queries}
+      (* {sfa_name_env=new_nenv; sfa_str_post=(VF_and [sfa_str_post; newfml]); sfa_queries} *)
     )
   | BI_skip -> {sfa_name_env=sfa_name_env; sfa_str_post=sfa_str_post; sfa_queries=sfa_queries;} (* Nothing happen *)
 end (* function sp end *)

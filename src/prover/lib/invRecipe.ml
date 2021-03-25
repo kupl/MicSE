@@ -107,7 +107,9 @@ let mtzmap_partial_sum : Vlang.Component.t -> Vlang.Component.t -> Vlang.Compone
       in
       (* generate formula *)
       let k_slist = CPSet.fold k_sset ~init:[] ~f:(fun accl x -> x.body :: accl) in
-      VF_imply (fold_precond prec_lst, VF_mtzmap_partial_sum_equal(km.body, k_slist, m.body, remain_var_gen km.body k_slist))
+      let remain_var = remain_var_gen km.body k_slist in
+      VF_imply (fold_precond prec_lst, VF_and [VF_mutez_bound (V_var (Ty.T_mutez, remain_var)); VF_mtzmap_partial_sum_equal(km.body, k_slist, m.body, remain_var)])
+      (* VF_imply (fold_precond prec_lst, VF_mtzmap_partial_sum_equal(km.body, k_slist, m.body, remain_var_gen km.body k_slist)) *)
     )
 end (* function mtzmap_partial_sum end *)
 

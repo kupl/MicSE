@@ -324,6 +324,7 @@ module ZMutez : sig
   val of_zarith : Z.t -> t
   val of_int : int -> t
 
+  val max_ : unit -> t
   val zero_ : unit -> t
 
   val create_add : t -> t -> t
@@ -343,6 +344,7 @@ module ZMutez : sig
 
   val to_zint : t -> ZInt.t
 
+  val create_bound : t -> ZBool.t
   val check_add_no_overflow : t -> t -> ZBool.t
   val check_mul_no_overflow : t -> t -> ZBool.t
   val check_sub_no_underflow : t -> t -> ZBool.t
