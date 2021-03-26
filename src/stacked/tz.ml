@@ -508,6 +508,13 @@ let pmap_of_pset : 'a PSet.t -> key_f:('a -> 'key) -> data_f:('a -> 'data) -> ('
     )
 end (* function pmap_of_pset end *)
 
+let pmap_find_exn : ('a, 'b) PMap.t -> 'a -> ?debug:(string) -> 'b
+= fun map key ?debug:(debug="") -> 
+  try PMap.find_exn map key with | _ -> Stdlib.failwith debug
+
+let pmap_find_dft : ('a, 'b) PMap.t -> 'a -> default:('b) -> 'b
+= fun map key ~default -> (match PMap.find map key with | Some s -> s | None -> default)
+
 
 (*****************************************************************************)
 (* Code Component                                                            *)
@@ -765,6 +772,44 @@ let get_innertyp2 : mich_t cc -> (mich_t cc * mich_t cc)
   | MT_pair (t1, t2) | MT_or (t1, t2) | MT_lambda (t1, t2) | MT_map (t1, t2) | MT_big_map (t1, t2) -> (t1, t2)
   | _ -> Stdlib.failwith "Tz.get_innertyp2"
 )
+
+
+(*****************************************************************************)
+(* Michelson Cut Category & Cut Info                                         *)
+(*****************************************************************************)
+
+let lb_of_ln_mci : mich_cut_info -> mich_cut_info option
+= fun mci -> begin
+  let lb_mcc, flag =
+    (match mci.mci_cutcat with
+    | MCC_ln_loop     -> MCC_lb_loop    , true
+    | MCC_ln_loopleft -> MCC_lb_loopleft, true
+    | MCC_ln_map      -> MCC_lb_map     , true
+    | MCC_ln_iter     -> MCC_lb_iter    , true
+    | _ as m          -> m              , false) 
+  in 
+  if flag then Some {mci with mci_cutcat=lb_mcc;} else None
+end
+
+let lb_of_ln_exn : mich_cut_info -> debug:(string) -> mich_cut_info
+= fun mci ~debug -> begin
+  match lb_of_ln_mci mci with | Some s -> s | None -> Stdlib.failwith debug
+end
+
+let is_ln_mcc : mich_cut_category -> bool =
+  (function
+  | MCC_ln_loop       -> true
+  | MCC_ln_loopleft   -> true
+  | MCC_ln_map        -> true
+  | MCC_ln_iter       -> true
+  | MCC_trx_entry     -> false
+  | MCC_trx_exit      -> false
+  | MCC_lb_loop       -> false
+  | MCC_lb_loopleft   -> false
+  | MCC_lb_map        -> false
+  | MCC_lb_iter       -> false
+  | MCC_query         -> false
+  )
 
 
 (*****************************************************************************)

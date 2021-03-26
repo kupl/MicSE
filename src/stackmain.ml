@@ -12,7 +12,8 @@ let f_generate_sset : unit -> unit
   in
   let _ = ignore (tz_init_stg_opt, init_ss, cache) in
   Stacked.Prove.f_count_sset sset;
-  Stacked.Prove.f_print_blocked_paths_pretty sset
+  (* Stacked.Prove.f_print_blocked_paths_pretty sset; *)
+  Stacked.Prove.f_print_queries_pretty sset;
 end (* function f_generate_sset end *)
 
 let f_show_trueinv_solving : unit -> unit
@@ -69,7 +70,7 @@ end (* function f_show_trueinv_solving *)
 
 let main : unit -> unit
 = fun () -> begin
-  f_show_trueinv_solving ()
+  f_generate_sset ()
 end
 
 let _ = begin

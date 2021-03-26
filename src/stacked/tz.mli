@@ -500,6 +500,9 @@ type sym_state = {
 
 val pmap_of_pset : 'a PSet.t -> key_f:('a -> 'key) -> data_f:('a -> 'data) -> ('key, 'data PSet.t) PMap.t
 
+val pmap_find_exn : ('a, 'b) PMap.t -> 'a -> ?debug:(string) -> 'b
+val pmap_find_dft : ('a, 'b) PMap.t -> 'a -> default:('b) -> 'b
+
 
 (*****************************************************************************)
 (* Code Component                                                            *)
@@ -520,6 +523,15 @@ val typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
 
 val get_innertyp : mich_t cc -> mich_t cc
 val get_innertyp2 : mich_t cc -> (mich_t cc * mich_t cc)
+
+
+(*****************************************************************************)
+(* Michelson Cut Category & Cut Info                                         *)
+(*****************************************************************************)
+
+val lb_of_ln_mci : mich_cut_info -> mich_cut_info option
+val lb_of_ln_exn : mich_cut_info -> debug:(string) -> mich_cut_info
+val is_ln_mcc : mich_cut_category -> bool
 
 
 (*****************************************************************************)
