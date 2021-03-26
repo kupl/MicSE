@@ -326,25 +326,37 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let entered_flag : bool = is_entered_loop cache blocked_mci in
     let _ = if entered_flag then () else (List.iter (add_entered_loop cache) [blocked_mci; thenbr_mci; elsebr_mci]) in
     (* 3. make then-branch (loop-body) running state and run *)
-    let thenbr_sset : state_set =  
+    let thenbr_sset_raw : state_set =  
       (* if this map instruction is already in cache's entered_loop, then skip it. *)
       if entered_flag then empty_sset else 
       (* from "symstack for then-branch" to "state-set" *)
       ((gen_new_symval_t elem_t) :: (gen_newvar_symstack_vs (CList.tl_exn ss_symstack)))
       |> new_ss_for_loopinst ss thenbr_mci
       |> run_inst_i cache i
-      (* convert every running states in inner_sset into blocked cases *)
-      |> move_running_to_blocked thenbr_mci
     in
-    (* 3. make else-branch (loop-exit) running state *)
-    let elsebr_sset : state_set = 
-      (* TODO : BUGGY CASE : 
-        This implementation does not consider any type-converted cases.
-        For example, MAP instruction can modifies top integer list to natural number list.
-        Converted type should be gathered while calculating "thenbr_sset".
-      *)
+    let res_container_t : mich_t cc =
+      (* get type of container in top of stack to propagate to else branch *)
+      thenbr_sset_raw.running
+      |> PSet.fold ~init:None ~f:(fun acc sset -> (
+        let cur_t = sset.ss_symstack |> CList.hd_exn |> typ_of_val in
+        if Option.is_none acc then Some cur_t
+        else begin
+          let acc_t = Option.get acc in
+          if cur_t = acc_t then acc
+          else Error "run_inst_i : MI_map : result_container_type : fold" |> Stdlib.raise
+        end))
+      |> (function Some t -> t | None -> Error "run_inst_i : MI_map : result_container_type" |> Stdlib.raise)
+      in
+    let thenbr_sset : state_set = 
+      (* convert every running states in inner_sset into blocked cases *)
+      thenbr_sset_raw
+      |> move_running_to_blocked thenbr_mci in
+    (* 4. make else-branch (loop-exit) running state *)
+    let elsebr_sset : state_set =
+      (* if this map instruction is already in cache's entered_loop, then skip it. *)
       if entered_flag then empty_sset else
-      (gen_newvar_symstack_vs ss_symstack)
+      (* from "symstack for else-branch" to "state-set" *)
+      ((gen_new_symval_t res_container_t) :: (gen_newvar_symstack_vs (CList.tl_exn ss_symstack)))
       |> new_ss_for_loopinst ss elsebr_mci
       |> ss_to_srset
     in
@@ -360,7 +372,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       | MT_list e -> e
       | MT_set e -> e
       | MT_map (kt,vt) -> MT_pair (kt,vt) |> gen_custom_cc container_t
-      | _ -> Error "run_inst_i : MI_map : elem_t" |> raise
+      | _ -> Error "run_inst_i : MI_iter : elem_t" |> raise
     ) in
     (* refer MI_map case for detailed explanation *)
     let blocked_state : sym_state = update_block_mci blocked_mci ss in
