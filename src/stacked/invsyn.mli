@@ -22,12 +22,11 @@ module PMap = Core.Map.Poly
 type 'a set = 'a Tz.PSet.t
 type ('a, 'b) map = ('a, 'b) Tz.PMap.t
 
-type generate_param = {
-  igi_failed_set: ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set;
-  igi_cur_inv: Se.invmap;
-  igi_istrg_opt: (Tz.mich_v Tz.cc * Tz.sym_state) option;
-  igi_collected: Se.invmap set;
-}
+type generate_param = 
+  (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set *
+  (* igi_cur_inv *)     Se.invmap *
+  (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
+  (* igi_collected *)   Se.invmap set
 
 type ingredients = {
   igdt_query_category: Se.query_category;

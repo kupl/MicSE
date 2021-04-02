@@ -22,12 +22,11 @@ module PMap = Core.Map.Poly
 type 'a set = 'a Tz.PSet.t
 type ('a, 'b) map = ('a, 'b) Tz.PMap.t
 
-type generate_param = {
-  igi_failed_set: ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set;
-  igi_cur_inv: Se.invmap;
-  igi_istrg_opt: (Tz.mich_v Tz.cc * Tz.sym_state) option;
-  igi_collected: Se.invmap set;
-}
+type generate_param = 
+  (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set *
+  (* igi_cur_inv *)     Se.invmap *
+  (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
+  (* igi_collected *)   Se.invmap set
 
 type ingredients = {
   igdt_query_category: Se.query_category;
@@ -63,7 +62,7 @@ end
 
 let generate : generate_param -> Se.invmap set
 = let open Tz in
-  fun { igi_failed_set; igi_cur_inv; igi_istrg_opt; igi_collected } -> begin
+  fun (igi_failed_set, igi_cur_inv, igi_istrg_opt, igi_collected) -> begin
   (* generate function start *)
   (* 1. collect refine targets *)
   let refine_targets : (Tz.mich_cut_info, (ingredients set)) map =
