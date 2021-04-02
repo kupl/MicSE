@@ -362,18 +362,16 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
   fun (tz_init_stg_opt, init_ss) sset -> begin
   let init_stg_ss_opt : (Tz.mich_v Tz.cc * Tz.sym_state) option =
     Option.bind tz_init_stg_opt (fun init_stg -> Some (init_stg, init_ss)) in
-  let w_init : worklist =
-    sset.Se.blocked
-    |> Se.true_invmap_of_blocked_sset
-    |> Tz.PSet.singleton in
+  let inv_init : Se.invmap = sset.Se.blocked |> Se.true_invmap_of_blocked_sset in
+  let w_init : worklist = inv_init |> Tz.PSet.singleton in
   let res_init : ret = { solved_map=Tz.PMap.empty; failed_set=Tz.PSet.empty; untouched_set=sset.queries } in
-  let timer : Utils.Timer.t ref =
-    Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget) in
-  let rec prove_loop : worklist -> ret -> ret = fun w prev_res -> begin
+  let timer : Utils.Timer.t ref = Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget) in
+  let rec prove_loop : (worklist * Se.invmap set) -> ret -> ret = fun (w, collected) prev_res -> begin
     if Utils.Timer.is_timeout timer || Tz.PSet.is_empty w then prev_res else
     let inv_cand : Se.invmap =
       w |> Tz.PSet.choose
       |> (function Some i -> i | None -> Error "main : prove_loop" |> Stdlib.raise) in
+    let collected' : Se.invmap set = Tz.PSet.add collected inv_cand in
     let w' : worklist = Tz.PSet.remove w inv_cand in
     let inductive, _, _ = check_inv_inductiveness timer init_stg_ss_opt sset.blocked inv_cand in
     if inductive then
@@ -382,10 +380,11 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
       let res : ret = union_result ~prev_res ~cur_res in
       if Tz.PSet.length res.failed_set = 0 && Tz.PSet.length res.untouched_set = 0 then res
       else
-        (* TODO: Invariant Synthesize and Refining Worklist *)
-        prove_loop w' res
-    else prove_loop w' prev_res
+        let w'' : worklist = InvSyn.generate (res.failed_set, inv_cand, init_stg_ss_opt, collected') in
+        let w''' : worklist = Tz.PSet.union w' w'' in
+        prove_loop (w''', collected') res
+    else prove_loop (w', collected') prev_res
     end in
-  let res : ret = prove_loop w_init res_init in
+  let res : ret = prove_loop (w_init, (Tz.PSet.singleton inv_init)) res_init in
   res
 end (* function main end *)
