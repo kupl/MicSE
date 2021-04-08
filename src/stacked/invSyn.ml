@@ -113,10 +113,13 @@ type component = {
   body        : Tz.mich_v Tz.cc; 
 }
 
-let fold_precond : Tz.mich_f list -> Tz.mich_f
-= fun prec_lst -> begin
+let fold_precond : component list -> Tz.mich_f
+= let module CList = Core.List in
+  fun comp_lst -> begin
   (* fold_precond function start *)
-  Tz.MF_and prec_lst
+  Tz.MF_and (comp_lst
+            |> CList.map ~f:(fun c -> c.precond_lst)
+            |> CList.join)
   (* fold_precond function end *)
 end 
 
@@ -196,22 +199,79 @@ end
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Recipe                                                                    *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let mutez_equal : component set -> Tz.mich_f set
+= let open Tz in
+  fun compset -> begin
+  (* mutez_equal function start *)
+  PSet.map
+    (combination_self_two_diff compset)
+    ~f:(fun (c1, c2) -> MF_imply ((fold_precond [c1; c2]), MF_eq (c1.body, c2.body)))
+  (* mutez_equal function end *)
+end
+
+let all_equal : component set -> Tz.mich_f set
+= let open Tz in
+  fun compset -> begin
+  (* all_equal function start *)
+  let cb : (component * component) set =
+    compset
+    |> combination_self_two_diff
+    |> PSet.filter ~f:(fun (c1, c2) -> c1.typ = c2.typ) in
+  PSet.map
+    cb
+    ~f:(fun (c1, c2) -> MF_imply ((fold_precond [c1; c2]), MF_eq (c1.body, c2.body)))
+  (* all_equal function end *)
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Synthesizer                                                               *)
 (*****************************************************************************)
 (*****************************************************************************)
 
+let collect_set : ('a set) list -> 'a set
+= let module CList = Core.List in
+  fun slist -> begin
+  (* collect_set function start *)
+  CList.fold
+    slist
+    ~init:PSet.empty
+    ~f:(fun acc s -> PSet.union acc s)
+  (* collect_set function end *)
+end
+
 let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap set
-= 
+= let open Tz in
   fun (cur_inv, istrg_opt) igdt -> begin
   (* refine_t function start *)
+  (* 0. extract component of storage variable *)
   let vstrg : Tz.mich_v Tz.cc = 
     PMap.find
       igdt.igdt_sym_state.ss_dynchain.bc_storage
       igdt.igdt_sym_state.ss_optt.optt_addr
     |> function Some vv -> vv | None -> Error "refine_t : vstrg" |> Stdlib.raise in
-  let _ = collect_components vstrg in
+  let comp = collect_components vstrg in
+  (* 1. generate recipe *)
+  let all_eq_fmlas : Tz.mich_f set = all_equal comp in
+  (* 2. generate invariant map *)
+  let fmlas : Tz.mich_f set = 
+    [ all_eq_fmlas; ]
+    |> collect_set in
   let _ = (cur_inv, istrg_opt), igdt in
-  PSet.empty (* TODO *)
+  PSet.map
+    fmlas
+    ~f:(fun fmla -> (
+      PMap.mapi
+        cur_inv
+        ~f:(fun ~key ~data -> 
+              if key.mci_cutcat = MCC_trx_entry || key.mci_cutcat = MCC_trx_exit
+              then (function vl -> MF_and [fmla; (data vl)])
+              else data)))
   (* refine_t function end *)
 end
 
