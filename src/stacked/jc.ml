@@ -535,3 +535,11 @@ let lur_r_loop = "r_loop"
 let lur_jc_rq_r = "rq_r"
 let lur_jc_rq_mci = "rq_mci"
 let lur_jc_rq_qc = "rq_qc"
+
+let lur_p_list = "p_list"
+let lur_p_state = "p_state"
+let lur_p_loop = "p_loop"
+
+let lur_jc_pq_p = "pq_p"
+let lur_jc_pq_mci = "pq_mci"
+let lur_jc_pq_qc = "pq_qc"

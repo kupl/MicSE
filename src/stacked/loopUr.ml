@@ -273,17 +273,6 @@ let unroll_n_naive : unroll_n_naive_param -> unroll_n_naive_output
   let init_unno_q = PMap.map unnp_q ~f:(fun unpq -> unpq |> PSet.filter ~f:_loop_in_route_q_not |> PSet.map ~f:pathq_of_routeq) in
   let init_unno = {unno_visited=PSet.empty; unno_p=init_unno_p; unno_q=init_unno_q;} in
   accumulate unnp_trx_entry_mci init_unno
-
-  (*    
-  let rec dfs : unroll_n_naive_dfs_param -> unroll_n_naive_output -> unroll_n_naive_output
-  = fun {unndp_mci;} {unno_visited; unno_p; unno_q;} -> begin
-    
-  end in (* function dfs end *)
-  let init_dfs_param = {unndp_mci=unnp_trx_entry_mci} in
-  let init_acc = {unno_visited=PSet.empty; unno_p=PMap.empty; unno_q=PMap.empty;} in
-  dfs init_dfs_param init_acc
-  *)
-
 end (* function unroll_n_naive end *)
 
 
@@ -311,98 +300,31 @@ module R2Jomci = struct
       lur_jc_rq_qc, TzCvt.S2J.cv_qc rq_qc;
     ]
   end (* function cv_route_q end *)
-end (* module R2J end *)
+end (* module R2Jomci end *)
 
 
-(*
 (*****************************************************************************)
 (*****************************************************************************)
-(* Unroll-N-Naive                                                            *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-type unni_param = {
-  unnip_num       : int;
-  unnip_goal_mci  : Tz.mich_cut_info;
-  unnip_p         : (Tz.mich_cut_info, Tz.sym_state Tz.PSet.t) Tz.PMap.t;
-  unnip_q         : (Tz.mich_cut_info, (Tz.sym_state * Se.query_category) Tz.PSet.t) Tz.PMap.t;
-}
-type unni_output = {
-  unnio_pathset_work  : path Tz.PSet.t;
-  unnio_pathset_acc   : path Tz.PSet.t;
-  unnio_queryset_acc  : (path * Se.query_category) Tz.PSet.t;
-}
-
-(* "unroll_n_naive_i" runs in tail-recursive manner. *)
-let rec unroll_n_naive_i : unni_param -> unni_output -> unni_output
-= fun 
-    {unnip_num; unnip_goal_mci; unnip_p; unnip_q;}
-    {unnio_pathset_work; unnio_pathset_acc; unnio_queryset_acc;}
-  -> begin
-end (* function unroll_n_naive_i end *)
-
-
-
-type unroll_n_naive_param = {
-  unnp_num        : int;
-  unnp_sset       : Se.state_set;
-  unnp_entry_mci  : Tz.mich_cut_info;
-  unnp_exit_mci   : Tz.mich_cut_info;
-}
-type unroll_n_naive_output = {
-  unno_pathset  : path Tz.PSet.t;
-  unno_queryset : (path * Se.query_category) Tz.PSet.t;
-  unno_looppaths    : 
-}
-
-let unroll_n_naive : unroll_n_naive_param -> unroll_n_naive_output
-= fun {unnp_num; unnp_sset; unnp_entry_mci; unnp_exit_mci} -> begin
-  (* PREPROCESSING *)
-  let blocked_pmap = Tz.pmap_of_pset unnp_sset.blocked ~key_f:(fun ss -> ss.Tz.ss_entry_mci) ~data_f:(fun x -> x) in
-  let query_pmap = Tz.pmap_of_pset unnp_sset.queries ~key_f:(fun (ss, _) -> ss.Tz.ss_entry_mci) ~data_f:(fun x -> x) in
-  (* MAIN FUNCTION *)
-  let {unnio_pathset_work=_; unnio_pathset_acc; unnio_queryset_acc;} = 
-    unroll_n_naive_i
-      { unnip_num       = unnp_num;
-        unnip_goal_mci  = unnp_exit_mci;
-        unnip_p         = blocked_pmap;
-        unnip_q         = query_pmap;
-      }
-      { unnio_pathset_work = Tz.PSet.singleton (P_null unnp_entry_mci);
-        unnio_pathset_acc  = Tz.PSet.empty;
-        unnio_queryset_acc = Tz.PSet.empty;
-      }
-  in
-  {unno_pathset=unnio_pathset_acc; unno_queryset=unnio_queryset_acc;}
-end (* funtion unroll_n_naive end *)
-*)
-
-
-(*
-(*****************************************************************************)
-(*****************************************************************************)
-(* Utility - Pair-Flattened Path                                             *)
+(* Utility - Path to Json - Only MCI                                         *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-(* flattened-path introduced to serve a better printing experience to me. *)
-type fpath =
-  | FP_list of fpath list
-  | FP_state of Tz.sym_state
-  | FP_loop of Tz.mich_cut_info * fpath
-  | FP_null of Tz.mich_cut_info
-
-let rec fpath_of_path : path -> fpath
-= (function
-  | P_pair (p1, p2) -> (
-      match fpath_of_path p1, fpath_of_path p2 with
-      | FP_list l1, FP_list l2 -> FP_list (l1 @ l2)
-      | FP_list l1, fp2 -> FP_list (l1 @ [fp2])
-      | fp1, FP_list l2 -> FP_list (fp1 :: l2)
-      | fp1, fp2 -> FP_list [fp1; fp2]
-    )
-  | P_state ss -> FP_state ss
-  | P_loop (mci, p) -> FP_loop (mci, fpath_of_path p)
-  | P_null mci -> FP_null mci
-) (* function fpath_of_path end *)
-*)
+module P2Jomci = struct
+  type js = Yojson.Safe.t
+  open Jc
+  let cv_mci = TzCvt.T2J.cv_mich_cut_info
+  let rec cv_path : path -> js
+  = (function
+    | P_list pl -> `List (List.map cv_path pl)
+    | P_state ss -> `Tuple [cv_mci ss.ss_entry_mci; cv_mci ss.ss_block_mci]
+    | P_loop (mci, pl) -> `Tuple [`String lur_p_loop; cv_mci mci; `List (List.map cv_path pl)]
+  ) (* function cv_path end *)
+  let cv_path_q : path_q -> js
+  = fun {pq_p; pq_mci; pq_qc;} -> begin
+    `Assoc [
+      lur_jc_pq_p, cv_path pq_p;
+      lur_jc_pq_mci, cv_mci pq_mci;
+      lur_jc_pq_qc, TzCvt.S2J.cv_qc pq_qc;
+    ]
+  end (* function cv_path_q end *)
+end (* module P2Jomci end *)

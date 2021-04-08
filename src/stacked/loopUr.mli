@@ -133,7 +133,20 @@ module R2Jomci : sig
   type js = Yojson.Safe.t
   val cv_route : route -> js
   val cv_route_q : route_q -> js
-end (* module R2J end *)
+end (* module R2Jomci end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Utility - Path to Json - Only MCI                                         *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module P2Jomci : sig
+  type js = Yojson.Safe.t
+  val cv_path : path -> js
+  val cv_path_q : path_q -> js
+end (* module P2Jomci end *)
 
 
 (*
