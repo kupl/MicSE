@@ -55,14 +55,14 @@ let fold_precond : Tz.mich_f list -> Tz.mich_f
   (* fold_precond function end *)
 end 
 
-let comp_of_val : Tz.mich_f list * Tz.mich_v Tz.cc -> component
-= fun (pcl, v) -> begin
+let comp_of_val : ?precond_list:Tz.mich_f list -> Tz.mich_v Tz.cc -> component
+= fun ?(precond_list=[]) v -> begin
   (* comp_of_val function start *)
-  { precond_lst=pcl; typ=(Tz.typ_of_val v); body=v; }
+  { precond_lst=precond_list; typ=(Tz.typ_of_val v); body=v; }
   (* comp_of_val function end *)
 end
 
-let collect_components : Tz.mich_f list * Tz.mich_v Tz.cc -> component set
+let collect_components : ?precond_list:Tz.mich_f list -> Tz.mich_v Tz.cc -> component set
 = (* inner function of component collecting *)
   let rec collect_components_i : component -> component set -> component set
   = let open Tz in
@@ -101,9 +101,9 @@ let collect_components : Tz.mich_f list * Tz.mich_v Tz.cc -> component set
     | _ -> PSet.add acc cur_comp
     (* collect_components_i function end *)
   end in
-  fun v_info -> begin
+  fun ?(precond_list=[]) v_info -> begin
   (* collect_components function start *)
-  collect_components_i (comp_of_val v_info) PSet.empty
+  collect_components_i (comp_of_val v_info ~precond_list) PSet.empty
   (* collect_components function end *)
 end
 
@@ -139,6 +139,12 @@ let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredient
 = 
   fun (cur_inv, istrg_opt) igdt -> begin
   (* refine_t function start *)
+  let vstrg : Tz.mich_v Tz.cc = 
+    PMap.find
+      igdt.igdt_sym_state.ss_dynchain.bc_storage
+      igdt.igdt_sym_state.ss_optt.optt_addr
+    |> function Some vv -> vv | None -> Error "refine_t : vstrg" |> Stdlib.raise in
+  let _ = collect_components vstrg in
   let _ = (cur_inv, istrg_opt), igdt in
   PSet.empty (* TODO *)
   (* refine_t function end *)
@@ -188,7 +194,7 @@ let generate : generate_param -> Se.invmap set
       ~init:PSet.empty
       ~f:(fun ~key ~data acc -> 
           (* select refine function whether it is entry or not *)
-          let rf = if (key.mci_cutcat = MCC_trx_exit) then (refine_t (igi_cur_inv, igi_istrg_opt)) else (refine_l igi_cur_inv) in
+          let rf = if (key.mci_cutcat = MCC_trx_entry) then (refine_t (igi_cur_inv, igi_istrg_opt)) else (refine_l igi_cur_inv) in
           (* generate new invariants and accumulate it *)
           PSet.fold
             data

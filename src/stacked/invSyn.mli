@@ -49,8 +49,8 @@ type component = {
 }
 
 val fold_precond : Tz.mich_f list -> Tz.mich_f
-val comp_of_val : Tz.mich_f list * Tz.mich_v Tz.cc -> component
-val collect_components : Tz.mich_f list * Tz.mich_v Tz.cc -> component set
+val comp_of_val : ?precond_list:Tz.mich_f list -> Tz.mich_v Tz.cc -> component
+val collect_components : ?precond_list:Tz.mich_f list -> Tz.mich_v Tz.cc -> component set
 val filter_comp : (Tz.mich_t -> bool) -> component set -> component set
 val classify_comp_with_type : component set -> (Tz.mich_t, component set) map
 
