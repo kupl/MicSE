@@ -38,6 +38,71 @@ type ingredients = {
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Set Combination                                                           *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(* bind 1 {1; 2; 3} === {(1, 1); (1, 2); (1, 3)} *)
+let bind : 'a -> 'b set -> ('a * 'b) set
+= fun a bset -> begin
+  (* bind function start *)
+  PSet.fold
+    bset
+    ~init:PSet.empty
+    ~f:(fun acc b -> PSet.add acc (a, b))
+  (* bind function end *)
+end
+
+(* combination {1; 2} {a; b} === {(1, a); (1, b); (2, a); (2, b)} *)
+let combination : 'a set -> 'b set -> ('a * 'b) set
+= fun aset bset -> begin
+  (* combination function start *)
+  PSet.fold
+    aset
+    ~init:PSet.empty
+    ~f:(fun acc a -> PSet.union acc (bind a bset))
+  (* combination function end *)
+end
+
+(* combination_rfl {1; 2} === {(1, 1); (1, 2); (2, 2)} *)
+let combination_rfl : 'a set -> ('a * 'a) set
+= fun s -> begin
+  (* combination_rfl function start *)
+  combination s s
+  (* combination_rfl function end *)
+end
+
+(* combination_self_two_diff {1; 2; 3} === {(1, 2); (1, 3); (2, 3)} *)
+let combination_self_two_diff : 'a set -> ('a * 'a) set
+= fun s -> begin
+  (* combination_self_two_diff function start *)
+  let (comb, _) : ('a * 'a) set * 'a set =
+    PSet.fold
+      s
+      ~init:(PSet.empty, s)
+      ~f:(fun (acc_comb, rs) x -> (
+        let rs' : 'a set = PSet.remove rs x in
+        let comb' : ('a * 'a) set = bind x rs' in
+        ((PSet.union acc_comb comb'), rs'))) in
+  comb
+  (* combination_self_two_diff function end *)
+end
+
+(* combination_self_two_diff_rf {1; 2; 3} === {(1, 2); (1, 3); (2, 1); (2, 3); (3, 1); (3, 2)} *)
+let combination_self_two_diff_rf : 'a set -> ('a * 'a) set
+= fun s -> begin
+  (* combination_self_two_diff_rf function start *)
+  let comb = combination_self_two_diff s in
+  PSet.fold
+    comb
+    ~init:comb
+    ~f:(fun acc (x, y) -> PSet.add acc (y, x))
+  (* combination_self_two_diff_rf function end *)
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Component Collector                                                       *)
 (*****************************************************************************)
 (*****************************************************************************)
