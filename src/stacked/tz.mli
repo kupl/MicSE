@@ -503,6 +503,8 @@ val pmap_of_pset : 'a PSet.t -> key_f:('a -> 'key) -> data_f:('a -> 'data) -> ('
 val pmap_find_exn : ('a, 'b) PMap.t -> 'a -> ?debug:(string) -> 'b
 val pmap_find_dft : ('a, 'b) PMap.t -> 'a -> default:('b) -> 'b
 
+val psetmap_update_union : ('a, 'b PSet.t) PMap.t -> 'a -> 'b PSet.t -> ('a, 'b PSet.t) PMap.t
+
 
 (*****************************************************************************)
 (* Code Component                                                            *)

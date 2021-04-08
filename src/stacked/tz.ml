@@ -515,6 +515,9 @@ let pmap_find_exn : ('a, 'b) PMap.t -> 'a -> ?debug:(string) -> 'b
 let pmap_find_dft : ('a, 'b) PMap.t -> 'a -> default:('b) -> 'b
 = fun map key ~default -> (match PMap.find map key with | Some s -> s | None -> default)
 
+let psetmap_update_union : ('a, 'b PSet.t) PMap.t -> 'a -> 'b PSet.t -> ('a, 'b PSet.t) PMap.t
+= fun map key set -> PMap.update map key ~f:(function | None -> set | Some s -> PSet.union set s)
+
 
 (*****************************************************************************)
 (* Code Component                                                            *)

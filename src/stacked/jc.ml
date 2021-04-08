@@ -520,3 +520,18 @@ let jc_terminated = "terminated"
 
 let jc_ch_entered_loop = "ch_entered_loop"
 let jc_ch_entered_lmbd = "ch_entered_lmbd"
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Names in module LoopUr                                                    *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let lur_r_list = "r_list"
+let lur_r_state = "r_state"
+let lur_r_loop = "r_loop"
+
+let lur_jc_rq_r = "rq_r"
+let lur_jc_rq_mci = "rq_mci"
+let lur_jc_rq_qc = "rq_qc"

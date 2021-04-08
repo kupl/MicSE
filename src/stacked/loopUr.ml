@@ -29,6 +29,14 @@ let concat_route : route -> route -> route
   | _ -> R_list [r1; r2]
 end (* function concat_route end *)
 
+let rec loop_in_route : route -> bool
+= (function
+  | R_list rl -> List.exists loop_in_route rl
+  | R_state _ -> false
+  | R_loop _ -> true
+)
+let loop_in_route_q : route_q -> bool = fun rq -> loop_in_route rq.rq_r
+
 type bake_routes_param = {
   brp_trx_entry_mci : Tz.mich_cut_info;
   brp_trx_exit_mci : Tz.mich_cut_info;
@@ -114,26 +122,196 @@ end (* function bake_routes end *)
 (*****************************************************************************)
 
 type path = 
-  | P_pair  of path * path
+  | P_list of path list
   | P_state of Tz.sym_state
-  | P_loop  of Tz.mich_cut_info * int * (path list)
-  | P_null  of Tz.mich_cut_info
+  | P_loop of Tz.mich_cut_info * (path list)
 
-let rec first_mci_of_path : path -> Tz.mich_cut_info
-= (function
-  | P_pair (p1, _) -> first_mci_of_path p1
-  | P_state ss -> ss.ss_entry_mci
-  | P_loop (mci, _, _) -> mci
-  | P_null mci -> mci
-) (* function first_mci_of_path end *)
+type path_q = {
+  pq_p    : path;
+  pq_mci  : Tz.mich_cut_info;
+  pq_qc   : Se.query_category;
+}
 
-let rec last_mci_of_path : path -> Tz.mich_cut_info
+let rec path_of_route : route -> path
 = (function
-  | P_pair (_, p2) -> last_mci_of_path p2
-  | P_state ss -> ss.ss_block_mci
-  | P_loop (mci, _, _) -> mci
-  | P_null mci -> mci
-) (* function last_mci_of_path end *)
+  | R_list rl -> P_list (List.map path_of_route rl)
+  | R_state ss -> P_state ss
+  | R_loop mci -> P_loop (mci, [])
+)
+let pathq_of_routeq : route_q -> path_q 
+= fun {rq_r; rq_mci; rq_qc} -> {pq_p=(path_of_route rq_r); pq_mci=rq_mci; pq_qc=rq_qc;}
+
+
+type unroll_n_naive_param = {
+  unnp_num : int;
+  unnp_trx_entry_mci : Tz.mich_cut_info;
+  unnp_r : (Tz.mich_cut_info, route Tz.PSet.t) Tz.PMap.t;
+  unnp_q : (Tz.mich_cut_info, route_q Tz.PSet.t) Tz.PMap.t;
+}
+
+type unroll_n_naive_output = {
+  unno_visited : Tz.mich_cut_info Tz.PSet.t;
+  unno_p : (Tz.mich_cut_info, path Tz.PSet.t) Tz.PMap.t;
+  unno_q : (Tz.mich_cut_info, path_q Tz.PSet.t) Tz.PMap.t;
+}
+
+type _unroll_n_naive_fp_acc = {
+  _unnfpa_unno : unroll_n_naive_output; (* accumulated value *)
+  _unnfpa_p : path list Tz.PSet.t; (* reversed paths *)
+  _unnfpa_q : path_q Tz.PSet.t; (* filled-NON-reversed paths *)
+}
+
+type _unroll_n_naive_fq_acc = {
+  _unnfqa_unno : unroll_n_naive_output; (* accumulated value *)
+  _unnfqa_p : path list Tz.PSet.t; (* reversed paths *)
+}
+
+let _loop_in_route_not : route -> bool = fun r -> Stdlib.not (loop_in_route r)
+let _loop_in_route_q_not : route_q -> bool = fun rq -> Stdlib.not (loop_in_route_q rq)
+
+(* example. "_cons_combine {1, 2, 3} {[1;2], [3;4]}" === "{[1;1;2], [1;3;4], [2;1;2], [2;3;4], [3;1;2], [3;3;4]}" *)
+let _cons_combine : 'a Tz.PSet.t -> 'a list Tz.PSet.t -> 'a list Tz.PSet.t
+= fun elemset lset -> begin
+  let open Tz in
+  PSet.fold lset ~init:PSet.empty
+    ~f:(fun accs l -> PSet.fold elemset ~init:accs ~f:(fun accaccs e -> PSet.add accaccs (e :: l)))
+end (* function _cons_combine end *)
+
+(* WARNING: "_cons_combine_n" MIGHT EXPLODE YOUR MEMORY *)
+let rec _cons_combine_n : int -> 'a Tz.PSet.t -> 'a list Tz.PSet.t -> 'a list Tz.PSet.t
+= fun n elemset lset -> begin
+  if n <= 0 then lset else
+  _cons_combine_n (n-1) elemset (_cons_combine elemset lset)
+end (* function _cons_combine_n end *)
+
+(* WARNING: "_cons_combine_n_acc" MIGHT EXPLODE YOUR MEMORY *)
+(* the difference between "_cons_combnie_n" and "_cons_combine_n_acc" is whether it accumulates intermediate (=initial) lset or not. *)
+let _cons_combine_n_acc : int -> 'a Tz.PSet.t -> 'a list Tz.PSet.t -> 'a list Tz.PSet.t
+= fun n elemset lset -> begin
+  if n <= 0 then lset else
+  _cons_combine_n (n-1) elemset (_cons_combine elemset lset)
+  |> Tz.PSet.union lset
+end (* funtion _cons_combine_n_acc end *)
+
+
+let unroll_n_naive : unroll_n_naive_param -> unroll_n_naive_output
+= let open Tz in 
+  fun {unnp_num; unnp_trx_entry_mci; unnp_r; unnp_q} -> begin
+  (* "acuumulate" accumulates paths & query-paths *)
+  let rec accumulate : mich_cut_info -> unroll_n_naive_output -> unroll_n_naive_output
+  = fun cur_mci acc_unno -> begin
+    (* "fill_p" fill loops in route. update paths and query-paths *)
+    let fill_p : unroll_n_naive_output -> route -> unroll_n_naive_output
+    = fun fp_unno r -> begin
+      (* "foldf" is the function that really fills loops & collect queries in route, but paths are accumulated reversed for convenience. *)
+      let rec foldf : _unroll_n_naive_fp_acc -> route -> _unroll_n_naive_fp_acc
+      = fun unnfpa r -> begin
+        let {_unnfpa_unno; _unnfpa_p; _unnfpa_q} = unnfpa in
+        (match r with
+        | R_list [] -> unnfpa
+        | R_list (hd :: tl) -> foldf (foldf unnfpa hd) (R_list tl) (* note: be aware of execution order *)
+        | R_state ss -> {unnfpa with _unnfpa_p=(PSet.map _unnfpa_p ~f:(List.cons (P_state ss)));}
+        | R_loop rl_mci -> 
+          let _cons_combine_pq : path_q PSet.t -> path list PSet.t -> path_q PSet.t
+          = fun qset plset -> begin
+            PSet.fold plset ~init:PSet.empty
+              ~f:(fun accs pl -> PSet.fold qset ~init:accs ~f:(fun accaccs q -> PSet.add accaccs (q, pl)))
+            |> PSet.map ~f:(fun (q, pl) -> {q with pq_p=(P_list (List.rev (q.pq_p :: pl)))})
+          end in (* internal function _cons_combine_q end *)
+          let new_unno      : unroll_n_naive_output = accumulate rl_mci _unnfpa_unno in
+          let ff_paths      : path PSet.t           = pmap_find_dft new_unno.unno_p rl_mci ~default:PSet.empty in
+          let ff_queries    : path_q PSet.t         = pmap_find_dft new_unno.unno_q rl_mci ~default:PSet.empty in
+          let ff_nm1_paths  : path list PSet.t      = _cons_combine_n_acc (unnp_num - 1) ff_paths (PSet.singleton []) in
+          let ff_n_paths    : path list PSet.t      = _cons_combine ff_paths ff_nm1_paths in
+          let ff_n_queries  : path_q PSet.t         = _cons_combine_pq ff_queries ff_nm1_paths in
+          {_unnfpa_unno=new_unno; _unnfpa_p=ff_n_paths; _unnfpa_q=ff_n_queries;}
+        )
+      end in
+      let {_unnfpa_unno; _unnfpa_p; _unnfpa_q;} = foldf {_unnfpa_unno=fp_unno; _unnfpa_p=(PSet.singleton []); _unnfpa_q=PSet.empty;} r in
+      let paths = PSet.map _unnfpa_p ~f:(fun x -> P_list (List.rev x)) in
+      { unno_visited=_unnfpa_unno.unno_visited;
+        unno_p=(psetmap_update_union fp_unno.unno_p cur_mci paths);
+        unno_q=(psetmap_update_union fp_unno.unno_q cur_mci _unnfpa_q);
+      }
+    end in (* internal function fill_p end *)
+    (* "fill_q" fill loops in route_q. update query-paths only (which ends with route_q's query) *)
+    let fill_q : unroll_n_naive_output -> route_q -> unroll_n_naive_output
+    = fun fq_unno q -> begin
+      (* "foldf" is the function that really fills loops in route, but paths are accumulated reversed for conveniece *)
+      let rec foldf : _unroll_n_naive_fq_acc -> route -> _unroll_n_naive_fq_acc
+      = fun unnfqa r -> begin
+        let {_unnfqa_unno; _unnfqa_p} = unnfqa in
+        (match r with
+        | R_list [] -> unnfqa
+        | R_list (hd :: tl) -> foldf (foldf unnfqa hd) (R_list tl) (* note : be aware of execution order *)
+        | R_state ss -> {unnfqa with _unnfqa_p=(PSet.map _unnfqa_p ~f:(List.cons (P_state ss)))}
+        | R_loop rl_mci -> 
+          let new_unno    : unroll_n_naive_output = accumulate rl_mci _unnfqa_unno in
+          let ff_paths    : path PSet.t           = pmap_find_dft new_unno.unno_p rl_mci ~default:PSet.empty in
+          let ff_n_paths  : path list PSet.t      = _cons_combine_n_acc unnp_num ff_paths (PSet.singleton []) in
+          {_unnfqa_unno=new_unno; _unnfqa_p=ff_n_paths;}
+        )
+      end in (* internal function foldf end *)
+      let {_unnfqa_unno; _unnfqa_p;} = foldf {_unnfqa_unno=fq_unno; _unnfqa_p=(PSet.singleton []);} q.rq_r in
+      let queries = PSet.map _unnfqa_p ~f:(fun x -> {pq_p=(P_list (List.rev x)); pq_mci=q.rq_mci; pq_qc=q.rq_qc;}) in
+      { _unnfqa_unno with
+        unno_q=(psetmap_update_union fq_unno.unno_q cur_mci queries);
+      }
+    end in (* internal function fill_q end *)
+    (* if already visited, escape *)
+    if PSet.mem acc_unno.unno_visited cur_mci then acc_unno
+    else ( (* main procedure *)
+      let routes_r = pmap_find_dft unnp_r cur_mci ~default:PSet.empty in
+      let routes_q = pmap_find_dft unnp_q cur_mci ~default:PSet.empty in
+      acc_unno 
+      |> (fun unno -> PSet.fold routes_r ~init:unno ~f:fill_p)
+      |> (fun unno -> PSet.fold routes_q ~init:unno ~f:fill_q)
+      |> (fun unno -> {unno with unno_visited=(PSet.add unno.unno_visited cur_mci)})
+    )
+  end in (* internal function fill end *)
+  let init_unno_p = PMap.map unnp_r ~f:(fun unpr -> unpr |> PSet.filter ~f:_loop_in_route_not   |> PSet.map ~f:path_of_route) in
+  let init_unno_q = PMap.map unnp_q ~f:(fun unpq -> unpq |> PSet.filter ~f:_loop_in_route_q_not |> PSet.map ~f:pathq_of_routeq) in
+  let init_unno = {unno_visited=PSet.empty; unno_p=init_unno_p; unno_q=init_unno_q;} in
+  accumulate unnp_trx_entry_mci init_unno
+
+  (*    
+  let rec dfs : unroll_n_naive_dfs_param -> unroll_n_naive_output -> unroll_n_naive_output
+  = fun {unndp_mci;} {unno_visited; unno_p; unno_q;} -> begin
+    
+  end in (* function dfs end *)
+  let init_dfs_param = {unndp_mci=unnp_trx_entry_mci} in
+  let init_acc = {unno_visited=PSet.empty; unno_p=PMap.empty; unno_q=PMap.empty;} in
+  dfs init_dfs_param init_acc
+  *)
+
+end (* function unroll_n_naive end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Utility - Route to Json - Only MCI                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module R2Jomci = struct
+  type js = Yojson.Safe.t
+  open Jc
+  let cv_mci = TzCvt.T2J.cv_mich_cut_info
+  let rec cv_route : route -> js
+  = (function
+    | R_list rl -> `List (List.map cv_route rl)
+    | R_state ss -> `Tuple [cv_mci ss.ss_entry_mci; cv_mci ss.ss_block_mci]
+    | R_loop mci -> `Variant (lur_r_loop, Some (cv_mci mci))
+  ) (* function cv_route end *)
+  let cv_route_q : route_q -> js
+  = fun {rq_r; rq_mci; rq_qc;} -> begin
+    `Assoc [
+      lur_jc_rq_r, cv_route rq_r;
+      lur_jc_rq_mci, cv_mci rq_mci;
+      lur_jc_rq_qc, TzCvt.S2J.cv_qc rq_qc;
+    ]
+  end (* function cv_route_q end *)
+end (* module R2J end *)
 
 
 (*
