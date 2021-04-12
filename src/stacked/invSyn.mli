@@ -100,8 +100,10 @@ val classify_comp_with_type : component set -> (Tz.mich_t, component set) map
 (*****************************************************************************)
 (*****************************************************************************)
 
-(* val mutez_equal : component set -> Tz.mich_f set
-val all_equal : component set -> Tz.mich_f set *)
+type invariant = vstack -> Tz.mich_f
+
+val mutez_equal : component set -> invariant set
+val all_equal : component set -> invariant set
 
 
 (*****************************************************************************)

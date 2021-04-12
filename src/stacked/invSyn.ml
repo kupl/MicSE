@@ -319,6 +319,13 @@ let fold_precond : vstack -> component list -> Tz.mich_f
   (* fold_precond function end *)
 end
 
+let get_value : vstack -> component -> Tz.mich_v Tz.cc
+= fun vl cp -> begin
+  (* get_value function start *)
+  (cp.cp_body vl).cpb_value
+  (* get_value function end *)
+end
+
 let filter_comp : (Tz.mich_t -> bool) -> component set -> component set
 = fun filter_f cset -> begin
   (* filter_comp function start *)
@@ -347,30 +354,41 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-(* let mutez_equal : component set -> Tz.mich_f set
+type invariant = vstack -> Tz.mich_f
+
+let mutez_equal : component set -> invariant set
 = let open Tz in
-  fun compset -> begin
+  fun cset -> begin
   (* mutez_equal function start *)
+  let cb : (component * component) set =
+    cset
+    |> filter_comp (fun t -> t = MT_mutez)
+    |> combination_self_two_diff in
   PSet.map
-    (combination_self_two_diff compset)
-    ~f:(fun (c1, c2) -> MF_imply ((fold_precond [c1; c2]), MF_eq (c1.body, c2.body)))
+    cb
+    ~f:(fun (c1, c2) -> (
+          (fun vl -> (MF_imply (
+                        (fold_precond vl [c1; c2]), 
+                        MF_eq ((get_value vl c1), (get_value vl c2)))))))
   (* mutez_equal function end *)
 end
 
-let all_equal : component set -> Tz.mich_f set
+let all_equal : component set -> invariant set
 = let open Tz in
-  fun compset -> begin
+  fun cset -> begin
   (* all_equal function start *)
   let cb : (component * component) set =
-    compset
+    cset
     |> combination_self_two_diff
-    |> PSet.filter ~f:(fun (c1, c2) -> c1.typ = c2.typ) in
+    |> PSet.filter ~f:(fun (c1, c2) -> c1.cp_typ = c2.cp_typ) in
   PSet.map
     cb
-    ~f:(fun (c1, c2) -> MF_imply ((fold_precond [c1; c2]), MF_eq (c1.body, c2.body)))
+    ~f:(fun (c1, c2) -> (
+          (fun vl -> (MF_imply (
+                        (fold_precond vl [c1; c2]), 
+                        MF_eq ((get_value vl c1), (get_value vl c2)))))))
   (* all_equal function end *)
-end *)
-
+end
 
 (*****************************************************************************)
 (*****************************************************************************)
