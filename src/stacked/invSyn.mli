@@ -60,15 +60,36 @@ val combination_self_two_diff_rf : 'a set -> ('a * 'a) set
 (*****************************************************************************)
 (*****************************************************************************)
 
-type component = {
-  precond_lst : Tz.mich_f list;
-  typ         : Tz.mich_t Tz.cc;
-  body        : Tz.mich_v Tz.cc; 
+type vstack = Tz.mich_v Tz.cc list (* syntax sugar *)
+type tstack = Tz.mich_t Tz.cc list (* syntax sugar *)
+
+type comp_body = {
+  cpb_precond_lst : Tz.mich_f list;   (* precondition list of component *)
+  cpb_value       : Tz.mich_v Tz.cc;  (* value expression of component *)
 }
 
-val fold_precond : component list -> Tz.mich_f
-val comp_of_val : ?precond_list:Tz.mich_f list -> Tz.mich_v Tz.cc -> component
-val collect_components : ?precond_list:Tz.mich_f list -> Tz.mich_v Tz.cc -> component set
+  (****************************************************************************
+    The type component is information from each component of the symbolic stack.
+    Each component is extracted from the given symbolic stack.
+    The type of component is statically baked from the type stack.
+    type component = type * (sym-stack -> component-body)
+  ****************************************************************************)
+type component = {
+  cp_typ  : Tz.mich_t Tz.cc;      (* type of component *)
+  cp_loc  : int;                  (* location of component in stack *)
+  cp_body : vstack -> comp_body;  (* component body which made from stack *)
+}
+
+  (****************************************************************************
+    The type comp_map is a pre-baked component map.
+    Function bake_comp_map makes a set of components from the type stack of each MCI.
+    The component set which is the value of comp_map is used to make a set of new invariants by recipe.
+    type comp_map = MCI |-> component set
+  ****************************************************************************)
+type comp_map = (Tz.mich_cut_info, component set) map
+
+val bake_comp_map : Se.state_set -> comp_map
+val fold_precond : vstack -> component list -> Tz.mich_f
 val filter_comp : (Tz.mich_t -> bool) -> component set -> component set
 val classify_comp_with_type : component set -> (Tz.mich_t, component set) map
 
@@ -79,8 +100,8 @@ val classify_comp_with_type : component set -> (Tz.mich_t, component set) map
 (*****************************************************************************)
 (*****************************************************************************)
 
-val mutez_equal : component set -> Tz.mich_f set
-val all_equal : component set -> Tz.mich_f set
+(* val mutez_equal : component set -> Tz.mich_f set
+val all_equal : component set -> Tz.mich_f set *)
 
 
 (*****************************************************************************)
@@ -88,6 +109,8 @@ val all_equal : component set -> Tz.mich_f set
 (* Synthesizer                                                               *)
 (*****************************************************************************)
 (*****************************************************************************)
+
+val collect_set : ('a set) list -> 'a set
 
 val refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap set
 val refine_l : Se.invmap -> ingredients -> Se.invmap set

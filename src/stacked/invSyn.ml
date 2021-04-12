@@ -107,78 +107,222 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-type component = {
-  precond_lst : Tz.mich_f list;
-  typ         : Tz.mich_t Tz.cc;
-  body        : Tz.mich_v Tz.cc; 
+type vstack = Tz.mich_v Tz.cc list (* syntax sugar *)
+type tstack = Tz.mich_t Tz.cc list (* syntax sugar *)
+
+type comp_body = {
+  cpb_precond_lst : Tz.mich_f list;   (* precondition list of component *)
+  cpb_value       : Tz.mich_v Tz.cc;  (* value expression of component *)
 }
 
-let fold_precond : component list -> Tz.mich_f
+  (****************************************************************************
+    The type component is information from each component of the symbolic stack.
+    Each component is extracted from the given symbolic stack.
+    The type of component is statically baked from the type stack.
+    type component = type * (sym-stack -> component-body)
+  ****************************************************************************)
+type component = {
+  cp_typ  : Tz.mich_t Tz.cc;      (* type of component *)
+  cp_loc  : int;                  (* location of component in stack *)
+  cp_body : vstack -> comp_body;  (* component body which made from stack *)
+}
+
+  (****************************************************************************
+    The type comp_map is a pre-baked component map.
+    Function bake_comp_map makes a set of components from the type stack of each MCI.
+    The component set which is the value of comp_map is used to make a set of new invariants by recipe.
+    type comp_map = MCI |-> component set
+  ****************************************************************************)
+type comp_map = (Tz.mich_cut_info, component set) map
+
+let bake_comp_map : Se.state_set -> comp_map
 = let module CList = Core.List in
-  fun comp_lst -> begin
-  (* fold_precond function start *)
-  Tz.MF_and (comp_lst
-            |> CList.map ~f:(fun c -> c.precond_lst)
-            |> CList.join)
-  (* fold_precond function end *)
-end 
-
-let comp_of_val : ?precond_list:Tz.mich_f list -> Tz.mich_v Tz.cc -> component
-= fun ?(precond_list=[]) v -> begin
-  (* comp_of_val function start *)
-  { precond_lst=precond_list; typ=(Tz.typ_of_val v); body=v; }
-  (* comp_of_val function end *)
-end
-
-let collect_components : ?precond_list:Tz.mich_f list -> Tz.mich_v Tz.cc -> component set
-= (* inner function of component collecting *)
-  let rec collect_components_i : component -> component set -> component set
+  let get_type_stack : vstack set -> tstack option
+  = let extract_type : vstack -> tstack
+    = fun vs -> begin
+      (* extract_type function start *)
+      CList.fold_right
+        vs
+        ~f:(fun v ts -> (v |> Tz.typ_of_val)::ts)
+        ~init:[]
+      (* extract_type function end *)
+    end in
+    let tstack_equal : tstack -> tstack -> bool
+    = fun ts1 ts2 -> begin
+      (* tstack_equal function start *)
+      CList.fold2
+        ts1
+        ts2
+        ~init:true
+        ~f:(fun c t1 t2 -> if t1.cc_v <> t2.cc_v then false else c)
+      |> function
+          | Ok cc -> cc
+          | Unequal_lengths -> false
+      (* tstack_equal function end *)
+    end in
+    fun vsset -> begin
+    (* get_type_stack function start *)
+    let vs : vstack = 
+      PSet.choose vsset
+      |> function 
+          | Some ss -> ss
+          | None -> Error "bake_comp_map : get_type_stack : vs" |> Stdlib.raise in
+    let ts : tstack = vs |> extract_type in
+    PSet.fold
+      (PSet.remove vsset vs)
+      ~init:(Some ts)
+      ~f:(fun ts_opt vs -> (
+            if Option.is_none ts_opt then None
+            else 
+              let ts = Option.get ts_opt in
+              if tstack_equal ts (vs |> extract_type) then ts_opt
+              else None))
+    (* get_type_stack function end *)
+  end in
+  let create_comp : Tz.mich_t Tz.cc -> int -> component
+  = fun cur_typ cur_loc -> begin
+    (* create_comp function start *)
+    let cur_body : Tz.mich_v Tz.cc list -> comp_body =
+      (fun vl -> (
+        let value : Tz.mich_v Tz.cc =
+          CList.nth vl cur_loc 
+          |> function Some vv -> vv | None -> (Error "bake_comp_map : create_comp : cur_body" |> Stdlib.raise) in 
+        { cpb_precond_lst=[]; cpb_value=value; })) in
+    { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=cur_body; }
+    (* create_comp function end *)
+  end in
+  let rec collect_components : component -> component set -> component set
   = let open Tz in
     fun cur_comp acc -> begin
-    (* collect_components_i function start *)
-    let { precond_lst=cur_prec_lst; typ=cur_typ; body=cur_body; } = cur_comp in
+    (* collect_components function start *)
+    let { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=cur_body; } : component = cur_comp in
     match cur_typ.cc_v with
     | MT_option t1cc -> begin
-      let precond_none = (MF_is_none cur_body) :: cur_prec_lst in
-      let precond_some = (MF_not (MF_is_none cur_body)) :: cur_prec_lst in
-      let body_unlifted = gen_dummy_cc (MV_unlift_option cur_body) in
-      let comp_none = { precond_lst=precond_none; typ=cur_typ; body=(gen_dummy_cc (MV_none t1cc)); } in
-      let comp_some = { precond_lst=precond_some; typ=cur_typ; body=(gen_dummy_cc (MV_some body_unlifted)); } in
-      let comp_some_unlifted = { precond_lst=precond_some; typ=cur_typ; body=body_unlifted; } in
-      collect_components_i comp_some_unlifted (PSet.add (PSet.add acc comp_none) comp_some)
+      let comp_none_body : mich_v cc list -> comp_body =
+        (fun vl -> (
+          let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
+          let precond : mich_f list = (MF_is_none cur_val) :: cur_prec_lst in
+          let value : mich_v cc = gen_dummy_cc (MV_none t1cc) in
+          { cpb_precond_lst=precond; cpb_value=value; })) in
+      let comp_some_body : mich_v cc list -> comp_body =
+        (fun vl -> (
+          let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
+          let precond : mich_f list = (MF_not (MF_is_none cur_val)) :: cur_prec_lst in
+          let value : mich_v cc = gen_dummy_cc (MV_some (gen_dummy_cc (MV_unlift_option cur_val))) in
+          { cpb_precond_lst=precond; cpb_value=value; })) in
+      let comp_some_unlifted_body : mich_v cc list -> comp_body =
+        (fun vl -> (
+          let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
+          let precond : mich_f list = (MF_not (MF_is_none cur_val)) :: cur_prec_lst in
+          let value : mich_v cc = gen_dummy_cc (MV_unlift_option cur_val) in
+          { cpb_precond_lst=precond; cpb_value=value; })) in
+      let comp_none : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_none_body; } in
+      let comp_some : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_some_body; } in
+      let comp_some_unlifted : component = { cp_typ=t1cc; cp_loc=cur_loc; cp_body=comp_some_unlifted_body; } in
+      collect_components comp_some_unlifted (PSet.add (PSet.add acc comp_none) comp_some)
       end
     | MT_pair (t1cc, t2cc) -> begin
-      let comp_pair = cur_comp in
-      let comp_fst = { precond_lst=cur_prec_lst; typ=t1cc; body=(gen_dummy_cc (MV_car cur_body)); } in
-      let comp_snd = { precond_lst=cur_prec_lst; typ=t2cc; body=(gen_dummy_cc (MV_cdr cur_body)); } in
-      let acc_fst = collect_components_i comp_fst (PSet.add acc comp_pair) in
-      collect_components_i comp_snd acc_fst
+      let comp_fst_body : mich_v cc list -> comp_body =
+        (fun vl -> (
+          let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
+          let value : mich_v cc = gen_dummy_cc (MV_car cur_val) in
+          { cpb_precond_lst=cur_prec_lst; cpb_value=value; })) in
+      let comp_snd_body : mich_v cc list -> comp_body =
+        (fun vl -> (
+          let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
+          let value : mich_v cc = gen_dummy_cc (MV_cdr cur_val) in
+          { cpb_precond_lst=cur_prec_lst; cpb_value=value; })) in
+      let comp_pair : component = cur_comp in
+      let comp_fst : component = { cp_typ=t1cc; cp_loc=cur_loc; cp_body=comp_fst_body; } in
+      let comp_snd : component = { cp_typ=t2cc; cp_loc=cur_loc; cp_body=comp_snd_body; } in
+      let acc_fst : component set = collect_components comp_fst (PSet.add acc comp_pair) in
+      collect_components comp_snd acc_fst
       end
     | MT_or (t1cc, t2cc) -> begin
-      let precond_left = (MF_is_left cur_body) :: cur_prec_lst in
-      let precond_right = (MF_not (MF_is_left cur_body)) :: cur_prec_lst in
-      let body_left_unlifted = gen_dummy_cc (MV_unlift_left cur_body) in
-      let body_right_unlifted = gen_dummy_cc (MV_unlift_right cur_body) in
-      let comp_left = { precond_lst=precond_left; typ=cur_typ; body=(gen_dummy_cc (MV_left (cur_typ, body_left_unlifted))); } in
-      let comp_right = { precond_lst=precond_right; typ=cur_typ; body=(gen_dummy_cc (MV_right (cur_typ, body_right_unlifted))); } in
-      let comp_left_unlifted = { precond_lst=precond_left; typ=t1cc; body=body_left_unlifted; } in
-      let comp_right_unlifted = { precond_lst=precond_right; typ=t2cc; body=body_right_unlifted; } in
-      let acc_left = collect_components_i comp_left_unlifted (PSet.add (PSet.add acc comp_left) comp_right) in
-      collect_components_i comp_right_unlifted acc_left
+      let comp_left_body : mich_v cc list -> comp_body =
+        (fun vl -> (
+          let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
+          let precond : mich_f list = (MF_is_left cur_val) :: cur_prec_lst in
+          let value : mich_v cc = gen_dummy_cc (MV_left (cur_typ, (gen_dummy_cc (MV_unlift_left cur_val)))) in
+          { cpb_precond_lst=precond; cpb_value=value; })) in
+      let comp_right_body : mich_v cc list -> comp_body =
+        (fun vl -> (
+          let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
+          let precond : mich_f list = (MF_not (MF_is_left cur_val)) :: cur_prec_lst in
+          let value : mich_v cc = gen_dummy_cc (MV_right (cur_typ, (gen_dummy_cc (MV_unlift_right cur_val)))) in
+          { cpb_precond_lst=precond; cpb_value=value; })) in
+      let comp_left_unlifted_body : mich_v cc list -> comp_body =
+        (fun vl -> (
+          let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
+          let precond : mich_f list = (MF_is_left cur_val) :: cur_prec_lst in
+          let value : mich_v cc = gen_dummy_cc (MV_unlift_left cur_val) in
+          { cpb_precond_lst=precond; cpb_value=value; })) in
+      let comp_right_unlifted_body : mich_v cc list -> comp_body =
+        (fun vl -> (
+          let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
+          let precond : mich_f list = (MF_not (MF_is_left cur_val)) :: cur_prec_lst in
+          let value : mich_v cc = gen_dummy_cc (MV_unlift_right cur_val) in
+          { cpb_precond_lst=precond; cpb_value=value; })) in
+      let comp_left : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_left_body; } in
+      let comp_right : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_right_body; } in
+      let comp_left_unlifted : component = { cp_typ=t1cc; cp_loc=cur_loc; cp_body=comp_left_unlifted_body; } in
+      let comp_right_unlifted : component = { cp_typ=t2cc; cp_loc=cur_loc; cp_body=comp_right_unlifted_body; } in
+      let acc_left = collect_components comp_left_unlifted (PSet.add (PSet.add acc comp_left) comp_right) in
+      collect_components comp_right_unlifted acc_left
       end
     | _ -> PSet.add acc cur_comp
-    (* collect_components_i function end *)
+    (* collect_components function end *)
   end in
-  fun ?(precond_list=[]) v_info -> begin
-  (* collect_components function start *)
-  collect_components_i (comp_of_val v_info ~precond_list) PSet.empty
-  (* collect_components function end *)
+  fun sset -> begin
+  (* bake_comp_map function start *)
+  let mci_vstack_set : (Tz.mich_cut_info, vstack set) map =
+    PSet.fold
+      sset.blocked
+      ~init:PMap.empty
+      ~f:(fun acc s -> (
+            PMap.update
+              acc
+              s.ss_entry_mci
+              ~f:(function
+                  | None -> PSet.singleton s.ss_entry_symstack
+                  | Some ss -> PSet.add ss s.ss_entry_symstack))) in
+  let mci_tstack : (Tz.mich_cut_info, tstack) map =
+    PMap.map
+      mci_vstack_set
+      ~f:(fun vsset -> (
+            vsset
+            |> get_type_stack
+            |> function
+                | Some ts -> ts
+                | None -> Error "bake_comp_map : mci_tstack" |> Stdlib.raise)) in
+  PMap.map
+    mci_tstack
+    ~f:(fun ts -> (
+          CList.foldi
+            ts
+            ~init:PSet.empty
+            ~f:(fun i cset t -> (
+                  let base_comp : component = create_comp t i in
+                  collect_components base_comp cset))))
+  (* bake_comp_map function end *)
+end
+
+let fold_precond : vstack -> component list -> Tz.mich_f
+= let module CList = Core.List in
+  fun sst comp_lst -> begin
+  (* fold_precond function start *)
+  Tz.MF_and (comp_lst
+            |> CList.map ~f:(fun c -> 
+                              let cb = c.cp_body sst in
+                              cb.cpb_precond_lst)
+            |> CList.join)
+  (* fold_precond function end *)
 end
 
 let filter_comp : (Tz.mich_t -> bool) -> component set -> component set
 = fun filter_f cset -> begin
   (* filter_comp function start *)
-  PSet.filter cset ~f:(fun c -> filter_f c.typ.cc_v)
+  PSet.filter cset ~f:(fun c -> filter_f c.cp_typ.cc_v)
   (* filter_comp function end *)
 end
 
@@ -191,7 +335,7 @@ let classify_comp_with_type : component set -> (Tz.mich_t, component set) map
     ~f:(fun acc c -> (
           PMap.update
             acc
-            c.typ.cc_v
+            c.cp_typ.cc_v
             ~f:(function None -> PSet.singleton c | Some cset -> PSet.add cset c)))
   (* classify_comp_with_type function end *)
 end
@@ -203,7 +347,7 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-let mutez_equal : component set -> Tz.mich_f set
+(* let mutez_equal : component set -> Tz.mich_f set
 = let open Tz in
   fun compset -> begin
   (* mutez_equal function start *)
@@ -225,7 +369,7 @@ let all_equal : component set -> Tz.mich_f set
     cb
     ~f:(fun (c1, c2) -> MF_imply ((fold_precond [c1; c2]), MF_eq (c1.body, c2.body)))
   (* all_equal function end *)
-end
+end *)
 
 
 (*****************************************************************************)
@@ -249,7 +393,9 @@ let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredient
 = let open Tz in
   fun (cur_inv, istrg_opt) igdt -> begin
   (* refine_t function start *)
-  (* 0. extract component of storage variable *)
+  let _ = cur_inv, istrg_opt, igdt in
+  PSet.empty (* TODO *)
+  (*(* 0. extract component of storage variable *)
   let vstrg : Tz.mich_v Tz.cc = 
     PMap.find
       igdt.igdt_sym_state.ss_dynchain.bc_storage
@@ -271,7 +417,7 @@ let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredient
         ~f:(fun ~key ~data -> 
               if key.mci_cutcat = MCC_trx_entry || key.mci_cutcat = MCC_trx_exit
               then (function vl -> MF_and [fmla; (data vl)])
-              else data)))
+              else data))) *)
   (* refine_t function end *)
 end
 
