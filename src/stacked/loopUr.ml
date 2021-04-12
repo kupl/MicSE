@@ -65,6 +65,10 @@ let bake_routes : bake_routes_param -> bake_routes_output
   and pmap_q : (mich_cut_info, (sym_state * Se.query_category) PSet.t) PMap.t =
     pmap_of_pset brp_sset.queries ~key_f:(fun (ss,_) -> ss.ss_entry_mci) ~data_f:(fun x -> x)
   in
+  (* If you're careful smart reader, you might notice that the "dfs" function does not perform 
+      any route accumulation using its parameter. Just guess that the backtracking-accumulation
+      below will work well.
+  *)
   let rec dfs : bake_routes_dfs_param -> bake_routes_output -> bake_routes_output
   = fun brdp bro -> begin
     (* sugars *)
@@ -95,7 +99,7 @@ let bake_routes : bake_routes_param -> bake_routes_output
             if (ss.ss_block_mci = brdp_dest_mci)
             then (
               (* broacc_0 : if "ss" ends with "brdp_dest_mci", put "ss" and return *)
-              let rs = (R_state ss) in
+              let rs = (concat_route r_1 (R_state ss)) in
               {broacc with bro_r=(PMap.update broacc.bro_r brdp_cur_mci ~f:(function | None -> PSet.singleton rs | Some s -> PSet.add s rs))}
             )
             else (
