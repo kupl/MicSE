@@ -12,28 +12,8 @@ exception Error of string
 module PSet = Core.Set.Poly
 module PMap = Core.Map.Poly
 
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Types                                                                     *)
-(*****************************************************************************)
-(*****************************************************************************)
-
 type 'a set = 'a Tz.PSet.t
 type ('a, 'b) map = ('a, 'b) Tz.PMap.t
-
-type generate_param = 
-  (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set *
-  (* igi_cur_inv *)     Se.invmap *
-  (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
-  (* igi_collected *)   Se.invmap set
-
-type ingredients = {
-  igdt_query_category: Se.query_category;
-  igdt_model_opt: ProverLib.Smt.ZModel.t option;
-  igdt_vc: Tz.mich_f;
-  igdt_sym_state: Tz.sym_state;
-}
 
 
 (*****************************************************************************)
@@ -111,6 +91,21 @@ val all_equal : component set -> invariant set
 (* Synthesizer                                                               *)
 (*****************************************************************************)
 (*****************************************************************************)
+
+type generate_param = 
+  (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set *
+  (* igi_cur_inv *)     Se.invmap *
+  (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
+  (* igi_collected *)   Se.invmap set *
+  (* igi_comp_map *)    comp_map
+
+type ingredients = {
+  igdt_query_category : Se.query_category;
+  igdt_model_opt      : ProverLib.Smt.ZModel.t option;
+  igdt_vc             : Tz.mich_f;
+  igdt_sym_state      : Tz.sym_state;
+  igdt_comp_set       : component set
+}
 
 val collect_set : ('a set) list -> 'a set
 

@@ -12,28 +12,8 @@ exception Error of string
 module PSet = Core.Set.Poly
 module PMap = Core.Map.Poly
 
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Types                                                                     *)
-(*****************************************************************************)
-(*****************************************************************************)
-
 type 'a set = 'a Tz.PSet.t
 type ('a, 'b) map = ('a, 'b) Tz.PMap.t
-
-type generate_param = 
-  (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set *
-  (* igi_cur_inv *)     Se.invmap *
-  (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
-  (* igi_collected *)   Se.invmap set
-
-type ingredients = {
-  igdt_query_category: Se.query_category;
-  igdt_model_opt: ProverLib.Smt.ZModel.t option;
-  igdt_vc: Tz.mich_f;
-  igdt_sym_state: Tz.sym_state;
-}
 
 
 (*****************************************************************************)
@@ -396,6 +376,21 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
+type generate_param = 
+  (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set *
+  (* igi_cur_inv *)     Se.invmap *
+  (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
+  (* igi_collected *)   Se.invmap set *
+  (* igi_comp_map *)    comp_map
+
+type ingredients = {
+  igdt_query_category : Se.query_category;
+  igdt_model_opt      : ProverLib.Smt.ZModel.t option;
+  igdt_vc             : Tz.mich_f;
+  igdt_sym_state      : Tz.sym_state;
+  igdt_comp_set       : component set
+}
+
 let collect_set : ('a set) list -> 'a set
 = let module CList = Core.List in
   fun slist -> begin
@@ -450,7 +445,7 @@ end
 
 let generate : generate_param -> Se.invmap set
 = let open Tz in
-  fun (igi_failed_set, igi_cur_inv, igi_istrg_opt, igi_collected) -> begin
+  fun (igi_failed_set, igi_cur_inv, igi_istrg_opt, igi_collected, igi_comp_map) -> begin
   (* generate function start *)
   (* 1. collect refine targets *)
   let refine_targets : (Tz.mich_cut_info, (ingredients set)) map =
@@ -463,11 +458,15 @@ let generate : generate_param -> Se.invmap set
             PMap.find acc fs.ss_entry_mci
             |> function Some ss -> ((PMap.remove acc fs.ss_entry_mci), ss) | None -> (acc, PSet.empty) in
           (* 1-2. make new ingredients *)
+          let cset : component set =
+            PMap.find igi_comp_map fs.ss_entry_mci
+            |> function Some ccss -> ccss | None -> Error "generate : refine_targets : cset" |> Stdlib.raise in
           let new_igdt : ingredients =
             { igdt_query_category=qctg;
               igdt_model_opt=mopt;
               igdt_vc=vc;
-              igdt_sym_state=fs} in
+              igdt_sym_state=fs;
+              igdt_comp_set=cset} in
           (* 1-3. accumulate new ingredients *)
           let new_acc_igdt_set : ingredients set =
             PSet.add acc_igdt_set new_igdt in

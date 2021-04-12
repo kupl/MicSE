@@ -365,6 +365,7 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
   let inv_init : Se.invmap = sset.Se.blocked |> Se.true_invmap_of_blocked_sset in
   let w_init : worklist = inv_init |> Tz.PSet.singleton in
   let res_init : ret = { solved_map=Tz.PMap.empty; failed_set=Tz.PSet.empty; untouched_set=sset.queries } in
+  let comp_map : InvSyn.comp_map = InvSyn.bake_comp_map sset in
   let timer : Utils.Timer.t ref = Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget) in
   let rec prove_loop : (worklist * Se.invmap set) -> ret -> ret = fun (w, collected) prev_res -> begin
     if Utils.Timer.is_timeout timer || Tz.PSet.is_empty w then prev_res else
@@ -380,7 +381,7 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
       let res : ret = union_result ~prev_res ~cur_res in
       if Tz.PSet.length res.failed_set = 0 && Tz.PSet.length res.untouched_set = 0 then res
       else
-        let w'' : worklist = InvSyn.generate (res.failed_set, inv_cand, init_stg_ss_opt, collected') in
+        let w'' : worklist = InvSyn.generate (res.failed_set, inv_cand, init_stg_ss_opt, collected', comp_map) in
         let w''' : worklist = Tz.PSet.union w' w'' in
         prove_loop (w''', collected') res
     else prove_loop (w', collected') prev_res
