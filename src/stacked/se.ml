@@ -913,7 +913,7 @@ let run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) 
     ss_optt=transfertoken_op;
     ss_entry_mci=init_mci;
     ss_entry_symstack=init_symstack;
-    ss_block_mci=init_mci;
+    ss_block_mci=end_mci; (* for convenience to get the information of the code's end, set this to "end_mci" *)
     ss_symstack=init_symstack;
     ss_constraints=[updated_balance_no_overflow];
   } in

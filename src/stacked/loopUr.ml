@@ -68,10 +68,17 @@ let bake_routes : bake_routes_param -> bake_routes_output
   let rec dfs : bake_routes_dfs_param -> bake_routes_output -> bake_routes_output
   = fun brdp bro -> begin
     (* sugars *)
-    let {brdp_is_init; brdp_cur_mci; brdp_dest_mci} = brdp in
+    let {brdp_is_init=_; brdp_cur_mci; brdp_dest_mci} = brdp in
     let {bro_visited; bro_r=_; bro_q=_} = bro in
-    (* If already visited or (not "is_init" and (cur_mci = dest_mci), escape. *)
-    if (PSet.mem bro_visited brdp_cur_mci || ((brdp_cur_mci = brdp_dest_mci) && Stdlib.not brdp_is_init)) then bro else
+    (* If already visited, escape. *)
+    if (PSet.mem bro_visited brdp_cur_mci) then bro else
+    (* 
+      (* Deprecated Code: 
+          The condition (not "is_init" and (cur_mci = dest_mci)) will not be occured, since newly introduced "broacc_0" in "bro_2" will cover that case.
+      *)
+      (* If already visited or (not "is_init" and (cur_mci = dest_mci), escape. *)
+      if (PSet.mem bro_visited brdp_cur_mci || ((brdp_cur_mci = brdp_dest_mci) && Stdlib.not brdp_is_init)) then bro else
+    *)
     (* (bro_1, r_1) : If cur_mci is loop-nonbody, then dfs loop-body first *)
     let (bro_1, r_1) = 
       if is_ln_mcc brdp_cur_mci.mci_cutcat
@@ -85,17 +92,25 @@ let bake_routes : bake_routes_param -> bake_routes_output
       let bset = pmap_find_dft pmap_bl brdp_cur_mci ~default:(PSet.empty) in 
       PSet.fold bset ~init:(bro_1)
         ~f:(fun broacc ss ->
-            (* broacc_1 : result of dfs recursive call *)
-            let rh = concat_route r_1 (R_state ss) in
-            let broacc_1 = dfs (brdp_cons false ss.ss_block_mci brdp_dest_mci) broacc in
-            (* broacc_2 : add routes (to end) *)
-            let ss_r = pmap_find_exn broacc_1.bro_r ss.ss_block_mci ~debug:(Stdlib.__LOC__) |> PSet.map ~f:(fun ssrs -> concat_route rh ssrs) in
-            let broacc_2 = {broacc_1 with bro_r=(PMap.update broacc_1.bro_r brdp_cur_mci ~f:(function | None -> ss_r | Some s -> PSet.union ss_r s))} in
-            (* broacc_3 : add routes (to queries) *)
-            let ss_q = pmap_find_exn broacc_2.bro_q ss.ss_block_mci ~debug:(Stdlib.__LOC__) |> PSet.map ~f:(fun ssrqs -> {ssrqs with rq_r=(concat_route rh ssrqs.rq_r)}) in
-            let broacc_3 = {broacc_2 with bro_q=(PMap.update broacc_2.bro_q brdp_cur_mci ~f:(function | None -> ss_q | Some s -> PSet.union ss_q s))} in
-            (* return *)
-            broacc_3
+            if (ss.ss_block_mci = brdp_dest_mci)
+            then (
+              (* broacc_0 : if "ss" ends with "brdp_dest_mci", put "ss" and return *)
+              let rs = (R_state ss) in
+              {broacc with bro_r=(PMap.update broacc.bro_r brdp_cur_mci ~f:(function | None -> PSet.singleton rs | Some s -> PSet.add s rs))}
+            )
+            else (
+              (* broacc_1 : result of dfs recursive call *)
+              let rh = concat_route r_1 (R_state ss) in
+              let broacc_1 = dfs (brdp_cons false ss.ss_block_mci brdp_dest_mci) broacc in
+              (* broacc_2 : add routes (to end) *)
+              let ss_r = pmap_find_exn broacc_1.bro_r ss.ss_block_mci ~debug:(Stdlib.__LOC__) |> PSet.map ~f:(fun ssrs -> concat_route rh ssrs) in
+              let broacc_2 = {broacc_1 with bro_r=(PMap.update broacc_1.bro_r brdp_cur_mci ~f:(function | None -> ss_r | Some s -> PSet.union ss_r s))} in
+              (* broacc_3 : add routes (to queries) *)
+              let ss_q = pmap_find_exn broacc_2.bro_q ss.ss_block_mci ~debug:(Stdlib.__LOC__) |> PSet.map ~f:(fun ssrqs -> {ssrqs with rq_r=(concat_route rh ssrqs.rq_r)}) in
+              let broacc_3 = {broacc_2 with bro_q=(PMap.update broacc_2.bro_q brdp_cur_mci ~f:(function | None -> ss_q | Some s -> PSet.union ss_q s))} in
+              (* return *)
+              broacc_3
+            )
         )
     in
     (* bro_3 : for every query-states start with cur_mci, concat r_1 to collected routes, and save the results at bro_2 *)
@@ -109,7 +124,7 @@ let bake_routes : bake_routes_param -> bake_routes_output
     (* internal function dfs return value *)
     bro_4
   end in (* internal function dfs end *)
-  let init_bro : bake_routes_output = {bro_visited = PSet.empty; bro_r = PMap.empty; bro_q = PMap.empty} in
+  let init_bro : bake_routes_output = {bro_visited = PSet.empty; bro_r = (*(PMap.singleton brp_trx_entry_mci (PSet.singleton (R_list [])))*) PMap.empty; bro_q = PMap.empty} in
   let init_brdp : bake_routes_dfs_param = brdp_cons true brp_trx_entry_mci brp_trx_exit_mci in
   dfs init_brdp init_bro
 end (* function bake_routes end *)
