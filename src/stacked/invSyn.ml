@@ -15,37 +15,60 @@ module PMap = Core.Map.Poly
 type 'a set = 'a Tz.PSet.t
 type ('a, 'b) map = ('a, 'b) Tz.PMap.t
 
+module TComparable = struct
+  exception Error of string
+
+  module T = struct
+    type t = Tz.mich_t Tz.cc
+    let compare : t -> t -> int
+    = fun x y -> Stdlib.compare (TzCvt.T2Nnocc.cv_mtcc x) (TzCvt.T2Nnocc.cv_mtcc y)
+    let sexp_of_t : t -> Core.Sexp.t
+    = TzCvt.T2CSnocc.cv_mtcc
+
+    let t_of_sexp : Core.Sexp.t -> t
+    = TzCvt.CS2Tnocc.cv_mtcc
+  end
+  include T
+  include Core.Comparable.Make(T)
+end
+
+module TMap = TComparable.Map
+
+type 'a tmap = 'a TMap.t
+
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Set Combination                                                           *)
+(* List Combination                                                          *)
 (*****************************************************************************)
 (*****************************************************************************)
 
 (* bind 1 {1; 2; 3} === {(1, 1); (1, 2); (1, 3)} *)
-let bind : 'a -> 'b set -> ('a * 'b) set
-= fun a bset -> begin
+let bind : 'a -> 'b list -> ('a * 'b) list
+= let module CList = Core.List in
+  fun a blst -> begin
   (* bind function start *)
-  PSet.fold
-    bset
-    ~init:PSet.empty
-    ~f:(fun acc b -> PSet.add acc (a, b))
+  CList.fold_left
+    blst
+    ~init:[]
+    ~f:(fun acc b -> (a, b)::acc)
   (* bind function end *)
 end
 
 (* combination {1; 2} {a; b} === {(1, a); (1, b); (2, a); (2, b)} *)
-let combination : 'a set -> 'b set -> ('a * 'b) set
-= fun aset bset -> begin
+let combination : 'a list -> 'b list -> ('a * 'b) list
+= let module CList = Core.List in
+  fun alst blst -> begin
   (* combination function start *)
-  PSet.fold
-    aset
-    ~init:PSet.empty
-    ~f:(fun acc a -> PSet.union acc (bind a bset))
+  CList.fold_left
+    alst
+    ~init:[]
+    ~f:(fun acc a -> (bind a blst)@acc)
   (* combination function end *)
 end
 
 (* combination_rfl {1; 2} === {(1, 1); (1, 2); (2, 2)} *)
-let combination_rfl : 'a set -> ('a * 'a) set
+let combination_rfl : 'a list -> ('a * 'a) list
 = fun s -> begin
   (* combination_rfl function start *)
   combination s s
@@ -53,30 +76,32 @@ let combination_rfl : 'a set -> ('a * 'a) set
 end
 
 (* combination_self_two_diff {1; 2; 3} === {(1, 2); (1, 3); (2, 3)} *)
-let combination_self_two_diff : 'a set -> ('a * 'a) set
-= fun s -> begin
+let combination_self_two_diff : 'a list -> ('a * 'a) list
+= let rec combination_self_two_diff_i : 'a list -> ('a * 'a) list
+  = fun lst -> begin
+    match lst with
+    | [] -> []
+    | hd::tl -> begin
+      let comb : ('a * 'a) list = bind hd tl in
+      comb@(combination_self_two_diff_i tl)
+      end
+  end in
+  fun lst -> begin
   (* combination_self_two_diff function start *)
-  let (comb, _) : ('a * 'a) set * 'a set =
-    PSet.fold
-      s
-      ~init:(PSet.empty, s)
-      ~f:(fun (acc_comb, rs) x -> (
-        let rs' : 'a set = PSet.remove rs x in
-        let comb' : ('a * 'a) set = bind x rs' in
-        ((PSet.union acc_comb comb'), rs'))) in
-  comb
+  combination_self_two_diff_i lst
   (* combination_self_two_diff function end *)
 end
 
 (* combination_self_two_diff_rf {1; 2; 3} === {(1, 2); (1, 3); (2, 1); (2, 3); (3, 1); (3, 2)} *)
-let combination_self_two_diff_rf : 'a set -> ('a * 'a) set
-= fun s -> begin
+let combination_self_two_diff_rf : 'a list -> ('a * 'a) list
+= let module CList = Core.List in
+  fun lst -> begin
   (* combination_self_two_diff_rf function start *)
-  let comb = combination_self_two_diff s in
-  PSet.fold
+  let comb = combination_self_two_diff lst in
+  CList.fold_left
     comb
     ~init:comb
-    ~f:(fun acc (x, y) -> PSet.add acc (y, x))
+    ~f:(fun acc (x, y) -> (y, x)::acc)
   (* combination_self_two_diff_rf function end *)
 end
 
@@ -110,10 +135,10 @@ type component = {
   (****************************************************************************
     The type comp_map is a pre-baked component map.
     Function bake_comp_map makes a set of components from the type stack of each MCI.
-    The component set which is the value of comp_map is used to make a set of new invariants by recipe.
-    type comp_map = MCI |-> component set
+    The component list which is the value of comp_map is used to make a set of new invariants by recipe.
+    type comp_map = MCI |-> component list
   ****************************************************************************)
-type comp_map = (Tz.mich_cut_info, component set) map
+type comp_map = (Tz.mich_cut_info, component list tmap) map
 
 let bake_comp_map : Se.state_set -> comp_map
 = let module CList = Core.List in
@@ -171,7 +196,7 @@ let bake_comp_map : Se.state_set -> comp_map
     { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=cur_body; }
     (* create_comp function end *)
   end in
-  let rec collect_components : component -> component set -> component set
+  let rec collect_components : component -> component list tmap -> component list tmap
   = let open Tz in
     fun cur_comp acc -> begin
     (* collect_components function start *)
@@ -199,7 +224,12 @@ let bake_comp_map : Se.state_set -> comp_map
       let comp_none : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_none_body; } in
       let comp_some : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_some_body; } in
       let comp_some_unlifted : component = { cp_typ=t1cc; cp_loc=cur_loc; cp_body=comp_some_unlifted_body; } in
-      collect_components comp_some_unlifted (PSet.add (PSet.add acc comp_none) comp_some)
+      let acc' : component list tmap = 
+        TMap.update
+          acc
+          cur_typ
+          ~f:(function None -> [comp_none; comp_some;] | Some cc -> comp_none::comp_some::cc) in
+      collect_components comp_some_unlifted acc'
       end
     | MT_pair (t1cc, t2cc) -> begin
       let comp_fst_body : mich_v cc list -> comp_body =
@@ -215,7 +245,12 @@ let bake_comp_map : Se.state_set -> comp_map
       let comp_pair : component = cur_comp in
       let comp_fst : component = { cp_typ=t1cc; cp_loc=cur_loc; cp_body=comp_fst_body; } in
       let comp_snd : component = { cp_typ=t2cc; cp_loc=cur_loc; cp_body=comp_snd_body; } in
-      let acc_fst : component set = collect_components comp_fst (PSet.add acc comp_pair) in
+      let acc' : component list tmap =
+        TMap.update
+          acc
+          cur_typ
+          ~f:(function None -> [comp_pair;] | Some cc -> comp_pair::cc) in
+      let acc_fst : component list tmap = collect_components comp_fst acc' in
       collect_components comp_snd acc_fst
       end
     | MT_or (t1cc, t2cc) -> begin
@@ -247,10 +282,15 @@ let bake_comp_map : Se.state_set -> comp_map
       let comp_right : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_right_body; } in
       let comp_left_unlifted : component = { cp_typ=t1cc; cp_loc=cur_loc; cp_body=comp_left_unlifted_body; } in
       let comp_right_unlifted : component = { cp_typ=t2cc; cp_loc=cur_loc; cp_body=comp_right_unlifted_body; } in
-      let acc_left = collect_components comp_left_unlifted (PSet.add (PSet.add acc comp_left) comp_right) in
+      let acc' : component list tmap =
+        TMap.update
+          acc
+          cur_typ
+          ~f:(function None -> [comp_left; comp_right;] | Some cc -> comp_left::comp_right::cc) in
+      let acc_left = collect_components comp_left_unlifted acc' in
       collect_components comp_right_unlifted acc_left
       end
-    | _ -> PSet.add acc cur_comp
+    | _ -> TMap.update acc cur_typ ~f:(function None -> [cur_comp;] | Some cc -> cur_comp::cc)
     (* collect_components function end *)
   end in
   fun sset -> begin
@@ -280,10 +320,10 @@ let bake_comp_map : Se.state_set -> comp_map
     ~f:(fun ts -> (
           CList.foldi
             ts
-            ~init:PSet.empty
-            ~f:(fun i cset t -> (
+            ~init:TMap.empty
+            ~f:(fun i ctmap t -> (
                   let base_comp : component = create_comp t i in
-                  collect_components base_comp cset))))
+                  collect_components base_comp ctmap))))
   (* bake_comp_map function end *)
 end
 
@@ -306,27 +346,6 @@ let get_value : vstack -> component -> Tz.mich_v Tz.cc
   (* get_value function end *)
 end
 
-let filter_comp : (Tz.mich_t -> bool) -> component set -> component set
-= fun filter_f cset -> begin
-  (* filter_comp function start *)
-  PSet.filter cset ~f:(fun c -> filter_f c.cp_typ.cc_v)
-  (* filter_comp function end *)
-end
-
-let classify_comp_with_type : component set -> (Tz.mich_t, component set) map
-= fun cset -> begin
-  (* classify_comp_with_type function start *)
-  PSet.fold
-    cset
-    ~init:PMap.empty
-    ~f:(fun acc c -> (
-          PMap.update
-            acc
-            c.cp_typ.cc_v
-            ~f:(function None -> PSet.singleton c | Some cset -> PSet.add cset c)))
-  (* classify_comp_with_type function end *)
-end
-
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -336,15 +355,18 @@ end
 
 type invariant = vstack -> Tz.mich_f
 
-let mutez_equal : component set -> invariant set
+let mutez_equal : component list tmap -> invariant list
 = let open Tz in
-  fun cset -> begin
+  let module CList = Core.List in
+  fun ctmap -> begin
   (* mutez_equal function start *)
-  let cb : (component * component) set =
-    cset
-    |> filter_comp (fun t -> t = MT_mutez)
+  let cb : (component * component) list =
+    MT_mutez
+    |> gen_dummy_cc
+    |> TMap.find ctmap
+    |> (function Some clst -> clst | None -> [])
     |> combination_self_two_diff in
-  PSet.map
+  CList.map
     cb
     ~f:(fun (c1, c2) -> (
           (fun vl -> (MF_imply (
@@ -353,20 +375,25 @@ let mutez_equal : component set -> invariant set
   (* mutez_equal function end *)
 end
 
-let all_equal : component set -> invariant set
+let all_equal : component list tmap -> invariant list
 = let open Tz in
-  fun cset -> begin
+  let module CList = Core.List in
+  fun ctmap -> begin
   (* all_equal function start *)
-  let cb : (component * component) set =
-    cset
-    |> combination_self_two_diff
-    |> PSet.filter ~f:(fun (c1, c2) -> c1.cp_typ = c2.cp_typ) in
-  PSet.map
-    cb
-    ~f:(fun (c1, c2) -> (
-          (fun vl -> (MF_imply (
-                        (fold_precond vl [c1; c2]), 
-                        MF_eq ((get_value vl c1), (get_value vl c2)))))))
+  TMap.fold
+    ctmap
+    ~init:[]
+    ~f:(fun ~key ~data acc -> (
+          let _ = key in
+          let invs : invariant list =      
+            data
+            |> combination_self_two_diff
+            |> CList.map
+                ~f:(fun (c1, c2) -> 
+                      (fun vl -> (MF_imply (
+                                    (fold_precond vl [c1; c2]), 
+                                    MF_eq ((get_value vl c1), (get_value vl c2)))))) in
+          invs@acc))
   (* all_equal function end *)
 end
 
@@ -388,7 +415,7 @@ type ingredients = {
   igdt_model_opt      : ProverLib.Smt.ZModel.t option;
   igdt_vc             : Tz.mich_f;
   igdt_sym_state      : Tz.sym_state;
-  igdt_comp_set       : component set
+  igdt_comp_type_map  : component list tmap
 }
 
 let collect_set : ('a set) list -> 'a set
@@ -458,15 +485,15 @@ let generate : generate_param -> Se.invmap set
             PMap.find acc fs.ss_entry_mci
             |> function Some ss -> ((PMap.remove acc fs.ss_entry_mci), ss) | None -> (acc, PSet.empty) in
           (* 1-2. make new ingredients *)
-          let cset : component set =
+          let ctmap : component list tmap =
             PMap.find igi_comp_map fs.ss_entry_mci
-            |> function Some ccss -> ccss | None -> Error "generate : refine_targets : cset" |> Stdlib.raise in
+            |> function Some ccss -> ccss | None -> Error "generate : refine_targets : clst" |> Stdlib.raise in
           let new_igdt : ingredients =
             { igdt_query_category=qctg;
               igdt_model_opt=mopt;
               igdt_vc=vc;
               igdt_sym_state=fs;
-              igdt_comp_set=cset} in
+              igdt_comp_type_map=ctmap} in
           (* 1-3. accumulate new ingredients *)
           let new_acc_igdt_set : ingredients set =
             PSet.add acc_igdt_set new_igdt in

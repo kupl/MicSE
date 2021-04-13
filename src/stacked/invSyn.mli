@@ -15,23 +15,40 @@ module PMap = Core.Map.Poly
 type 'a set = 'a Tz.PSet.t
 type ('a, 'b) map = ('a, 'b) Tz.PMap.t
 
+module TComparable : sig
+  exception Error of string
+
+  module T : sig
+    type t = Tz.mich_t Tz.cc
+    val compare : t -> t -> int
+    val t_of_sexp : Core.Sexp.t -> t
+    val sexp_of_t : t -> Core.Sexp.t
+  end
+
+  include Core.Comparable
+end
+
+module TMap = TComparable.Map
+
+type 'a tmap = 'a TMap.t
+
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Set Combination                                                           *)
+(* List Combination                                                          *)
 (*****************************************************************************)
 (*****************************************************************************)
 
 (* bind 1 {1; 2; 3} === {(1, 1); (1, 2); (1, 3)} *)
-val bind : 'a -> 'b set -> ('a * 'b) set
+val bind : 'a -> 'b list -> ('a * 'b) list
 (* combination {1; 2} {a; b} === {(1, a); (1, b); (2, a); (2, b)} *)
-val combination : 'a set -> 'b set -> ('a * 'b) set
+val combination : 'a list -> 'b list -> ('a * 'b) list
 (* combination_rfl {1; 2} === {(1, 1); (1, 2); (2, 2)} *)
-val combination_rfl : 'a set -> ('a * 'a) set
+val combination_rfl : 'a list -> ('a * 'a) list
 (* combination_self_two_diff {1; 2; 3} === {(1, 2); (1, 3); (2, 3)} *)
-val combination_self_two_diff : 'a set -> ('a * 'a) set
+val combination_self_two_diff : 'a list -> ('a * 'a) list
 (* combination_self_two_diff_rf {1; 2; 3} === {(1, 2); (1, 3); (2, 1); (2, 3); (3, 1); (3, 2)} *)
-val combination_self_two_diff_rf : 'a set -> ('a * 'a) set
+val combination_self_two_diff_rf : 'a list -> ('a * 'a) list
 
 
 (*****************************************************************************)
@@ -63,15 +80,14 @@ type component = {
   (****************************************************************************
     The type comp_map is a pre-baked component map.
     Function bake_comp_map makes a set of components from the type stack of each MCI.
-    The component set which is the value of comp_map is used to make a set of new invariants by recipe.
-    type comp_map = MCI |-> component set
+    The component list which is the value of comp_map is used to make a set of new invariants by recipe.
+    type comp_map = MCI |-> component list
   ****************************************************************************)
-type comp_map = (Tz.mich_cut_info, component set) map
+type comp_map = (Tz.mich_cut_info, component list tmap) map
 
 val bake_comp_map : Se.state_set -> comp_map
 val fold_precond : vstack -> component list -> Tz.mich_f
-val filter_comp : (Tz.mich_t -> bool) -> component set -> component set
-val classify_comp_with_type : component set -> (Tz.mich_t, component set) map
+val get_value : vstack -> component -> Tz.mich_v Tz.cc
 
 
 (*****************************************************************************)
@@ -82,8 +98,8 @@ val classify_comp_with_type : component set -> (Tz.mich_t, component set) map
 
 type invariant = vstack -> Tz.mich_f
 
-val mutez_equal : component set -> invariant set
-val all_equal : component set -> invariant set
+val mutez_equal : component list tmap -> invariant list
+val all_equal : component list tmap -> invariant list
 
 
 (*****************************************************************************)
@@ -104,7 +120,7 @@ type ingredients = {
   igdt_model_opt      : ProverLib.Smt.ZModel.t option;
   igdt_vc             : Tz.mich_f;
   igdt_sym_state      : Tz.sym_state;
-  igdt_comp_set       : component set
+  igdt_comp_type_map  : component list tmap
 }
 
 val collect_set : ('a set) list -> 'a set
