@@ -112,7 +112,6 @@ type generate_param =
   (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set *
   (* igi_cur_inv *)     Se.invmap *
   (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
-  (* igi_collected *)   Se.invmap set *
   (* igi_comp_map *)    comp_map
 
 type ingredients = {
@@ -123,9 +122,7 @@ type ingredients = {
   igdt_comp_type_map  : component list tmap
 }
 
-val collect_set : ('a set) list -> 'a set
+val refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap list
+val refine_l : Se.invmap -> ingredients -> Se.invmap list
 
-val refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap set
-val refine_l : Se.invmap -> ingredients -> Se.invmap set
-
-val generate : generate_param -> Se.invmap set
+val generate : generate_param -> Se.invmap list

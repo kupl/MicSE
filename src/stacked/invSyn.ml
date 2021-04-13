@@ -184,16 +184,40 @@ let bake_comp_map : Se.state_set -> comp_map
               else None))
     (* get_type_stack function end *)
   end in
-  let create_comp : Tz.mich_t Tz.cc -> int -> component
-  = fun cur_typ cur_loc -> begin
+  let create_base_comp : Tz.mich_t Tz.cc -> (Tz.mich_cut_info * int) -> component option
+  = let open Tz in
+    fun cur_typ (cur_mci, cur_loc) -> begin
     (* create_comp function start *)
-    let cur_body : Tz.mich_v Tz.cc list -> comp_body =
-      (fun vl -> (
-        let value : Tz.mich_v Tz.cc =
-          CList.nth vl cur_loc 
-          |> function Some vv -> vv | None -> (Error "bake_comp_map : create_comp : cur_body" |> Stdlib.raise) in 
-        { cpb_precond_lst=[]; cpb_value=value; })) in
-    { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=cur_body; }
+    match (cur_mci.mci_cutcat, cur_loc) with
+    | MCC_ln_loopleft, 0
+    | MCC_ln_map, 0
+    | MCC_lb_loopleft, 0 
+    | MCC_lb_map, 0
+    | MCC_lb_iter, 0 -> None
+    | MCC_trx_entry, 0 -> begin
+      match cur_typ.cc_v with
+      | MT_pair (_, strg_typ) -> begin
+        let cur_body : vstack -> comp_body =
+          (fun vl -> (
+            let value : Tz.mich_v Tz.cc =
+              CList.hd vl
+              |> function 
+                  | Some vv -> vv
+                  | None -> (Error "bake_comp_map : create_base_comp : MCC_trx_entry, 0 : cur_body" |> Stdlib.raise) in
+            { cpb_precond_lst=[]; cpb_value=(gen_custom_cc value (MV_cdr value)); })) in
+        Some { cp_typ=strg_typ; cp_loc=cur_loc; cp_body=cur_body; }
+        end
+      | _ -> (Error "bake_comp_map : create_base_comp : MCC_trx_entry, 0 : cur_typ" |> Stdlib.raise)
+      end
+    | _ -> begin
+      let cur_body : vstack -> comp_body =
+        (fun vl -> (
+          let value : Tz.mich_v Tz.cc =
+            CList.nth vl cur_loc 
+            |> function Some vv -> vv | None -> (Error "bake_comp_map : create_base_comp : _ : cur_body" |> Stdlib.raise) in 
+          { cpb_precond_lst=[]; cpb_value=value; })) in
+      Some { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=cur_body; }
+    end
     (* create_comp function end *)
   end in
   let rec collect_components : component -> component list tmap -> component list tmap
@@ -203,23 +227,23 @@ let bake_comp_map : Se.state_set -> comp_map
     let { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=cur_body; } : component = cur_comp in
     match cur_typ.cc_v with
     | MT_option t1cc -> begin
-      let comp_none_body : mich_v cc list -> comp_body =
+      let comp_none_body : vstack -> comp_body =
         (fun vl -> (
           let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
           let precond : mich_f list = (MF_is_none cur_val) :: cur_prec_lst in
-          let value : mich_v cc = gen_dummy_cc (MV_none t1cc) in
+          let value : mich_v cc = gen_custom_cc cur_val (MV_none t1cc) in
           { cpb_precond_lst=precond; cpb_value=value; })) in
-      let comp_some_body : mich_v cc list -> comp_body =
+      let comp_some_body : vstack -> comp_body =
         (fun vl -> (
           let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
           let precond : mich_f list = (MF_not (MF_is_none cur_val)) :: cur_prec_lst in
-          let value : mich_v cc = gen_dummy_cc (MV_some (gen_dummy_cc (MV_unlift_option cur_val))) in
+          let value : mich_v cc = gen_custom_cc cur_val (MV_some (gen_custom_cc cur_val (MV_unlift_option cur_val))) in
           { cpb_precond_lst=precond; cpb_value=value; })) in
-      let comp_some_unlifted_body : mich_v cc list -> comp_body =
+      let comp_some_unlifted_body : vstack -> comp_body =
         (fun vl -> (
           let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
           let precond : mich_f list = (MF_not (MF_is_none cur_val)) :: cur_prec_lst in
-          let value : mich_v cc = gen_dummy_cc (MV_unlift_option cur_val) in
+          let value : mich_v cc = gen_custom_cc cur_val (MV_unlift_option cur_val) in
           { cpb_precond_lst=precond; cpb_value=value; })) in
       let comp_none : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_none_body; } in
       let comp_some : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_some_body; } in
@@ -232,15 +256,15 @@ let bake_comp_map : Se.state_set -> comp_map
       collect_components comp_some_unlifted acc'
       end
     | MT_pair (t1cc, t2cc) -> begin
-      let comp_fst_body : mich_v cc list -> comp_body =
+      let comp_fst_body : vstack -> comp_body =
         (fun vl -> (
           let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
-          let value : mich_v cc = gen_dummy_cc (MV_car cur_val) in
+          let value : mich_v cc = gen_custom_cc cur_val (MV_car cur_val) in
           { cpb_precond_lst=cur_prec_lst; cpb_value=value; })) in
-      let comp_snd_body : mich_v cc list -> comp_body =
+      let comp_snd_body : vstack -> comp_body =
         (fun vl -> (
           let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
-          let value : mich_v cc = gen_dummy_cc (MV_cdr cur_val) in
+          let value : mich_v cc = gen_custom_cc cur_val (MV_cdr cur_val) in
           { cpb_precond_lst=cur_prec_lst; cpb_value=value; })) in
       let comp_pair : component = cur_comp in
       let comp_fst : component = { cp_typ=t1cc; cp_loc=cur_loc; cp_body=comp_fst_body; } in
@@ -254,29 +278,29 @@ let bake_comp_map : Se.state_set -> comp_map
       collect_components comp_snd acc_fst
       end
     | MT_or (t1cc, t2cc) -> begin
-      let comp_left_body : mich_v cc list -> comp_body =
+      let comp_left_body : vstack -> comp_body =
         (fun vl -> (
           let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
           let precond : mich_f list = (MF_is_left cur_val) :: cur_prec_lst in
-          let value : mich_v cc = gen_dummy_cc (MV_left (cur_typ, (gen_dummy_cc (MV_unlift_left cur_val)))) in
+          let value : mich_v cc = gen_custom_cc cur_val (MV_left (cur_typ, (gen_custom_cc cur_val (MV_unlift_left cur_val)))) in
           { cpb_precond_lst=precond; cpb_value=value; })) in
-      let comp_right_body : mich_v cc list -> comp_body =
+      let comp_right_body : vstack -> comp_body =
         (fun vl -> (
           let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
           let precond : mich_f list = (MF_not (MF_is_left cur_val)) :: cur_prec_lst in
-          let value : mich_v cc = gen_dummy_cc (MV_right (cur_typ, (gen_dummy_cc (MV_unlift_right cur_val)))) in
+          let value : mich_v cc = gen_custom_cc cur_val (MV_right (cur_typ, (gen_custom_cc cur_val (MV_unlift_right cur_val)))) in
           { cpb_precond_lst=precond; cpb_value=value; })) in
-      let comp_left_unlifted_body : mich_v cc list -> comp_body =
+      let comp_left_unlifted_body : vstack -> comp_body =
         (fun vl -> (
           let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
           let precond : mich_f list = (MF_is_left cur_val) :: cur_prec_lst in
-          let value : mich_v cc = gen_dummy_cc (MV_unlift_left cur_val) in
+          let value : mich_v cc = gen_custom_cc cur_val (MV_unlift_left cur_val) in
           { cpb_precond_lst=precond; cpb_value=value; })) in
-      let comp_right_unlifted_body : mich_v cc list -> comp_body =
+      let comp_right_unlifted_body : vstack -> comp_body =
         (fun vl -> (
           let { cpb_precond_lst=cur_prec_lst; cpb_value=cur_val; } : comp_body = cur_body vl in
           let precond : mich_f list = (MF_not (MF_is_left cur_val)) :: cur_prec_lst in
-          let value : mich_v cc = gen_dummy_cc (MV_unlift_right cur_val) in
+          let value : mich_v cc = gen_custom_cc cur_val (MV_unlift_right cur_val) in
           { cpb_precond_lst=precond; cpb_value=value; })) in
       let comp_left : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_left_body; } in
       let comp_right : component = { cp_typ=cur_typ; cp_loc=cur_loc; cp_body=comp_right_body; } in
@@ -315,15 +339,17 @@ let bake_comp_map : Se.state_set -> comp_map
             |> function
                 | Some ts -> ts
                 | None -> Error "bake_comp_map : mci_tstack" |> Stdlib.raise)) in
-  PMap.map
+  PMap.mapi
     mci_tstack
-    ~f:(fun ts -> (
+    ~f:(fun ~key ~data -> (
           CList.foldi
-            ts
+            data
             ~init:TMap.empty
             ~f:(fun i ctmap t -> (
-                  let base_comp : component = create_comp t i in
-                  collect_components base_comp ctmap))))
+                  let base_comp_opt : component option = create_base_comp t (key, i) in
+                  match base_comp_opt with
+                  | None -> ctmap
+                  | Some base_comp -> collect_components base_comp ctmap))))
   (* bake_comp_map function end *)
 end
 
@@ -407,7 +433,6 @@ type generate_param =
   (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set *
   (* igi_cur_inv *)     Se.invmap *
   (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
-  (* igi_collected *)   Se.invmap set *
   (* igi_comp_map *)    comp_map
 
 type ingredients = {
@@ -418,72 +443,56 @@ type ingredients = {
   igdt_comp_type_map  : component list tmap
 }
 
-let collect_set : ('a set) list -> 'a set
-= let module CList = Core.List in
-  fun slist -> begin
-  (* collect_set function start *)
-  CList.fold
-    slist
-    ~init:PSet.empty
-    ~f:(fun acc s -> PSet.union acc s)
-  (* collect_set function end *)
-end
-
-let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap set
+let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap list
 = let open Tz in
+  let module CList = Core.List in
   fun (cur_inv, istrg_opt) igdt -> begin
   (* refine_t function start *)
-  let _ = cur_inv, istrg_opt, igdt in
-  PSet.empty (* TODO *)
-  (*(* 0. extract component of storage variable *)
-  let vstrg : Tz.mich_v Tz.cc = 
-    PMap.find
-      igdt.igdt_sym_state.ss_dynchain.bc_storage
-      igdt.igdt_sym_state.ss_optt.optt_addr
-    |> function Some vv -> vv | None -> Error "refine_t : vstrg" |> Stdlib.raise in
-  let comp = collect_components vstrg in
+  (*0. extract component of storage variable *)
+  let ctmap = igdt.igdt_comp_type_map in
   (* 1. generate recipe *)
-  let all_eq_fmlas : Tz.mich_f set = all_equal comp in
+  let all_eq_fmlas : invariant list = all_equal ctmap in
   (* 2. generate invariant map *)
-  let fmlas : Tz.mich_f set = 
+  let fmlas : invariant list = 
     [ all_eq_fmlas; ]
-    |> collect_set in
+    |> CList.join in
   let _ = (cur_inv, istrg_opt), igdt in
-  PSet.map
+  CList.map
     fmlas
     ~f:(fun fmla -> (
-      PMap.mapi
-        cur_inv
-        ~f:(fun ~key ~data -> 
-              if key.mci_cutcat = MCC_trx_entry || key.mci_cutcat = MCC_trx_exit
-              then (function vl -> MF_and [fmla; (data vl)])
-              else data))) *)
+          PMap.mapi
+            cur_inv
+            ~f:(fun ~key ~data ->
+                  if key.mci_cutcat = MCC_trx_entry || key.mci_cutcat = MCC_trx_exit
+                  then (function vl -> MF_and [(fmla vl); (data vl)])
+                  else data)))
   (* refine_t function end *)
 end
 
-let refine_l : Se.invmap -> ingredients -> Se.invmap set
+let refine_l : Se.invmap -> ingredients -> Se.invmap list
 = 
   fun cur_inv igdt -> begin
   (* refine_l function start *)
   let _ = cur_inv, igdt in
-  PSet.empty (* TODO *)
+  [] (* TODO *)
   (* refine_l function end *)
 end
 
-let generate : generate_param -> Se.invmap set
+let generate : generate_param -> Se.invmap list
 = let open Tz in
-  fun (igi_failed_set, igi_cur_inv, igi_istrg_opt, igi_collected, igi_comp_map) -> begin
+  let module CList = Core.List in
+  fun (igi_failed_set, igi_cur_inv, igi_istrg_opt, igi_comp_map) -> begin
   (* generate function start *)
   (* 1. collect refine targets *)
-  let refine_targets : (Tz.mich_cut_info, (ingredients set)) map =
+  let refine_targets : (Tz.mich_cut_info, (ingredients list)) map =
     PSet.fold
       igi_failed_set
       ~init:PMap.empty
       ~f:(fun acc ((fs, qctg), (_, mopt), vc, _) -> 
           (* 1-1. get accumulated ingredients *)
-          let (acc', acc_igdt_set) : ((Tz.mich_cut_info, (ingredients set)) map) * (ingredients set) =
+          let (acc', acc_igdt_set) : ((Tz.mich_cut_info, (ingredients list)) map) * (ingredients list) =
             PMap.find acc fs.ss_entry_mci
-            |> function Some ss -> ((PMap.remove acc fs.ss_entry_mci), ss) | None -> (acc, PSet.empty) in
+            |> function Some ss -> ((PMap.remove acc fs.ss_entry_mci), ss) | None -> (acc, []) in
           (* 1-2. make new ingredients *)
           let ctmap : component list tmap =
             PMap.find igi_comp_map fs.ss_entry_mci
@@ -495,27 +504,24 @@ let generate : generate_param -> Se.invmap set
               igdt_sym_state=fs;
               igdt_comp_type_map=ctmap} in
           (* 1-3. accumulate new ingredients *)
-          let new_acc_igdt_set : ingredients set =
-            PSet.add acc_igdt_set new_igdt in
+          let new_acc_igdt_set : ingredients list = new_igdt::acc_igdt_set in
           PMap.add
             acc'
             ~key:fs.ss_entry_mci
             ~data:new_acc_igdt_set
           |> function `Ok mm -> mm | `Duplicate -> Error "generate : refine_targets" |> Stdlib.raise) in
   (* 2. generate invariants from current invariant *)
-  let newly_generated_inv : Se.invmap set =
-    PMap.fold
-      refine_targets
-      ~init:PSet.empty
-      ~f:(fun ~key ~data acc -> 
-          (* select refine function whether it is entry or not *)
-          let rf = if (key.mci_cutcat = MCC_trx_entry) then (refine_t (igi_cur_inv, igi_istrg_opt)) else (refine_l igi_cur_inv) in
-          (* generate new invariants and accumulate it *)
-          PSet.fold
-            data
-            ~init:acc
-            ~f:(fun acc igdt ->
-                PSet.union acc (rf igdt))) in
-  PSet.diff newly_generated_inv igi_collected
+  PMap.fold
+    refine_targets
+    ~init:[]
+    ~f:(fun ~key ~data acc -> 
+        (* select refine function whether it is entry or not *)
+        let rf = if (key.mci_cutcat = MCC_trx_entry) then (refine_t (igi_cur_inv, igi_istrg_opt)) else (refine_l igi_cur_inv) in
+        (* generate new invariants and accumulate it *)
+        CList.fold_left
+          data
+          ~init:acc
+          ~f:(fun acc igdt ->
+                (rf igdt)@acc))
   (* generate function end *)
 end
