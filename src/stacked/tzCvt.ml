@@ -1664,3 +1664,148 @@ module T2Jnocc = struct
     ]
   end (* function cv_p1_ss_path end *)
 end (* moduel T2Jnocc end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Tz to Comparable Numbers (No CC)                                          *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module T2Nnocc = struct
+  type numbers = int list
+
+  let rec cv_mt : Tz.mich_t -> numbers
+  = let module CList = Core.List in
+    let c tl = tl |> CList.map ~f:cv_mtcc |> CList.join in
+    (function
+    | MT_key              -> [ 0]
+    | MT_unit             -> [ 1]
+    | MT_signature        -> [ 2]
+    | MT_option t         -> [ 3]@(c [t;])
+    | MT_list t           -> [ 4]@(c [t;])
+    | MT_set t            -> [ 5]@(c [t;])
+    | MT_operation        -> [ 6]
+    | MT_contract t       -> [ 7]@(c [t;])
+    | MT_pair (t1, t2)    -> [ 8]@(c [t1; t2;])
+    | MT_or (t1, t2)      -> [ 9]@(c [t1; t2;])
+    | MT_lambda (t1, t2)  -> [10]@(c [t1; t2;])
+    | MT_map (t1, t2)     -> [11]@(c [t1; t2;])
+    | MT_big_map (t1, t2) -> [12]@(c [t1; t2;])
+    | MT_chain_id         -> [13]
+    | MT_int              -> [14]
+    | MT_nat              -> [15]
+    | MT_string           -> [16]
+    | MT_bytes            -> [17]
+    | MT_mutez            -> [18]
+    | MT_bool             -> [19]
+    | MT_key_hash         -> [20]
+    | MT_timestamp        -> [21]
+    | MT_address          -> [22]) (* function cv_mt end *)
+
+  and cv_mtcc : Tz.mich_t Tz.cc -> numbers
+  = fun x -> cv_mt x.cc_v (* function cv_mtcc end *)
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Tz to Core.Sexp.t (No CC)                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module T2CSnocc = struct
+  type csexp = Core.Sexp.t
+
+  let rec cv_mt : Tz.mich_t -> csexp
+  = let open Jc in
+    let module CSexp = Core.Sexp in
+    let module CList = Core.List in
+    let a t = CSexp.Atom t in
+    let l t tl = CSexp.List ((a t)::(tl |> CList.map ~f:cv_mtcc)) in
+    (function
+    | MT_key              -> a t_key
+    | MT_unit             -> a t_unit
+    | MT_signature        -> a t_signature
+    | MT_option t1        -> l t_option [t1;]
+    | MT_list t1          -> l t_list [t1;]
+    | MT_set t1           -> l t_set [t1;]
+    | MT_operation        -> a t_operation
+    | MT_contract t1      -> l t_contract [t1;]
+    | MT_pair (t1, t2)    -> l t_pair [t1; t2;]
+    | MT_or (t1, t2)      -> l t_or [t1; t2;]
+    | MT_lambda (t1, t2)  -> l t_lambda [t1; t2;]
+    | MT_map (t1, t2)     -> l t_map [t1; t2;]
+    | MT_big_map (t1, t2) -> l t_big_map [t1; t2;]
+    | MT_chain_id         -> a t_chain_id
+    | MT_int              -> a t_int
+    | MT_nat              -> a t_nat
+    | MT_string           -> a t_string
+    | MT_bytes            -> a t_bytes
+    | MT_mutez            -> a t_mutez
+    | MT_bool             -> a t_bool
+    | MT_key_hash         -> a t_key_hash
+    | MT_timestamp        -> a t_timestamp
+    | MT_address          -> a t_address) (* function cv_mt end *)
+  
+  and cv_mtcc : Tz.mich_t Tz.cc -> csexp
+  = fun x -> cv_mt x.cc_v (* function cv_mtcc end *)
+end (* module T2CS end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Core.Sexp.t to Tz (No CC)                                                 *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module CS2Tnocc = struct
+  exception Error of string
+
+  type csexp = Core.Sexp.t
+
+  let rec cv_mt : csexp -> Tz.mich_t
+  = let open Tz in
+    let open Jc in
+    let module CSexp = Core.Sexp in
+    (function
+    | CSexp.Atom s -> begin
+      match s with
+      | s when s = t_key -> MT_key
+      | s when s = t_unit -> MT_unit
+      | s when s = t_signature -> MT_signature
+      | s when s = t_operation -> MT_operation
+      | s when s = t_chain_id -> MT_chain_id
+      | s when s = t_int -> MT_int
+      | s when s = t_nat -> MT_nat
+      | s when s = t_string -> MT_string
+      | s when s = t_bytes -> MT_bytes
+      | s when s = t_mutez -> MT_mutez
+      | s when s = t_bool -> MT_bool
+      | s when s = t_key_hash -> MT_key_hash
+      | s when s = t_timestamp -> MT_timestamp
+      | s when s = t_address -> MT_address
+      | _ -> Error ("cv_mt : Core.Sexp.Atom : " ^ s) |> Stdlib.raise
+      end
+    | CSexp.List (hd::tl) -> begin
+      match hd with
+      | CSexp.Atom s -> begin
+        match s, tl with
+        | s, (ihd1::[]) when s = t_option -> MT_option (cv_mtcc ihd1)
+        | s, (ihd1::[]) when s = t_list -> MT_list (cv_mtcc ihd1)
+        | s, (ihd1::[]) when s = t_set -> MT_set (cv_mtcc ihd1)
+        | s, (ihd1::[]) when s = t_contract -> MT_contract (cv_mtcc ihd1)
+        | s, (ihd1::ihd2::[]) when s = t_pair -> MT_pair ((cv_mtcc ihd1), (cv_mtcc ihd2))
+        | s, (ihd1::ihd2::[]) when s = t_or -> MT_or ((cv_mtcc ihd1), (cv_mtcc ihd2))
+        | s, (ihd1::ihd2::[]) when s = t_lambda -> MT_lambda((cv_mtcc ihd1), (cv_mtcc ihd2))
+        | s, (ihd1::ihd2::[]) when s = t_map -> MT_map ((cv_mtcc ihd1), (cv_mtcc ihd2))
+        | s, (ihd1::ihd2::[]) when s = t_big_map -> MT_big_map ((cv_mtcc ihd1), (cv_mtcc ihd2))
+        | _ -> Error ("cv_mt : Core.Sexp.List : hd : Core.Sexp.Atom : " ^ s) |> Stdlib.raise
+        end
+      | _ -> Error "cv_mt : Core.Sexp.List : hd" |> Stdlib.raise
+      end
+    | _ -> Error "cv_mt : Core.Sexp.List : _" |> Stdlib.raise) (* function cv_2_mt end *)
+
+  and cv_mtcc : csexp -> Tz.mich_t Tz.cc
+  = fun x -> x |> cv_mt |> Tz.gen_dummy_cc (* function cv_mtcc end *)
+end (* module CS2T end *)
