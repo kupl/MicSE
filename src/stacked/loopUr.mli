@@ -107,6 +107,22 @@ type path_q = {
 val path_of_route : route -> path   (* WARNING: Loops in routes will be transformed to empty loop-path. *)
 val pathq_of_routeq : route_q -> path_q (* Same warning as "path_of_route" *)
 
+
+(*****************************************************************************)
+(* Utility - Path to Json - Only MCI                                         *)
+(*****************************************************************************)
+
+module P2Jomci : sig
+  type js = Yojson.Safe.t
+  val cv_path : path -> js
+  val cv_path_q : path_q -> js
+end (* module P2Jomci end *)
+
+
+(*****************************************************************************)
+(* Path Construction using Loop Unrolling                                    *)
+(*****************************************************************************)
+
 type unroll_n_naive_param = {
   unnp_num : int;
   unnp_trx_entry_mci : Tz.mich_cut_info;
@@ -134,19 +150,6 @@ module R2Jomci : sig
   val cv_route : route -> js
   val cv_route_q : route_q -> js
 end (* module R2Jomci end *)
-
-
-(*****************************************************************************)
-(*****************************************************************************)
-(* Utility - Path to Json - Only MCI                                         *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-module P2Jomci : sig
-  type js = Yojson.Safe.t
-  val cv_path : path -> js
-  val cv_path_q : path_q -> js
-end (* module P2Jomci end *)
 
 
 (*

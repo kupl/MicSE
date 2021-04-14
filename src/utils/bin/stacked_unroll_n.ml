@@ -29,6 +29,7 @@ let main : unit -> unit
       brp_sset = sset;
     }
   in
+  
   (* DEBUG-ROUTE START *)
   (*
   let _ = 
@@ -42,6 +43,7 @@ let main : unit -> unit
   in
   *)
   (* DEBUG-ROUTE END *)
+  
   let {unno_visited=_; unno_p; unno_q;} : LoopUr.unroll_n_naive_output =
     LoopUr.unroll_n_naive {
       unnp_num = loop_unroll_NUM;
@@ -51,6 +53,7 @@ let main : unit -> unit
     }
   in
   let _ = Stdlib.ignore (unno_p, unno_q) in
+  
   (* DEBUG-PATH START *)
   (*
   let _ = 
@@ -64,6 +67,21 @@ let main : unit -> unit
   in
   *)
   (* DEBUG-PATH END *)
+
+  (* DEBUG-QUERY START *)
+  (*
+  let _ = 
+    print_endline "[[[QUERIES]]]";
+    Tz.PMap.iteri unno_q ~f:(
+      fun ~key ~data -> 
+        TzCvt.T2J.cv_mich_cut_info key |> Yojson.Safe.pretty_to_string |> (fun s -> (print_endline ("[MCI]\n" ^ s ^ " : #" ^ (Tz.PSet.length data |> string_of_int))));
+        Tz.PSet.iter data ~f:(fun qry -> LoopUr.P2Jomci.cv_path qry.pq_p |> Yojson.Safe.pretty_to_string |> (fun s -> print_endline s; print_newline ()));
+        print_newline ()
+    )
+  in
+  (* DEBUG-QUERY END *)
+  *)
+
   ()
 end (* function main end *)
 
