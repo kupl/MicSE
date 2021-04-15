@@ -33,6 +33,48 @@ type invmap = (Tz.mich_cut_info, ((Tz.mich_v Tz.cc list) -> Tz.mich_f)) Tz.PMap.
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Se to Json                                                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module S2J = struct
+  type js = Yojson.Safe.t
+  open Jc
+  open TzCvt
+  let cv_qc : query_category -> js
+  = (function
+    | Q_mutez_add_no_overflow -> `Variant (q_mutez_add_no_overflow, None)
+    | Q_mutez_sub_no_underflow -> `Variant (q_mutez_sub_no_underflow, None)
+    | Q_mutez_mul_mnm_no_overflow -> `Variant (q_mutez_mul_mnm_no_overflow, None)
+    | Q_mutez_mul_nmm_no_overflow -> `Variant (q_mutez_mul_nmm_no_overflow, None)
+    | Q_shiftleft_safe -> `Variant (q_shiftleft_safe, None)
+    | Q_shiftright_safe -> `Variant (q_shiftright_safe, None)
+    | Q_assertion -> `Variant (q_assertion, None)
+    ) (* function cv_qc end *)
+  let cv_sset : state_set -> js
+  = let s2l s = Tz.PSet.map s ~f:(T2J.cv_ss) |> Tz.PSet.to_list in
+    let sqs2l s = Tz.PSet.map s ~f:(fun (ss, qc) -> `Tuple [T2J.cv_ss ss; cv_qc qc;]) |> Tz.PSet.to_list in
+    fun sset -> begin
+    `Assoc [
+      jc_running,     `List (s2l sset.running);
+      jc_blocked,     `List (s2l sset.blocked);
+      jc_queries,     `List (sqs2l sset.queries);
+      jc_terminated,  `List (s2l sset.terminated);
+    ]
+  end (* function cv_sset end *)
+  let cv_cache : (cache ref) -> js
+  = let s2l s = Tz.PSet.map s ~f:(T2J.cv_mich_cut_info) |> Tz.PSet.to_list in
+    fun c -> begin
+    `Assoc [
+      jc_ch_entered_loop, `List (s2l !c.ch_entered_loop);
+      jc_ch_entered_lmbd, `List (s2l !c.ch_entered_lmbd);
+    ]
+  end (* function cv_cache end *)
+end (* module S2J end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Utilities - Cache                                                         *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -960,3 +1002,51 @@ let inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
   let query = state_query_reduce query_ssp in
   MF_imply (MF_and (entry_fmla :: query_ss.ss_constraints), query)
 end (* function inv_query_fmla end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* State Merging                                                             *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let merge_state : Tz.sym_state -> Tz.sym_state -> Tz.sym_state
+= let open Tz in
+  fun ss1 ss2 -> begin
+  let ({mci_loc=ss1_b_loc; mci_cutcat=ss1_b_mcc;}, {mci_loc=ss2_e_loc; mci_cutcat=ss2_e_mcc;}) = (ss1.ss_block_mci, ss2.ss_entry_mci) in
+  if ss1_b_loc <> ss2_e_loc then Stdlib.raise (Error (Stdlib.__LOC__)) else
+  match (ss1_b_mcc, ss2_e_mcc) with
+  (*****************************************************************************)
+  (* LOOP                                                                      *)
+  (*****************************************************************************)
+  | MCC_ln_loop, MCC_ln_loop
+  | MCC_ln_loop, MCC_lb_loop
+  | MCC_lb_loop, MCC_ln_loop
+  | MCC_lb_loop, MCC_lb_loop
+  (*****************************************************************************)
+  (* LOOP_LEFT                                                                 *)
+  (*****************************************************************************)
+  | MCC_ln_loopleft, MCC_ln_loopleft
+  | MCC_ln_loopleft, MCC_lb_loopleft
+  | MCC_lb_loopleft, MCC_ln_loopleft
+  | MCC_lb_loopleft, MCC_lb_loopleft
+  (*****************************************************************************)
+  (* MAP                                                                       *)
+  (*****************************************************************************)
+  | MCC_ln_map, MCC_ln_map
+  | MCC_ln_map, MCC_lb_map
+  | MCC_lb_map, MCC_ln_map
+  | MCC_lb_map, MCC_lb_map
+  (*****************************************************************************)
+  (* ITER                                                                      *)
+  (*****************************************************************************)
+  | MCC_ln_iter, MCC_ln_iter
+  | MCC_ln_iter, MCC_lb_iter
+  | MCC_lb_iter, MCC_ln_iter
+  | MCC_lb_iter, MCC_lb_iter
+  (*****************************************************************************)
+  (* INTER-TRANSACTION                                                         *)
+  (*****************************************************************************)
+  | MCC_trx_exit, MCC_trx_entry
+  | _ -> Stdlib.raise (Error (Stdlib.__LOC__))
+end (* function merge_state end *)

@@ -218,7 +218,7 @@ end (* function f_print_sset end *)
 let f_print_queries_pretty : Se.state_set -> unit
 = fun sset -> begin
   let strop_j = TzCvt.T2Jnocc.cv_p1_ss_strop (Tz.PSet.choose_exn sset.queries |> Stdlib.fst) in
-  let queries_j = Tz.PSet.map sset.queries ~f:(fun (ss, qc) -> `Assoc ["query-cat", TzCvt.S2J.cv_qc qc; "sym-state", TzCvt.T2Jnocc.cv_p1_ss_path ss]) in
+  let queries_j = Tz.PSet.map sset.queries ~f:(fun (ss, qc) -> `Assoc ["query-cat", Se.S2J.cv_qc qc; "sym-state", TzCvt.T2Jnocc.cv_p1_ss_path ss]) in
   print_endline (strop_j |> Yojson.Safe.pretty_to_string);
   (Tz.PSet.iter queries_j ~f:(fun x -> x |> Yojson.Safe.pretty_to_string |> print_endline))
 end (* function f_print_queries_pretty *)
@@ -267,7 +267,7 @@ let f_print_query_solved_result_simple_pretty : ret -> unit
       List.iter 
         (fun ((mci, qc), tfset) ->
           `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
-                  "query-category", TzCvt.S2J.cv_qc qc;]
+                  "query-category", Se.S2J.cv_qc qc;]
           |> Yojson.Safe.pretty_to_string |> print_endline;
           ();
           Tz.PSet.iter 
@@ -288,7 +288,7 @@ let f_print_query_solved_result_simple_pretty : ret -> unit
       List.iter 
       (fun ((mci, qc), vtfset) ->
         `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
-                "query-category", TzCvt.S2J.cv_qc qc;]
+                "query-category", Se.S2J.cv_qc qc;]
         |> Yojson.Safe.pretty_to_string |> print_endline;
         ();
         Tz.PSet.iter 
@@ -310,7 +310,7 @@ let f_print_query_solved_result_simple_pretty : ret -> unit
         List.map
           (fun ((mci, qc), cnt) ->
             `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
-                    "query-category", TzCvt.S2J.cv_qc qc;
+                    "query-category", Se.S2J.cv_qc qc;
                     "count", `Int cnt;]
           )
           untouched_queries

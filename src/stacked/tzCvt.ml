@@ -1122,42 +1122,6 @@ module T2J = struct
 end (* module T2J end *)
 
 
-module S2J = struct
-  type js = Yojson.Safe.t
-  open Jc
-  let cv_qc : Se.query_category -> js
-  = (function
-    | Q_mutez_add_no_overflow -> `Variant (q_mutez_add_no_overflow, None)
-    | Q_mutez_sub_no_underflow -> `Variant (q_mutez_sub_no_underflow, None)
-    | Q_mutez_mul_mnm_no_overflow -> `Variant (q_mutez_mul_mnm_no_overflow, None)
-    | Q_mutez_mul_nmm_no_overflow -> `Variant (q_mutez_mul_nmm_no_overflow, None)
-    | Q_shiftleft_safe -> `Variant (q_shiftleft_safe, None)
-    | Q_shiftright_safe -> `Variant (q_shiftright_safe, None)
-    | Q_assertion -> `Variant (q_assertion, None)
-    ) (* function cv_qc end *)
-  let cv_sset : Se.state_set -> js
-  = let s2l s = Tz.PSet.map s ~f:(T2J.cv_ss) |> Tz.PSet.to_list in
-    let sqs2l s = Tz.PSet.map s ~f:(fun (ss, qc) -> `Tuple [T2J.cv_ss ss; cv_qc qc;]) |> Tz.PSet.to_list in
-    fun sset -> begin
-    `Assoc [
-      jc_running,     `List (s2l sset.running);
-      jc_blocked,     `List (s2l sset.blocked);
-      jc_queries,     `List (sqs2l sset.queries);
-      jc_terminated,  `List (s2l sset.terminated);
-    ]
-  end (* function cv_sset end *)
-  let cv_cache : (Se.cache ref) -> js
-  = let s2l s = Tz.PSet.map s ~f:(T2J.cv_mich_cut_info) |> Tz.PSet.to_list in
-    fun c -> begin
-    `Assoc [
-      jc_ch_entered_loop, `List (s2l !c.ch_entered_loop);
-      jc_ch_entered_lmbd, `List (s2l !c.ch_entered_lmbd);
-    ]
-  end (* function cv_cache end *)
-end (* module S2J end *)
-
-
-
 (*****************************************************************************)
 (*****************************************************************************)
 (* Tz to Json (No CC)                                                        *)

@@ -180,7 +180,7 @@ module P2Jomci = struct
     `Assoc [
       lur_jc_pq_p, cv_path pq_p;
       lur_jc_pq_mci, cv_mci pq_mci;
-      lur_jc_pq_qc, TzCvt.S2J.cv_qc pq_qc;
+      lur_jc_pq_qc, Se.S2J.cv_qc pq_qc;
     ]
   end (* function cv_path_q end *)
 end (* module P2Jomci end *)
@@ -245,8 +245,6 @@ let rec _cons_combine_n_acc : int -> 'a Tz.PSet.t -> 'a list Tz.PSet.t -> 'a lis
   if n <= 0 then lset else
   let longer_lset = _cons_combine_n_acc (n-1) elemset (_cons_combine elemset lset) in
   Tz.PSet.union lset longer_lset
-  (* _cons_combine_n (n-1) elemset (_cons_combine elemset lset)
-  |> Tz.PSet.union lset *)
 end (* funtion _cons_combine_n_acc end *)
 
 
@@ -359,7 +357,7 @@ module R2Jomci = struct
     `Assoc [
       lur_jc_rq_r, cv_route rq_r;
       lur_jc_rq_mci, cv_mci rq_mci;
-      lur_jc_rq_qc, TzCvt.S2J.cv_qc rq_qc;
+      lur_jc_rq_qc, Se.S2J.cv_qc rq_qc;
     ]
   end (* function cv_route_q end *)
 end (* module R2Jomci end *)
