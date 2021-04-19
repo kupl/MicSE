@@ -6,6 +6,7 @@
     refuter_only
     stacked_unroll_n
     test_data_parse
+    test_log
     test_timer
     test_z3)
   (public_names 
@@ -15,6 +16,7 @@
     micse.utils.refuter_only
     micse.utils.stacked_unroll_n
     micse.utils.test_data_parse
+    micse.utils.test_log
     micse.utils.test_timer
     micse.utils.test_z3)
   (libraries

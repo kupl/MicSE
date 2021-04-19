@@ -3,4 +3,7 @@
   (public_name micse.utils)
   (libraries
     unix
+    logs
+    mtime
+    mtime.clock.os
     ))

@@ -11,6 +11,12 @@ let input_file : string ref
 let initial_storage_file : string ref
 =ref ""
 
+(* FLAGS - Log *)
+let flag_verbose : bool ref
+=ref false (* print log level info *)
+let flag_debug : bool ref
+=ref false (* print log level info and debug *)
+
 (* FLAGS - Control Flow Graph *)
 let flag_cfgopt_rsv : bool ref
 =ref false (* remove-skip-vertices *)
@@ -85,6 +91,8 @@ end
 let options : (Arg.key * Arg.spec * Arg.doc) list
 = [
     ("-input", (Arg.String (fun s -> input_file := s)), "File path for input michelson program.");
+    ("--verbose", (Arg.Set flag_verbose), "Print log level info.");
+    ("--debug", (Arg.Set flag_debug), "Print log level info and debug.");
     ("-adt_print", (Arg.Set flag_adt_print), "Print parsed Michelson file.");
     ("-cfgopt", (Arg.Set flag_cfgopt_all), "Set all cfg optimization options");
     ("-cfgopt_rsv", (Arg.Set flag_cfgopt_rsv), "Remove all trivial skip vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");

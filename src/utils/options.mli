@@ -9,6 +9,10 @@ val input_file : string ref
 (* STRING - Initial Storage Value *)
 val initial_storage_file : string ref
 
+(* FLAGS - Log *)
+val flag_verbose : bool ref (* print log level info *)
+val flag_debug : bool ref (* print log level info and debug *)
+
 (* FLAGS - Control Flow Graph *)
 val flag_cfgopt_rsv : bool ref (* remove-skip-vertices *)
 val flag_cfgopt_rfv : bool ref (* remove-fail-vertices *)
