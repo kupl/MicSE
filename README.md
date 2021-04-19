@@ -2,11 +2,13 @@
 
 ## Table of Contents
 
-- [MicSE](#micse)
+- [MicSE (in development)](#micse-in-development)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Development](#development)
     - [Prerequisite](#prerequisite)
+      - [System packages](#system-packages)
+      - [Opam packages](#opam-packages)
     - [Git Commit Guidelines](#git-commit-guidelines)
   - [About](#about)
 
@@ -15,6 +17,7 @@
 MicSE, Michelson Symbolic vErifier, is the tool for verifying and testing the integrity of smart contracts written in Michelson. Michelson is the smart-contract-programming language used in [Tezos Blockchain](https://tezos.foundation).
 
 MicSE provides two tools, Prover and Tester for Michelson.
+
 - *Prover* (=verifier)
 - *Refuter* (=tester)
 
@@ -23,14 +26,18 @@ MicSE provides two tools, Prover and Tester for Michelson.
 ### Prerequisite
 
 #### System packages
+
 - OCaml (v.4.10.0): We use OCaml language to programming.
 - Opam (v2.0.4): We use Opam to manage package of OCaml.
 
 #### Opam packages
+
 - Batteries
 - Core (v0.14.0)
 - Dune (v2.2.0): We use Dune to manage build system of OCaml project.
+- Logs
 - Menhir
+- Mtime
 - Ptime
 - Ocamlgraph
 - Z3
