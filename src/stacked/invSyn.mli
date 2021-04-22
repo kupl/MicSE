@@ -3,17 +3,11 @@
 exception Error of string
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Common Datatypes                                                          *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-module PSet = Core.Set.Poly
-module PMap = Core.Map.Poly
-
-type 'a set = 'a Tz.PSet.t
-type ('a, 'b) map = ('a, 'b) Tz.PMap.t
+(******************************************************************************)
+(******************************************************************************)
+(* Common Datatypes                                                           *)
+(******************************************************************************)
+(******************************************************************************)
 
 module TComparable : sig
   exception Error of string
@@ -28,66 +22,60 @@ module TComparable : sig
   include Core.Comparable
 end
 
-module TMap = TComparable.Map
-
-type 'a tmap = 'a TMap.t
+module CTMap = TComparable.Map
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* List Combination                                                          *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Set Combination                                                            *)
+(******************************************************************************)
+(******************************************************************************)
 
 (* bind 1 {1; 2; 3} === {(1, 1); (1, 2); (1, 3)} *)
-val bind : 'a -> 'b list -> ('a * 'b) list
+val bind : 'a -> 'b Core.Set.Poly.t -> ('a * 'b) Core.Set.Poly.t
 (* combination {1; 2} {a; b} === {(1, a); (1, b); (2, a); (2, b)} *)
-val combination : 'a list -> 'b list -> ('a * 'b) list
+val combination : 'a Core.Set.Poly.t -> 'b Core.Set.Poly.t -> ('a * 'b) Core.Set.Poly.t
 (* combination_rfl {1; 2} === {(1, 1); (1, 2); (2, 2)} *)
-val combination_rfl : 'a list -> ('a * 'a) list
+val combination_rfl : 'a Core.Set.Poly.t -> ('a * 'a) Core.Set.Poly.t
 (* combination_self_two_diff {1; 2; 3} === {(1, 2); (1, 3); (2, 3)} *)
-val combination_self_two_diff : 'a list -> ('a * 'a) list
+val combination_self_two_diff : 'a Core.Set.Poly.t -> ('a * 'a) Core.Set.Poly.t
 (* combination_self_two_diff_rf {1; 2; 3} === {(1, 2); (1, 3); (2, 1); (2, 3); (3, 1); (3, 2)} *)
-val combination_self_two_diff_rf : 'a list -> ('a * 'a) list
+val combination_self_two_diff_rf : 'a Core.Set.Poly.t -> ('a * 'a) Core.Set.Poly.t
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Component Collector                                                       *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Component Collector                                                        *)
+(******************************************************************************)
+(******************************************************************************)
 
 type vstack = Tz.mich_v Tz.cc list (* syntax sugar *)
 type tstack = Tz.mich_t Tz.cc list (* syntax sugar *)
 
-type comp_body = {
-  cpb_precond_lst : Tz.mich_f list;   (* precondition list of component *)
-  cpb_value       : Tz.mich_v Tz.cc;  (* value expression of component *)
-}
-
-  (****************************************************************************
+  (*****************************************************************************
     The type component is information from each component of the symbolic stack.
     Each component is extracted from the given symbolic stack.
     The type of component is statically baked from the type stack.
-    type component = type * (sym-stack -> component-body)
-  ****************************************************************************)
+  *****************************************************************************)
 type component = {
-  cp_typ  : Tz.mich_t Tz.cc;      (* type of component *)
-  cp_loc  : int;                  (* location of component in stack *)
-  cp_body : vstack -> comp_body;  (* component body which made from stack *)
+  cp_typ          : Tz.mich_t Tz.cc;      (* type of component *)
+  cp_loc          : int;                  (* location of component in stack *)
+  cp_base_var     : Tz.mich_v Tz.cc;      (* base variable expression *)
+  cp_precond_lst  : Tz.mich_f list;       (* precondition list of component *)
+  cp_value        : Tz.mich_v Tz.cc;      (* value expression of component *)
 }
 
-  (****************************************************************************
+  (*****************************************************************************
     The type comp_map is a pre-baked component map.
     Function bake_comp_map makes a set of components from the type stack of each MCI.
-    The component list which is the value of comp_map is used to make a set of new invariants by recipe.
-    type comp_map = MCI |-> component list
-  ****************************************************************************)
-type comp_map = (Tz.mich_cut_info, component list tmap) map
+    The component set which is the value of comp_map is used to make a set of new invariants by recipe.
+    type comp_map = MCI |-> (mich_t |-> component set)
+  *****************************************************************************)
+type comp_map = (Tz.mich_cut_info, (component Core.Set.Poly.t) CTMap.t) Core.Map.Poly.t
 
+val make_base_var : int -> Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
 val bake_comp_map : Se.state_set -> comp_map
-val fold_precond : vstack -> component list -> Tz.mich_f
-val get_value : vstack -> component -> Tz.mich_v Tz.cc
+val fold_precond : component list -> Tz.mich_f
 
 
 (*****************************************************************************)
@@ -96,10 +84,8 @@ val get_value : vstack -> component -> Tz.mich_v Tz.cc
 (*****************************************************************************)
 (*****************************************************************************)
 
-type invariant = vstack -> Tz.mich_f
-
-val mutez_equal : component list tmap -> invariant list
-val all_equal : component list tmap -> invariant list
+val mutez_equal : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
+val all_equal : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
 
 
 (*****************************************************************************)
@@ -109,20 +95,22 @@ val all_equal : component list tmap -> invariant list
 (*****************************************************************************)
 
 type generate_param = 
-  (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) set *
+  (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Core.Set.Poly.t *
   (* igi_cur_inv *)     Se.invmap *
   (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
-  (* igi_comp_map *)    comp_map
+  (* igi_comp_map *)    comp_map *
+  (* igi_collected *)   Se.invmap Core.Set.Poly.t
 
 type ingredients = {
   igdt_query_category : Se.query_category;
   igdt_model_opt      : ProverLib.Smt.ZModel.t option;
   igdt_vc             : Tz.mich_f;
   igdt_sym_state      : Tz.sym_state;
-  igdt_comp_type_map  : component list tmap
+  igdt_comp_type_map  : (component Core.Set.Poly.t) CTMap.t
 }
 
-val refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap list
-val refine_l : Se.invmap -> ingredients -> Se.invmap list
+val collect_set : ('a Core.Set.Poly.t) list -> 'a Core.Set.Poly.t
+val refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap Core.Set.Poly.t
+val refine_l : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
 
-val generate : generate_param -> Se.invmap list
+val generate : generate_param -> Se.invmap Core.Set.Poly.t

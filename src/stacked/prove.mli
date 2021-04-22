@@ -3,14 +3,11 @@
 exception Error of string
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Types                                                                     *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-type 'a set = 'a Tz.PSet.t
-type ('a, 'b) map = ('a, 'b) Tz.PMap.t
+(******************************************************************************)
+(******************************************************************************)
+(* Types                                                                      *)
+(******************************************************************************)
+(******************************************************************************)
 
 type query_state = Tz.sym_state * Se.query_category
 type query_id = Tz.mich_cut_info * Se.query_category
@@ -18,40 +15,42 @@ type query_id = Tz.mich_cut_info * Se.query_category
 type solved_query_state = (query_state * Tz.mich_f * Utils.Timer.time) 
 type failed_query_state = (query_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time)
 
+type worklist = Se.invmap Core.Set.Poly.t
+
 type ret = {
-  solved_map: (query_id, solved_query_state set) map;
-  failed_set: failed_query_state set;
-  untouched_set: query_state set;
+  solved_map: (query_id, solved_query_state Core.Set.Poly.t) Core.Map.Poly.t;
+  failed_set: failed_query_state Core.Set.Poly.t;
+  untouched_set: query_state Core.Set.Poly.t;
 }
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Utilities                                                                 *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Utilities                                                                  *)
+(******************************************************************************)
+(******************************************************************************)
 
 val gen_sset : PreLib.Adt.t -> (PreLib.Adt.data option) -> ((Tz.mich_v Tz.cc option) * Tz.sym_state * (Se.cache ref) * Se.state_set)
 
 val check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option
 
-val check_inv_inductiveness : 
+val check_inv_inductiveness :
   Utils.Timer.t ref 
   -> (Tz.mich_v Tz.cc * Tz.sym_state) option
-  -> Tz.sym_state set
+  -> Tz.sym_state Core.Set.Poly.t
   -> Se.invmap 
   -> (bool * (Tz.sym_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) option * Utils.Timer.time)
 
-val solve_queries : 
+val solve_queries :
   Utils.Timer.t ref 
-  -> query_state set
-  -> Se.invmap 
+  -> query_state Core.Set.Poly.t
+  -> Se.invmap
   -> ret
 
 val remove_solved_queries :
-  query_state set
-  -> (query_id, solved_query_state set) map
-  -> query_state set
+  query_state Core.Set.Poly.t
+  -> (query_id, solved_query_state Core.Set.Poly.t) Core.Map.Poly.t
+  -> query_state Core.Set.Poly.t
 
 
 (*****************************************************************************)
