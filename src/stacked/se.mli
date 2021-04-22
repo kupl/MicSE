@@ -121,4 +121,33 @@ val inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
 (*****************************************************************************)
 (*****************************************************************************)
 
-val merge_state : Tz.sym_state -> Tz.sym_state -> Tz.sym_state
+(*****************************************************************************)
+(* Structured Variable Name                                                  *)
+(*****************************************************************************)
+
+module Stvn : sig
+  type t = {
+    stvn_vn : string;
+    trx_n : int option;
+    loop_n : int option;
+  }
+  val of_string : string -> t
+  val to_string : t -> string
+
+  (* String Utilities *)
+  val set_trx_n : int -> string -> string
+  val set_loop_n : int -> string -> string
+end (* module Stvn end *)
+
+
+(*****************************************************************************)
+(* Merge                                                                     *)
+(*****************************************************************************)
+
+type ms_iter_info = {
+  (* iteration information for the function "merge-state" *)
+  mii_iter_iv : (Tz.mich_cut_info, Tz.mich_v Tz.cc list) Tz.PMap.t;  (* input-var-info for ITER instruction *)
+  mii_map_iov : (Tz.mich_cut_info, (Tz.mich_v Tz.cc option * ((Tz.mich_v Tz.cc * Tz.mich_v Tz.cc) list))) Tz.PMap.t; (* io-var-info for MAP instruction *)
+  mii_map_accv : (Tz.mich_cut_info, Tz.mich_v Tz.cc) Tz.PMap.t; (* result-var-info for MAP instruction *)
+}
+val merge_state : Tz.sym_state -> (Tz.sym_state * ms_iter_info) -> (Tz.sym_state * ms_iter_info)

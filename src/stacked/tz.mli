@@ -550,6 +550,8 @@ val gen_new_symval_ts : mich_t cc -> string -> mich_v cc
 val gen_newvar_symstack_ts : (mich_t cc list) -> (mich_v cc list)
 val gen_newvar_symstack_vs : (mich_v cc list) -> (mich_v cc list)
 
+val stack_eq_fmla : (mich_v cc list) -> (mich_v cc list) -> (mich_f list)
+
 
 (*****************************************************************************)
 (* OCaml container -> Tz container                                           *)

@@ -1010,40 +1010,370 @@ end (* function inv_query_fmla end *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-let merge_state : Tz.sym_state -> Tz.sym_state -> Tz.sym_state
+(*****************************************************************************)
+(* Structured Variable Name (for state merging)                              *)
+(*****************************************************************************)
+
+(* structured variable name contains trasaction number & loop number, which is useful when renaming duplicated variable names from "state_set". *)
+(* Current Design: (stvn_vn ^ _delim ^ trx_n ^ _delim ^ loop_n) *)
+
+module Stvn = struct
+  type t = {
+    stvn_vn : string;
+    trx_n : int option;
+    loop_n : int option;
+  }
+
+  let _delim = '^'
+  let _soio = (function | None -> "" | Some i -> string_of_int i)
+
+  let of_string : string -> t = 
+    let cstr : (string * string * string) -> t = fun (stvn, trxn, loopn) -> {stvn_vn=stvn; trx_n=(Stdlib.int_of_string_opt trxn); loop_n=(Stdlib.int_of_string_opt loopn);} in
+    fun s -> begin
+    let sl = String.split_on_char _delim s in
+    match List.length sl with 
+    | 1 -> cstr (List.nth sl 0, "", "")
+    | 2 -> cstr (List.nth sl 0, List.nth sl 1, "")
+    | 3 -> cstr (List.nth sl 0, List.nth sl 1, List.nth sl 2)
+    | n -> Error ("Length=" ^ (string_of_int n) ^ " -- " ^ Stdlib.__LOC__) |> Stdlib.raise
+  end (* function of_string end *)
+  let to_string : t -> string = 
+    fun t -> begin
+    t.stvn_vn ^ (Char.escaped _delim) ^ (_soio t.trx_n) ^ (Char.escaped _delim) ^ (_soio t.loop_n)
+  end (* function to_string end *)
+
+  (* String Utilities *)
+  let set_trx_n : int -> string -> string
+  = (fun n s -> of_string s |> (fun r -> {r with trx_n=(Some n)}) |> to_string)
+  let set_loop_n : int -> string -> string
+  = (fun n s -> of_string s |> (fun r -> {r with loop_n=(Some n)}) |> to_string)
+end (* module Stvn end *)
+
+
+(*****************************************************************************)
+(* Merge                                                                     *)
+(*****************************************************************************)
+
+(* More explanation for "ms_iter_info" type.
+  - We found three issues when implementing "merge-state" function in an incremental way in the reverse direction.
+    1. Length of input container & Input element membership properties in ITER instruction.
+    2. Length of input container & Input element membership properties in MAP instruction.
+    3. Length of output container & Output element membership properties in MAP instruction.
+    (4. Length of input container and output container should be same)
+  - To deal with above problems, we need to store output container & input, output elements in the type "ms_iter_info".
+  - In our design, we does not need any input container information to hold.
+*)
+type ms_iter_info = {
+  (* iteration information for the function "merge-state" *)
+  mii_iter_iv : (Tz.mich_cut_info, Tz.mich_v Tz.cc list) Tz.PMap.t;  (* input-var-info for ITER instruction // MCC_lb_iter *)
+  mii_map_iov : (Tz.mich_cut_info, (Tz.mich_v Tz.cc option * ((Tz.mich_v Tz.cc * Tz.mich_v Tz.cc) list))) Tz.PMap.t; (* io-var-info for MAP instruction // MCC_lb_map *)
+  mii_map_accv : (Tz.mich_cut_info, Tz.mich_v Tz.cc) Tz.PMap.t; (* result-var-info for MAP instruction // MCC_ln_map *)
+}
+
+(* "merge_state ss1 (ss2, mii)"
+  Precondition: There should be no variable-name conflict between ss1 and ss2.
+  Postcondition: (ss1 @ ss2, new-mii)
+  Warning: It might emits tons of errors caused by List.tl and List.hd
+*)
+let merge_state : Tz.sym_state -> (Tz.sym_state * ms_iter_info) -> (Tz.sym_state * ms_iter_info)
 = let open Tz in
-  fun ss1 ss2 -> begin
+  let gdcc = gen_dummy_cc in (* sugar *)
+  let stack_concat_tmpl : sym_state -> sym_state -> (mich_f list) -> sym_state
+  = fun ss1 ss2 fl -> begin
+    { ss1 with
+      ss_block_mci=ss2.ss_block_mci;
+      ss_symstack=ss2.ss_symstack;
+      ss_constraints=(ss1.ss_constraints @ fl @ ss2.ss_constraints);
+    }
+  end in (* internal function stack_concat_tmpl end *)
+  fun ss1 (ss2, mii) -> begin
   let ({mci_loc=ss1_b_loc; mci_cutcat=ss1_b_mcc;}, {mci_loc=ss2_e_loc; mci_cutcat=ss2_e_mcc;}) = (ss1.ss_block_mci, ss2.ss_entry_mci) in
   if ss1_b_loc <> ss2_e_loc then Stdlib.raise (Error (Stdlib.__LOC__)) else
+  let (ss1bst, ss2est) = (ss1.ss_symstack, ss2.ss_entry_symstack) in
   match (ss1_b_mcc, ss2_e_mcc) with
   (*****************************************************************************)
   (* LOOP                                                                      *)
   (*****************************************************************************)
-  | MCC_ln_loop, MCC_ln_loop
-  | MCC_ln_loop, MCC_lb_loop
-  | MCC_lb_loop, MCC_ln_loop
-  | MCC_lb_loop, MCC_lb_loop
+  | MCC_ln_loop, MCC_ln_loop ->
+    (MF_not (MF_is_true (List.hd ss1bst))) :: (stack_eq_fmla (List.tl ss1bst) ss2est)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, mii))
+  | MCC_ln_loop, MCC_lb_loop ->
+    (MF_is_true (List.hd ss1bst)) :: (stack_eq_fmla (List.tl ss1bst) ss2est)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, mii))
+  | MCC_lb_loop, MCC_ln_loop ->
+    (MF_not (MF_is_true (List.hd ss1bst))) :: (stack_eq_fmla (List.tl ss1bst) ss2est)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, mii))
+  | MCC_lb_loop, MCC_lb_loop -> 
+    (MF_is_true (List.hd ss1bst)) :: (stack_eq_fmla (List.tl ss1bst) ss2est)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, mii))
   (*****************************************************************************)
   (* LOOP_LEFT                                                                 *)
   (*****************************************************************************)
   | MCC_ln_loopleft, MCC_ln_loopleft
   | MCC_ln_loopleft, MCC_lb_loopleft
   | MCC_lb_loopleft, MCC_ln_loopleft
-  | MCC_lb_loopleft, MCC_lb_loopleft
+  | MCC_lb_loopleft, MCC_lb_loopleft ->
+    let (hd1, tl1, hd2, tl2) = (List.hd ss1bst, List.tl ss1bst, List.hd ss2est, List.tl ss2est) in
+    let (hd1_lr, hd12) = (
+      if (ss2_e_mcc = MCC_ln_loopleft)
+      then (MF_not (MF_is_left hd1), MF_eq (MV_unlift_right hd1 |> gdcc, hd2))
+      else (MF_is_left hd1, MF_eq (MV_unlift_left hd1 |> gdcc, hd2))
+    ) in
+    hd1_lr :: hd12 :: (stack_eq_fmla tl1 tl2)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, mii))
   (*****************************************************************************)
   (* MAP                                                                       *)
   (*****************************************************************************)
-  | MCC_ln_map, MCC_ln_map
-  | MCC_ln_map, MCC_lb_map
-  | MCC_lb_map, MCC_ln_map
-  | MCC_lb_map, MCC_lb_map
+  | MCC_ln_map, MCC_ln_map ->
+    (* Special Case - Empty Container *)
+    let (hd1, tl1, hd2, tl2) = (List.hd ss1bst, List.tl ss1bst, List.hd ss2est, List.tl ss2est) in
+    let (typ_hd1, typ_hd2) = (typ_of_val hd1, typ_of_val hd2) in
+    let constraints : mich_f list =
+      (match typ_hd1.cc_v, typ_hd2.cc_v with
+      | MT_list _, MT_list _ -> (
+          (* 1. input and output containers are nil *)
+          let (f_inil, f_onil) = (MF_not (MF_is_cons hd1), MF_not (MF_is_cons hd2)) in
+          (* 2. input and output container's sizes are 0 *)
+          let (f_i0, f_o0) = (MF_eq (gdcc (MV_size_l hd1), gdcc (MV_lit_nat Z.zero)), MF_eq (gdcc (MV_size_l hd2), gdcc (MV_lit_nat Z.zero))) in
+          [f_inil; f_onil; f_i0; f_o0]
+        )
+      | MT_map (kt1, vt1), MT_map (kt2, vt2) -> (
+          (* 1. input and output containers are empty map *)
+          let (f_iem, f_oem) = (MF_eq (hd1, gdcc (MV_empty_map (kt1, vt1))), MF_eq (hd2, gdcc (MV_empty_map (kt2, vt2)))) in
+          (* 2. input and output container's sizes are 0 *)
+          let (f_i0, f_o0) = (MF_eq (gdcc (MV_size_m hd1), gdcc (MV_lit_nat Z.zero)), MF_eq (gdcc (MV_size_m hd2), gdcc (MV_lit_nat Z.zero))) in
+          [f_iem; f_oem; f_i0; f_o0]
+        )
+      | _ -> Error Stdlib.__LOC__ |> Stdlib.raise
+      )
+    in
+    let new_mii : ms_iter_info = mii in
+    constraints @ (stack_eq_fmla tl1 tl2)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, new_mii))
+
+  | MCC_ln_map, MCC_lb_map ->
+    (* Very Special Case - MAP instruction starts *)
+    let (hd1, tl1, hd2, tl2) = (List.hd ss1bst, List.tl ss1bst, List.hd ss2est, List.tl ss2est) in
+    let (typ_hd1, typ_hd2) = (typ_of_val hd1, typ_of_val hd2) in
+    let (map_iv, map_ov) : mich_v cc list * mich_v cc list = 
+      (match PMap.find mii.mii_map_iov ss2.ss_entry_mci with
+      | Some (Some e, iovl) -> (hd2, e) :: iovl
+      | _ -> Stdlib.failwith Stdlib.__LOC__
+      )
+      |> List.split
+    in
+    let map_accv : mich_v cc = PMap.find mii.mii_map_accv ss1.ss_block_mci |> (function | Some e -> e | _ -> Stdlib.failwith Stdlib.__LOC__) in
+    let map_ov_elt_typ : mich_t cc = typ_of_val (List.hd map_ov) in
+    let map_c_size : mich_v cc = gdcc (MV_lit_nat (Z.of_int (List.length map_ov))) in
+    let constraints : mich_f list = 
+      (match typ_hd1.Tz.cc_v, typ_hd2.Tz.cc_v with
+      | MT_list _, _ -> (
+          (* 1. (input-container = inputs) && (output-container = outputs) *)
+          let (f_ivs, f_ovs) = (MF_eq (hd1, gdcc (MV_lit_list (typ_hd2, map_iv))), MF_eq (map_accv, gdcc (MV_lit_list (map_ov_elt_typ, map_ov)))) in
+          (* 2. Size of input-container and output-container *)
+          let (f_icsize, f_ocsize) = (MF_eq (gdcc (MV_size_l hd1), map_c_size), MF_eq (gdcc (MV_size_l hd2), map_c_size)) in
+          [f_ivs; f_ovs; f_icsize; f_ocsize]
+        )
+      | MT_map (kt, vt), MT_pair _ -> (
+          let ipl : (mich_v cc * mich_v cc) list = List.map (fun x -> (gdcc (MV_car x), gdcc (MV_cdr x))) map_iv in
+          let kpl : mich_v cc list = List.map (fun x -> Stdlib.fst x) ipl in
+          let opl : (mich_v cc * mich_v cc) list = List.map2 (fun kv ov -> kv, ov) kpl map_ov in
+          let imap : mich_v cc = gdcc (MV_lit_map (kt, vt, PMap.of_alist ipl |> (function | `Duplicate_key _ -> Stdlib.failwith Stdlib.__LOC__ | `Ok m -> m))) in
+          let omap : mich_v cc = gdcc (MV_lit_map (kt, vt, PMap.of_alist opl |> (function | `Duplicate_key _ -> Stdlib.failwith Stdlib.__LOC__ | `Ok m -> m))) in    
+          (* 1. (input-container = inputs) && (output-container = outputs) *)
+          let (f_ivs, f_ovs) = (MF_eq (hd1, imap), MF_eq (map_accv, omap)) in
+          (* 2. Size of input-container and output-container *)
+          let (f_icsize, f_ocsize) = (MF_eq (gdcc (MV_size_m hd1), map_c_size), MF_eq (gdcc (MV_size_m hd2), map_c_size)) in
+          (* 3. key compare results. *)
+          let f_kcmp : mich_f list =
+            let rec foldf lst acc = 
+              (match lst with
+              | [] -> acc 
+              | _ :: [] -> acc
+              | h1 :: h2 :: tl -> foldf (h2 :: tl) ((MF_eq (gdcc (MV_compare (h1, h2)), gdcc (MV_lit_int (Z.minus_one)))) :: acc)
+              )
+            in
+            foldf kpl []
+          in
+          (* 4. let constraints = [...] *)
+          [f_ivs; f_ovs; f_icsize; f_ocsize; MF_and f_kcmp;]
+        )
+      | _ -> Error Stdlib.__LOC__ |> Stdlib.raise
+      )
+    in
+    let new_mii : ms_iter_info =
+      (* reset iov and accv *) 
+      {mii with mii_map_accv=(PMap.remove mii.mii_map_accv ss1.ss_block_mci); mii_map_iov=(PMap.remove mii.mii_map_iov ss2.ss_block_mci);}
+    in
+    constraints @ (stack_eq_fmla tl1 tl2)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, new_mii)) 
+
+  | MCC_lb_map, MCC_ln_map ->
+    (* Special Case - MAP instruction ends *)
+    let (hd1, tl1, hd2, tl2) = (List.hd ss1bst, List.tl ss1bst, List.hd ss2est, List.tl ss2est) in
+    (* let (typ_hd1, typ_hd2) = (Tz.typ_of_val hd1, Tz.typ_of_val hd2) in *)
+    let new_mii : ms_iter_info = 
+      (* 1. update mii_map_accv *)
+      let updated_map_accv : (mich_cut_info, mich_v cc) PMap.t = 
+        (PMap.update mii.mii_map_accv ss2.ss_entry_mci ~f:(function | None -> hd2 | _ -> Stdlib.failwith Stdlib.__LOC__)) 
+      in
+      (* 2. update mii_map_iov (only the first of the pair) *)
+      let mii_map_iov_updated : (mich_cut_info, (mich_v cc option * ((mich_v cc * mich_v cc) list))) PMap.t = 
+        (PMap.update mii.mii_map_iov ss2.ss_entry_mci ~f:(function | None -> (Some hd1, []) | _ -> Stdlib.failwith Stdlib.__LOC__))
+      in
+      {mii with mii_map_accv=updated_map_accv; mii_map_iov=mii_map_iov_updated;}
+    in
+    let constraints : mich_f list = [] in
+    constraints @ (stack_eq_fmla tl1 tl2)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, new_mii))
+
+  | MCC_lb_map, MCC_lb_map ->
+    (* MAP loop continues *)
+    let (hd1, tl1, hd2, tl2) = (List.hd ss1bst, List.tl ss1bst, List.hd ss2est, List.tl ss2est) in
+    let new_mii : ms_iter_info = 
+      (* 1. update mii_map_iov *)
+      let mii_map_iov_updated : (mich_cut_info, (mich_v cc option * ((mich_v cc * mich_v cc) list))) PMap.t = 
+        (PMap.update mii.mii_map_iov ss2.ss_entry_mci ~f:(function | Some (Some e, lst) -> (Some hd1, (hd2, e) :: lst) | _ -> Stdlib.failwith Stdlib.__LOC__))
+      in
+      {mii with mii_map_iov=mii_map_iov_updated;}
+    in
+    let constraints : mich_f list = [] in
+    constraints @ (stack_eq_fmla tl1 tl2)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, new_mii))
   (*****************************************************************************)
   (* ITER                                                                      *)
   (*****************************************************************************)
-  | MCC_ln_iter, MCC_ln_iter
-  | MCC_ln_iter, MCC_lb_iter
-  | MCC_lb_iter, MCC_ln_iter
-  | MCC_lb_iter, MCC_lb_iter
+  | MCC_ln_iter, MCC_ln_iter -> 
+    (* Special Case - Empty Container *)
+    let (hd1, tl1) = (List.hd ss1bst, List.tl ss1bst) in
+    let typ_hd1 = typ_of_val hd1 in
+    let constraints : mich_f list = 
+      (match typ_hd1.cc_v with
+      | MT_list _ -> (
+          (* 1. input container is nil *)
+          let f_inil = MF_not (MF_is_cons hd1) in
+          (* 2. input container's size is 0 *)
+          let f_i0 = MF_eq (gdcc (MV_size_l hd1), gdcc (MV_lit_nat Z.zero)) in
+          [f_inil; f_i0;]
+        )
+      | MT_set _ -> (
+          (* 1. input container is nil *)
+          let f_ieset = MF_eq (hd1, gdcc (MV_empty_set typ_hd1)) in
+          (* 2. input container's size is 0 *)
+          let f_i0 = MF_eq (gdcc (MV_size_s hd1), gdcc (MV_lit_nat Z.zero)) in
+          [f_ieset; f_i0;]
+        )
+      | MT_map (kt, vt) -> (
+          (* 1. input container is nil *)
+          let f_iemap = MF_eq (hd1, gdcc (MV_empty_map (kt, vt))) in
+          (* 2. input container's size is 0 *)
+          let f_i0 = MF_eq (gdcc (MV_size_m hd1), gdcc (MV_lit_nat Z.zero)) in
+          [f_iemap; f_i0;]
+        )
+      | _ -> Error Stdlib.__LOC__ |> Stdlib.raise
+      )
+    in
+    let new_mii : ms_iter_info = mii in
+    constraints @ (stack_eq_fmla tl1 ss2est)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, new_mii))
+    
+  | MCC_ln_iter, MCC_lb_iter -> 
+    (* Very Special Case - ITER instruction starts *)
+    let (hd1, tl1, hd2, tl2) = (List.hd ss1bst, List.tl ss1bst, List.hd ss2est, List.tl ss2est) in
+    let typ_hd1 = typ_of_val hd1 in
+    let iter_iv : mich_v cc list = PMap.find mii.mii_iter_iv ss2.ss_entry_mci |> (function Some l -> (hd2 :: l) | _ -> Stdlib.failwith Stdlib.__LOC__) in
+    let iter_c_size : mich_v cc = gdcc (MV_lit_nat (Z.of_int (List.length iter_iv))) in
+    let constraints : mich_f list = 
+      (match typ_hd1.Tz.cc_v with
+      | MT_list elt -> (
+          (* 1. input-container = inputs *)
+          let f_ivs = MF_eq (hd1, gdcc (MV_lit_list (elt, iter_iv))) in
+          (* 2. Size of input-container *)
+          let f_icsize = MF_eq (gdcc (MV_size_l hd1), iter_c_size) in
+          [f_ivs; f_icsize;]
+        )
+      | MT_set elt -> (
+          (* 1. input-container = inputs *)
+          let f_ivs = MF_eq (hd1, gdcc (MV_lit_set (elt, PSet.of_list iter_iv))) in
+          (* 2. Size of input-container *)
+          let f_icsize = MF_eq (gdcc (MV_size_s hd1), iter_c_size) in
+          (* 3. key compare results *)
+          let f_kcmp : mich_f list =
+            let rec foldf lst acc = 
+              (match lst with 
+              | [] -> acc 
+              | _ :: [] -> acc 
+              | h1 :: h2 :: tl -> foldf (h2 :: tl) ((MF_eq (gdcc (MV_compare (h1, h2)), gdcc (MV_lit_int (Z.minus_one)))) :: acc)
+              ) 
+            in
+            foldf iter_iv []
+          in
+          [f_ivs; f_icsize; MF_and f_kcmp;]
+        )
+      | MT_map (kt, vt) -> (
+          let ipl : (mich_v cc * mich_v cc) list = List.map (fun x -> (gdcc (MV_car x), gdcc (MV_cdr x))) iter_iv in
+          let kpl : mich_v cc list = List.map (fun x -> Stdlib.fst x) ipl in
+          let imap : mich_v cc = gdcc (MV_lit_map (kt, vt, PMap.of_alist ipl |> (function | `Duplicate_key _ -> Stdlib.failwith Stdlib.__LOC__ | `Ok m -> m))) in    
+          (* 1. input-container = inputs *)
+          let f_ivs = MF_eq (hd1, imap) in
+          (* 2. Size of input-container and output-container *)
+          let f_icsize = MF_eq (gdcc (MV_size_m hd1), iter_c_size) in
+          (* 3. key compare results *)
+          let f_kcmp : mich_f list =
+            let rec foldf lst acc = 
+              (match lst with
+              | [] -> acc 
+              | _ :: [] -> acc
+              | h1 :: h2 :: tl -> foldf (h2 :: tl) ((MF_eq (gdcc (MV_compare (h1, h2)), gdcc (MV_lit_int (Z.minus_one)))) :: acc)
+              )
+            in
+            foldf kpl []
+          in
+          (* 4. let constraints = [...] *)
+          [f_ivs; f_icsize; MF_and f_kcmp;]
+        )
+      | _ -> Error Stdlib.__LOC__ |> Stdlib.raise
+      )
+    in
+    let new_mii : ms_iter_info =
+      (* reset iv *) 
+      {mii with mii_iter_iv=(PMap.remove mii.mii_iter_iv ss2.ss_entry_mci)}
+    in
+    constraints @ (stack_eq_fmla tl1 tl2)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, new_mii)) 
+
+  | MCC_lb_iter, MCC_ln_iter -> 
+    (* ITER instruction ends *)
+    let new_mii = mii in
+    (stack_eq_fmla ss1bst ss2est)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, new_mii))
+
+  | MCC_lb_iter, MCC_lb_iter -> 
+    (* ITER loop continues *)
+    let (hd2, tl2) = (List.hd ss2est, List.tl ss2est) in
+    let new_mii : ms_iter_info = 
+      (* 1. update mii_iter_iv *)
+      let mii_iter_iv_updated : (mich_cut_info, mich_v cc list) PMap.t = 
+        (PMap.update mii.mii_iter_iv ss2.ss_entry_mci ~f:(function | Some lst -> hd2 :: lst | _ -> Stdlib.failwith Stdlib.__LOC__))
+      in
+      {mii with mii_iter_iv=mii_iter_iv_updated;}
+    in
+    let constraints : mich_f list = [] in
+    constraints @ (stack_eq_fmla ss1bst tl2)
+    |> stack_concat_tmpl ss1 ss2
+    |> (fun ss -> (ss, new_mii))
   (*****************************************************************************)
   (* INTER-TRANSACTION                                                         *)
   (*****************************************************************************)

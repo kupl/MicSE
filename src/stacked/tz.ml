@@ -833,6 +833,10 @@ let gen_newvar_symstack_ts : (mich_t cc list) -> (mich_v cc list)
 let gen_newvar_symstack_vs : (mich_v cc list) -> (mich_v cc list)
 = fun vlist -> gen_newvar_symstack_ts (List.map typ_of_val vlist)
 
+(* "stack_eq_fmla s1 s2" Precondition : two stacks should have the same length *)
+let stack_eq_fmla : (mich_v cc list) -> (mich_v cc list) -> (mich_f list)
+= fun s1 s2 -> List.map2 (fun v1 v2 -> MF_eq (v1, v2)) s1 s2
+
 
 (*****************************************************************************)
 (* OCaml container -> Tz container                                           *)
