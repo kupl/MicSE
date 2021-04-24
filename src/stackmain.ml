@@ -74,15 +74,17 @@ let main : unit -> unit
 end
 
 let _ = begin
-  let _ = Utils.Options.create_options () in
-  let _ = Printexc.record_backtrace true in
+  (* 1. Initialize Input Arguments *)
+  Utils.Options.create_options ();
+  (* 2. Initialize Logger *)
+  Utils.Log.create ();
+  (* 3. Enable Error Backtrace *)
+  Printexc.record_backtrace true;
   try
+    (* 4. Check Input File Path Nullity *)
     if !Utils.Options.input_file <> ""
-    then
-      let _ = main () in
-      ()
-    else
-      raise (Failure "No_Input")
+    then main ()
+    else Failure "no input." |> Stdlib.raise
   with
-  | exc -> prerr_endline (Printexc.to_string exc);
+  | exc -> Utils.Log.err (fun m -> m "%s" (exc |> Printexc.to_string))
 end
