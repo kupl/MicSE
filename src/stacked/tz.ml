@@ -1,5 +1,7 @@
 (* Tz for Tezos *)
 
+exception Error of string
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -853,41 +855,301 @@ end (* function pmap_to_mtmap end *)
 
 
 (*****************************************************************************)
+(* Michelson Value & Formula Utilities                                       *)
+(*****************************************************************************)
+
+let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc) -> mich_v cc
+= let rec map_v_v2v_outer_i : mich_v cc -> v2v:(mich_v cc -> mich_v cc) -> mich_v cc
+  = let module CList = Core.List in
+    let module CPSet = Core.Set.Poly in
+    let module CPMap = Core.Map.Poly in
+    (* function map_v_v2v_outer_i start *)
+    fun vvv ~v2v -> begin
+    let rv v = map_v_v2v_outer_i v ~v2v in (* syntax sugar *)
+    (match vvv.cc_v with
+    (*************************************************************************)
+    (* Symbol & Polymorphic                                                  *)
+    (*************************************************************************)
+    | MV_symbol _         -> vvv.cc_v
+    | MV_car v1           -> MV_car (rv v1)
+    | MV_cdr v1           -> MV_cdr (rv v1)
+    | MV_unlift_option v1 -> MV_unlift_option (rv v1)
+    | MV_unlift_left v1   -> MV_unlift_left (rv v1)
+    | MV_unlift_right v1  -> MV_unlift_right (rv v1)
+    | MV_hd_l v1          -> MV_hd_l (rv v1)
+    (*************************************************************************)
+    (* Integer                                                               *)
+    (*************************************************************************)
+    | MV_lit_int _        -> vvv.cc_v
+    | MV_neg_ni v1        -> MV_neg_ni (rv v1)
+    | MV_neg_ii v1        -> MV_neg_ii (rv v1)
+    | MV_not_ni v1        -> MV_not_ni (rv v1)
+    | MV_not_ii v1        -> MV_not_ii (rv v1)
+    | MV_add_nii (v1, v2) -> MV_add_nii ((rv v1), (rv v2))
+    | MV_add_ini (v1, v2) -> MV_add_ini ((rv v1), (rv v2))
+    | MV_add_iii (v1, v2) -> MV_add_iii ((rv v1), (rv v2))
+    | MV_sub_nni (v1, v2) -> MV_sub_nni ((rv v1), (rv v2))
+    | MV_sub_nii (v1, v2) -> MV_sub_nii ((rv v1), (rv v2))
+    | MV_sub_ini (v1, v2) -> MV_sub_ini ((rv v1), (rv v2))
+    | MV_sub_iii (v1, v2) -> MV_sub_iii ((rv v1), (rv v2))
+    | MV_sub_tti (v1, v2) -> MV_sub_tti ((rv v1), (rv v2))
+    | MV_mul_nii (v1, v2) -> MV_mul_nii ((rv v1), (rv v2))
+    | MV_mul_ini (v1, v2) -> MV_mul_ini ((rv v1), (rv v2))
+    | MV_mul_iii (v1, v2) -> MV_mul_iii ((rv v1), (rv v2))
+    | MV_compare (v1, v2) -> MV_compare ((rv v1), (rv v2))
+    | MV_int_of_nat v1    -> MV_int_of_nat (rv v1)
+    (*************************************************************************)
+    (* Natural Number                                                        *)
+    (*************************************************************************)
+    | MV_lit_nat _            -> vvv.cc_v
+    | MV_abs_in v1            -> MV_abs_in (rv v1)
+    | MV_add_nnn (v1, v2)     -> MV_add_nnn ((rv v1), (rv v2))
+    | MV_mul_nnn (v1, v2)     -> MV_mul_nnn ((rv v1), (rv v2))
+    | MV_shiftL_nnn (v1, v2)  -> MV_shiftL_nnn ((rv v1), (rv v2))
+    | MV_shiftR_nnn (v1, v2)  -> MV_shiftR_nnn ((rv v1), (rv v2))
+    | MV_and_nnn (v1, v2)     -> MV_and_nnn ((rv v1), (rv v2))
+    | MV_and_inn (v1, v2)     -> MV_and_inn ((rv v1), (rv v2))
+    | MV_or_nnn (v1, v2)      -> MV_or_nnn ((rv v1), (rv v2))
+    | MV_xor_nnn (v1, v2)     -> MV_xor_nnn ((rv v1), (rv v2))
+    | MV_size_s v1            -> MV_size_s (rv v1)
+    | MV_size_m v1            -> MV_size_m (rv v1)
+    | MV_size_l v1            -> MV_size_l (rv v1)
+    | MV_size_str v1          -> MV_size_str (rv v1)
+    | MV_size_b v1            -> MV_size_b (rv v1)
+    (*************************************************************************)
+    (* String                                                                *)
+    (*************************************************************************)
+    | MV_lit_string _         -> vvv.cc_v
+    | MV_concat_sss (v1, v2)  -> MV_concat_sss ((rv v1), (rv v2))
+    | MV_concat_list_s v1     -> MV_concat_list_s (rv v1)
+    (*************************************************************************)
+    (* Bytes                                                                 *)
+    (*************************************************************************)
+    | MV_lit_bytes _          -> vvv.cc_v
+    | MV_concat_bbb (v1, v2)  -> MV_concat_bbb ((rv v1), (rv v2))
+    | MV_concat_list_b v1     -> MV_concat_list_b (rv v1)
+    | MV_pack v1              -> MV_pack (rv v1)
+    | MV_blake2b v1           -> MV_blake2b (rv v1)
+    | MV_sha256 v1            -> MV_sha256 (rv v1)
+    | MV_sha512 v1            -> MV_sha512 (rv v1)
+    (*************************************************************************)
+    (* Mutez                                                                 *)
+    (*************************************************************************)
+    | MV_lit_mutez _      -> vvv.cc_v
+    | MV_add_mmm (v1, v2) -> MV_add_mmm ((rv v1), (rv v2))
+    | MV_sub_mmm (v1, v2) -> MV_sub_mmm ((rv v1), (rv v2))
+    | MV_mul_mnm (v1, v2) -> MV_mul_mnm ((rv v1), (rv v2))
+    | MV_mul_nmm (v1, v2) -> MV_mul_nmm ((rv v1), (rv v2))
+    (*************************************************************************)
+    (* Bool                                                                  *)
+    (*************************************************************************)
+    | MV_lit_bool _                   -> vvv.cc_v
+    | MV_not_bb v1                    -> MV_not_bb (rv v1)
+    | MV_and_bbb (v1, v2)             -> MV_and_bbb ((rv v1), (rv v2))
+    | MV_or_bbb (v1, v2)              -> MV_or_bbb ((rv v1), (rv v2))
+    | MV_xor_bbb (v1, v2)             -> MV_xor_bbb ((rv v1), (rv v2))
+    | MV_eq_ib (v1, v2)               -> MV_eq_ib ((rv v1), (rv v2))
+    | MV_neq_ib (v1, v2)              -> MV_neq_ib ((rv v1), (rv v2))
+    | MV_lt_ib (v1, v2)               -> MV_lt_ib ((rv v1), (rv v2))
+    | MV_gt_ib (v1, v2)               -> MV_gt_ib ((rv v1), (rv v2))
+    | MV_leq_ib (v1, v2)              -> MV_leq_ib ((rv v1), (rv v2))
+    | MV_geq_ib (v1, v2)              -> MV_geq_ib ((rv v1), (rv v2))
+    | MV_mem_xsb (v1, v2)             -> MV_mem_xsb ((rv v1), (rv v2))
+    | MV_mem_xmb (v1, v2)             -> MV_mem_xmb ((rv v1), (rv v2))
+    | MV_mem_xbmb (v1, v2)            -> MV_mem_xbmb ((rv v1), (rv v2))
+    | MV_check_signature (v1, v2, v3) -> MV_check_signature ((rv v1), (rv v2), (rv v3))
+    (*************************************************************************)
+    (* Key Hash                                                              *)
+    (*************************************************************************)
+    | MV_lit_key_hash _ -> vvv.cc_v
+    | MV_hash_key v1    -> MV_hash_key (rv v1)
+    (*************************************************************************)
+    (* Timestamp                                                             *)
+    (*************************************************************************)
+    | MV_lit_timestamp_str _  -> vvv.cc_v 
+    | MV_lit_timestamp_sec _  -> vvv.cc_v
+    | MV_add_itt (v1, v2)     -> MV_add_itt ((rv v1), (rv v2))
+    | MV_add_tit (v1, v2)     -> MV_add_tit ((rv v1), (rv v2))
+    | MV_sub_tit (v1, v2)     -> MV_sub_tit ((rv v1), (rv v2))
+    (*************************************************************************)
+    (* Address                                                               *)
+    (*************************************************************************)
+    | MV_lit_address v1         -> MV_lit_address (rv v1)
+    | MV_address_of_contract v1 -> MV_address_of_contract (rv v1)
+    (*************************************************************************)
+    (* Key                                                                   *)
+    (*************************************************************************)
+    | MV_lit_key _ -> vvv.cc_v
+    (*************************************************************************)
+    (* Unit                                                                  *)
+    (*************************************************************************)
+    | MV_unit -> vvv.cc_v
+    (*************************************************************************)
+    (* Signature                                                             *)
+    (*************************************************************************)
+    | MV_lit_signature_str _            -> vvv.cc_v
+    | MV_lit_signature_signed (v1, v2)  -> MV_lit_signature_signed ((rv v1), (rv v2))
+    (*************************************************************************)
+    (* Option                                                                *)
+    (*************************************************************************)
+    | MV_some v1                      -> MV_some (rv v1)
+    | MV_none _                       -> vvv.cc_v
+    | MV_ediv_nnnn (v1, v2)           -> MV_ediv_nnnn ((rv v1), (rv v2))
+    | MV_ediv_niin (v1, v2)           -> MV_ediv_niin ((rv v1), (rv v2))
+    | MV_ediv_inin (v1, v2)           -> MV_ediv_inin ((rv v1), (rv v2))
+    | MV_ediv_iiin (v1, v2)           -> MV_ediv_iiin ((rv v1), (rv v2))
+    | MV_ediv_mnmm (v1, v2)           -> MV_ediv_mnmm ((rv v1), (rv v2))
+    | MV_ediv_mmnm (v1, v2)           -> MV_ediv_mmnm ((rv v1), (rv v2))
+    | MV_get_xmoy  (v1, v2)           -> MV_get_xmoy ((rv v1), (rv v2))
+    | MV_get_xbmo  (v1, v2)           -> MV_get_xbmo ((rv v1), (rv v2))
+    | MV_slice_nnso (v1, v2, v3)      -> MV_slice_nnso ((rv v1), (rv v2), (rv v3))
+    | MV_slice_nnbo (v1, v2, v3)      -> MV_slice_nnbo ((rv v1), (rv v2), (rv v3))
+    | MV_unpack (t1, v2)              -> MV_unpack (t1, (rv v2))
+    | MV_contract_of_address (t1, v2) -> MV_contract_of_address (t1, (rv v2))
+    | MV_isnat v1                     -> MV_isnat (rv v1)
+    (*************************************************************************)
+    (* List                                                                  *)
+    (*************************************************************************)
+    | MV_lit_list (t1, vl2) -> MV_lit_list (t1, (vl2 |> CList.map ~f:rv))
+    | MV_nil _              -> vvv.cc_v
+    | MV_cons (v1, v2)      -> MV_cons ((rv v1), (rv v2))
+    | MV_tl_l v1            -> MV_tl_l (rv v1)
+    (*************************************************************************)
+    (* Set                                                                   *)
+    (*************************************************************************)
+    | MV_lit_set (t1, vs2)        -> MV_lit_set (t1, (vs2 |> CPSet.map ~f:rv))
+    | MV_empty_set _              -> vvv.cc_v
+    | MV_update_xbss (v1, v2, v3) -> MV_update_xbss ((rv v1), (rv v2), (rv v3))
+    (*************************************************************************)
+    (* Operation                                                             *)
+    (*************************************************************************)
+    | MV_create_contract (t1, t2, v3, v4, v5, v6, v7) -> MV_create_contract (t1, t2, (rv v3), (rv v4), (rv v5), (rv v6), (rv v7))
+    | MV_transfer_tokens (v1, v2, v3)                 -> MV_transfer_tokens ((rv v1), (rv v2), (rv v3))
+    | MV_set_delegate v1                              -> MV_set_delegate (rv v1)
+    (*************************************************************************)
+    (* Contract                                                              *)
+    (*************************************************************************)
+    | MV_lit_contract (t1, v2)  -> MV_lit_contract (t1, (rv v2))
+    | MV_self _                 -> vvv.cc_v
+    | MV_implicit_account v1    -> MV_implicit_account (rv v1)
+    (*************************************************************************)
+    (* Pair                                                                  *)
+    (*************************************************************************)
+    | MV_pair (v1, v2) -> MV_pair ((rv v1), (rv v2))
+    (*************************************************************************)
+    (* Or                                                                    *)
+    (*************************************************************************)
+    | MV_left (t1, v2)  -> MV_left (t1, (rv v2))
+    | MV_right (t1, v2) -> MV_right (t1, (rv v2))
+    (*************************************************************************)
+    (* Lambda                                                                *)
+    (*************************************************************************)
+    | MV_lit_lambda _
+    | MV_lambda_unknown _         -> vvv.cc_v
+    | MV_lambda_closure (v1, v2)  -> MV_lambda_closure ((rv v1), (rv v2))
+    (*************************************************************************)
+    (* Map                                                                   *)
+    (*************************************************************************)
+    | MV_lit_map (t1, t2, vm3)    -> MV_lit_map (t1, t2, (vm3 |> CPMap.map ~f:rv))
+    | MV_empty_map _              -> vvv.cc_v
+    | MV_update_xomm (v1, v2, v3) -> MV_update_xomm ((rv v1), (rv v2), (rv v3))
+    (*************************************************************************)
+    (* Big Map                                                               *)
+    (*************************************************************************)
+    | MV_lit_big_map (t1, t2, vm3)  -> MV_lit_map (t1, t2, (vm3 |> CPMap.map ~f:rv))
+    | MV_empty_big_map _            -> vvv.cc_v
+    | MV_update_xobmbm (v1, v2, v3) -> MV_update_xomm ((rv v1), (rv v2), (rv v3))
+    (*************************************************************************)
+    (* Chain Id                                                              *)
+    (*************************************************************************)
+    | MV_lit_chain_id _ -> vvv.cc_v)
+    |> gen_custom_cc vvv
+    |> v2v
+  end in (* function map_v_v2v_outer_i end *)
+  (* function map_v_v2v_outer start *)
+  fun vvv ~v2v -> begin
+  map_v_v2v_outer_i vvv ~v2v
+end (* function map_v_v2v_outer end *)
+
+let map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc) -> mich_f
+= let module CList = Core.List in
+  let rec map_f_v2v_outer_i : mich_f -> v2v:(mich_v cc -> mich_v cc) -> mich_f
+  = (* function map_f_v2v_outer_i start *)
+    fun fff ~v2v -> begin
+    let rv v = map_v_v2v_outer v ~v2v in
+    let rf f = map_f_v2v_outer_i f ~v2v in
+    match fff with
+    (* Logical Formula *)
+    | MF_true
+    | MF_false          -> fff
+    | MF_not f1         -> MF_not (rf f1)
+    | MF_and fl1        -> MF_and (fl1 |> CList.map ~f:rf)
+    | MF_or fl1         -> MF_or (fl1 |> CList.map ~f:rf)
+    | MF_eq (v1, v2)    -> MF_eq ((rv v1), (rv v2))
+    | MF_imply (f1, f2) -> MF_imply ((rf f1), (rf f2))
+    (* MicSE-Cfg Pattern Matching *)
+    | MF_is_true v1 -> MF_is_true (rv v1)
+    | MF_is_none v1 -> MF_is_none (rv v1)
+    | MF_is_left v1 -> MF_is_left (rv v1)
+    | MF_is_cons v1 -> MF_is_cons (rv v1)
+    (* Custom Formula for verifiying *)
+    | MF_add_mmm_no_overflow (v1, v2)   -> MF_add_mmm_no_overflow ((rv v1), (rv v2))
+    | MF_sub_mmm_no_underflow (v1, v2)  -> MF_sub_mmm_no_underflow ((rv v1), (rv v2))
+    | MF_mul_mnm_no_overflow (v1, v2)   -> MF_mul_mnm_no_overflow ((rv v1), (rv v2))
+    | MF_mul_nmm_no_overflow (v1, v2)   -> MF_mul_nmm_no_overflow ((rv v1), (rv v2))
+    | MF_shiftL_nnn_rhs_in_256 (v1, v2) -> MF_shiftL_nnn_rhs_in_256 ((rv v1), (rv v2))
+    | MF_shiftR_nnn_rhs_in_256 (v1, v2) -> MF_shiftR_nnn_rhs_in_256 ((rv v1), (rv v2))
+    (* Custom Domain Formula for Invariant Generation *)
+    | MF_sigma_equal (v1, v2) -> MF_sigma_equal ((rv v1), (rv v2))
+  end in (* function map_f_v2v_outer_i end *)
+  (* function map_f_v2v_outer start *)
+  fun fff ~v2v -> begin
+  map_f_v2v_outer_i fff ~v2v
+end (* function map_f_v2v_outer end *)
+
+
+(*****************************************************************************)
 (* Invariant Application form for each mich_cut_category                     *)
 (*****************************************************************************)
 
-(* Currently, we regard the invariant uses the base stack elements only *)
-let inv_app_guide_entry : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
+let extract_typ_stack : mich_v cc list -> mich_t cc list
+= let module CList = Core.List in
+  (* function get_type_stack start *)
+  fun vs -> begin
+  CList.fold_right
+    vs
+    ~f:(fun v ts -> (v |> typ_of_val)::ts)
+    ~init:[]
+end (* function get_type stack end *)
+
+let make_base_var : int -> mich_t cc -> mich_v cc
+= (* function make_base_var start *)
+  fun loc t -> begin
+  gen_new_symval_ts t ("VS[" ^ (loc |> string_of_int) ^"]")
+end (* function make_base_var end *)
+
+let inv_app_guide_vstack : mich_f -> mich_v cc list -> mich_f
+= let module CList = Core.List in
+  (* function inv_app_guide_vstack *)
+  fun inv_f vs -> begin
+  (* 0. get type stack from value stack *)
+  let ts : mich_t cc list = extract_typ_stack vs in
+  let base_vs : mich_v cc list = (
+    CList.mapi
+      ts
+      ~f:(fun loc t -> make_base_var loc t)) in
+  CList.fold2 base_vs vs
+    ~init:inv_f
+    ~f:(fun accinv bv v -> (
+      map_f_v2v_outer accinv
+        ~v2v:(fun e -> if e = bv then v else e)))
+  |> function
+      | Ok fff -> fff
+      | Unequal_lengths -> Error "inv_app_guide_vstack : fold2" |> Stdlib.raise
+end (* function inv_app_guid_vstack *)
+
+let inv_app_guide : mich_f -> (sym_state) -> mich_f
 = let module CList = Core.List in
   fun inv_f ss -> begin
-  let sstack : mich_v cc list = ss.ss_entry_symstack in
-  match ss.ss_entry_mci.mci_cutcat with
-  | MCC_trx_entry     -> inv_f sstack
-  | MCC_trx_exit      -> Stdlib.failwith "inv_app_guide_entry : MCC_trx_exit : unexpected"
-  | MCC_ln_loop       -> inv_f sstack
-  | MCC_ln_loopleft   -> inv_f (CList.tl_exn sstack)
-  | MCC_ln_map        -> inv_f (CList.tl_exn sstack)
-  | MCC_ln_iter       -> inv_f sstack
-  | MCC_lb_loop       -> inv_f sstack
-  | MCC_lb_loopleft   -> inv_f (CList.tl_exn sstack)
-  | MCC_lb_map        -> inv_f (CList.tl_exn sstack)
-  | MCC_lb_iter       -> inv_f (CList.tl_exn sstack)
-  | MCC_query         -> Stdlib.failwith "inv_app_guide_entry : MCC_query : unexpected"
-end (* function inv_app_guide_entry end *)
-let inv_app_guide_block : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
-= let module CList = Core.List in
-  fun inv_f ss -> begin
-  let sstack : mich_v cc list = ss.ss_symstack in
-  match ss.ss_block_mci.mci_cutcat with
-  | MCC_trx_entry     -> Stdlib.failwith "inv_app_guide_block : MCC_trx_entry : unexpected"
-  | MCC_trx_exit      -> inv_f sstack
-  | MCC_ln_loop       -> inv_f (CList.tl_exn sstack)
-  | MCC_ln_loopleft   -> inv_f (CList.tl_exn sstack)
-  | MCC_ln_map        -> inv_f (CList.tl_exn sstack)
-  | MCC_ln_iter       -> inv_f (CList.tl_exn sstack)
-  | MCC_lb_loop       -> inv_f (CList.tl_exn sstack)
-  | MCC_lb_loopleft   -> inv_f (CList.tl_exn sstack)
-  | MCC_lb_map        -> inv_f (CList.tl_exn sstack)
-  | MCC_lb_iter       -> inv_f sstack
-  | MCC_query         -> Stdlib.failwith "inv_app_guide_block : MCC_query : unexpected"
-end (* function inv_app_guide_exit end *)
+  inv_app_guide_vstack inv_f ss.ss_symstack
+end (* function inv_app_guide end *)

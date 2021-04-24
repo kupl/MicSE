@@ -73,7 +73,6 @@ type component = {
   *****************************************************************************)
 type comp_map = (Tz.mich_cut_info, (component Core.Set.Poly.t) CTMap.t) Core.Map.Poly.t
 
-val make_base_var : int -> Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
 val bake_comp_map : Se.state_set -> comp_map
 val fold_precond : component list -> Tz.mich_f
 

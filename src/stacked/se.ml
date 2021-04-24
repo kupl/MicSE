@@ -28,7 +28,7 @@ type cache = {
   ch_entered_lmbd : Tz.mich_cut_info Tz.PSet.t;
 }
 
-type invmap = (Tz.mich_cut_info, ((Tz.mich_v Tz.cc list) -> Tz.mich_f)) Tz.PMap.t
+type invmap = (Tz.mich_cut_info, Tz.mich_f) Tz.PMap.t
 
 
 (*****************************************************************************)
@@ -139,13 +139,12 @@ let map_ss_running : (Tz.sym_state -> Tz.sym_state) -> state_set -> state_set
 
 let true_invmap_of_blocked_sset : Tz.sym_state Tz.PSet.t -> invmap
 = let pm_add_if_possible k v pmap = PMap.add pmap ~key:k ~data:v |> (function | `Ok m -> m | `Duplicate -> pmap) in
-  let true_f = (function _ -> MF_true) in
   fun blocked_set -> begin
   PSet.fold blocked_set ~init:PMap.empty 
     ~f:(fun accm bl_ss -> 
       accm 
-      |> pm_add_if_possible bl_ss.ss_entry_mci true_f
-      |> pm_add_if_possible bl_ss.ss_block_mci true_f
+      |> pm_add_if_possible bl_ss.ss_entry_mci MF_true
+      |> pm_add_if_possible bl_ss.ss_block_mci MF_true
     )
 end (* function true_invmap_from_blocked end *)
 
@@ -985,7 +984,7 @@ let inv_induct_fmla_i : Tz.sym_state -> invmap -> Tz.mich_f
 = fun blocked_ss invm -> begin
   match (PMap.find invm blocked_ss.ss_entry_mci, PMap.find invm blocked_ss.ss_block_mci) with
   | (Some inv_entry, Some inv_block) ->
-      MF_imply (MF_and ((inv_app_guide_entry inv_entry blocked_ss) :: blocked_ss.ss_constraints), inv_app_guide_block inv_block blocked_ss)
+      MF_imply (MF_and ((Tz.inv_app_guide inv_entry blocked_ss) :: blocked_ss.ss_constraints), Tz.inv_app_guide inv_block blocked_ss)
   | _ -> Error "inv_induct_fmla : cannot find invariant" |> raise
 end (* function inv_induct_fmla_i end *) 
 let inv_induct_fmla : (Tz.sym_state Tz.PSet.t) -> invmap -> (Tz.mich_f Tz.PSet.t)
@@ -998,7 +997,7 @@ let inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
   let inv_entry = PMap.find invm query_ss.ss_entry_mci 
                   |> (function | Some v -> v | None -> Error "inv_query_fmla : inv_entry : not-found" |> raise) 
   in
-  let entry_fmla = inv_app_guide_entry inv_entry query_ss in
+  let entry_fmla = Tz.inv_app_guide inv_entry query_ss in
   let query = state_query_reduce query_ssp in
   MF_imply (MF_and (entry_fmla :: query_ss.ss_constraints), query)
 end (* function inv_query_fmla end *)

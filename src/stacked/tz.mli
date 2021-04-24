@@ -1,5 +1,7 @@
 (* Tz for Tezos *)
 
+exception Error of string
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -561,8 +563,19 @@ val pmap_to_mtmap : mich_t cc * mich_t cc * (mich_v cc, mich_v cc) PMap.t -> mic
 
 
 (*****************************************************************************)
+(* Michelson Value & Formula Utilities                                       *)
+(*****************************************************************************)
+
+val map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc) -> mich_v cc
+val map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc) -> mich_f
+
+
+(*****************************************************************************)
 (* Invariant Application form for each mich_cut_category                     *)
 (*****************************************************************************)
 
-val inv_app_guide_entry : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
-val inv_app_guide_block : (mich_v cc list -> mich_f) -> (sym_state) -> mich_f
+val extract_typ_stack : mich_v cc list -> mich_t cc list
+val make_base_var : int -> mich_t cc -> mich_v cc
+
+val inv_app_guide_vstack : mich_f -> mich_v cc list -> mich_f
+val inv_app_guide : mich_f -> (sym_state) -> mich_f

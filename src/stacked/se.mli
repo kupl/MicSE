@@ -26,7 +26,7 @@ type cache = {
   ch_entered_lmbd : Tz.mich_cut_info Tz.PSet.t;
 }
 
-type invmap = (Tz.mich_cut_info, ((Tz.mich_v Tz.cc list) -> Tz.mich_f)) Tz.PMap.t
+type invmap = (Tz.mich_cut_info, Tz.mich_f) Tz.PMap.t
 
 
 (*****************************************************************************)

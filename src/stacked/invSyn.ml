@@ -125,26 +125,13 @@ type component = {
   *****************************************************************************)
 type comp_map = (Tz.mich_cut_info, (component Core.Set.Poly.t) CTMap.t) Core.Map.Poly.t
 
-let make_base_var : int -> Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
-= (* function make_base_var start *)
-  fun loc t -> begin
-  Tz.gen_new_symval_ts t ("VS[" ^ (loc |> string_of_int) ^"]")
-end (* function make_base_var end *)
 
 let bake_comp_map : Se.state_set -> comp_map
 = let module CList = Core.List in
   let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
   let get_type_stack : vstack CPSet.t -> tstack option
-  = let extract_type : vstack -> tstack
-    = (* function extract_type start *)
-      fun vs -> begin
-      CList.fold_right
-        vs
-        ~f:(fun v ts -> (v |> Tz.typ_of_val)::ts)
-        ~init:[]
-    end in (* function extract_type end *)
-    let tstack_equal : tstack -> tstack -> bool
+  = let tstack_equal : tstack -> tstack -> bool
     = (* function tstack_equal start *)
       fun ts1 ts2 -> begin
       CList.fold2
@@ -163,7 +150,7 @@ let bake_comp_map : Se.state_set -> comp_map
       |> function 
           | Some ss -> ss
           | None -> Error "bake_comp_map : get_type_stack : vs" |> Stdlib.raise in
-    let ts : tstack = vs |> extract_type in
+    let ts : tstack = vs |> Tz.extract_typ_stack in
     CPSet.fold
       (CPSet.remove vsset vs)
       ~init:(Some ts)
@@ -171,7 +158,7 @@ let bake_comp_map : Se.state_set -> comp_map
             if Option.is_none ts_opt then None
             else 
               let ts = Option.get ts_opt in
-              if tstack_equal ts (vs |> extract_type) then ts_opt
+              if tstack_equal ts (vs |> Tz.extract_typ_stack) then ts_opt
               else None))
   end in (* function get_type_stack end *)
   let create_base_comp : Tz.mich_t Tz.cc -> (Tz.mich_cut_info * int) -> component option
@@ -187,7 +174,7 @@ let bake_comp_map : Se.state_set -> comp_map
     | MCC_trx_entry, 0 -> begin
       match cur_typ.cc_v with
       | MT_pair (_, strg_typ) -> begin
-        let bvar : mich_v cc = make_base_var cur_loc cur_typ in
+        let bvar : mich_v cc = Tz.make_base_var cur_loc cur_typ in
         Some { cp_typ=strg_typ;
                cp_loc=cur_loc;
                cp_base_var=bvar;
@@ -197,7 +184,7 @@ let bake_comp_map : Se.state_set -> comp_map
       | _ -> (Error "bake_comp_map : create_base_comp : MCC_trx_entry, 0 : cur_typ" |> Stdlib.raise)
       end
     | _ -> begin
-      let bvar : mich_v cc = make_base_var cur_loc cur_typ in
+      let bvar : mich_v cc = Tz.make_base_var cur_loc cur_typ in
       Some { cp_typ=cur_typ;
              cp_loc=cur_loc;
              cp_base_var=bvar;
@@ -416,7 +403,7 @@ let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredient
             cur_inv
             ~f:(fun ~key ~data ->
                   if key.mci_cutcat = MCC_trx_entry || key.mci_cutcat = MCC_trx_exit
-                  then (function vl -> MF_and [fmla; (data vl)])
+                  then MF_and [fmla; data]
                   else data)))
 end (* function refine_t end *)
 
