@@ -150,7 +150,7 @@ let bake_comp_map : Se.state_set -> comp_map
       |> function 
           | Some ss -> ss
           | None -> Error "bake_comp_map : get_type_stack : vs" |> Stdlib.raise in
-    let ts : tstack = vs |> Tz.extract_typ_stack in
+    let ts : tstack = vs |> Se.extract_typ_stack in
     CPSet.fold
       (CPSet.remove vsset vs)
       ~init:(Some ts)
@@ -158,7 +158,7 @@ let bake_comp_map : Se.state_set -> comp_map
             if Option.is_none ts_opt then None
             else 
               let ts = Option.get ts_opt in
-              if tstack_equal ts (vs |> Tz.extract_typ_stack) then ts_opt
+              if tstack_equal ts (vs |> Se.extract_typ_stack) then ts_opt
               else None))
   end in (* function get_type_stack end *)
   let create_base_comp : Tz.mich_t Tz.cc -> (Tz.mich_cut_info * int) -> component option
@@ -174,7 +174,7 @@ let bake_comp_map : Se.state_set -> comp_map
     | MCC_trx_entry, 0 -> begin
       match cur_typ.cc_v with
       | MT_pair (_, strg_typ) -> begin
-        let bvar : mich_v cc = Tz.make_base_var cur_loc cur_typ in
+        let bvar : mich_v cc = Se.make_base_var cur_loc cur_typ in
         Some { cp_typ=strg_typ;
                cp_loc=cur_loc;
                cp_base_var=bvar;
@@ -184,7 +184,7 @@ let bake_comp_map : Se.state_set -> comp_map
       | _ -> (Error "bake_comp_map : create_base_comp : MCC_trx_entry, 0 : cur_typ" |> Stdlib.raise)
       end
     | _ -> begin
-      let bvar : mich_v cc = Tz.make_base_var cur_loc cur_typ in
+      let bvar : mich_v cc = Se.make_base_var cur_loc cur_typ in
       Some { cp_typ=cur_typ;
              cp_loc=cur_loc;
              cp_base_var=bvar;
@@ -385,25 +385,61 @@ let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredient
 = let open Tz in
   let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
+  let get_base_var_stack : Tz.sym_state -> (Tz.mich_v Tz.cc * Tz.mich_v Tz.cc) CPSet.t
+  = let module CList = Core.List in
+    (* function get_base_var_stack start *)
+    fun ss -> begin
+      let strg_typ : Tz.mich_t Tz.cc = 
+        CPMap.find
+          ss.ss_dynchain.bc_storage
+          ss.ss_optt.optt_addr
+        |> (function Some vv -> vv | None -> Error "refine_t : get_base_var_stack : strg_typ" |> Stdlib.raise)
+        |> Tz.typ_of_val
+        |> Tz.get_dummy_cc_of_typ in
+      let entry_ts : Tz.mich_t Tz.cc list = Se.extract_typ_stack ss.ss_entry_symstack in
+      CList.foldi entry_ts
+        ~init:CPSet.empty
+        ~f:(fun loc acc entry_t ->
+              let exit_t : Tz.mich_t Tz.cc =
+                match entry_t.cc_v with
+                | MT_pair (_, t2) ->
+                  if t2 = strg_typ then Tz.gen_dummy_cc (MT_pair ((Tz.gen_dummy_cc (MT_list (Tz.gen_dummy_cc MT_operation))), strg_typ))
+                  else entry_t
+                | _ -> entry_t in
+              CPSet.add acc ((Se.make_base_var loc entry_t), (Se.make_base_var loc exit_t)))
+    end in (* function get_base_var_stack end *)
   (* function refine_t start *)
   fun (cur_inv, istrg_opt) igdt -> begin
   let _ = istrg_opt in
-  (* 0. extract component of storage variable *)
+  (* 0-1. extract component of storage variable *)
   let ctmap = igdt.igdt_comp_type_map in
+  (* 0-2. extract exit base variable stack from entry base variable stack *)
+  let exit_vs : (Tz.mich_v Tz.cc * Tz.mich_v Tz.cc) CPSet.t = get_base_var_stack igdt.igdt_sym_state in
   (* 1. generate recipe *)
   let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
   (* 2. generate invariant map *)
-  let fmlas : Tz.mich_f CPSet.t = 
+  let fmlas : (Tz.mich_f * Tz.mich_f) CPSet.t = 
     [ all_eq_fmlas; ]
-    |> collect_set in
+    |> collect_set
+    |> CPSet.map
+        ~f:(fun entry_f -> (
+              let exit_f : mich_f =
+                CPSet.fold
+                  exit_vs  
+                  ~init:entry_f
+                  ~f:(fun acc_f (entry_v, exit_v) -> (
+                        Tz.map_f_v2v_outer
+                          acc_f
+                          ~v2v:(fun v -> if v.cc_v = entry_v.cc_v then exit_v else v))) in
+              (entry_f, exit_f))) in
   CPSet.map
     fmlas
-    ~f:(fun fmla -> (
+    ~f:(fun (entry_f, exit_f) -> (
           CPMap.mapi
             cur_inv
             ~f:(fun ~key ~data ->
-                  if key.mci_cutcat = MCC_trx_entry || key.mci_cutcat = MCC_trx_exit
-                  then MF_and [fmla; data]
+                  if key.mci_cutcat = MCC_trx_entry then CPSet.add data entry_f
+                  else if key.mci_cutcat = MCC_trx_exit then CPSet.add data exit_f
                   else data)))
 end (* function refine_t end *)
 
@@ -427,14 +463,8 @@ let generate : generate_param -> Se.invmap Core.Set.Poly.t
     CPSet.fold
       igi_failed_set
       ~init:CPMap.empty
-      ~f:(fun acc ((fs, qctg), (_, mopt), vc, _) -> 
-          (* 1-1. get accumulated ingredients *)
-          let (acc', acc_igdt_set) : ((Tz.mich_cut_info, (ingredients CPSet.t)) CPMap.t) * (ingredients CPSet.t) =
-            CPMap.find acc fs.ss_entry_mci
-            |> function
-                | Some ss -> ((CPMap.remove acc fs.ss_entry_mci), ss)
-                | None -> (acc, CPSet.empty) in
-          (* 1-2. make new ingredients *)
+      ~f:(fun acc ((fs, qctg), (_, mopt), vc, _) ->
+          (* 1-1. make new ingredients *)
           let ctmap : (component CPSet.t) CTMap.t =
             CPMap.find igi_comp_map fs.ss_entry_mci
             |> function
@@ -446,13 +476,15 @@ let generate : generate_param -> Se.invmap Core.Set.Poly.t
               igdt_vc=vc;
               igdt_sym_state=fs;
               igdt_comp_type_map=ctmap} in
-          (* 1-3. accumulate new ingredients *)
-          let new_acc_igdt_set : ingredients CPSet.t = CPSet.add acc_igdt_set new_igdt in
-          CPMap.add
-            acc'
-            ~key:fs.ss_entry_mci
-            ~data:new_acc_igdt_set
-          |> function `Ok mm -> mm | `Duplicate -> Error "generate : refine_targets" |> Stdlib.raise) in
+          (* 1-2. accumulate new ingredients *)
+          CPMap.update
+            acc
+            fs.ss_entry_mci
+            ~f:(fun igdts_opt -> 
+                  if Option.is_none igdts_opt then (CPSet.singleton new_igdt) 
+                  else (CPSet.add 
+                          (igdts_opt |> Option.get)
+                          new_igdt))) in
   (* 2. generate invariants from current invariant *)
   let newly_generated_inv : Se.invmap CPSet.t =
     CPMap.fold

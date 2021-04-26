@@ -528,6 +528,8 @@ val typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
 val get_innertyp : mich_t cc -> mich_t cc
 val get_innertyp2 : mich_t cc -> (mich_t cc * mich_t cc)
 
+val get_dummy_cc_of_typ : mich_t cc -> mich_t cc
+
 
 (*****************************************************************************)
 (* Michelson Cut Category & Cut Info                                         *)
@@ -568,14 +570,3 @@ val pmap_to_mtmap : mich_t cc * mich_t cc * (mich_v cc, mich_v cc) PMap.t -> mic
 
 val map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc) -> mich_v cc
 val map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc) -> mich_f
-
-
-(*****************************************************************************)
-(* Invariant Application form for each mich_cut_category                     *)
-(*****************************************************************************)
-
-val extract_typ_stack : mich_v cc list -> mich_t cc list
-val make_base_var : int -> mich_t cc -> mich_v cc
-
-val inv_app_guide_vstack : mich_f -> mich_v cc list -> mich_f
-val inv_app_guide : mich_f -> (sym_state) -> mich_f

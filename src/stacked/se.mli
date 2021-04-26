@@ -26,7 +26,7 @@ type cache = {
   ch_entered_lmbd : Tz.mich_cut_info Tz.PSet.t;
 }
 
-type invmap = (Tz.mich_cut_info, Tz.mich_f) Tz.PMap.t
+type invmap = (Tz.mich_cut_info, (Tz.mich_f Tz.PSet.t)) Tz.PMap.t
 
 
 (*****************************************************************************)
@@ -108,6 +108,22 @@ val run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) 
 (*****************************************************************************)
 (* Generate Inductiveness & Query Formula                                    *)
 (*****************************************************************************)
+(*****************************************************************************)
+
+(*****************************************************************************)
+(* Invariant Application form for each mich_cut_category                     *)
+(*****************************************************************************)
+
+val extract_typ_stack : Tz.mich_v Tz.cc list -> Tz.mich_t Tz.cc list
+val make_base_var : int -> Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
+
+val inv_app_guide_vstack : Tz.mich_f Core.Set.Poly.t -> Tz.mich_v Tz.cc list -> Tz.mich_f
+val inv_app_guide_entry : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
+val inv_app_guide_block : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
+
+
+(*****************************************************************************)
+(* Invariant Map to Michelson Formula                                        *)
 (*****************************************************************************)
 
 val inv_induct_fmla_i : Tz.sym_state -> invmap -> Tz.mich_f

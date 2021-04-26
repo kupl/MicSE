@@ -94,7 +94,7 @@ let check_inv_inductiveness :
       (match CPMap.find invm init_ss.ss_entry_mci with
         | None -> Error "check_inv_inductiveness : init_stg_sat" |> raise
         | Some inv_f ->
-          let sat_f : Tz.mich_f = Tz.inv_app_guide_vstack inv_f [Tz.MV_pair (init_ss.ss_optt.optt_param, istg) |> Tz.gen_dummy_cc] in
+          let sat_f : Tz.mich_f = Se.inv_app_guide_vstack inv_f [Tz.MV_pair (init_ss.ss_optt.optt_param, istg) |> Tz.gen_dummy_cc] in
           check_validity sat_f |> Stdlib.fst |> ProverLib.Smt.ZSolver.is_valid
       )
     ) 
@@ -374,6 +374,7 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
     Option.bind tz_init_stg_opt (fun init_stg -> Some (init_stg, init_ss)) in
   let inv_init : Se.invmap = sset.Se.blocked |> Se.true_invmap_of_blocked_sset in
   let w_init : worklist = inv_init |> Tz.PSet.singleton in
+  (* (Utils.Log.debug (fun m -> m "Prove : main : Initial Worklist Length : %d" (w_init |> CPSet.length))); *)
   let res_init : ret = { solved_map=CPMap.empty; failed_set=CPSet.empty; untouched_set=sset.queries } in
   let comp_map : InvSyn.comp_map = InvSyn.bake_comp_map sset in
   let timer : Utils.Timer.t ref = Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget) in
@@ -383,7 +384,10 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
       w |> Tz.PSet.choose
       |> (function Some i -> i | None -> Error "main : prove_loop" |> Stdlib.raise) in
     let collected' : Se.invmap CPSet.t = Tz.PSet.add collected inv_cand in
+    (* (Utils.Log.debug (fun m -> m "Prove : main : Worklist Length : %d" (w |> CPSet.length))); *)
+    (* (Utils.Log.debug (fun m -> m "Prove : main : Collected Invariant Length : %d" (collected' |> CPSet.length))); *)
     let w' : worklist = Tz.PSet.remove w inv_cand in
+    (* (Utils.Log.debug (fun m -> m "Prove : main : Worklist' Length : %d" (w' |> CPSet.length))); *)
     let inductive, _, _ = check_inv_inductiveness timer init_stg_ss_opt sset.blocked inv_cand in
     if inductive then
       let uqset : query_state CPSet.t = extract_unsolved_queries prev_res in
