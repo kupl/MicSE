@@ -866,7 +866,9 @@ let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc) -> mich_v cc
     (* function map_v_v2v_outer_i start *)
     fun vvv ~v2v -> begin
     let rv v = map_v_v2v_outer_i v ~v2v in (* syntax sugar *)
-    (match vvv.cc_v with
+    let mvv : mich_v cc = v2v vvv in
+    if mvv <> vvv then mvv else (
+      match vvv.cc_v with
     (*************************************************************************)
     (* Symbol & Polymorphic                                                  *)
     (*************************************************************************)
@@ -1064,7 +1066,6 @@ let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc) -> mich_v cc
     (*************************************************************************)
     | MV_lit_chain_id _ -> vvv.cc_v)
     |> gen_custom_cc vvv
-    |> v2v
   end in (* function map_v_v2v_outer_i end *)
   (* function map_v_v2v_outer start *)
   fun vvv ~v2v -> begin
