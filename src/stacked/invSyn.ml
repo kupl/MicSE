@@ -348,6 +348,46 @@ let all_equal : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
           |> CPSet.union acc))
 end (* function all_equal end *)
 
+let all_ge : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
+= let open Tz in
+  let module CPSet = Core.Set.Poly in
+  (* function all_ge start *)
+  fun ctmap -> begin
+  CTMap.fold
+    ctmap
+    ~init:CPSet.empty
+    ~f:(fun ~key ~data acc -> (
+          let _ = key in
+          data
+          |> combination_self_two_diff_rf
+          |> CPSet.map
+            ~f:(fun (c1, c2) ->
+                  let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
+                  let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
+                  MF_imply ((fold_precond [c1; c2;]), MF_is_true (gen_dummy_cc (MV_geq_ib (cmp, zero)))))
+          |> CPSet.union acc))
+end (* function all_ge end *)
+
+let all_gt : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
+= let open Tz in
+  let module CPSet = Core.Set.Poly in
+  (* function all_gt start *)
+  fun ctmap -> begin
+  CTMap.fold
+  ctmap
+  ~init:CPSet.empty
+  ~f:(fun ~key ~data acc -> (
+        let _ = key in
+        data
+        |> combination_self_two_diff_rf
+        |> CPSet.map
+            ~f:(fun (c1, c2) -> 
+              let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
+              let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
+              MF_imply ((fold_precond [c1; c2;]), MF_is_true (gen_dummy_cc (MV_gt_ib (cmp, zero)))))
+        |> CPSet.union acc))
+end (* function all_gt end *)
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Synthesizer                                                               *)
@@ -417,9 +457,13 @@ let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredient
   let exit_vs : (Tz.mich_v Tz.cc * Tz.mich_v Tz.cc) CPSet.t = get_base_var_stack igdt.igdt_sym_state in
   (* 1. generate recipe *)
   let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
+  let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap in
+  let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap in
   (* 2. generate invariant map *)
   let fmlas : (Tz.mich_f * Tz.mich_f) CPSet.t = 
-    [ all_eq_fmlas; ]
+    [ all_eq_fmlas;
+      all_ge_fmlas;
+      all_gt_fmlas; ]
     |> collect_set
     |> CPSet.map
         ~f:(fun entry_f -> (
