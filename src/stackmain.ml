@@ -86,5 +86,5 @@ let _ = begin
     then main ()
     else Failure "no input." |> Stdlib.raise
   with
-  | exc -> Utils.Log.err (fun m -> m "%s" (exc |> Printexc.to_string))
+  | exc -> Utils.Log.err (fun m -> m "%s\n%s" (exc |> Printexc.to_string) (Printexc.get_backtrace ()))
 end
