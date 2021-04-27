@@ -1019,7 +1019,7 @@ let inv_app_guide_vstack : Tz.mich_f Core.Set.Poly.t -> Tz.mich_v Tz.cc list -> 
     ~init:(MF_and (inv_fs |> CPSet.to_list))
     ~f:(fun accinv bv v -> (
       map_f_v2v_outer accinv
-        ~v2v:(fun e -> if e.cc_v = bv.cc_v then v else e)))
+        ~v2v:(fun e -> if e.cc_v = bv.cc_v then Some v else None)))
   |> function
       | Ok fff -> fff
       | Unequal_lengths -> Error "inv_app_guide_vstack : fold2" |> Stdlib.raise

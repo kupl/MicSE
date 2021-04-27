@@ -430,7 +430,7 @@ let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredient
                   ~f:(fun acc_f (entry_v, exit_v) -> (
                         Tz.map_f_v2v_outer
                           acc_f
-                          ~v2v:(fun v -> if v.cc_v = entry_v.cc_v then exit_v else v))) in
+                          ~v2v:(fun v -> if v.cc_v = entry_v.cc_v then Some exit_v else None))) in
               (entry_f, exit_f))) in
   CPSet.map
     fmlas

@@ -927,16 +927,16 @@ end (* function pmap_to_mtmap end *)
 (* Michelson Value & Formula Utilities                                       *)
 (*****************************************************************************)
 
-let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc) -> mich_v cc
-= let rec map_v_v2v_outer_i : mich_v cc -> v2v:(mich_v cc -> mich_v cc) -> mich_v cc
+let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v cc
+= let rec map_v_v2v_outer_i : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v cc
   = let module CList = Core.List in
     let module CPSet = Core.Set.Poly in
     let module CPMap = Core.Map.Poly in
     (* function map_v_v2v_outer_i start *)
     fun vvv ~v2v -> begin
     let rv v = map_v_v2v_outer_i v ~v2v in (* syntax sugar *)
-    let mvv : mich_v cc = v2v vvv in
-    if mvv <> vvv then mvv else (
+    let mvv : mich_v cc option = v2v vvv in
+    if Option.is_some mvv then (Option.get mvv) else (
       match vvv.cc_v with
       (*************************************************************************)
       (* Symbol & Polymorphic                                                  *)
@@ -1141,9 +1141,9 @@ let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc) -> mich_v cc
   map_v_v2v_outer_i vvv ~v2v
 end (* function map_v_v2v_outer end *)
 
-let map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc) -> mich_f
+let map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc option) -> mich_f
 = let module CList = Core.List in
-  let rec map_f_v2v_outer_i : mich_f -> v2v:(mich_v cc -> mich_v cc) -> mich_f
+  let rec map_f_v2v_outer_i : mich_f -> v2v:(mich_v cc -> mich_v cc option) -> mich_f
   = (* function map_f_v2v_outer_i start *)
     fun fff ~v2v -> begin
     let rv v = map_v_v2v_outer v ~v2v in
