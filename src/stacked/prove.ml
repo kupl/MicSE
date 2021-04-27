@@ -65,7 +65,7 @@ let check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt
 (* 
   Input
   - Timer
-  - Initial Storage (optional)
+  - Initial Storage (optional) and Initial symbolic state
   - Every blocked symbolic-states
   - Invariant Map
 
@@ -79,20 +79,25 @@ let check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt
 *)
 let check_inv_inductiveness :
   Utils.Timer.t ref 
-  -> (Tz.mich_v Tz.cc * Tz.sym_state) option
+  -> (Tz.mich_v Tz.cc) option * Tz.sym_state
   -> Tz.sym_state Core.Set.Poly.t
   -> Se.invmap 
   -> (bool * (Tz.sym_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) option * Utils.Timer.time)
 = let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
-  fun timer init_stg_ss_opt blocked_sset invm -> begin
+  let true_inv : Tz.mich_f CPSet.t = CPSet.singleton Tz.MF_true in
+  fun timer (init_stg_opt, init_ss) blocked_sset invm -> begin
   (* If initial storage exists, check if the transaction invariant satisfies the initial storage *)
   let init_stg_sat : bool = 
-    (match init_stg_ss_opt with
-    | None -> true
-    | Some (istg, init_ss) ->
+    (match init_stg_opt with
+    | None -> 
       (match CPMap.find invm init_ss.ss_entry_mci with
-        | None -> Error "check_inv_inductiveness : init_stg_sat" |> raise
+        | None -> Error "check_inv_inductiveness : init_stg_sat : None" |> raise
+        | Some inv_f ->
+          CPSet.equal inv_f true_inv)
+    | Some istg ->
+      (match CPMap.find invm init_ss.ss_entry_mci with
+        | None -> Error "check_inv_inductiveness : init_stg_sat : Some" |> raise
         | Some inv_f ->
           let sat_f : Tz.mich_f = Se.inv_app_guide_vstack inv_f [Tz.MV_pair (init_ss.ss_optt.optt_param, istg) |> Tz.gen_dummy_cc] in
           check_validity sat_f |> Stdlib.fst |> ProverLib.Smt.ZSolver.is_valid
@@ -369,9 +374,7 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
           pm_add_if_possible key data acc_sm)) in
     { cur_res with solved_map=new_solved_map }
   end in (* function union_result end *)
-  fun (tz_init_stg_opt, init_ss) sset -> begin
-  let init_stg_ss_opt : (Tz.mich_v Tz.cc * Tz.sym_state) option =
-    Option.bind tz_init_stg_opt (fun init_stg -> Some (init_stg, init_ss)) in
+  fun init_stg_opt_ss sset -> begin
   let inv_init : Se.invmap = sset.Se.blocked |> Se.true_invmap_of_blocked_sset in
   let w_init : worklist = inv_init |> Tz.PSet.singleton in
   (* (Utils.Log.debug (fun m -> m "Prove : main : Initial Worklist Length : %d" (w_init |> CPSet.length))); *)
@@ -388,14 +391,14 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
     (* (Utils.Log.debug (fun m -> m "Prove : main : Collected Invariant Length : %d" (collected' |> CPSet.length))); *)
     let w' : worklist = Tz.PSet.remove w inv_cand in
     (* (Utils.Log.debug (fun m -> m "Prove : main : Worklist' Length : %d" (w' |> CPSet.length))); *)
-    let inductive, _, _ = check_inv_inductiveness timer init_stg_ss_opt sset.blocked inv_cand in
+    let inductive, _, _ = check_inv_inductiveness timer init_stg_opt_ss sset.blocked inv_cand in
     if inductive then
       let uqset : query_state CPSet.t = extract_unsolved_queries prev_res in
       let cur_res : ret = solve_queries timer uqset inv_cand in
       let res : ret = union_result ~prev_res ~cur_res in
       if CPSet.length res.failed_set = 0 && CPSet.length res.untouched_set = 0 then res
       else
-        let w'' : worklist = InvSyn.generate (res.failed_set, inv_cand, init_stg_ss_opt, comp_map, collected') in
+        let w'' : worklist = InvSyn.generate (res.failed_set, inv_cand, init_stg_opt_ss, comp_map, collected') in
         let w''' : worklist = Tz.PSet.union w' w'' in
         prove_loop (w''', collected') res
     else prove_loop (w', collected') prev_res

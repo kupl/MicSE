@@ -98,7 +98,7 @@ val all_gt : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
 type generate_param = 
   (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Core.Set.Poly.t *
   (* igi_cur_inv *)     Se.invmap *
-  (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
+  (* igi_init_stg_ss *) ((Tz.mich_v Tz.cc) option * Tz.sym_state) *
   (* igi_comp_map *)    comp_map *
   (* igi_collected *)   Se.invmap Core.Set.Poly.t
 
@@ -111,7 +111,7 @@ type ingredients = {
 }
 
 val collect_set : ('a Core.Set.Poly.t) list -> 'a Core.Set.Poly.t
-val refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap Core.Set.Poly.t
+val refine_t : Se.invmap * Tz.mich_v Tz.cc option -> ingredients -> Se.invmap Core.Set.Poly.t
 val refine_l : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
 
 val generate : generate_param -> Se.invmap Core.Set.Poly.t

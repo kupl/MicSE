@@ -36,7 +36,7 @@ val check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt
 
 val check_inv_inductiveness :
   Utils.Timer.t ref 
-  -> (Tz.mich_v Tz.cc * Tz.sym_state) option
+  -> (Tz.mich_v Tz.cc) option * Tz.sym_state
   -> Tz.sym_state Core.Set.Poly.t
   -> Se.invmap 
   -> (bool * (Tz.sym_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) option * Utils.Timer.time)

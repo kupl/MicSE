@@ -322,12 +322,12 @@ let mutez_equal : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly
   (* function mutez_equal start *)
   fun ctmap -> begin
   MT_mutez
-    |> gen_dummy_cc
-    |> CTMap.find ctmap
-    |> (function Some cset -> cset | None -> CPSet.empty)
-    |> combination_self_two_diff
-    |> CPSet.map
-        ~f:(fun (c1, c2) -> MF_imply ((fold_precond [c1; c2;]), MF_eq (c1.cp_value, c2.cp_value)))
+  |> gen_dummy_cc
+  |> CTMap.find ctmap
+  |> (function Some cset -> cset | None -> CPSet.empty)
+  |> combination_self_two_diff
+  |> CPSet.map
+      ~f:(fun (c1, c2) -> MF_imply ((fold_precond [c1; c2;]), MF_eq (c1.cp_value, c2.cp_value)))
 end (* function mutez_equal end *)
 
 let all_equal : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
@@ -397,7 +397,7 @@ end (* function all_gt end *)
 type generate_param = 
   (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Core.Set.Poly.t *
   (* igi_cur_inv *)     Se.invmap *
-  (* igi_istrg_opt *)   (Tz.mich_v Tz.cc * Tz.sym_state) option *
+  (* igi_init_stg_ss *) ((Tz.mich_v Tz.cc) option * Tz.sym_state) *
   (* igi_comp_map *)    comp_map *
   (* igi_collected *)   Se.invmap Core.Set.Poly.t
 
@@ -421,7 +421,7 @@ let collect_set : ('a Core.Set.Poly.t) list -> 'a Core.Set.Poly.t
   (* function collect_set end *)
 end
 
-let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredients -> Se.invmap Core.Set.Poly.t
+let refine_t : Se.invmap * (Tz.mich_v Tz.cc) option -> ingredients -> Se.invmap Core.Set.Poly.t
 = let open Tz in
   let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
@@ -449,9 +449,9 @@ let refine_t : Se.invmap * (Tz.mich_v Tz.cc * Tz.sym_state) option -> ingredient
               CPSet.add acc ((Se.make_base_var loc entry_t), (Se.make_base_var loc exit_t)))
     end in (* function get_base_var_stack end *)
   (* function refine_t start *)
-  fun (cur_inv, istrg_opt) igdt -> begin
-  let _ = istrg_opt in
-  (* 0-1. extract component of storage variable *)
+  fun (cur_inv, init_stg) igdt -> begin
+  let _ = init_stg in
+  (* 0-1. extract component on entrance of transaction *)
   let ctmap = igdt.igdt_comp_type_map in
   (* 0-2. extract exit base variable stack from entry base variable stack *)
   let exit_vs : (Tz.mich_v Tz.cc * Tz.mich_v Tz.cc) CPSet.t = get_base_var_stack igdt.igdt_sym_state in
@@ -520,8 +520,9 @@ let generate : generate_param -> Se.invmap Core.Set.Poly.t
 = let open Tz in
   let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
-  fun (igi_failed_set, igi_cur_inv, igi_istrg_opt, igi_comp_map, igi_collected) -> begin
+  fun (igi_failed_set, igi_cur_inv, igi_init_stg_ss, igi_comp_map, igi_collected) -> begin
   (* generate function start *)
+  let (init_stg_opt, _) : (Tz.mich_v Tz.cc) option * Tz.sym_state = igi_init_stg_ss in
   (* 1. collect refine targets *)
   let refine_targets : (Tz.mich_cut_info, (ingredients CPSet.t)) CPMap.t =
     CPSet.fold
@@ -556,7 +557,7 @@ let generate : generate_param -> Se.invmap Core.Set.Poly.t
       ~init:CPSet.empty
       ~f:(fun ~key ~data acc -> 
           (* select refine function whether it is entry or not *)
-          let rf = if (key.mci_cutcat = MCC_trx_entry) then (refine_t (igi_cur_inv, igi_istrg_opt)) else (refine_l igi_cur_inv) in
+          let rf = if (key.mci_cutcat = MCC_trx_entry) then (refine_t (igi_cur_inv, init_stg_opt)) else (refine_l igi_cur_inv) in
           (* generate new invariants and accumulate it *)
           CPSet.fold
             data
