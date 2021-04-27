@@ -489,10 +489,30 @@ end (* function refine_t end *)
 
 let refine_l : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
 = let module CPSet = Core.Set.Poly in
+  let module CPMap = Core.Map.Poly in
   fun cur_inv igdt -> begin
   (* refine_l function start *)
   let _ = cur_inv, igdt in
-  CPSet.empty (* TODO *)
+  (* 0. extract component on loop entrance *)
+  let ctmap = igdt.igdt_comp_type_map in
+  (* 1. generate recipe *)
+  let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
+  let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap in
+  let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap in
+  (* 2. generate invariant map *)
+  let fmlas : Tz.mich_f CPSet.t =
+    [ all_eq_fmlas;
+      all_ge_fmlas;
+      all_gt_fmlas; ]
+    |> collect_set in
+  CPSet.map
+    fmlas
+    ~f:(fun f -> (
+          CPMap.mapi
+            cur_inv
+            ~f:(fun ~key ~data -> (
+                  if key = igdt.igdt_sym_state.ss_entry_mci then CPSet.add data f
+                  else data))))
   (* refine_l function end *)
 end
 
