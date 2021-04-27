@@ -539,6 +539,10 @@ val lb_of_ln_mci : mich_cut_info -> mich_cut_info option
 val lb_of_ln_exn : mich_cut_info -> debug:(string) -> mich_cut_info
 val is_ln_mcc : mich_cut_category -> bool
 
+val ln_of_lb_mci : mich_cut_info -> mich_cut_info option
+val ln_of_lb_exn : mich_cut_info -> debug:(string) -> mich_cut_info
+val is_lb_mcc : mich_cut_category -> bool
+
 
 (*****************************************************************************)
 (* Symbol & Symbolic Stack                                                   *)

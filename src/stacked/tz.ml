@@ -852,6 +852,39 @@ let is_ln_mcc : mich_cut_category -> bool =
   | MCC_query         -> false
   )
 
+let ln_of_lb_mci : mich_cut_info -> mich_cut_info option
+= fun mci -> begin
+  let ln_mcc, flag =
+    (match mci.mci_cutcat with
+    | MCC_lb_loop     -> MCC_ln_loop    , true
+    | MCC_lb_loopleft -> MCC_ln_loopleft, true
+    | MCC_lb_map      -> MCC_ln_map     , true
+    | MCC_ln_iter     -> MCC_ln_iter    , true
+    | _ as m          -> m              , false)
+  in
+  if flag then Some {mci with mci_cutcat=ln_mcc;} else None
+end
+
+let ln_of_lb_exn : mich_cut_info -> debug:(string) -> mich_cut_info
+= fun mci ~debug -> begin
+  match ln_of_lb_mci mci with | Some s -> s | None -> Stdlib.failwith debug
+end
+
+let is_lb_mcc : mich_cut_category -> bool =
+  (function
+  | MCC_ln_loop       -> false
+  | MCC_ln_loopleft   -> false
+  | MCC_ln_map        -> false
+  | MCC_ln_iter       -> false
+  | MCC_trx_entry     -> false
+  | MCC_trx_exit      -> false
+  | MCC_lb_loop       -> true
+  | MCC_lb_loopleft   -> true
+  | MCC_lb_map        -> true
+  | MCC_lb_iter       -> true
+  | MCC_query         -> false
+  )
+
 
 (*****************************************************************************)
 (* Symbol & Symbolic Stack                                                   *)
