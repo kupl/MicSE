@@ -927,6 +927,257 @@ end (* function pmap_to_mtmap end *)
 (* Michelson Value & Formula Utilities                                       *)
 (*****************************************************************************)
 
+(* Optimization                                                              *)
+
+let optimize_v : mich_v cc -> mich_v cc
+= let rec optimize_v_i : mich_v cc -> mich_v cc
+  = let module CList = Core.List in
+    let module CPSet = Core.Set.Poly in
+    let module CPMap = Core.Map.Poly in
+    (* function optimize_v_i start *)
+    fun vvv -> begin
+    let ov = optimize_v_i in (* syntax sugar *)
+    (match vvv.cc_v with
+    (*************************************************************************)
+    (* Symbol & Polymorphic                                                  *)
+    (*************************************************************************)
+    | MV_symbol _         -> vvv.cc_v
+    | MV_car v1           -> (
+      let vvv' : mich_v cc = ov v1 in
+      (match vvv'.cc_v with
+      | MV_pair (v11, _) -> v11.cc_v
+      | _ -> MV_car vvv'))
+    | MV_cdr v1           -> (
+      let vvv' : mich_v cc = ov v1 in
+      (match vvv'.cc_v with
+      | MV_pair (_, v12) -> v12.cc_v
+      | _ -> MV_cdr vvv'))
+    | MV_unlift_option v1 -> (
+      let vvv' : mich_v cc = ov v1 in
+      (match vvv'.cc_v with
+      | MV_some v11 -> v11.cc_v
+      | MV_none _ -> Error "optimize_v : optimize_v_i : MV_unlift_option : MV_none" |> Stdlib.raise
+      | _ -> MV_unlift_option vvv'))
+    | MV_unlift_left v1   -> (
+      let vvv' : mich_v cc = ov v1 in
+      (match vvv'.cc_v with
+      | MV_left (_, v12) -> v12.cc_v
+      | MV_right _ -> Error "optimize_v : optimize_v_i : MV_unlift_left : MV_right" |> Stdlib.raise
+      | _ -> MV_unlift_left vvv'))
+    | MV_unlift_right v1  -> (
+      let vvv' : mich_v cc = ov v1 in
+      (match vvv'.cc_v with
+      | MV_right (_, v12) -> v12.cc_v
+      | MV_left _ -> Error "optimize_v : optimize_v_i : MV_unlift_right : MV_left" |> Stdlib.raise
+      | _ -> MV_unlift_right vvv'))
+    | MV_hd_l v1          -> (
+      let vvv' : mich_v cc = ov v1 in
+      (match vvv'.cc_v with
+      | MV_lit_list (_, vl2) -> vl2 |> CList.hd |> (function Some hhdd -> hhdd.cc_v | None -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_lit_list" |> Stdlib.raise)
+      | MV_cons (v1, _) -> v1.cc_v
+      | MV_nil _ -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_nil" |> Stdlib.raise
+      | _ -> MV_hd_l vvv'))
+    (*************************************************************************)
+    (* Integer                                                               *)
+    (*************************************************************************)
+    | MV_lit_int _        -> vvv.cc_v
+    | MV_neg_ni v1        -> MV_neg_ni (ov v1)
+    | MV_neg_ii v1        -> MV_neg_ii (ov v1)
+    | MV_not_ni v1        -> MV_not_ni (ov v1)
+    | MV_not_ii v1        -> MV_not_ii (ov v1)
+    | MV_add_nii (v1, v2) -> MV_add_nii ((ov v1), (ov v2))
+    | MV_add_ini (v1, v2) -> MV_add_ini ((ov v1), (ov v2))
+    | MV_add_iii (v1, v2) -> MV_add_iii ((ov v1), (ov v2))
+    | MV_sub_nni (v1, v2) -> MV_sub_nni ((ov v1), (ov v2))
+    | MV_sub_nii (v1, v2) -> MV_sub_nii ((ov v1), (ov v2))
+    | MV_sub_ini (v1, v2) -> MV_sub_ini ((ov v1), (ov v2))
+    | MV_sub_iii (v1, v2) -> MV_sub_iii ((ov v1), (ov v2))
+    | MV_sub_tti (v1, v2) -> MV_sub_tti ((ov v1), (ov v2))
+    | MV_mul_nii (v1, v2) -> MV_mul_nii ((ov v1), (ov v2))
+    | MV_mul_ini (v1, v2) -> MV_mul_ini ((ov v1), (ov v2))
+    | MV_mul_iii (v1, v2) -> MV_mul_iii ((ov v1), (ov v2))
+    | MV_compare (v1, v2) -> MV_compare ((ov v1), (ov v2))
+    | MV_int_of_nat v1    -> MV_int_of_nat (ov v1)
+    (*************************************************************************)
+    (* Natural Number                                                        *)
+    (*************************************************************************)
+    | MV_lit_nat _            -> vvv.cc_v
+    | MV_abs_in v1            -> MV_abs_in (ov v1)
+    | MV_add_nnn (v1, v2)     -> MV_add_nnn ((ov v1), (ov v2))
+    | MV_mul_nnn (v1, v2)     -> MV_mul_nnn ((ov v1), (ov v2))
+    | MV_shiftL_nnn (v1, v2)  -> MV_shiftL_nnn ((ov v1), (ov v2))
+    | MV_shiftR_nnn (v1, v2)  -> MV_shiftR_nnn ((ov v1), (ov v2))
+    | MV_and_nnn (v1, v2)     -> MV_and_nnn ((ov v1), (ov v2))
+    | MV_and_inn (v1, v2)     -> MV_and_inn ((ov v1), (ov v2))
+    | MV_or_nnn (v1, v2)      -> MV_or_nnn ((ov v1), (ov v2))
+    | MV_xor_nnn (v1, v2)     -> MV_xor_nnn ((ov v1), (ov v2))
+    | MV_size_s v1            -> MV_size_s (ov v1)
+    | MV_size_m v1            -> MV_size_m (ov v1)
+    | MV_size_l v1            -> MV_size_l (ov v1)
+    | MV_size_str v1          -> MV_size_str (ov v1)
+    | MV_size_b v1            -> MV_size_b (ov v1)
+    (*************************************************************************)
+    (* String                                                                *)
+    (*************************************************************************)
+    | MV_lit_string _         -> vvv.cc_v
+    | MV_concat_sss (v1, v2)  -> MV_concat_sss ((ov v1), (ov v2))
+    | MV_concat_list_s v1     -> MV_concat_list_s (ov v1)
+    (*************************************************************************)
+    (* Bytes                                                                 *)
+    (*************************************************************************)
+    | MV_lit_bytes _          -> vvv.cc_v
+    | MV_concat_bbb (v1, v2)  -> MV_concat_bbb ((ov v1), (ov v2))
+    | MV_concat_list_b v1     -> MV_concat_list_b (ov v1)
+    | MV_pack v1              -> MV_pack (ov v1)
+    | MV_blake2b v1           -> MV_blake2b (ov v1)
+    | MV_sha256 v1            -> MV_sha256 (ov v1)
+    | MV_sha512 v1            -> MV_sha512 (ov v1)
+    (*************************************************************************)
+    (* Mutez                                                                 *)
+    (*************************************************************************)
+    | MV_lit_mutez _      -> vvv.cc_v
+    | MV_add_mmm (v1, v2) -> MV_add_mmm ((ov v1), (ov v2))
+    | MV_sub_mmm (v1, v2) -> MV_sub_mmm ((ov v1), (ov v2))
+    | MV_mul_mnm (v1, v2) -> MV_mul_mnm ((ov v1), (ov v2))
+    | MV_mul_nmm (v1, v2) -> MV_mul_nmm ((ov v1), (ov v2))
+    (*************************************************************************)
+    (* Bool                                                                  *)
+    (*************************************************************************)
+    | MV_lit_bool _                   -> vvv.cc_v
+    | MV_not_bb v1                    -> MV_not_bb (ov v1)
+    | MV_and_bbb (v1, v2)             -> MV_and_bbb ((ov v1), (ov v2))
+    | MV_or_bbb (v1, v2)              -> MV_or_bbb ((ov v1), (ov v2))
+    | MV_xor_bbb (v1, v2)             -> MV_xor_bbb ((ov v1), (ov v2))
+    | MV_eq_ib (v1, v2)               -> MV_eq_ib ((ov v1), (ov v2))
+    | MV_neq_ib (v1, v2)              -> MV_neq_ib ((ov v1), (ov v2))
+    | MV_lt_ib (v1, v2)               -> MV_lt_ib ((ov v1), (ov v2))
+    | MV_gt_ib (v1, v2)               -> MV_gt_ib ((ov v1), (ov v2))
+    | MV_leq_ib (v1, v2)              -> MV_leq_ib ((ov v1), (ov v2))
+    | MV_geq_ib (v1, v2)              -> MV_geq_ib ((ov v1), (ov v2))
+    | MV_mem_xsb (v1, v2)             -> MV_mem_xsb ((ov v1), (ov v2))
+    | MV_mem_xmb (v1, v2)             -> MV_mem_xmb ((ov v1), (ov v2))
+    | MV_mem_xbmb (v1, v2)            -> MV_mem_xbmb ((ov v1), (ov v2))
+    | MV_check_signature (v1, v2, v3) -> MV_check_signature ((ov v1), (ov v2), (ov v3))
+    (*************************************************************************)
+    (* Key Hash                                                              *)
+    (*************************************************************************)
+    | MV_lit_key_hash _ -> vvv.cc_v
+    | MV_hash_key v1    -> MV_hash_key (ov v1)
+    (*************************************************************************)
+    (* Timestamp                                                             *)
+    (*************************************************************************)
+    | MV_lit_timestamp_str _  -> vvv.cc_v
+    | MV_lit_timestamp_sec _  -> vvv.cc_v
+    | MV_add_itt (v1, v2)     -> MV_add_itt ((ov v1), (ov v2))
+    | MV_add_tit (v1, v2)     -> MV_add_tit ((ov v1), (ov v2))
+    | MV_sub_tit (v1, v2)     -> MV_sub_tit ((ov v1), (ov v2))
+    (*************************************************************************)
+    (* Address                                                               *)
+    (*************************************************************************)
+    | MV_lit_address v1         -> MV_lit_address (ov v1)
+    | MV_address_of_contract v1 -> MV_address_of_contract (ov v1)
+    (*************************************************************************)
+    (* Key                                                                   *)
+    (*************************************************************************)
+    | MV_lit_key _ -> vvv.cc_v
+    (*************************************************************************)
+    (* Unit                                                                  *)
+    (*************************************************************************)
+    | MV_unit -> vvv.cc_v
+    (*************************************************************************)
+    (* Signature                                                             *)
+    (*************************************************************************)
+    | MV_lit_signature_str _            -> vvv.cc_v
+    | MV_lit_signature_signed (v1, v2)  -> MV_lit_signature_signed ((ov v1), (ov v2))
+    (*************************************************************************)
+    (* Option                                                                *)
+    (*************************************************************************)
+    | MV_some v1                      -> MV_some (ov v1)
+    | MV_none _                       -> vvv.cc_v
+    | MV_ediv_nnnn (v1, v2)           -> MV_ediv_nnnn ((ov v1), (ov v2))
+    | MV_ediv_niin (v1, v2)           -> MV_ediv_niin ((ov v1), (ov v2))
+    | MV_ediv_inin (v1, v2)           -> MV_ediv_inin ((ov v1), (ov v2))
+    | MV_ediv_iiin (v1, v2)           -> MV_ediv_iiin ((ov v1), (ov v2))
+    | MV_ediv_mnmm (v1, v2)           -> MV_ediv_mnmm ((ov v1), (ov v2))
+    | MV_ediv_mmnm (v1, v2)           -> MV_ediv_mmnm ((ov v1), (ov v2))
+    | MV_get_xmoy  (v1, v2)           -> MV_get_xmoy ((ov v1), (ov v2))
+    | MV_get_xbmo  (v1, v2)           -> MV_get_xbmo ((ov v1), (ov v2))
+    | MV_slice_nnso (v1, v2, v3)      -> MV_slice_nnso ((ov v1), (ov v2), (ov v3))
+    | MV_slice_nnbo (v1, v2, v3)      -> MV_slice_nnbo ((ov v1), (ov v2), (ov v3))
+    | MV_unpack (t1, v2)              -> MV_unpack (t1, (ov v2))
+    | MV_contract_of_address (t1, v2) -> MV_contract_of_address (t1, (ov v2))
+    | MV_isnat v1                     -> MV_isnat (ov v1)
+    (*************************************************************************)
+    (* List                                                                  *)
+    (*************************************************************************)
+    | MV_lit_list (t1, vl2) -> MV_lit_list (t1, (vl2 |> CList.map ~f:ov))
+    | MV_nil _              -> vvv.cc_v
+    | MV_cons (v1, v2)      -> MV_cons ((ov v1), (ov v2))
+    | MV_tl_l v1            -> (
+      let vvv' : mich_v cc = ov v1 in
+      (match vvv'.cc_v with
+      | MV_lit_list (t1, vl2) -> vl2 |> CList.tl |> (function Some ttll -> MV_lit_list (t1, ttll) | None -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_lit_list" |> Stdlib.raise)
+      | MV_cons (_, v2) -> v2.cc_v
+      | MV_nil _ -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_nil" |> Stdlib.raise
+      | _ -> MV_tl_l vvv'))
+    (*************************************************************************)
+    (* Set                                                                   *)
+    (*************************************************************************)
+    | MV_lit_set (t1, vs2)        -> MV_lit_set (t1, (vs2 |> CPSet.map ~f:ov))
+    | MV_empty_set _              -> vvv.cc_v
+    | MV_update_xbss (v1, v2, v3) -> MV_update_xbss ((ov v1), (ov v2), (ov v3))
+    (*************************************************************************)
+    (* Operation                                                             *)
+    (*************************************************************************)
+    | MV_create_contract (t1, t2, v3, v4, v5, v6, v7) -> MV_create_contract (t1, t2, (ov v3), (ov v4), (ov v5), (ov v6), (ov v7))
+    | MV_transfer_tokens (v1, v2, v3)                 -> MV_transfer_tokens ((ov v1), (ov v2), (ov v3))
+    | MV_set_delegate v1                              -> MV_set_delegate (ov v1)
+    (*************************************************************************)
+    (* Contract                                                              *)
+    (*************************************************************************)
+    | MV_lit_contract (t1, v2)  -> MV_lit_contract (t1, (ov v2))
+    | MV_self _                 -> vvv.cc_v
+    | MV_implicit_account v1    -> MV_implicit_account (ov v1)
+    (*************************************************************************)
+    (* Pair                                                                  *)
+    (*************************************************************************)
+    | MV_pair (v1, v2) -> MV_pair ((ov v1), (ov v2))
+    (*************************************************************************)
+    (* Or                                                                    *)
+    (*************************************************************************)
+    | MV_left (t1, v2)  -> MV_left (t1, (ov v2))
+    | MV_right (t1, v2) -> MV_right (t1, (ov v2))
+    (*************************************************************************)
+    (* Lambda                                                                *)
+    (*************************************************************************)
+    | MV_lit_lambda _
+    | MV_lambda_unknown _         -> vvv.cc_v
+    | MV_lambda_closure (v1, v2)  -> MV_lambda_closure ((ov v1), (ov v2))
+    (*************************************************************************)
+    (* Map                                                                   *)
+    (*************************************************************************)
+    | MV_lit_map (t1, t2, vm3)    -> MV_lit_map (t1, t2, (vm3 |> CPMap.map ~f:ov))
+    | MV_empty_map _              -> vvv.cc_v
+    | MV_update_xomm (v1, v2, v3) -> MV_update_xomm ((ov v1), (ov v2), (ov v3))
+    (*************************************************************************)
+    (* Big Map                                                               *)
+    (*************************************************************************)
+    | MV_lit_big_map (t1, t2, vm3)  -> MV_lit_map (t1, t2, (vm3 |> CPMap.map ~f:ov))
+    | MV_empty_big_map _            -> vvv.cc_v
+    | MV_update_xobmbm (v1, v2, v3) -> MV_update_xomm ((ov v1), (ov v2), (ov v3))
+    (*************************************************************************)
+    (* Chain Id                                                              *)
+    (*************************************************************************)
+    | MV_lit_chain_id _ -> vvv.cc_v)
+    |> gen_custom_cc vvv
+  end in (* function optimize_v_i end *)
+  (* function optimize_v start *)
+  fun vvv -> begin
+  optimize_v_i vvv
+end (* function optimize_v end *)
+
+(* Mapping                                                                   *)
+
 let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v cc
 = let rec map_v_v2v_outer_i : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v cc
   = let module CList = Core.List in
