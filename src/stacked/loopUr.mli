@@ -107,6 +107,8 @@ type path_q = {
 val path_of_route : route -> path   (* WARNING: Loops in routes will be transformed to empty loop-path. *)
 val pathq_of_routeq : route_q -> path_q (* Same warning as "path_of_route" *)
 
+val path_flatten : path -> Tz.sym_state list
+
 
 (*****************************************************************************)
 (* Utility - Path to Json - Only MCI                                         *)

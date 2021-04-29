@@ -160,6 +160,13 @@ let rec path_of_route : route -> path
 let pathq_of_routeq : route_q -> path_q 
 = fun {rq_r; rq_mci; rq_qc} -> {pq_p=(path_of_route rq_r); pq_mci=rq_mci; pq_qc=rq_qc;}
 
+let rec path_flatten : path -> Tz.sym_state list
+= (function
+  | P_list pl -> List.flatten (List.map path_flatten pl)
+  | P_state ss -> [ss]
+  | P_loop (_, pl) -> List.flatten (List.map path_flatten pl)
+) (* function path_flatten end *)
+
 
 (*****************************************************************************)
 (* Utility - Path to Json - Only MCI                                         *)

@@ -1,5 +1,92 @@
 (* Json Constant - PLEASE DO NOT MAKE MLI FILE for this module *)
 
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Variable Names in "Se.run_contract_in_fog"                                *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(* "Rcfv" is a acronym of "Run Contract in Fog Variable" *)
+module Rcfv = struct
+  (* 0. address *)
+  let address = "vaddr"
+  (* 1. blockchain *)
+  let storage = "vstorage"
+  let balance = "vbalance"
+  let delegate = "vdelegate"
+  let chainid = "vchainid"
+  let lastblocktime = "vlastblocktime"
+  (* 2. transfer-token operation *)
+  let tt_amount = "vamount"
+  let tt_source = "vsource"
+  let tt_param = "vparam"
+  let optt_sender = "vsender"
+end (* module Rcfv end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Structured Variable Name (for state merging)                              *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(* structured variable name contains trasaction number & loop number, which is useful when renaming duplicated variable names from "state_set". *)
+(* Current Design: (stvn_vn ^ _delim ^ trx_n ^ _delim ^ loop_n) *)
+
+module Stvn : sig
+  type t = {
+    stvn_vn : string;
+    trx_n : int option;
+    loop_n : int option;
+  }
+  val of_string : string -> t
+  val to_string : t -> string
+  (* String Utilities *)
+  val set_trx_n : int option -> string -> string
+  val set_loop_n : int option -> string -> string
+  val set_both_n : (int option * int option) -> string -> string
+end 
+= struct
+  type t = {
+    stvn_vn : string;
+    trx_n : int option;
+    loop_n : int option;
+  }
+
+  let _delim = '^'
+  let _soio = (function | None -> "" | Some i -> string_of_int i)
+
+  let of_string : string -> t = 
+    let cstr : (string * string * string) -> t = fun (stvn, trxn, loopn) -> 
+      {stvn_vn=stvn; trx_n=(Stdlib.int_of_string_opt trxn); loop_n=(Stdlib.int_of_string_opt loopn);} 
+    in
+    fun s -> begin
+    let sl = String.split_on_char _delim s in
+    match List.length sl with 
+    | 1 -> cstr (List.nth sl 0, "", "")
+    | 2 -> cstr (List.nth sl 0, List.nth sl 1, "")
+    | 3 -> cstr (List.nth sl 0, List.nth sl 1, List.nth sl 2)
+    | n -> Stdlib.failwith ("Length=" ^ (string_of_int n) ^ " -- " ^ Stdlib.__LOC__)
+  end (* function of_string end *)
+  let to_string : t -> string = 
+    fun t -> begin
+    match (t.trx_n, t.loop_n) with
+    | None, None -> t.stvn_vn
+    | None, Some _ -> t.stvn_vn ^ (Char.escaped _delim) ^ (_soio t.trx_n) ^ (Char.escaped _delim) ^ (_soio t.loop_n)
+    | Some _, None -> t.stvn_vn ^ (Char.escaped _delim) ^ (_soio t.trx_n)
+    | Some _, Some _ -> t.stvn_vn ^ (Char.escaped _delim) ^ (_soio t.trx_n) ^ (Char.escaped _delim) ^ (_soio t.loop_n)
+  end (* function to_string end *)
+  (* String Utilities *)
+  let set_trx_n : int option -> string -> string
+  = (fun nopt s -> of_string s |> (fun r -> {r with trx_n=nopt}) |> to_string)
+  let set_loop_n : int option -> string -> string
+  = (fun nopt s -> of_string s |> (fun r -> {r with loop_n=nopt}) |> to_string)
+  let set_both_n : (int option * int option) -> string -> string
+  = (fun (topt, lopt) s -> of_string s |> (fun r -> {r with trx_n=topt; loop_n=lopt}) |> to_string)
+end (* module Stvn end *)
+
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Code Component                                                            *)
