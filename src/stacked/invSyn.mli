@@ -83,10 +83,9 @@ val fold_precond : component list -> Tz.mich_f
 (*****************************************************************************)
 (*****************************************************************************)
 
-val mutez_equal : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
 val all_equal : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
-val all_ge : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
-val all_gt : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
+val all_ge : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
+val all_gt : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
 
 
 (*****************************************************************************)
