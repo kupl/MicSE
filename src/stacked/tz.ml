@@ -295,6 +295,10 @@ and mich_v =
   (*************************************************************************)
   | MV_lit_chain_id of string
 
+  (*************************************************************************)
+  (* Custom Domain Value for Invariant Synthesis                           *)
+  (*************************************************************************)
+  | MV_sigma_lm of mich_v cc * mich_v cc (* 'a list * mutez -> mutez *)
 
 and mich_i = 
   (* Michelson Instruction *)
@@ -443,8 +447,6 @@ type mich_f =
   | MF_mul_nmm_no_overflow of (mich_v cc * mich_v cc)
   | MF_shiftL_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
   | MF_shiftR_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
-  (* Custom Domain Formula for Invariant Generation *)
-  | MF_sigma_equal of (mich_v cc * mich_v cc)
 
 
 (*****************************************************************************)
@@ -764,6 +766,10 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
   (* Chain Id                                                              *)
   (*************************************************************************)
   | MV_lit_chain_id _ -> MT_chain_id |> gen_cc
+  (*************************************************************************)
+  (* Custom Domain Value for Invariant Synthesis                           *)
+  (*************************************************************************)
+  | MV_sigma_lm _ -> MT_mutez |> gen_cc
 end (* function typ_of_val_i end *)
 
 let get_innertyp : mich_t cc -> mich_t cc
@@ -927,7 +933,7 @@ end (* function pmap_to_mtmap end *)
 (* Michelson Value & Formula Utilities                                       *)
 (*****************************************************************************)
 
-(* Optimization                                                              *)
+(* Optimization *)
 
 let optimize_v : mich_v cc -> mich_v cc
 = let rec optimize_v_i : mich_v cc -> mich_v cc
@@ -1168,7 +1174,11 @@ let optimize_v : mich_v cc -> mich_v cc
     (*************************************************************************)
     (* Chain Id                                                              *)
     (*************************************************************************)
-    | MV_lit_chain_id _ -> vvv.cc_v)
+    | MV_lit_chain_id _ -> vvv.cc_v
+    (*************************************************************************)
+    (* Custom Domain Value for Invariant Synthesis                           *)
+    (*************************************************************************)
+    | MV_sigma_lm (v1, v2) -> MV_sigma_lm ((ov v1), (ov v2)))
     |> gen_custom_cc vvv
   end in (* function optimize_v_i end *)
   (* function optimize_v start *)
@@ -1176,7 +1186,7 @@ let optimize_v : mich_v cc -> mich_v cc
   optimize_v_i vvv
 end (* function optimize_v end *)
 
-(* Mapping                                                                   *)
+(* Mapping *)
 
 let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v cc
 = let rec map_v_v2v_outer_i : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v cc
@@ -1384,7 +1394,11 @@ let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v
       (*************************************************************************)
       (* Chain Id                                                              *)
       (*************************************************************************)
-      | MV_lit_chain_id _ -> vvv.cc_v)
+      | MV_lit_chain_id _ -> vvv.cc_v
+      (*************************************************************************)
+      (* Custom Domain Value for Invariant Synthesis                           *)
+      (*************************************************************************)
+      | MV_sigma_lm (v1, v2) -> MV_sigma_lm ((rv v1), (rv v2)))
       |> gen_custom_cc vvv
   end in (* function map_v_v2v_outer_i end *)
   (* function map_v_v2v_outer start *)
@@ -1420,10 +1434,31 @@ let map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc option) -> mich_f
     | MF_mul_nmm_no_overflow (v1, v2)   -> MF_mul_nmm_no_overflow ((rv v1), (rv v2))
     | MF_shiftL_nnn_rhs_in_256 (v1, v2) -> MF_shiftL_nnn_rhs_in_256 ((rv v1), (rv v2))
     | MF_shiftR_nnn_rhs_in_256 (v1, v2) -> MF_shiftR_nnn_rhs_in_256 ((rv v1), (rv v2))
-    (* Custom Domain Formula for Invariant Generation *)
-    | MF_sigma_equal (v1, v2) -> MF_sigma_equal ((rv v1), (rv v2))
   end in (* function map_f_v2v_outer_i end *)
   (* function map_f_v2v_outer start *)
   fun fff ~v2v -> begin
   map_f_v2v_outer_i fff ~v2v
 end (* function map_f_v2v_outer end *)
+
+(* Abbreviation *)
+
+let to_abbr_v : mich_v cc -> string list
+= let rec to_abbr_v_i : string list -> mich_v cc -> string list
+  = (* function to_abbr_v_i start *)
+    fun acc vvv -> begin
+    let af : string -> mich_v cc -> string list = (
+      fun x v -> to_abbr_v_i (x::acc) v) in (* syntax sugar *)
+    match vvv.cc_v with
+    | MV_car v1 -> af "a" v1
+    | MV_cdr v1 -> af "d" v1
+    | MV_unlift_option v1 -> af "o" v1
+    | MV_unlift_left v1 -> af "l" v1
+    | MV_unlift_right v1 -> af "r" v1
+    | MV_hd_l v1 -> af "h" v1
+    | MV_symbol (_, s2) -> s2::acc
+    | _ -> "_"::acc
+  end in (* function abbr_v_i end *)
+  (* function abbr_v start *)
+  fun vvv -> begin
+  to_abbr_v_i [] vvv
+end (* function abbr_v end *)

@@ -546,6 +546,48 @@ module T2S = struct
     (* Chain Id                                                              *)
     (*************************************************************************)
     | MV_lit_chain_id _ -> err eee
+
+    (*************************************************************************)
+    (* Custom Domain Value for Invariant Synthesis                           *)
+    (*************************************************************************)
+    | MV_sigma_lm (v1, v2) -> begin
+      let map_elem_acc : mich_v cc -> mich_v cc = ( (* syntax sugar *)
+        fun vvv -> 
+          map_v_v2v_outer v2 ~v2v:(fun x -> (
+            match x.cc_v with
+            | MV_symbol (_, _) -> Some vvv
+            | _ -> None))) in
+      let v1' : mich_v cc = v1 |> Tz.optimize_v in
+      if (v2 |> Tz.typ_of_val).cc_v = MT_mutez then (
+        match v1'.cc_v with
+        | MV_lit_list (_, vl12) -> (
+          Core.List.fold
+            vl12
+            ~init:(ZMutez.zero_ ())
+            ~f:(fun acc vvv -> (
+              let vvv' : mich_v cc = map_elem_acc vvv in
+              ZMutez.create_add acc (cv_mvcc vvv'))))
+        | MV_nil _ -> ZMutez.zero_ ()
+        | MV_cons (v11, vl12) -> (
+          let v11' : mich_v cc = map_elem_acc v11 in
+          ZMutez.create_add (cv_mvcc vl12) (cv_mvcc v11'))
+        | MV_tl_l (vl11) -> (
+          let hd' : mich_v cc = map_elem_acc (gen_dummy_cc (MV_hd_l vl11)) in
+          ZMutez.create_sub (cv_mvcc vl11) (cv_mvcc hd'))
+        | _ -> (
+          let v1_abbrs : string list = Tz.to_abbr_v v1 in
+          let v2_abbrs : string list = Tz.to_abbr_v v1 in
+          ZExpr.create_var
+            (ZMutez.sort ())
+            ~name:(
+              { Jc.Fsvn.typ=`remain;
+                Jc.Fsvn.c_vn=(Core.List.hd v1_abbrs |> (function Some ss -> ss | None -> Error "cv_mv : MV_sigma_lm : _ : c_vn" |> Stdlib.raise));
+                Jc.Fsvn.c_acc_l=(Core.List.tl v1_abbrs |> (function Some ll -> ll | None -> Error "cv_mv : MV_sigma_lm : _ : c_acc_l" |> Stdlib.raise));
+                Jc.Fsvn.e_acc_l=(Core.List.tl v2_abbrs |> (function Some ll -> ll | None -> Error "cv_mv : MV_sigma_lm : _ : e_acc_l" |> Stdlib.raise)); }
+              |> Jc.Fsvn.to_string
+            )))
+      else err eee
+      end
     ) (* function cv_mv end *)
 
   and cv_mvcc : mich_v cc -> ZExpr.t = (fun x -> try cv_mv x.cc_v with | ZError s -> SMT_Encode_Error_e (x, s, Stdlib.__LINE__) |> raise)
@@ -603,8 +645,6 @@ module T2S = struct
         end
       | MF_shiftL_nnn_rhs_in_256 (_, e2) -> ZNat.create_le (cv_mvcc e2) (ZNat.of_int 256)
       | MF_shiftR_nnn_rhs_in_256 (_, e2) -> ZNat.create_le (cv_mvcc e2) (ZNat.of_int 256)
-      (* Custom Domain Formula for Invariant Generation *)
-      | MF_sigma_equal _ -> ZBool.true_ () (* TODO *)
       )
     with
     | ZError s -> SMT_Encode_Error_f (vf, s, Stdlib.__LINE__) |> raise
@@ -894,6 +934,11 @@ module T2J = struct
     (* Chain Id                                                              *)
     (*************************************************************************)
     | MV_lit_chain_id s -> `Variant (v_lit_chain_id, Some (`String s))
+
+    (*************************************************************************)
+    (* Custom Domain Value for Invariant Synthesis                           *)
+    (*************************************************************************)
+    | MV_sigma_lm (e1, e2) -> `Variant (v_sigma_lm, s2 e1 e2) (* 'a list * mutez -> mutez *)
     ) (* function cv_mv end *)
   and cv_mi : Tz.mich_i -> js
   = let ss1 i = Some (cv_micc i) in
@@ -1020,7 +1065,6 @@ module T2J = struct
     | MF_mul_nmm_no_overflow    (v1,v2)   -> `Variant (f_mul_nmm_no_overflow,   sv2 v1 v2)
     | MF_shiftL_nnn_rhs_in_256  (v1,v2)   -> `Variant (f_shiftL_nnn_rhs_in_256, sv2 v1 v2)
     | MF_shiftR_nnn_rhs_in_256  (v1,v2)   -> `Variant (f_shiftR_nnn_rhs_in_256, sv2 v1 v2)
-    | MF_sigma_equal            (v1,v2)   -> `Variant (f_sigma_equal,           sv2 v1 v2)
     ) (* function cv_mf end *)
 
   
@@ -1403,6 +1447,11 @@ module T2Jnocc = struct
     (* Chain Id                                                              *)
     (*************************************************************************)
     | MV_lit_chain_id s -> `Variant (v_lit_chain_id, Some (`String s))
+
+    (*************************************************************************)
+    (* Custom Domain Value for Invariant Synthesis                           *)
+    (*************************************************************************)
+    | MV_sigma_lm (e1, e2) -> `Variant (v_sigma_lm, s2 e1 e2) (* 'a list -> 'a *)
     ) (* function cv_mv end *)
   and cv_mi : Tz.mich_i -> js
   = let ss1 i = Some (cv_micc i) in
@@ -1529,7 +1578,6 @@ module T2Jnocc = struct
     | MF_mul_nmm_no_overflow    (v1,v2)   -> `Variant (f_mul_nmm_no_overflow,   sv2 v1 v2)
     | MF_shiftL_nnn_rhs_in_256  (v1,v2)   -> `Variant (f_shiftL_nnn_rhs_in_256, sv2 v1 v2)
     | MF_shiftR_nnn_rhs_in_256  (v1,v2)   -> `Variant (f_shiftR_nnn_rhs_in_256, sv2 v1 v2)
-    | MF_sigma_equal            (v1,v2)   -> `Variant (f_sigma_equal,           sv2 v1 v2)
     ) (* function cv_mf end *)
 
 

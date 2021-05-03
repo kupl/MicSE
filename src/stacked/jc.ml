@@ -89,6 +89,112 @@ end (* module Stvn end *)
 
 (*****************************************************************************)
 (*****************************************************************************)
+(* Location Variable Name in Value Stack                                     *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module Locvn : sig
+  type t = int
+  val of_string : string -> t
+  val to_string : t -> string
+end
+= struct
+  type t = int (* location *)
+
+  let _prefix = "vstack"
+  let _delim = '|'
+
+  let of_string : string -> t =
+    (* function of_string start *)
+    fun s -> begin
+    let sl : string list = Core.String.split s ~on:_delim in
+    let loc : int = 
+      sl 
+      |> Core.List.hd
+      |> (function 
+          | Some ss -> Stdlib.int_of_string_opt ss
+          | None -> Stdlib.failwith ("None of location"))
+      |> (function
+          | Some ii -> ii
+          | None -> Stdlib.failwith ("Location information is invalid")) in
+    if [(string_of_int loc); _prefix] = sl then loc
+    else Stdlib.failwith ("Invalid location variable")
+  end (* function of_string end *)
+
+  let to_string : t -> string =
+    (* function to_string start *)
+    fun loc -> begin
+    _prefix ^ (Core.Char.escaped _delim) ^ (string_of_int loc)
+  end (* function to_string end *)
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Variable name for MF_sigma_*                                              *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module Fsvn : sig
+  type t = {
+    typ: [`elem | `remain];
+    c_vn: string;
+    c_acc_l: string list;
+    e_acc_l: string list;
+  }
+  val of_string : string -> t
+  val to_string : t -> string
+end
+= struct
+  type t = {
+    typ: [`elem | `remain];
+    c_vn: string;
+    c_acc_l: string list;
+    e_acc_l: string list;
+  }
+  let _elem_prefix = "e"
+  let _remain_prefix = "r"
+
+  let _delim = '/'
+  let _inner_delim = '.'
+
+  let of_string : string -> t =
+    (* function of_string start *)
+    fun s -> begin
+    let sl : string list = Core.String.split s ~on:_delim in
+    match sl with
+    | "e"::vn::c_acc::e_acc::[] -> {
+      typ=`elem;
+      c_vn=vn;
+      c_acc_l=(Core.String.split c_acc ~on:_inner_delim);
+      e_acc_l=(Core.String.split e_acc ~on:_inner_delim); }
+    | "r"::vn::c_acc::e_acc::[] -> {
+      typ=`remain;
+      c_vn=vn;
+      c_acc_l=(Core.String.split c_acc ~on:_inner_delim);
+      e_acc_l=(Core.String.split e_acc ~on:_inner_delim); }
+    | _ -> Stdlib.failwith ("Invalid name of variable")
+  end (* function of_string end *)
+
+  let to_string : t -> string =
+    let name_without_prefix : t -> string =
+      (* function name_without_prefix start *)
+      fun t -> begin
+      t.c_vn ^ (Core.Char.escaped _delim)
+      ^ (Core.String.concat t.c_acc_l ~sep:(Core.Char.escaped _inner_delim)) ^ (Core.Char.escaped _delim) 
+      ^ (Core.String.concat t.e_acc_l ~sep:(Core.Char.escaped _inner_delim))
+    end in (* function name_without_prefix end *)
+    (* function to_string start *)
+    fun t -> begin
+    match t.typ with
+    | `elem -> _elem_prefix ^ (Core.Char.escaped _delim) ^ (name_without_prefix t)
+    | `remain -> _remain_prefix ^ (Core.Char.escaped _delim) ^ (name_without_prefix t)
+  end (* function to_string end *)
+end
+
+
+(*****************************************************************************)
+(*****************************************************************************)
 (* Code Component                                                            *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -407,6 +513,13 @@ let v_update_xobmbm = "update_xobmbm"
 (*************************************************************************)
 
 let v_lit_chain_id = "lit_chain_id"
+
+
+(*************************************************************************)
+(* Custom Domain Value for Invariant Synthesis                           *)
+(*************************************************************************)
+
+let v_sigma_lm = "sigma_lm"
 
 
 (*****************************************************************************)

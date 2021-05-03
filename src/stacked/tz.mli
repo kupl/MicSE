@@ -295,6 +295,11 @@ and mich_v =
   (*************************************************************************)
   | MV_lit_chain_id of string
 
+  (*************************************************************************)
+  (* Custom Domain Value for Invariant Synthesis                           *)
+  (*************************************************************************)
+  | MV_sigma_lm of mich_v cc * mich_v cc (* 'a list * mutez -> mutez *)
+
 
 and mich_i = 
   (* Michelson Instruction *)
@@ -443,8 +448,6 @@ type mich_f =
   | MF_mul_nmm_no_overflow of (mich_v cc * mich_v cc)
   | MF_shiftL_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
   | MF_shiftR_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
-  (* Custom Domain Formula for Invariant Generation *)
-  | MF_sigma_equal of (mich_v cc * mich_v cc)
 
 
 (*****************************************************************************)
@@ -580,3 +583,7 @@ val optimize_v : mich_v cc -> mich_v cc
 
 val map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v cc
 val map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc option) -> mich_f
+
+(* Abbreviation *)
+
+val to_abbr_v : mich_v cc -> string list
