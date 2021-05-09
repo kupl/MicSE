@@ -1,7 +1,25 @@
 (* Merge Two States *)
 
 (* IMPORTANT NOTE
-  - See "IMPORTANT NOTE" on top of the "Refute" module.
+  Every concepts in "Se" module were designed with forward symbolic execution in mind.
+  So, well-constructed "Se.sym_state" and "Se.state_set" contains 
+  various Tezos system abstraction such as fixed/dynamic blockchain status
+  and internal operation queues (though queue will be changed into stack for later
+  Tezos version).
+  
+  However, the "Refute" module uses state-merging (module "Merge") to construct
+  symbolic-executed results from back to forward, it is impossible to form soundly
+  blockchain-specific abstractions when merging two different transaction states.
+
+  Therefore, "Merge" and "Refute" modules will not strictly follows the Tezos
+  abstraction defined in "Se".
+   
+  Instead, they will consider following Tezos/Michelson abstractions only:
+  [ Refute Target Properties ]
+  - "Tz.ss_entry_mci", "Tz.ss_entry_symstack", "Tz.ss_block_mci", "Tz.ss_symstack", "Tz.ss_constraints"
+  - "Se.query_category"
+  - "Jc.Rcfv" to track non-michelson contexts
+  - "Jc.Stvn" to avoid variable name conflicts when merging two states
 *)
 
 
@@ -567,3 +585,203 @@ let intratrx_merge_state : Tz.sym_state -> (Tz.sym_state * ms_iter_info) -> (Tz.
   | _ -> Stdlib.raise (Error (Stdlib.__LOC__))
 end (* function intratrx_merge_state end *)
 
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Merge States in Inter-Transaction Situation                               *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(* "ms" : Merged State Type 
+  ms_state    : merged state
+  ms_te_count : count transaction-entered
+  ms_le_count : count loop-entered (initialized when the state leaves current transaction)
+  ms_le_stack : count loop-entered using stack. It is useful to restrict the number of loop unrolling.
+  ms_iinfo    : iteration information for intratrx-merge.
+*)
+(* "ms_le_count" and "ms_le_stack" use loopbody-mci *)
+type ms = {
+  ms_state    : Tz.sym_state;
+  ms_te_count : int;
+  ms_le_count : (Tz.mich_cut_info, int) Tz.PMap.t;
+  ms_le_stack : (Tz.mich_cut_info * int) list;
+  ms_iinfo    : ms_iter_info;
+}
+
+let intertrx_merge_state : Tz.sym_state -> Tz.sym_state -> Tz.sym_state
+= let open Tz in
+  fun ss ms -> begin
+  let ss_exit_strg : mich_v cc = MV_cdr (List.hd ss.ss_symstack) |> gen_dummy_cc in
+  let ms_entry_strg : mich_v cc = MV_cdr (List.hd ms.ss_entry_symstack) |> gen_dummy_cc in
+  let fl : mich_f list = [MF_eq (ss_exit_strg, ms_entry_strg)] in
+  { ss with
+    ss_block_mci=ms.ss_block_mci;
+    ss_symstack=ms.ss_symstack;
+    ss_constraints=(ss.ss_constraints @ fl @ ms.ss_constraints);
+  }
+end (* function intertrx_merge_state end *)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Expand states (merging / unrolling restriction and renaming considered)   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type expand_param = {
+  ep_bss : (Tz.mich_cut_info, Tz.sym_state Tz.PSet.t) Tz.PMap.t;  (* blocked-states. key-mci should be symstate's blocked-mci *)
+  ep_uloop_lim : int; (* loop-unrolling-numbers in [1, ep_uloop_lim] are allowed. Negative value for no-limit *)
+  ep_utrx_lim : int;  (* trx-unrolling-numbers in [1, ep_utrx_lim] are allowed. Negative value for no-limit *)
+}
+
+
+(*****************************************************************************)
+(* Set Structured Variable Names to sym_state                                *)
+(*****************************************************************************)
+
+(* "set_stvn_ss" modifies variables following "Refute Target Properties",
+  - ("Tz.ss_entry_mci")
+  - "Tz.ss_entry_symstack"
+  - ("Tz.ss_block_mci")
+  - "Tz.ss_symstack"
+  - "Tz.ss_constraints"
+*)
+
+let set_stvn_ss : (int option * int option) -> Tz.sym_state -> Tz.sym_state
+= let open Tz in
+  fun (tnopt, lnopt) ss -> begin
+  let stvn_s : mich_v cc -> mich_v cc = Se.set_stvn_mv (tnopt, lnopt) in
+  let stvn_f : mich_f -> mich_f = Se.set_stvn_mf (tnopt, lnopt) in
+  {ss with
+    ss_entry_symstack = List.map stvn_s ss.ss_entry_symstack;
+    ss_symstack = List.map stvn_s ss.ss_symstack;
+    ss_constraints = List.map stvn_f ss.ss_constraints;
+  }
+end (* function set_stvn_ss end *)
+
+
+(*****************************************************************************)
+(* Expand                                                                    *)
+(*****************************************************************************)
+
+(* "expand_i" 
+  - filter state-set by trx, loop unrolling limits.
+  - rename state
+  - update merged-state (ms)
+*)
+let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
+= let open Tz in
+  fun ep sset ms -> begin
+  let ms_en_mci = ms.ms_state.ss_entry_mci in
+  PSet.fold sset ~init:PSet.empty
+    ~f:(fun accs ss ->
+      (* TODO : There are no filtering logic *)
+      let ss_en_mci = ss.ss_block_mci in
+      let (ssmcc, mmmcc) = (ss_en_mci.mci_cutcat, ms_en_mci.mci_cutcat) in
+      match (is_ln_mcc ssmcc, is_lb_mcc ssmcc, is_ln_mcc mmmcc, is_lb_mcc mmmcc) with
+      | (true, false, true, false) -> (
+          (* LN -> LN *)
+          let ss_trx_num = ms.ms_te_count in
+          (* note : cur_loop_num : "[] -> 0" for query-loop case *)
+          let ss_loop_num = (match ms.ms_le_stack with | [] -> 0 | (_, hdv) :: _ -> hdv) in
+          (* No loop-unroll limitation checking is needed in this case *)
+          let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
+          let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo');}
+          |> PSet.add accs
+        )
+      | (true, false, false, true) -> (
+          (* LN -> LB *)
+          let ss_trx_num = ms.ms_te_count in
+          (* note : cur_loop_num : "_ -> 0" for query-loop case *)
+          let ss_loop_num = (match ms.ms_le_stack with | _ :: (_, hdv) :: _ -> hdv | _ -> 0) in
+          (* No loop-unroll limitation checking is needed in this case *)
+          let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
+          let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
+          let le_stack' = (match ms.ms_le_stack with | [] -> [] | _ :: tl -> tl) in
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_stack=(le_stack');}
+          |> PSet.add accs
+        )
+      | (false, true, true, false) -> (
+          (* LB -> LN *)
+          let ss_trx_num = ms.ms_te_count in
+          let ss_loop_count = PMap.update ms.ms_le_count ss.ss_block_mci ~f:(function | None -> 1 | Some n -> (n+1)) in
+          let ss_loop_num = pmap_find_dft ms.ms_le_count ss.ss_block_mci ~default:0 in
+          (* I'll not put any loop-unroll limitation checking in this case too. Query itself might be located in the loop *)
+          let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
+          let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
+          let le_stack' = (ss.ss_block_mci, 1) :: ms.ms_le_stack in
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=ss_loop_count; ms_le_stack=(le_stack');}
+          |> PSet.add accs
+        )
+      | (false, true, false, true) -> (
+          (* LB -> LB *)
+          let ss_trx_num = ms.ms_te_count in
+          let ss_loop_count = PMap.update ms.ms_le_count ss.ss_block_mci ~f:(function | None -> 1 | Some n -> (n+1)) in
+          let ss_loop_num = pmap_find_dft ms.ms_le_count ss.ss_block_mci ~default:0 in
+          (* loop-unroll limitation checking here *)
+          if (ep.ep_uloop_lim < ss_loop_num) then accs else
+          let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
+          let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
+          let le_stack' = (match ms.ms_le_stack with | [] -> [(ss.ss_block_mci, 1)] | (bmci, n) :: tl -> (bmci, (n+1)) :: tl) in
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=ss_loop_count; ms_le_stack=(le_stack');}
+          |> PSet.add accs
+        )
+      | (false, false, false, false) -> (
+          (* TRX-EXIT -> TRX-ENTRY *)
+          let ss_trx_num = ms.ms_te_count + 1 in
+          (* trx-unroll limitation checking here *)
+          if (ep.ep_utrx_lim < ss_trx_num) then accs else
+          let ss' = set_stvn_ss (Some ss_trx_num, Some 0) ss in
+          let ms' = intertrx_merge_state ss' ms.ms_state in
+          { ms_state    = (ms');
+            ms_te_count = ss_trx_num;
+            ms_le_count = ms.ms_le_count;
+            ms_le_stack = [];
+            ms_iinfo    = empty_ms_iter_info;
+          }
+          |> PSet.add accs
+        )
+      | _ -> Stdlib.failwith Stdlib.__LOC__
+
+      (* 
+      if ss_en_mci.mci_cutcat = MCC_trx_exit 
+      then (
+        if (0 <= ep.ep_utrx_lim) && (ep.ep_utrx_lim <= ms.ms_te_count)
+        then (accs) (* FOLD RETURN POINT 1 *)
+        else (PSet.add accs (expand_ii ss ms))
+      )
+      else (
+        let (le_count, le_stack)
+        if 
+      ) *)
+
+    )
+end (* function expand_i end *)
+
+(* "expand" 
+  - filters state-set by mich-cut-info.
+*)
+let expand : expand_param -> (ms Tz.PSet.t) -> (ms Tz.PSet.t)
+= let open Tz in
+  fun ep msset -> begin
+  PSet.fold msset ~init:PSet.empty 
+    ~f:(fun accs ms ->
+      let ms_en_mci = ms.ms_state.ss_entry_mci in
+      let sset : sym_state PSet.t =
+        if ms_en_mci.mci_cutcat = MCC_trx_entry 
+        then (
+          let tex_mci = {ms_en_mci with mci_cutcat=MCC_trx_exit;} in
+          pmap_find_dft ep.ep_bss tex_mci ~default:PSet.empty
+        )
+        else (
+          let lb_mci = lb_of_ln_mci ms_en_mci |> Option.value ~default:ms_en_mci in
+          let ln_mci = ln_of_lb_mci ms_en_mci |> Option.value ~default:ms_en_mci in
+          PSet.union
+            (pmap_find_dft ep.ep_bss lb_mci ~default:PSet.empty)
+            (pmap_find_dft ep.ep_bss ln_mci ~default:PSet.empty)
+        )
+      in
+      PSet.union (expand_i ep sset ms) accs
+    )
+end (* function expand end *)

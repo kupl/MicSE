@@ -20,3 +20,56 @@ type ms_iter_info = {
 val empty_ms_iter_info : ms_iter_info
 
 val intratrx_merge_state : Tz.sym_state -> (Tz.sym_state * ms_iter_info) -> (Tz.sym_state * ms_iter_info)
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Merge States in Inter-Transaction Situation                               *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(* "ms" : Merged State Type 
+  ms_state    : merged state
+  ms_te_count : count transaction-entered
+  ms_le_count : count loop-entered (initialized when the state leaves current transaction)
+  ms_le_stack : count loop-entered using stack. It is useful to restrict the number of loop unrolling.
+  ms_iinfo    : iteration information for intratrx-merge.
+*)
+type ms = {
+  ms_state    : Tz.sym_state;
+  ms_te_count : int;
+  ms_le_count : (Tz.mich_cut_info, int) Tz.PMap.t;
+  ms_le_stack : (Tz.mich_cut_info * int) list;
+  ms_iinfo    : ms_iter_info;
+}
+
+val intertrx_merge_state : Tz.sym_state -> Tz.sym_state -> Tz.sym_state
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* Expand states (merging / unrolling restriction and renaming considered)   *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+type expand_param = {
+  ep_bss : (Tz.mich_cut_info, Tz.sym_state Tz.PSet.t) Tz.PMap.t;  (* blocked-states. key-mci should be symstate's blocked-mci *)
+  ep_uloop_lim : int; (* loop-unrolling-numbers in [1, ep_uloop_lim] are allowed. Negative value for no-limit *)
+  ep_utrx_lim : int;  (* trx-unrolling-numbers in [1, ep_utrx_lim] are allowed. Negative value for no-limit *)
+}
+
+
+(*****************************************************************************)
+(* Set Structured Variable Names to sym_state                                *)
+(*****************************************************************************)
+
+val set_stvn_ss : (int option * int option) -> Tz.sym_state -> Tz.sym_state
+
+
+(*****************************************************************************)
+(* Expand                                                                    *)
+(*****************************************************************************)
+
+(* val expand_ii : Tz.sym_state -> ms -> ms *)
+val expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
+val expand : expand_param -> (ms Tz.PSet.t) -> (ms Tz.PSet.t)
