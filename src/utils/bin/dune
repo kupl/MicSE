@@ -4,6 +4,7 @@
     construct_cfg 
     print_unrolled_cfg
     refuter_only
+    stacked_refuter
     stacked_unroll_n
     test_data_parse
     test_log
@@ -14,6 +15,7 @@
     micse.utils.construct_cfg 
     micse.utils.print_unrolled_cfg
     micse.utils.refuter_only
+    micse.utils.stacked_refuter
     micse.utils.stacked_unroll_n
     micse.utils.test_data_parse
     micse.utils.test_log

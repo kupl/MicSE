@@ -34,6 +34,7 @@ val intratrx_merge_state : Tz.sym_state -> (Tz.sym_state * ms_iter_info) -> (Tz.
   ms_le_count : count loop-entered (initialized when the state leaves current transaction)
   ms_le_stack : count loop-entered using stack. It is useful to restrict the number of loop unrolling.
   ms_iinfo    : iteration information for intratrx-merge.
+  ms_qcopt    : query-category if exists
 *)
 type ms = {
   ms_state    : Tz.sym_state;
@@ -41,6 +42,7 @@ type ms = {
   ms_le_count : (Tz.mich_cut_info, int) Tz.PMap.t;
   ms_le_stack : (Tz.mich_cut_info * int) list;
   ms_iinfo    : ms_iter_info;
+  ms_querycat : Se.query_category option;
 }
 
 val intertrx_merge_state : Tz.sym_state -> Tz.sym_state -> Tz.sym_state

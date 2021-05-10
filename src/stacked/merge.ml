@@ -598,15 +598,16 @@ end (* function intratrx_merge_state end *)
   ms_le_count : count loop-entered (initialized when the state leaves current transaction)
   ms_le_stack : count loop-entered using stack. It is useful to restrict the number of loop unrolling.
   ms_iinfo    : iteration information for intratrx-merge.
+  ms_qcopt    : query-category if exists
 *)
-(* "ms_le_count" and "ms_le_stack" use loopbody-mci *)
-type ms = {
-  ms_state    : Tz.sym_state;
-  ms_te_count : int;
-  ms_le_count : (Tz.mich_cut_info, int) Tz.PMap.t;
-  ms_le_stack : (Tz.mich_cut_info * int) list;
-  ms_iinfo    : ms_iter_info;
-}
+  type ms = {
+    ms_state    : Tz.sym_state;
+    ms_te_count : int;
+    ms_le_count : (Tz.mich_cut_info, int) Tz.PMap.t;
+    ms_le_stack : (Tz.mich_cut_info * int) list;
+    ms_iinfo    : ms_iter_info;
+    ms_querycat : Se.query_category option;
+  }
 
 let intertrx_merge_state : Tz.sym_state -> Tz.sym_state -> Tz.sym_state
 = let open Tz in
@@ -720,7 +721,7 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
           let ss_loop_count = PMap.update ms.ms_le_count ss.ss_block_mci ~f:(function | None -> 1 | Some n -> (n+1)) in
           let ss_loop_num = pmap_find_dft ms.ms_le_count ss.ss_block_mci ~default:0 in
           (* loop-unroll limitation checking here *)
-          if (ep.ep_uloop_lim < ss_loop_num) then accs else
+          if (0 <= ep.ep_utrx_lim && ep.ep_uloop_lim < ss_loop_num) then accs else
           let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
           let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
           let le_stack' = (match ms.ms_le_stack with | [] -> [(ss.ss_block_mci, 1)] | (bmci, n) :: tl -> (bmci, (n+1)) :: tl) in
@@ -731,7 +732,7 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
           (* TRX-EXIT -> TRX-ENTRY *)
           let ss_trx_num = ms.ms_te_count + 1 in
           (* trx-unroll limitation checking here *)
-          if (ep.ep_utrx_lim < ss_trx_num) then accs else
+          if (0 <= ep.ep_utrx_lim && ep.ep_utrx_lim < ss_trx_num) then accs else
           let ss' = set_stvn_ss (Some ss_trx_num, Some 0) ss in
           let ms' = intertrx_merge_state ss' ms.ms_state in
           { ms_state    = (ms');
@@ -739,23 +740,11 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
             ms_le_count = ms.ms_le_count;
             ms_le_stack = [];
             ms_iinfo    = empty_ms_iter_info;
+            ms_querycat = ms.ms_querycat;
           }
           |> PSet.add accs
         )
       | _ -> Stdlib.failwith Stdlib.__LOC__
-
-      (* 
-      if ss_en_mci.mci_cutcat = MCC_trx_exit 
-      then (
-        if (0 <= ep.ep_utrx_lim) && (ep.ep_utrx_lim <= ms.ms_te_count)
-        then (accs) (* FOLD RETURN POINT 1 *)
-        else (PSet.add accs (expand_ii ss ms))
-      )
-      else (
-        let (le_count, le_stack)
-        if 
-      ) *)
-
     )
 end (* function expand_i end *)
 

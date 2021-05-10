@@ -865,7 +865,7 @@ let ln_of_lb_mci : mich_cut_info -> mich_cut_info option
     | MCC_lb_loop     -> MCC_ln_loop    , true
     | MCC_lb_loopleft -> MCC_ln_loopleft, true
     | MCC_lb_map      -> MCC_ln_map     , true
-    | MCC_ln_iter     -> MCC_ln_iter    , true
+    | MCC_lb_iter     -> MCC_ln_iter    , true
     | _ as m          -> m              , false)
   in
   if flag then Some {mci with mci_cutcat=ln_mcc;} else None
