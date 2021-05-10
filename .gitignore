@@ -1,7 +1,7 @@
 # Build directories
 _build
 .merlin
-bin/
+#bin/
 
 # Etc
 .DS_Store
