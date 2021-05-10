@@ -1439,26 +1439,3 @@ let map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc option) -> mich_f
   fun fff ~v2v -> begin
   map_f_v2v_outer_i fff ~v2v
 end (* function map_f_v2v_outer end *)
-
-(* Abbreviation *)
-
-let to_abbr_v : mich_v cc -> string list
-= let rec to_abbr_v_i : string list -> mich_v cc -> string list
-  = (* function to_abbr_v_i start *)
-    fun acc vvv -> begin
-    let af : string -> mich_v cc -> string list = (
-      fun x v -> to_abbr_v_i (x::acc) v) in (* syntax sugar *)
-    match vvv.cc_v with
-    | MV_car v1 -> af "a" v1
-    | MV_cdr v1 -> af "d" v1
-    | MV_unlift_option v1 -> af "o" v1
-    | MV_unlift_left v1 -> af "l" v1
-    | MV_unlift_right v1 -> af "r" v1
-    | MV_hd_l v1 -> af "h" v1
-    | MV_symbol (_, s2) -> s2::acc
-    | _ -> "_"::acc
-  end in (* function abbr_v_i end *)
-  (* function abbr_v start *)
-  fun vvv -> begin
-  to_abbr_v_i [] vvv
-end (* function abbr_v end *)

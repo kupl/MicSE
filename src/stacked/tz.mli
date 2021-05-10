@@ -583,7 +583,3 @@ val optimize_v : mich_v cc -> mich_v cc
 
 val map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v cc
 val map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc option) -> mich_f
-
-(* Abbreviation *)
-
-val to_abbr_v : mich_v cc -> string list

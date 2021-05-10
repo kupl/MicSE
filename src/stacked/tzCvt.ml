@@ -205,6 +205,259 @@ module M2T = struct
 end (* module M2T end *)
 
 
+(*****************************************************************************)
+(*****************************************************************************)
+(* Tz to Abbreviation                                                        *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+module T2A = struct
+  
+  open Tz
+  open Jc
+
+  let rec cv_mt : mich_t -> string list =
+    (let abt = cv_mtcc in (* syntax sugar *)
+    fun ttt -> match ttt with
+    | MT_address          -> abr_t_address::[]
+    | MT_bool             -> abr_t_bool::[]
+    | MT_big_map (t1, t2) -> abr_t_big_map::((abt t1)@(abt t2))
+    | MT_bytes            -> abr_t_bytes::[]
+    | MT_chain_id         -> abr_t_chain_id::[]
+    | MT_contract t1      -> abr_t_contract::(abt t1)
+    | MT_int              -> abr_t_int::[]
+    | MT_key_hash         -> abr_t_key_hash::[]
+    | MT_key              -> abr_t_key::[]
+    | MT_lambda (t1, t2)  -> abr_t_lambda::((abt t1)@(abt t2))
+    | MT_list t1          -> abr_t_list::(abt t1)
+    | MT_map (t1, t2)     -> abr_t_map::((abt t1)@(abt t2))
+    | MT_mutez            -> abr_t_mutez::[]
+    | MT_nat              -> abr_t_nat::[]
+    | MT_operation        -> abr_t_operation::[]
+    | MT_or (t1, t2)      -> abr_t_or::((abt t1)@(abt t2))
+    | MT_option t1        -> abr_t_option::(abt t1)
+    | MT_pair (t1, t2)    -> abr_t_pair::((abt t1)@(abt t2))
+    | MT_signature        -> abr_t_signature::[]
+    | MT_set t1           -> abr_t_set::(abt t1)
+    | MT_string           -> abr_t_string::[]
+    | MT_timestamp        -> abr_t_timestamp::[]
+    | MT_unit             -> abr_t_unit::[]
+    )
+  
+  and cv_mtcc : mich_t cc -> string list = (fun x -> cv_mt x.cc_v)
+
+  let rec cv_mv : mich_v -> string list =
+    (let abv = cv_mvcc in (* syntax sugar *)
+    let st = (fun t -> t |> cv_mtcc |> Core.String.concat) in (* syntax sugar *)
+    let app = (fun l1 s -> l1@(s::[])) in (* syntax sugar *)
+    fun eee -> match eee with
+    (*************************************************************************)
+    (* Symbol & Polymorphic                                                  *)
+    (*************************************************************************)
+    | MV_symbol (t1, s2)   -> app [s2] (abr_v_lit ^ (st t1) ^ abr_symbol)
+    | MV_car v1           -> app (abv v1) abr_v_car
+    | MV_cdr v1           -> app (abv v1) abr_v_cdr
+    | MV_unlift_option v1 -> app (abv v1) abr_v_unlift_option
+    | MV_unlift_left v1   -> app (abv v1) abr_v_unlift_left
+    | MV_unlift_right v1  -> app (abv v1) abr_v_unlift_right
+    | MV_hd_l v1          -> app (abv v1) abr_v_hd
+    (*************************************************************************)
+    (* Integer                                                               *)
+    (*************************************************************************)
+    | MV_lit_int d1       -> app [(d1 |> Z.to_string)] (abr_v_lit ^ abr_t_int)
+    | MV_neg_ni v1        -> app (abv v1) (abr_v_neg ^ abr_t_nat ^ abr_t_int)
+    | MV_neg_ii v1        -> app (abv v1) (abr_v_neg ^ abr_t_int ^ abr_t_int)
+    | MV_not_ni v1        -> app (abv v1) (abr_v_not ^ abr_t_nat ^ abr_t_int)
+    | MV_not_ii v1        -> app (abv v1) (abr_v_not ^ abr_t_int ^ abr_t_int)
+    | MV_add_nii (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_add ^ abr_t_nat ^ abr_t_int ^ abr_t_int)
+    | MV_add_ini (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_add ^ abr_t_int ^ abr_t_nat ^ abr_t_int)
+    | MV_add_iii (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_add ^ abr_t_int ^ abr_t_int ^ abr_t_int)
+    | MV_sub_nni (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_sub ^ abr_t_nat ^ abr_t_nat ^ abr_t_int)
+    | MV_sub_nii (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_sub ^ abr_t_nat ^ abr_t_int ^ abr_t_int)
+    | MV_sub_ini (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_sub ^ abr_t_int ^ abr_t_nat ^ abr_t_int)
+    | MV_sub_iii (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_sub ^ abr_t_int ^ abr_t_int ^ abr_t_int)
+    | MV_sub_tti (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_sub ^ abr_t_timestamp ^ abr_t_timestamp ^ abr_t_int)
+    | MV_mul_nii (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_mul ^ abr_t_nat ^ abr_t_int ^ abr_t_int)
+    | MV_mul_ini (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_mul ^ abr_t_int ^ abr_t_nat ^ abr_t_int)
+    | MV_mul_iii (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_mul ^ abr_t_int ^ abr_t_int ^ abr_t_int)
+    | MV_compare (v1, v2) -> app ((abv v1)@(abv v2)) abr_v_compare
+    | MV_int_of_nat v1    -> app (abv v1) abr_v_int_of_nat
+    (*************************************************************************)
+    (* Natural Number                                                        *)
+    (*************************************************************************)
+    | MV_lit_nat d1           -> app [(d1 |> Z.to_string)] (abr_v_lit ^ abr_t_nat)
+    | MV_abs_in v1            -> app (abv v1) (abr_v_abs ^ abr_t_int ^ abr_t_nat)
+    | MV_add_nnn (v1, v2)     -> app ((abv v1)@(abv v2)) (abr_v_add ^ abr_t_nat ^ abr_t_nat ^ abr_t_nat)
+    | MV_mul_nnn (v1, v2)     -> app ((abv v1)@(abv v2)) (abr_v_mul ^ abr_t_nat ^ abr_t_nat ^ abr_t_nat)
+    | MV_shiftL_nnn (v1, v2)  -> app ((abv v1)@(abv v2)) (abr_v_shiftL ^ abr_t_nat ^ abr_t_nat ^ abr_t_nat)
+    | MV_shiftR_nnn (v1, v2)  -> app ((abv v1)@(abv v2)) (abr_v_shiftR ^ abr_t_nat ^ abr_t_nat ^ abr_t_nat)
+    | MV_and_nnn (v1, v2)     -> app ((abv v1)@(abv v2)) (abr_v_and ^ abr_t_nat ^ abr_t_nat ^ abr_t_nat)
+    | MV_and_inn (v1, v2)     -> app ((abv v1)@(abv v2)) (abr_v_and ^ abr_t_int ^ abr_t_nat ^ abr_t_nat)
+    | MV_or_nnn (v1, v2)      -> app ((abv v1)@(abv v2)) (abr_v_or ^ abr_t_nat ^ abr_t_nat ^ abr_t_nat)
+    | MV_xor_nnn (v1, v2)     -> app ((abv v1)@(abv v2)) (abr_v_xor ^ abr_t_nat ^ abr_t_nat ^ abr_t_nat)
+    | MV_size_s v1            -> app (abv v1) (abr_v_size ^ abr_t_set)
+    | MV_size_m v1            -> app (abv v1) (abr_v_size ^ abr_t_map)
+    | MV_size_l v1            -> app (abv v1) (abr_v_size ^ abr_t_list)
+    | MV_size_str v1          -> app (abv v1) (abr_v_size ^ abr_t_string)
+    | MV_size_b v1            -> app (abv v1) (abr_v_size ^ abr_t_bytes)
+    (*************************************************************************)
+    (* String                                                                *)
+    (*************************************************************************)
+    | MV_lit_string s1        -> app [s1] (abr_v_lit ^ abr_t_string)
+    | MV_concat_sss (v1, v2)  -> app ((abv v1)@(abv v2)) (abr_v_concat ^ abr_t_string ^ abr_t_string ^ abr_t_string)
+    | MV_concat_list_s v1     -> app (abv v1) (abr_v_concat ^ abr_t_list ^ abr_t_string)
+    (*************************************************************************)
+    (* Bytes                                                                 *)
+    (*************************************************************************)
+    | MV_lit_bytes s1         -> app [s1] (abr_v_lit ^ abr_t_bytes)
+    | MV_concat_bbb (v1, v2)  -> app ((abv v1)@(abv v2)) (abr_v_concat ^ abr_t_bytes ^ abr_t_bytes ^ abr_t_bytes)
+    | MV_concat_list_b v1     -> app (abv v1) (abr_v_concat ^ abr_t_list ^ abr_t_bytes)
+    | MV_pack v1              -> app (abv v1) abr_v_pack
+    | MV_blake2b v1           -> app (abv v1) abr_v_blake2b
+    | MV_sha256 v1            -> app (abv v1) abr_v_sha256
+    | MV_sha512 v1            -> app (abv v1) abr_v_sha512
+    (*************************************************************************)
+    (* Mutez                                                                 *)
+    (*************************************************************************)
+    | MV_lit_mutez d1     -> app [(d1 |> Z.to_string)] (abr_v_lit ^ abr_t_mutez)
+    | MV_add_mmm (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_add ^ abr_t_mutez ^ abr_t_mutez ^ abr_t_mutez)
+    | MV_sub_mmm (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_sub ^ abr_t_mutez ^ abr_t_mutez ^ abr_t_mutez)
+    | MV_mul_mnm (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_mul ^ abr_t_mutez ^ abr_t_nat ^ abr_t_mutez)
+    | MV_mul_nmm (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_mul ^ abr_t_nat ^ abr_t_mutez ^ abr_t_mutez)
+    (*************************************************************************)
+    (* Bool                                                                  *)
+    (*************************************************************************)
+    | MV_lit_bool b1                  -> app [(b1 |> string_of_bool)] (abr_v_lit ^ abr_t_bool)
+    | MV_not_bb v1                    -> app (abv v1) (abr_v_not ^ abr_t_bool ^ abr_t_bool)
+    | MV_and_bbb (v1, v2)             -> app ((abv v1)@(abv v2)) (abr_v_and ^ abr_t_bool ^ abr_t_bool ^ abr_t_bool)
+    | MV_or_bbb (v1, v2)              -> app ((abv v1)@(abv v2)) (abr_v_or ^ abr_t_bool ^ abr_t_bool ^ abr_t_bool)
+    | MV_xor_bbb (v1, v2)             -> app ((abv v1)@(abv v2)) (abr_v_xor ^ abr_t_bool ^ abr_t_bool ^ abr_t_bool)
+    | MV_eq_ib (v1, v2)               -> app ((abv v1)@(abv v2)) (abr_v_eq ^ abr_t_int ^ abr_t_bool)
+    | MV_neq_ib (v1, v2)              -> app ((abv v1)@(abv v2)) (abr_v_neq ^ abr_t_int ^ abr_t_bool)
+    | MV_lt_ib (v1, v2)               -> app ((abv v1)@(abv v2)) (abr_v_lt ^ abr_t_int ^ abr_t_bool)
+    | MV_gt_ib (v1, v2)               -> app ((abv v1)@(abv v2)) (abr_v_gt ^ abr_t_int ^ abr_t_bool)
+    | MV_leq_ib (v1, v2)              -> app ((abv v1)@(abv v2)) (abr_v_leq ^ abr_t_int ^ abr_t_bool)
+    | MV_geq_ib (v1, v2)              -> app ((abv v1)@(abv v2)) (abr_v_geq ^ abr_t_int ^ abr_t_bool)
+    | MV_mem_xsb (v1, v2)             -> app ((abv v1)@(abv v2)) (abr_v_mem ^ abr_t_set ^ abr_t_bool)
+    | MV_mem_xmb (v1, v2)             -> app ((abv v1)@(abv v2)) (abr_v_mem ^ abr_t_map ^ abr_t_bool)
+    | MV_mem_xbmb (v1, v2)            -> app ((abv v1)@(abv v2)) (abr_v_mem ^ abr_t_big_map ^ abr_t_bool)
+    | MV_check_signature (v1, v2, v3) -> app ((abv v1)@(abv v2)@(abv v3)) abr_v_check_signature
+    (*************************************************************************)
+    (* Key Hash                                                              *)
+    (*************************************************************************)
+    | MV_lit_key_hash s1  -> app [s1] (abr_v_lit ^ abr_t_key_hash)
+    | MV_hash_key v1      -> app (abv v1) abr_v_hash_key
+    (*************************************************************************)
+    (* Timestamp                                                             *)
+    (*************************************************************************)
+    | MV_lit_timestamp_str s1 -> app [s1] (abr_v_lit ^ abr_t_string ^ abr_t_timestamp)
+    | MV_lit_timestamp_sec d1 -> app [(d1 |> Z.to_string)] (abr_v_lit ^ abr_t_int ^ abr_t_timestamp)
+    | MV_add_tit (v1, v2)     -> app ((abv v1)@(abv v2)) (abr_v_add ^ abr_t_timestamp ^ abr_t_int ^ abr_t_timestamp)
+    | MV_add_itt (v1, v2)     -> app ((abv v1)@(abv v2)) (abr_v_add ^ abr_t_int ^ abr_t_timestamp ^ abr_t_timestamp)
+    | MV_sub_tit (v1, v2)     -> app ((abv v1)@(abv v2)) (abr_v_sub ^ abr_t_timestamp ^ abr_t_int ^ abr_t_timestamp)
+    (*************************************************************************)
+    (* Address                                                               *)
+    (*************************************************************************)
+    | MV_lit_address v1         -> app (abv v1) (abr_v_lit ^ abr_t_address)
+    | MV_address_of_contract v1 -> app (abv v1) abr_v_address_of_contract
+    (*************************************************************************)
+    (* Key                                                                   *)
+    (*************************************************************************)
+    | MV_lit_key s1 -> app [s1] (abr_v_lit ^ abr_t_key)
+    (*************************************************************************)
+    (* Unit                                                                  *)
+    (*************************************************************************)
+    | MV_unit -> app [] abr_v_unit
+    (*************************************************************************)
+    (* Signature                                                             *)
+    (*************************************************************************)
+    | MV_lit_signature_str s1           -> app [s1] (abr_v_lit ^ abr_t_signature)
+    | MV_lit_signature_signed (v1, v2)  -> app ((abv v1)@(abv v2)) (abr_v_lit ^ abr_t_signature)
+    (*************************************************************************)
+    (* Option                                                                *)
+    (*************************************************************************)
+    | MV_some v1                      -> app (abv v1) abr_v_some
+    | MV_none t1                      -> app [] (abr_v_none ^ (st t1))
+    | MV_ediv_nnnn (v1, v2)           -> app ((abv v1)@(abv v2)) (abr_v_ediv ^ abr_t_nat ^ abr_t_nat ^ abr_t_nat ^ abr_t_nat)
+    | MV_ediv_niin (v1, v2)           -> app ((abv v1)@(abv v2)) (abr_v_ediv ^ abr_t_nat ^ abr_t_int ^ abr_t_int ^ abr_t_nat)
+    | MV_ediv_inin (v1, v2)           -> app ((abv v1)@(abv v2)) (abr_v_ediv ^ abr_t_int ^ abr_t_nat ^ abr_t_int ^ abr_t_nat)
+    | MV_ediv_iiin (v1, v2)           -> app ((abv v1)@(abv v2)) (abr_v_ediv ^ abr_t_int ^ abr_t_int ^ abr_t_int ^ abr_t_nat)
+    | MV_ediv_mnmm (v1, v2)           -> app ((abv v1)@(abv v2)) (abr_v_ediv ^ abr_t_mutez ^ abr_t_nat ^ abr_t_mutez ^ abr_t_mutez)
+    | MV_ediv_mmnm (v1, v2)           -> app ((abv v1)@(abv v2)) (abr_v_ediv ^ abr_t_mutez ^ abr_t_mutez ^ abr_t_nat ^ abr_t_mutez)
+    | MV_get_xmoy  (v1, v2)           -> app ((abv v1)@(abv v2)) (abr_v_get ^ abr_t_map)
+    | MV_get_xbmo  (v1, v2)           -> app ((abv v1)@(abv v2)) (abr_v_get ^ abr_t_big_map)
+    | MV_slice_nnso (v1, v2, v3)      -> app ((abv v1)@(abv v2)@(abv v3)) (abr_v_slice ^ abr_t_nat ^ abr_t_nat ^ abr_t_string)
+    | MV_slice_nnbo (v1, v2, v3)      -> app ((abv v1)@(abv v2)@(abv v3)) (abr_v_slice ^ abr_t_nat ^ abr_t_nat ^ abr_t_bytes)
+    | MV_unpack (t1, v2)              -> app (abv v2) (abr_v_unpack ^ abr_t_bytes ^ (st t1))
+    | MV_contract_of_address (t1, v2) -> app (abv v2) (abr_v_contract_of_address ^ (st t1) ^ abr_t_address)
+    | MV_isnat v1                     -> app (abv v1) (abr_v_isnat)
+    (*************************************************************************)
+    (* List                                                                  *)
+    (*************************************************************************)
+    | MV_lit_list (t1, vl2) -> app (vl2 |> Core.List.map ~f:abv |> Core.List.join) (abr_v_lit ^ (st t1) ^ abr_t_list)
+    | MV_nil t1             -> app [] (abr_v_nil ^ (st t1))
+    | MV_cons (v1, v2)      -> app ((abv v1)@(abv v2)) abr_v_cons
+    | MV_tl_l v1            -> app (abv v1) abr_v_tl
+    (*************************************************************************)
+    (* Set                                                                   *)
+    (*************************************************************************)
+    | MV_lit_set (t1, vs2)        -> app (vs2 |> Core.Set.to_list |> Core.List.map ~f:abv |> Core.List.join) (abr_v_lit ^ (st t1) ^ abr_t_set)
+    | MV_empty_set t1             -> app [] (abr_v_empty ^ (st t1) ^ abr_t_set)
+    | MV_update_xbss (v1, v2, v3) -> app ((abv v1)@(abv v2)@(abv v3)) (abr_v_update ^ abr_t_bool ^ abr_t_set)
+    (*************************************************************************)
+    (* Operation                                                             *)
+    (*************************************************************************)
+    | MV_create_contract (t1, t2, v3, v4, v5, v6, v7) -> app ((abv v3)@(abv v4)@(abv v5)@(abv v6)@(abv v7)) (abr_v_create_contract ^ (st t1) ^ (st t2))
+    | MV_transfer_tokens (v1, v2, v3)                 -> app ((abv v1)@(abv v2)@(abv v3)) abr_v_transfer_tokens
+    | MV_set_delegate v1                              -> app (abv v1) abr_v_set_delegate
+    (*************************************************************************)
+    (* Contract                                                              *)
+    (*************************************************************************)
+    | MV_lit_contract (t1, v2)  -> app (abv v2) (abr_v_lit ^ (st t1) ^ abr_t_contract)
+    | MV_self t1                -> app [] (abr_v_self ^ (st t1))
+    | MV_implicit_account v1    -> app (abv v1) abr_v_implicit_account
+    (*************************************************************************)
+    (* Pair                                                                  *)
+    (*************************************************************************)
+    | MV_pair (v1, v2) -> app ((abv v1)@(abv v2)) abr_v_pair
+    (*************************************************************************)
+    (* Or                                                                    *)
+    (*************************************************************************)
+    | MV_left (t1, v2)  -> app (abv v2) (abr_v_left ^ (st t1))
+    | MV_right (t1, v2) -> app (abv v2) (abr_v_right ^ (st t1))
+    (*************************************************************************)
+    (* Lambda                                                                *)
+    (*************************************************************************)
+    | MV_lit_lambda (t1, t2, _) -> app [] (abr_v_lit ^ (st t1) ^ (st t2) ^ abr_t_lambda)
+    | MV_lambda_unknown (t1, t2) -> app [] (abr_v_lambda_unknown ^ (st t1) ^ (st t2))
+    | MV_lambda_closure (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_lambda_closure)
+    (*************************************************************************)
+    (* Map                                                                   *)
+    (*************************************************************************)
+    | MV_lit_map (t1, t2, vm3) -> app (vm3 |> Core.Map.to_alist |> Core.List.map ~f:(fun (_, v) -> abv v) |> Core.List.join) (abr_v_lit ^ (st t1) ^ (st t2) ^ abr_t_map)
+    | MV_empty_map (t1, t2) -> app [] (abr_v_empty ^ (st t1) ^ (st t2) ^ abr_t_map)
+    | MV_update_xomm  (v1, v2, v3) -> app ((abv v1)@(abv v2)@(abv v3)) (abr_v_update ^ abr_t_map)
+    (*************************************************************************)
+    (* Big Map                                                               *)
+    (*************************************************************************)
+    | MV_lit_big_map (t1, t2, vm3) -> app (vm3 |> Core.Map.to_alist |> Core.List.map ~f:(fun (_, v) -> abv v) |> Core.List.join) (abr_v_lit ^ (st t1) ^ (st t2) ^ abr_t_big_map)
+    | MV_empty_big_map (t1, t2) -> app [] (abr_v_empty ^ (st t1) ^ (st t2) ^ abr_t_big_map)
+    | MV_update_xobmbm  (v1, v2, v3) -> app ((abv v1)@(abv v2)@(abv v3)) (abr_v_update ^ abr_t_big_map)
+    (*************************************************************************)
+    (* Chain Id                                                              *)
+    (*************************************************************************)
+    | MV_lit_chain_id s1 -> app [s1] (abr_v_lit ^ abr_t_chain_id)
+    (*************************************************************************)
+    (* Custom Domain Value for Invariant Synthesis                           *)
+    (*************************************************************************)
+    | MV_sigma_lm (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_sigma ^ abr_t_list ^ abr_t_mutez)
+    )
+  
+  and cv_mvcc : mich_v cc -> string list = (fun x -> cv_mv x.cc_v)
+
+
+end
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -575,8 +828,8 @@ module T2S = struct
           let hd' : mich_v cc = map_elem_acc (gen_dummy_cc (MV_hd_l vl11)) in
           ZMutez.create_sub (cv_mvcc vl11) (cv_mvcc hd'))
         | _ -> (
-          let v1_abbrs : string list = Tz.to_abbr_v v1 in
-          let v2_abbrs : string list = Tz.to_abbr_v v1 in
+          let v1_abbrs : string list = T2A.cv_mvcc v1 in
+          let v2_abbrs : string list = T2A.cv_mvcc v1 in
           ZExpr.create_var
             (ZMutez.sort ())
             ~name:(
