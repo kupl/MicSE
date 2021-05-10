@@ -22,7 +22,14 @@
   - "Jc.Stvn" to avoid variable name conflicts when merging two states
 *)
 
-
+let check_ppath_validity : Utils.Timer.t ref -> Se.invmap -> Merge.ms -> (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
+= fun timer invm ms -> begin
+  let start_time = Utils.Timer.read_interval timer in
+  let (ss, qc) = (ms.ms_state, (match ms.ms_querycat with | Some c -> c | None -> Stdlib.failwith Stdlib.__LOC__)) in
+  let (vld, mopt) = Se.inv_query_fmla (ss, qc) invm |> Prove.check_validity in
+  let elapsed_time = Utils.Timer.read_interval timer - start_time in
+  (vld, mopt, elapsed_time)
+end (* functino check_ppath_validity *)
 
 
 

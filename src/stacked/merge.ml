@@ -609,6 +609,8 @@ end (* function intratrx_merge_state end *)
     ms_querycat : Se.query_category option;
   }
 
+let is_trxentry_path : ms -> bool = fun ms -> (ms.ms_state.ss_entry_mci.mci_cutcat = Tz.MCC_trx_entry)
+
 let intertrx_merge_state : Tz.sym_state -> Tz.sym_state -> Tz.sym_state
 = let open Tz in
   fun ss ms -> begin

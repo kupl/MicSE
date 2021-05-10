@@ -45,6 +45,8 @@ type ms = {
   ms_querycat : Se.query_category option;
 }
 
+val is_trxentry_path : ms -> bool
+
 val intertrx_merge_state : Tz.sym_state -> Tz.sym_state -> Tz.sym_state
 
 

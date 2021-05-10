@@ -1,5 +1,8 @@
 (* Refuter *)
 
+val check_ppath_validity : Utils.Timer.t ref -> Se.invmap -> Merge.ms -> (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
+
+
 
 (*****************************************************************************)
 (* Set Structured Variable Names to sym_state and                            *)
