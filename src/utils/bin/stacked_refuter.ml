@@ -7,7 +7,7 @@
       dune exec -- micse.utils.stacked_refuter -input [PROJECT-ROOT]/benchmarks/toy/add1.tz
 *)
 
-let trx_unroll_NUM = 1
+let trx_unroll_NUM = 2
 let loop_unroll_NUM = 2
 
 let merged_state_set_size_limit = 10000
@@ -41,7 +41,7 @@ let main : unit -> unit
     ep_utrx_lim = trx_unroll_NUM;
   } in
 
-
+(*
 
   (*****************************************************************************)
   (* 1. Simple expand & Count the size of the expanded set                     *)
@@ -68,9 +68,9 @@ let main : unit -> unit
       )
   in
 
+*)
 
-
-
+(*
 
   (*****************************************************************************)
   (* 2. Simple expand & If refuted, stop.                                      *)
@@ -118,7 +118,7 @@ let main : unit -> unit
       )
   in
 
-
+*)
 
 
 
@@ -130,7 +130,7 @@ let main : unit -> unit
   = fun timer invm (acc_ppcount, acc_count) msset -> begin
     let setsize = Tz.PSet.length msset in
     if (setsize > merged_state_set_size_limit) then (None, acc_ppcount, acc_count) else
-    let _ = Utils.Log.app (fun m -> m "prune_expand_and_refute : msset-size : %d" setsize) in
+    let _ = Utils.Log.app (fun m -> m "<< prune_expand_and_refute : msset-size : %d >>" setsize) in
     let (result, filtered_paths, new_acc_ppcount, new_acc_count) : (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time) option * (Merge.ms Tz.PSet.t) * int * int = 
       Tz.PSet.fold msset ~init:(None, Tz.PSet.empty, acc_ppcount, acc_count)
         ~f:(fun (accopt, accp, accppc, accc) ms -> 
@@ -138,17 +138,22 @@ let main : unit -> unit
           then (accopt, accp, accppc, accc)
           else (
             let (vld, mopt, time) = Refute.check_ppath_validity timer invm ms in
+            let _ = Utils.Log.app (fun m -> m "IsTotal : %b\tVLD : %s\tACC-TIME : %d" (Merge.is_trxentry_path ms) (ProverLib.Smt.ZSolver.string_of_validity vld) (Utils.Timer.read_interval timer)) in
             match (Merge.is_trxentry_path ms, ProverLib.Smt.ZSolver.is_invalid vld, ProverLib.Smt.ZSolver.is_valid vld) with
             | true, true, _ -> (* totalpath & refuted *) (Some (vld, mopt, time), accp, accppc, accc+1)
-            | true, false, _ -> (* totalpath & unknown *) (None, Tz.PSet.add accp ms, accppc, accc+1)
+            | true, false, true -> (* totalpath & valid *) (None, accp, accppc, accc+1)
+            | true, false, false -> (* totalpath & unknown *) (None, Tz.PSet.add accp ms, accppc, accc+1)
             | false, _, true -> (* partialpath & valid *) (None, accp, accppc+1, accc)
             | false, _, false -> (* partialpath & unknown *) (None, Tz.PSet.add accp ms, accppc+1, accc)
             )
-            (* if ProverLib.Smt.ZSolver.is_invalid vld then (Some (vld, mopt, time), (accc+1)) else (None, (accc+1)) *)
         )
     in
+    let _ = Utils.Log.app (fun m -> m "FilteredPathSize : %d" (Tz.PSet.length filtered_paths)) in
     (match result with 
-      | None -> prune_expand_and_refute timer invm (new_acc_ppcount, new_acc_count) (Merge.expand expand_param filtered_paths)
+      | None -> 
+        if (Tz.PSet.length filtered_paths = 0) 
+        then (None, new_acc_ppcount, new_acc_count) 
+        else (prune_expand_and_refute timer invm (new_acc_ppcount, new_acc_count) (Merge.expand expand_param filtered_paths))
       | Some s -> (Some s, new_acc_ppcount, new_acc_count)
     )
   end in (* internal function expand_and_find end *)
@@ -161,7 +166,7 @@ let main : unit -> unit
     PMap.iteri classified_queries_sset 
       ~f:(fun ~key ~data -> 
         let timer : Utils.Timer.t ref = (Utils.Timer.create ~budget:0) in
-        let _ = Log.app (fun m -> m "Query MCI = %s" (TzCvt.T2J.cv_mich_cut_info key |> Yojson.Safe.pretty_to_string)) in
+        let _ = Log.app (fun m -> m "\nQuery MCI = %s" (TzCvt.T2J.cv_mich_cut_info key |> Yojson.Safe.pretty_to_string)) in
         PSet.map data ~f:(fun (ss, qc) -> {ms_state=ss; ms_te_count=0; ms_le_count=PMap.empty; ms_le_stack=[]; ms_iinfo=empty_ms_iter_info; ms_querycat=(Some qc);})
         |> prune_expand_and_refute timer true_invmap (0,0)
         |> (fun (result, acc_ppcount, acc_count) -> (Utils.Timer.read_interval timer, result, acc_ppcount, acc_count))
