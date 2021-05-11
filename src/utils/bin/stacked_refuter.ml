@@ -6,7 +6,7 @@
   * If you want to make sure it's working
       dune exec -- micse.utils.stacked_refuter -input [PROJECT-ROOT]/benchmarks/toy/add1.tz
   * (3) uses refuter two time budgets ( and you might want to set z3 timeout too )
-      dune exec -- micse.utils.stacked_refuter -input [PROJECT-ROOT]/benchmarks/toy/add1.tz -refuter_timeout_t 600 -refuter_timeout_s 120 -z3_timeout 10
+      dune exec -- micse.utils.stacked_refuter -input [PROJECT-ROOT]/benchmarks/toy/add1.tz -initial_storage [PROJECT-ROOT]/benchmarks/ -refuter_timeout_t 600 -refuter_timeout_s 120 -z3_timeout 10
 *)
 
 let trx_unroll_NUM = 2
@@ -176,7 +176,16 @@ let main : unit -> unit
         let _ = Log.app (fun m -> m "\nQuery MCI = %s" (TzCvt.T2J.cv_mich_cut_info key |> Yojson.Safe.pretty_to_string)) in
         if Utils.Timer.is_timeout total_refuter_timer then (Log.warn (fun m -> m "Refuter Total Timeout")) else
         let timer : Utils.Timer.t ref = (Utils.Timer.create ~budget:(!Utils.Options.refuter_sub_time_budget)) in
-        PSet.map data ~f:(fun (ss, qc) -> {ms_state=ss; ms_te_count=0; ms_le_count=PMap.empty; ms_le_stack=[]; ms_iinfo=empty_ms_iter_info; ms_querycat=(Some qc);})
+        PSet.map data 
+          ~f:(fun (ss, qc) -> 
+            { ms_state=(Merge.set_stvn_ss (Some 1, Some 0) ss);
+              ms_te_count=1; 
+              ms_le_count=PMap.empty; 
+              ms_le_stack=[]; 
+              ms_iinfo=empty_ms_iter_info; 
+              ms_querycat=(Some qc);
+            }
+          )
         |> prune_expand_and_refute timer true_invmap (0,0)
         |> (fun (result, acc_ppcount, acc_count) -> (Utils.Timer.read_interval timer, result, acc_ppcount, acc_count))
         |> (fun (time, result, acc_ppcount, acc_count) -> 
