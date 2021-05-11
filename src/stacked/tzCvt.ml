@@ -866,14 +866,17 @@ module T2S = struct
         end
       (* Custom Formula for verifiying *)
       | MF_add_mmm_no_overflow (e1, e2) -> begin
-          let (soe1, soe2) = (cv_mvcc e1, cv_mvcc e2) in
-          ZMutez.create_ge (ZMutez.create_add soe1 soe2) soe1
+          ZMutez.check_add_no_overflow (cv_mvcc e1) (cv_mvcc e2)
+          (* let (soe1, soe2) = (cv_mvcc e1, cv_mvcc e2) in
+          ZMutez.create_ge (ZMutez.create_add soe1 soe2) soe1 *)
         end
       | MF_sub_mmm_no_underflow (e1, e2) -> begin
-          ZMutez.create_ge (cv_mvcc e1) (cv_mvcc e2)
+          ZMutez.check_sub_no_underflow (cv_mvcc e1) (cv_mvcc e2)
+          (* ZMutez.create_ge (cv_mvcc e1) (cv_mvcc e2) *)
         end
       | MF_mul_mnm_no_overflow (e1, e2) -> begin
-          let soe1, soe2 = (cv_mvcc e1), (cv_mvcc e2 |> ZInt.to_zmutez) in
+          ZMutez.check_mul_no_overflow (cv_mvcc e1) (cv_mvcc e2)
+          (* let soe1, soe2 = (cv_mvcc e1), (cv_mvcc e2 |> ZInt.to_zmutez) in
           let e1_mul_e2 = ZMutez.create_mul soe1 soe2 in  (* e1 * e2 *)
           let e1_mul_e2_div_e1 = ZMutez.create_div e1_mul_e2 soe2 in (* (e1 * e2) / e1 *)
           let e1_is_zero = ZMutez.create_eq soe1 (ZMutez.zero_ ()) in (* e1 = 0 *)
@@ -882,10 +885,11 @@ module T2S = struct
             (ZFormula.create_not e1_is_zero);
             (ZMutez.create_eq e1_mul_e2_div_e1 soe1)
           ] in
-          ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *)
+          ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *) *)
         end
       | MF_mul_nmm_no_overflow (e1, e2) -> begin
-          let soe1, soe2 = (cv_mvcc e1 |> ZInt.to_zmutez), (cv_mvcc e2) in
+          ZMutez.check_mul_no_overflow (cv_mvcc e1) (cv_mvcc e2)
+          (* let soe1, soe2 = (cv_mvcc e1 |> ZInt.to_zmutez), (cv_mvcc e2) in
           let e1_mul_e2 = ZMutez.create_mul soe1 soe2 in  (* e1 * e2 *)
           let e1_mul_e2_div_e1 = ZMutez.create_div e1_mul_e2 soe2 in (* (e1 * e2) / e1 *)
           let e1_is_zero = ZNat.create_eq (cv_mvcc e1) (ZNat.zero_ ()) in  (* e1 = 0 *)
@@ -894,7 +898,7 @@ module T2S = struct
             (ZFormula.create_not e1_is_zero);
             (ZMutez.create_eq e1_mul_e2_div_e1 soe1)
           ] in
-          ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *)
+          ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *) *)
         end
       | MF_shiftL_nnn_rhs_in_256 (_, e2) -> ZNat.create_le (cv_mvcc e2) (ZNat.of_int 256)
       | MF_shiftR_nnn_rhs_in_256 (_, e2) -> ZNat.create_le (cv_mvcc e2) (ZNat.of_int 256)

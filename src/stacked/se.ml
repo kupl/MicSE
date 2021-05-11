@@ -193,8 +193,14 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   = fun ss sstack -> sstack |> sstack_to_ss ss |> ss_to_srset 
   in
   let new_ss_for_loopinst : sym_state -> mich_cut_info -> (mich_v cc list) -> sym_state
-  = fun ss mci sstack -> {ss with ss_entry_mci=mci; ss_entry_symstack=sstack; ss_block_mci=mci; ss_symstack=sstack; ss_constraints=[];} 
-  in
+  = (* function new_ss_for_loopinst start *)
+    fun ss mci sstack -> begin
+    let mutez_constraints : mich_f list = (
+      sstack
+      |> CList.filter ~f:(fun vvv -> (typ_of_val vvv).cc_v = MT_mutez)
+      |> CList.map ~f:(fun vvv -> MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc)))) in
+    {ss with ss_entry_mci=mci; ss_entry_symstack=sstack; ss_block_mci=mci; ss_symstack=sstack; ss_constraints=mutez_constraints;} 
+  end in (* function new_ss_for_loopinst end *)
   let update_block_mci : mich_cut_info -> sym_state -> sym_state = fun mci ss -> {ss with ss_block_mci=mci} 
   in
   let update_queryblock_mci : Tz.ccp_loc -> sym_state -> sym_state = fun loc ss -> {ss with ss_block_mci={mci_loc=loc; mci_cutcat=Tz.MCC_query}}
@@ -203,6 +209,12 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   let ss_add_constraint : sym_state -> mich_f -> sym_state
   = fun ss fmla -> {ss with ss_constraints=(fmla :: ss.ss_constraints)}
   in
+  let ss_add_mutez_bound_constraint_if_v_is_mutez : sym_state -> mich_v cc -> sym_state
+  = fun ss vvv -> begin
+    if (typ_of_val vvv).cc_v = MT_mutez then 
+      ss_add_constraint ss (MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc))) 
+    else ss
+  end in (* function ss_add_mutez_bound_constraint_if_v_is_mutez end *)
   (* SUGAR - state set *)
   let sset_union_pointwise : state_set -> state_set -> state_set
   = fun sset1 sset2 -> {
@@ -262,7 +274,10 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       | ((hdhd :: hdtl), tl) -> (hdtl @ (hdhd :: tl))
       | _ -> Error ("run_inst_i : MI_dug" ^ (zn |> Z.to_string)) |> raise)
     |> sstack_to_srset ss
-  | MI_push (_,v) -> (v :: ss_symstack) |> sstack_to_srset ss
+  | MI_push (_, v) -> 
+    (v :: ss_symstack)
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss v)
+    |> ss_to_srset
   | MI_some -> (MV_some (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_none t -> (MV_none t |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss 
   | MI_unit -> (MV_unit |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
@@ -275,9 +290,10 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> run_inst cache i1
     in
     let else_br_sset : state_set = 
-      (MV_unlift_option (CList.hd_exn ss_symstack) |> gen_inst_cc)
+      let some_vvv : mich_v cc = MV_unlift_option (CList.hd_exn ss_symstack) |> gen_inst_cc in
+      some_vvv
       |> cons_tl_n ss_symstack 1
-      |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
+      |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_constraint ss (MF_not cond_constraint)) some_vvv)
       |> ss_to_srset
       |> run_inst cache i2
     in
@@ -291,23 +307,39 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> sstack_to_srset ss 
   with | _ ->DebugInstSS (inst, ss) |> raise
     )
-  | MI_car -> (MV_car (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
-  | MI_cdr -> (MV_cdr (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+  | MI_car ->
+    let vvv : mich_v cc = (
+      MV_car (CList.hd_exn ss_symstack)
+      |> gen_inst_cc) in
+    vvv
+    |> cons_tl_n ss_symstack 1
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss vvv)
+    |> ss_to_srset
+  | MI_cdr -> 
+    let vvv : mich_v cc = (
+      MV_cdr (CList.hd_exn ss_symstack)
+      |> gen_inst_cc) in
+    vvv
+    |> cons_tl_n ss_symstack 1
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss vvv)
+    |> ss_to_srset
   | MI_left t -> (MV_left (t,(CList.hd_exn ss_symstack)) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_right t -> (MV_right (t,(CList.hd_exn ss_symstack)) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_if_left (i1,i2) ->
     let cond_constraint : mich_f = MF_is_left (CList.hd_exn ss_symstack) in
     let then_br_sset : state_set =
-      (MV_unlift_left (CList.hd_exn ss_symstack) |> gen_inst_cc)
+      let left_vvv : mich_v cc = MV_unlift_left (CList.hd_exn ss_symstack) |> gen_inst_cc in
+      left_vvv
       |> cons_tl_n ss_symstack 1
-      |> sstack_to_ss (ss_add_constraint ss cond_constraint)
+      |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_constraint ss cond_constraint) left_vvv)
       |> ss_to_srset
       |> run_inst cache i1
     in
     let else_br_sset : state_set =
-      (MV_unlift_right (CList.hd_exn ss_symstack) |> gen_inst_cc)
+      let right_vvv : mich_v cc = MV_unlift_right (CList.hd_exn ss_symstack) |> gen_inst_cc in
+      right_vvv
       |> cons_tl_n ss_symstack 1
-      |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
+      |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_constraint ss (MF_not cond_constraint)) right_vvv)
       |> ss_to_srset
       |> run_inst cache i2
     in
@@ -321,9 +353,10 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let cond_constraint : mich_f = MF_is_cons (CList.hd_exn ss_symstack) in
     let then_br_sset : state_set =
       let listv : mich_v cc = CList.hd_exn ss_symstack in
-      (gen_inst_cc (MV_hd_l listv), gen_inst_cc (MV_tl_l listv))
+      let hd_vvv : mich_v cc = MV_hd_l listv |> gen_inst_cc in
+      (hd_vvv, gen_inst_cc (MV_tl_l listv))
       |> cons2_tl_n ss_symstack 1
-      |> sstack_to_ss (ss_add_constraint ss cond_constraint)
+      |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_constraint ss cond_constraint) hd_vvv)
       |> ss_to_srset
       |> run_inst cache i1
     in
@@ -446,14 +479,17 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> sstack_to_srset ss
   | MI_get ->
     let (h, h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
-    (match (typ_of_val h2).cc_v with
+    let get_vvv : mich_v cc = (
+      match (typ_of_val h2).cc_v with
       | MT_map _ -> MV_get_xmoy (h,h2)
       | MT_big_map _ -> MV_get_xbmo (h,h2)
       | _ -> Error "run_inst_i : MI_get" |> raise)
       (* | _ -> DebugSS ss |> raise) *)
-    |> gen_inst_cc
+      |> gen_inst_cc in
+    get_vvv
     |> cons_tl_n ss_symstack 2
-    |> sstack_to_srset ss
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss get_vvv)
+    |> ss_to_srset
   | MI_update ->
     let (h, h2, h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
     (match (typ_of_val h3).cc_v with
@@ -558,10 +594,13 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       | MT_lambda (t1,t2) -> (t1,t2)
       | _ -> Error "run_inst_i : MI_exec" |> raise
     ) in
-    (gen_new_symval_t ret_ty).cc_v
-    |> gen_inst_cc
+    let ret_vvv : mich_v cc = (
+      (gen_new_symval_t ret_ty).cc_v
+      |> gen_inst_cc) in
+    ret_vvv
     |> cons_tl_n ss_symstack 2
-    |> sstack_to_srset ss
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss ret_vvv)
+    |> ss_to_srset
   | MI_dip_n (zn, i) ->
     let (hd, tl) = CList.split_n ss_symstack (Z.to_int zn) in
     let i_sset : state_set = tl |> sstack_to_ss ss |> run_inst_i cache i in
@@ -608,7 +647,13 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_pack ->
     (MV_pack (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_unpack t ->
-    (MV_unpack (t, CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
+    let unpack_vvv : mich_v cc = (
+      MV_unpack (t, CList.hd_exn ss_symstack) 
+      |> gen_inst_cc) in
+    unpack_vvv
+    |> cons_tl_n ss_symstack 1
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss unpack_vvv)
+    |> ss_to_srset
   | MI_add ->
     let (h,h2) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) in
     let gen_srset : mich_v -> state_set
@@ -838,12 +883,18 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> cons_tl_n ss_symstack 1
     |> sstack_to_srset ss
   | MI_now -> (ss.ss_optt.optt_now) |> sstack_push ss_symstack |> sstack_to_srset ss
-  | MI_amount -> (ss.ss_optt.optt_amount) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_amount -> 
+    let amount_vvv : mich_v cc = ss.ss_optt.optt_amount in
+    amount_vvv
+    |> sstack_push ss_symstack
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss amount_vvv)
+    |> ss_to_srset
   | MI_balance -> 
     let blce_opt : mich_v cc = MV_get_xmoy (ss.ss_optt.optt_addr, ss.ss_dynchain.bc_balance) |> gen_inst_cc in
-    (MV_unlift_option blce_opt |> gen_inst_cc)
+    let blce_vvv : mich_v cc = MV_unlift_option blce_opt |> gen_inst_cc in
+    blce_vvv
     |> sstack_push ss_symstack
-    |> sstack_to_ss (ss_add_constraint ss (MF_not (MF_is_none blce_opt)))
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_constraint ss (MF_not (MF_is_none blce_opt))) blce_vvv)
     |> ss_to_srset
   | MI_check_signature ->
     let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
@@ -861,9 +912,12 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_chain_id -> (ss.ss_dynchain.bc_chain_id) |> sstack_push ss_symstack |> sstack_to_srset ss
   | MI_unpair -> 
     let h = CList.hd_exn ss_symstack in
-    (gen_inst_cc (MV_car h), gen_inst_cc (MV_cdr h))
+    let a_vvv : mich_v cc = MV_car h |> gen_inst_cc in
+    let d_vvv : mich_v cc = MV_cdr h |> gen_inst_cc in
+    (a_vvv, d_vvv)
     |> cons2_tl_n ss_symstack 1
-    |> sstack_to_srset ss
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_mutez_bound_constraint_if_v_is_mutez ss a_vvv) d_vvv)
+    |> ss_to_srset
   | MI_micse_check (i) ->
     (* dealing with micse-check
         - bring running states from the result of "i", and convert them to queries.
