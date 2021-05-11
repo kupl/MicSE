@@ -555,13 +555,13 @@ module ZMutez = struct
   let check_add_no_overflow : t -> t -> ZBool.t
   = fun e1 e2 -> begin
     let addition = create_add e1 e2 in
-    create_lt addition (max_ ())
+    create_le addition (max_ ())
   end (* function check_add_no_overflow end *)
   (* =fun e1 e2 -> Z3.BitVector.mk_add_no_overflow (ZCtx.read ()) e1 e2 false *)
   let check_mul_no_overflow : t -> t -> ZBool.t
   = fun e1 e2 -> begin
     let multiplication = create_mul e1 e2 in
-    create_lt multiplication (max_ ())
+    create_le multiplication (max_ ())
   end (* function check_mul_no_overflow end *)
   (* =fun e1 e2 -> Z3.BitVector.mk_mul_no_overflow (ZCtx.read ()) e1 e2 false *)
   let check_sub_no_underflow : t -> t -> ZBool.t

@@ -198,7 +198,10 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let mutez_constraints : mich_f list = (
       sstack
       |> CList.filter ~f:(fun vvv -> (typ_of_val vvv).cc_v = MT_mutez)
-      |> CList.map ~f:(fun vvv -> MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc)))) in
+      |> CList.map ~f:(fun vvv -> (MF_and [
+            MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
+            MF_sub_mmm_no_underflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
+          ]))) in
     {ss with ss_entry_mci=mci; ss_entry_symstack=sstack; ss_block_mci=mci; ss_symstack=sstack; ss_constraints=mutez_constraints;} 
   end in (* function new_ss_for_loopinst end *)
   let update_block_mci : mich_cut_info -> sym_state -> sym_state = fun mci ss -> {ss with ss_block_mci=mci} 
@@ -212,7 +215,12 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   let ss_add_mutez_bound_constraint_if_v_is_mutez : sym_state -> mich_v cc -> sym_state
   = fun ss vvv -> begin
     if (typ_of_val vvv).cc_v = MT_mutez then 
-      ss_add_constraint ss (MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc))) 
+      ss_add_constraint
+        ss 
+        (MF_and [
+          MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
+          MF_sub_mmm_no_underflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
+        ])
     else ss
   end in (* function ss_add_mutez_bound_constraint_if_v_is_mutez end *)
   (* SUGAR - state set *)
