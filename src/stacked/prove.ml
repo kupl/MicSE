@@ -202,6 +202,34 @@ let remove_solved_queries :
     ~f:(fun ~key:_ ~data acc_remain_queries -> CPSet.diff acc_remain_queries (CPSet.map data ~f:(fun (x,_,_) -> x)))
 end (* function remove_solved_queries end *)
 
+(* 
+  Input
+  - Current Work List
+  - Invariant, which is inductive.
+
+  Output
+  - Strengthened Work List by Invariant
+
+  System Effect
+  - None
+*)
+let strengthen_wl : worklist -> Se.invmap -> worklist
+= let module CPSet = Core.Set.Poly in
+  let module CPMap = Core.Map.Poly in
+  (* function strengthen_wl start *)
+  fun cur_wl cur_invmap -> begin
+  CPSet.map
+    cur_wl
+    ~f:(fun cand_invmap -> (
+          CPMap.mapi
+            cand_invmap
+            ~f:(fun ~key ~data -> (
+              CPSet.union
+                data
+                (CPMap.find cur_invmap key
+                |> (function Some sss -> sss | None -> CPSet.empty))))))
+end (* function strengthen_wl end *)
+
 
 (******************************************************************************)
 (******************************************************************************)
@@ -343,7 +371,7 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
   let w_init : worklist = inv_init |> Tz.PSet.singleton in
   (* (Utils.Log.debug (fun m -> m "Prove : main : Initial Worklist Length : %d" (w_init |> CPSet.length))); *)
   let res_init : ret = { solved_map=CPMap.empty; failed_set=CPSet.empty; untouched_set=sset.queries } in
-  let comp_map : InvSyn.comp_map = InvSyn.bake_comp_map sset in
+  let comp_map : InvSyn.comp_map = InvSyn.bake_comp_map (sset, init_stg_opt_ss) in
   let timer : Utils.Timer.t ref = Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget) in
   let rec prove_loop : (worklist * Se.invmap CPSet.t) -> ret -> ret = fun (w, collected) prev_res -> begin
     if Utils.Timer.is_timeout timer || CPSet.is_empty w then prev_res else
@@ -362,8 +390,8 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
       let res : ret = union_result ~prev_res ~cur_res in
       if CPSet.length res.failed_set = 0 && CPSet.length res.untouched_set = 0 then res
       else
-        let w'' : worklist = InvSyn.generate (res.failed_set, inv_cand, init_stg_opt_ss, comp_map, collected') in
-        let w''' : worklist = Tz.PSet.union w' w'' in
+        let w'' : worklist = InvSyn.generate (res.failed_set, inv_cand, comp_map, collected') in
+        let w''' : worklist = Tz.PSet.union (strengthen_wl w' inv_cand) w'' in
         prove_loop (w''', collected') res
     else prove_loop (w', collected') prev_res
     end in

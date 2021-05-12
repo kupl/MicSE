@@ -52,6 +52,8 @@ val remove_solved_queries :
   -> (query_id, solved_query_state Core.Set.Poly.t) Core.Map.Poly.t
   -> query_state Core.Set.Poly.t
 
+val strengthen_wl : worklist -> Se.invmap -> worklist
+
 
 (*****************************************************************************)
 (*****************************************************************************)

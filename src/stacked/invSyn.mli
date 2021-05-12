@@ -73,7 +73,7 @@ type component = {
   *****************************************************************************)
 type comp_map = (Tz.mich_cut_info, (component Core.Set.Poly.t) CTMap.t) Core.Map.Poly.t
 
-val bake_comp_map : Se.state_set -> comp_map
+val bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> comp_map
 val fold_precond : component list -> Tz.mich_f
 
 
@@ -97,7 +97,6 @@ val all_gt : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_t list -> Tz.mich_f 
 type generate_param = 
   (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Core.Set.Poly.t *
   (* igi_cur_inv *)     Se.invmap *
-  (* igi_init_stg_ss *) ((Tz.mich_v Tz.cc) option * Tz.sym_state) *
   (* igi_comp_map *)    comp_map *
   (* igi_collected *)   Se.invmap Core.Set.Poly.t
 
@@ -110,7 +109,7 @@ type ingredients = {
 }
 
 val collect_set : ('a Core.Set.Poly.t) list -> 'a Core.Set.Poly.t
-val refine_t : Se.invmap * Tz.mich_v Tz.cc option -> ingredients -> Se.invmap Core.Set.Poly.t
+val refine_t : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
 val refine_l : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
 
 val generate : generate_param -> Se.invmap Core.Set.Poly.t
