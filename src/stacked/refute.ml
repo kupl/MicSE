@@ -26,7 +26,13 @@ let check_ppath_validity : Utils.Timer.t ref -> Se.invmap -> Merge.ms -> (Prover
 = fun timer invm ms -> begin
   let start_time = Utils.Timer.read_interval timer in
   let (ss, qc) = (ms.ms_state, (match ms.ms_querycat with | Some c -> c | None -> Stdlib.failwith Stdlib.__LOC__)) in
-  let (vld, mopt) = Se.inv_query_fmla (ss, qc) invm |> Prove.check_validity in
+  let (vld, mopt) = 
+    Se.inv_query_fmla (ss, qc) invm 
+    (* DEBUG START*)
+    |> (fun x -> Utils.Log.debug (fun m -> m "%s" (TzCvt.T2Jnocc.cv_mf x |> Yojson.Safe.to_string)); x)
+    (* DEBUG END *)
+    |> Prove.check_validity 
+  in
   let elapsed_time = Utils.Timer.read_interval timer - start_time in
   (vld, mopt, elapsed_time)
 end (* functino check_ppath_validity *)
