@@ -687,6 +687,7 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
           let ss_trx_num = ms.ms_te_count in
           (* note : cur_loop_num : "[] -> 0" for query-loop case *)
           let ss_loop_num = (match ms.ms_le_stack with | [] -> 0 | (_, hdv) :: _ -> hdv) in
+          (* let _ = Utils.Log.debug (fun m -> m "merge.ml LN - LN : loopnum : %d" ss_loop_num) in *)
           (* No loop-unroll limitation checking is needed in this case *)
           let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
           let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
@@ -698,6 +699,7 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
           let ss_trx_num = ms.ms_te_count in
           (* note : cur_loop_num : "_ -> 0" for query-loop case *)
           let ss_loop_num = (match ms.ms_le_stack with | _ :: (_, hdv) :: _ -> hdv | _ -> 0) in
+          (* let _ = Utils.Log.debug (fun m -> m "merge.ml LN - LB : loopnum : %d" ss_loop_num) in *)
           (* No loop-unroll limitation checking is needed in this case *)
           let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
           let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
@@ -708,26 +710,28 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
       | (false, true, true, false) -> (
           (* LB -> LN *)
           let ss_trx_num = ms.ms_te_count in
-          let ss_loop_count = PMap.update ms.ms_le_count ss.ss_block_mci ~f:(function | None -> 1 | Some n -> (n+1)) in
-          let ss_loop_num = pmap_find_dft ms.ms_le_count ss.ss_block_mci ~default:0 in
+          let ms_le_count' = PMap.update ms.ms_le_count ss.ss_block_mci ~f:(function | None -> 1 | Some n -> (n+1)) in
+          let ss_loop_num = pmap_find_dft (ms_le_count') ss.ss_block_mci ~default:0 in
+          (* let _ = Utils.Log.debug (fun m -> m "merge.ml LB - LN : loopnum : %d" ss_loop_num) in *)
           (* I'll not put any loop-unroll limitation checking in this case too. Query itself might be located in the loop *)
           let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
           let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
           let le_stack' = (ss.ss_block_mci, 1) :: ms.ms_le_stack in
-          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=ss_loop_count; ms_le_stack=(le_stack');}
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=(ms_le_count'); ms_le_stack=(le_stack');}
           |> PSet.add accs
         )
       | (false, true, false, true) -> (
           (* LB -> LB *)
           let ss_trx_num = ms.ms_te_count in
-          let ss_loop_count = PMap.update ms.ms_le_count ss.ss_block_mci ~f:(function | None -> 1 | Some n -> (n+1)) in
-          let ss_loop_num = pmap_find_dft ms.ms_le_count ss.ss_block_mci ~default:0 in
+          let ms_le_count' = PMap.update ms.ms_le_count ss.ss_block_mci ~f:(function | None -> 1 | Some n -> (n+1)) in
+          let ss_loop_num = pmap_find_dft (ms_le_count') ss.ss_block_mci ~default:0 in
+          (* let _ = Utils.Log.debug (fun m -> m "merge.ml LB - LB : loopnum : %d" ss_loop_num) in *)
           (* loop-unroll limitation checking here *)
           if (0 <= ep.ep_utrx_lim && ep.ep_uloop_lim < ss_loop_num) then accs else
           let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
           let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
           let le_stack' = (match ms.ms_le_stack with | [] -> [(ss.ss_block_mci, 1)] | (bmci, n) :: tl -> (bmci, (n+1)) :: tl) in
-          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=ss_loop_count; ms_le_stack=(le_stack');}
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=(ms_le_count'); ms_le_stack=(le_stack');}
           |> PSet.add accs
         )
       | (false, false, false, false) -> (
