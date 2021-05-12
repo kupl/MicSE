@@ -305,9 +305,9 @@ let fold_precond : component list -> Tz.mich_f
 = let module CList = Core.List in
   (* function fold_precond start *)
   fun comp_lst -> begin
-  Tz.MF_and (comp_lst
+  Tz.MF_and (MF_true::(comp_lst
             |> CList.map ~f:(fun c -> c.cp_precond_lst)
-            |> CList.join)
+            |> CList.join))
   (* function fold_precond end *)
 end
 
