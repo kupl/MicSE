@@ -611,8 +611,18 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> ss_to_srset
   | MI_dip_n (zn, i) ->
     let (hd, tl) = CList.split_n ss_symstack (Z.to_int zn) in
+    let hd_mutez_constraints : mich_f list = (
+      hd
+      |> CList.filter ~f:(fun vvv -> (typ_of_val vvv).cc_v = MT_mutez)
+      |> CList.map ~f:(fun vvv -> (MF_and [
+            MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
+            MF_sub_mmm_no_underflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
+          ]))) in
     let i_sset : state_set = tl |> sstack_to_ss ss |> run_inst_i cache i in
-    let restored_running : sym_state PSet.t = PSet.map i_sset.running ~f:(fun x -> {x with ss_symstack=(hd @ x.ss_symstack)}) in
+    let restored_running : sym_state PSet.t = 
+      PSet.map 
+        i_sset.running 
+        ~f:(fun x -> {x with ss_symstack=(hd @ x.ss_symstack); ss_constraints=(hd_mutez_constraints @ x.ss_constraints)}) in
     {i_sset with running=restored_running}
   | MI_failwith -> 
     let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=MCC_trx_exit} in
@@ -1029,6 +1039,17 @@ let run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) 
     running=PSet.empty;
     blocked=(PSet.union (PSet.map run_result_0.running ~f:(fun ss -> {ss with ss_block_mci=end_mci})) run_result_0.blocked);
   } in
+
+  (* DEBUG START *)
+  (* 0. blocked state *)
+  (* PSet.iter
+    run_result.blocked
+    ~f:(fun bs -> Utils.Log.debug (fun m -> m "\n> Entry-MCI: %s\n> Entry-Stack: \n%s\n> Exit-MCI: %s\n> Exit-Stack:\n%s\n"
+          (bs.ss_entry_mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string)
+          (bs.ss_entry_symstack |> Core.List.map ~f:(fun x -> x |> TzCvt.T2Jnocc.cv_mvcc |> Yojson.Safe.to_string) |> Core.String.concat ~sep:"\n")
+          (bs.ss_block_mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string)
+          (bs.ss_symstack |> Core.List.map ~f:(fun x -> x |> TzCvt.T2Jnocc.cv_mvcc |> Yojson.Safe.to_string) |> Core.String.concat ~sep:"\n"))); *)
+  (* DEBUG END *)
 
   (* return *)
   (init_ss, cache, run_result)
