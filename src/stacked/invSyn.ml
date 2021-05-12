@@ -260,6 +260,37 @@ let bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> 
         collect_components comp_left_unlifted acc' in
       collect_components comp_right_unlifted acc_left
       end
+    | MT_list t1cc -> begin
+      let elem_v : mich_v cc =
+        MV_symbol (
+          t1cc, 
+          ( { Jc.Fsvn.typ=`elem;
+              Jc.Fsvn.c_vn="elem";
+              Jc.Fsvn.c_acc_l=[];
+              Jc.Fsvn.e_acc_l=[]; }  |> Jc.Fsvn.to_string))
+        |> gen_dummy_cc in
+      let comp_elem : component = { cur_comp with cp_typ=t1cc; cp_base_var=elem_v; cp_precond_lst=[]; cp_value=elem_v; } in
+      let elem_map : (component CPSet.t) CTMap.t = collect_components comp_elem CTMap.empty in
+      let acc' : (component CPSet.t) CTMap.t = 
+        CTMap.mapi
+          acc
+          ~f:(fun ~key ~data -> (
+            match key.cc_v with
+            | MT_mutez -> (
+              MT_mutez 
+              |> gen_dummy_cc
+              |> CTMap.find elem_map
+              |> (function Some sss -> sss | None -> CPSet.empty)
+              |> CPSet.fold
+                ~init:data
+                ~f:(fun data_acc elem_mutez -> (
+                  if CList.is_empty elem_mutez.cp_precond_lst then ( (* pair element only *)
+                    let value_sigma : mich_v cc = gen_custom_cc cur_val (MV_sigma_lm (cur_val, elem_mutez.cp_value)) in
+                    { cur_comp with cp_typ=key; cp_value=value_sigma; } |> CPSet.add data_acc)
+                  else data)))
+            | _ -> data)) in
+      CTMap.update acc' cur_typ ~f:(function None -> CPSet.singleton cur_comp | Some cc -> CPSet.add cc cur_comp)
+      end
     | _ -> CTMap.update acc cur_typ ~f:(function None -> CPSet.singleton cur_comp | Some cc -> CPSet.add cc cur_comp)
   end in (* function collect_components end *)
   (* function bake_comp_map start *)
@@ -299,6 +330,25 @@ let bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> 
                       collect_components { base_comp with cp_value=(Option.get init_strg_opt); } ctmap)
                     else ctmap)
                     |> collect_components base_comp)))))
+  |> (fun x ->
+        (* DEBUG START *) 
+        CPMap.iteri
+          x
+          ~f:(fun ~key ~data -> (
+            Utils.Log.debug (fun m -> m "MCI: %s\n%s"
+              (key |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string)
+              (CTMap.fold
+                data
+                ~init:""
+                ~f:(fun ~key ~data acc -> (
+                  acc ^ "> Ty: " ^ (key |> TzCvt.T2Jnocc.cv_mtcc |> Yojson.Safe.to_string) ^ "\n" ^
+                  "  [ " ^ (CPSet.map
+                              data
+                              ~f:(fun c -> (c.cp_value |> TzCvt.T2Jnocc.cv_mvcc |> Yojson.Safe.to_string))
+                            |> CPSet.to_list
+                            |> Core.String.concat ~sep:"\n    ") ^ " ];\n"))))))
+        (* DEBUG END*);
+        x)
 end (* function bake_comp_map end *)
 
 let fold_precond : component list -> Tz.mich_f
@@ -351,13 +401,13 @@ let all_ge : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_t list -> Tz.mich_f 
     ~init:CPSet.empty
     ~f:(fun ~key ~data acc -> (
           if CPSet.exists ts ~f:(fun t -> t = key) then (
-          data
-          |> combination_self_two_diff_rf
-          |> CPSet.map
-            ~f:(fun (c1, c2) ->
-                  let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
-                  let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
-                  MF_imply ((fold_precond [c1; c2;]), MF_is_true (gen_dummy_cc (MV_geq_ib (cmp, zero)))))
+            data
+            |> combination_self_two_diff_rf
+            |> CPSet.map
+              ~f:(fun (c1, c2) ->
+                    let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
+                    let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
+                    MF_imply ((fold_precond [c1; c2;]), MF_is_true (gen_dummy_cc (MV_geq_ib (cmp, zero)))))
             |> CPSet.union acc)
           else acc))
 end (* function all_ge end *)
@@ -373,17 +423,17 @@ let all_gt : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_t list -> Tz.mich_f 
     |> CList.map ~f:Tz.gen_dummy_cc
     |> CPSet.of_list in
   CTMap.fold
-  ctmap
-  ~init:CPSet.empty
-  ~f:(fun ~key ~data acc -> (
+    ctmap
+    ~init:CPSet.empty
+    ~f:(fun ~key ~data acc -> (
           if CPSet.exists ts ~f:(fun t -> t = key) then (
-        data
-        |> combination_self_two_diff_rf
-        |> CPSet.map
-            ~f:(fun (c1, c2) -> 
-              let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
-              let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
-              MF_imply ((fold_precond [c1; c2;]), MF_is_true (gen_dummy_cc (MV_gt_ib (cmp, zero)))))
+            data
+            |> combination_self_two_diff_rf
+            |> CPSet.map
+                ~f:(fun (c1, c2) -> 
+                  let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
+                  let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
+                  MF_imply ((fold_precond [c1; c2;]), MF_is_true (gen_dummy_cc (MV_gt_ib (cmp, zero)))))
             |> CPSet.union acc)
           else acc))
 end (* function all_gt end *)

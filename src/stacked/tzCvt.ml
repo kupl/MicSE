@@ -254,7 +254,7 @@ module T2A = struct
     (*************************************************************************)
     (* Symbol & Polymorphic                                                  *)
     (*************************************************************************)
-    | MV_symbol (t1, s2)   -> app [s2] (abr_v_lit ^ (st t1) ^ abr_symbol)
+    | MV_symbol (t1, s2)   -> app [s2] (abr_v_symbol ^ (st t1) ^ abr_symbol)
     | MV_car v1           -> app (abv v1) abr_v_car
     | MV_cdr v1           -> app (abv v1) abr_v_cdr
     | MV_unlift_option v1 -> app (abv v1) abr_v_unlift_option
@@ -830,8 +830,8 @@ module T2S = struct
           let vl11' : mich_v cc = MV_sigma_lm (vl11, v2) |> gen_dummy_cc in
           ZMutez.create_sub (cv_mvcc vl11') (cv_mvcc hd'))
         | _ -> (
-          let v1_abbrs : string list = T2A.cv_mvcc v1 in
-          let v2_abbrs : string list = T2A.cv_mvcc v1 in
+          let v1_abbrs : string list = T2A.cv_mvcc v1' in
+          let v2_abbrs : string list = T2A.cv_mvcc (v2 |> Tz.optimize_v) in
           ZExpr.create_var
             (ZMutez.sort ())
             ~name:(
