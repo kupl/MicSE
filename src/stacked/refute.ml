@@ -22,17 +22,20 @@
   - "Jc.Stvn" to avoid variable name conflicts when merging two states
 *)
 
-let check_ppath_validity : Utils.Timer.t ref -> Se.invmap -> Merge.ms -> (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
-= fun timer invm ms -> begin
+let check_ppath_validity : Utils.Timer.t ref -> (Tz.mich_v Tz.cc option) -> Se.invmap -> Merge.ms -> (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
+= fun timer tz_init_stg_option invm ms -> begin
   let start_time = Utils.Timer.read_interval timer in
   let (ss, qc) = (ms.ms_state, (match ms.ms_querycat with | Some c -> c | None -> Stdlib.failwith Stdlib.__LOC__)) in
-  let (vld, mopt) = 
-    Se.inv_query_fmla (ss, qc) invm 
-    (* DEBUG START*)
-    |> (fun x -> Utils.Log.debug (fun m -> m "%s" (TzCvt.T2Jnocc.cv_mf x |> Yojson.Safe.to_string)); x)
-    (* DEBUG END *)
-    |> Prove.check_validity 
+  let qfmla : Tz.mich_f = 
+    match (Merge.is_trxentry_path ms, tz_init_stg_option) with
+    | true, Some istg -> 
+      let precond : Tz.mich_f = Tz.MF_eq (Tz.MV_cdr (List.hd ms.ms_state.ss_entry_symstack) |> Tz.gen_dummy_cc, istg) in
+      Se.inv_query_fmla_with_precond (ss, qc) invm precond
+    | true, None -> Se.inv_query_fmla (ss, qc) invm
+    | false, _ -> Se.inv_query_fmla (ss, qc) invm
   in
+  (* let _ = Utils.Log.debug (fun m -> m "[%s] %s" (Stdlib.__LOC__) (TzCvt.T2Jnocc.cv_mf qfmla |> Yojson.Safe.to_string)) in *)
+  let (vld, mopt) = Prove.check_validity qfmla in
   let elapsed_time = Utils.Timer.read_interval timer - start_time in
   (vld, mopt, elapsed_time)
 end (* functino check_ppath_validity *)

@@ -9,7 +9,7 @@
       dune exec -- micse.utils.stacked_refuter -input [PROJECT-ROOT]/benchmarks/toy/add1.tz -initial_storage [PROJECT-ROOT]/benchmarks/ -refuter_timeout_t 600 -refuter_timeout_s 120 -z3_timeout 10
 *)
 
-let trx_unroll_NUM = 2
+let trx_unroll_NUM = 4
 let loop_unroll_NUM = 2
 
 let merged_state_set_size_limit = 10000
@@ -23,10 +23,11 @@ let main : unit -> unit
       then None 
       else Some (PreLib.Adt.parse_data !Utils.Options.initial_storage_file)
   in
+  let _ = Utils.Log.app (fun m -> m "Initial Storage Provided (Bool) : %b" (strgfilecontentopt <> None)) in
   let (tz_init_stg_opt, init_ss, cache, sset) = 
     Stacked.Prove.gen_sset pgmfilecontent strgfilecontentopt
   in
-  let _ = ignore (tz_init_stg_opt, init_ss, cache) in
+  let _ = ignore (init_ss, cache) in
   let classified_blocked_sset : (Tz.mich_cut_info, Tz.sym_state Tz.PSet.t) Tz.PMap.t = 
     Tz.pmap_of_pset sset.Se.blocked 
       ~key_f:(fun x -> x.ss_block_mci)
@@ -144,14 +145,73 @@ let main : unit -> unit
           let orig = (accopt, accp, accppc, accc) in
           if Utils.Timer.is_timeout timer then (if !timeout_printed then () else (timeout_printed := true; Utils.Log.warn (fun m -> m "Query-Id Refuter Timeout")); orig) else
           if (accopt <> None) then (accopt, accp, accppc, accc) else
-          let (vld, mopt, time) = Refute.check_ppath_validity timer invm ms in
+          (match (Merge.is_trxentry_path ms) with
+          | false -> (
+              (* 1. If the path is Partial Path *)
+              let (vld, mopt, time) = Refute.check_ppath_validity timer None invm ms in
+              let _ = ignore (mopt, time) in
+              let _ = Utils.Log.app (fun m -> m "Partial-Path\tValidity : %s\tAcc-Time : %d" (ProverLib.Smt.ZSolver.string_of_validity vld) (Utils.Timer.read_interval timer)) in
+              match (ProverLib.Smt.ZSolver.is_invalid vld, ProverLib.Smt.ZSolver.is_valid vld) with
+              | _, true  -> ((* partialpath & valid *) (None, accp, accppc+1, accc))
+              | _, false -> ((* partialpath & unknown *) (None, Tz.PSet.add accp ms, accppc+1, accc))
+            )
+          | true -> (
+              (* 2. If the path is Total Path *)
+              let (vld, mopt, time) = Refute.check_ppath_validity timer tz_init_stg_opt invm ms in
+              let _ = Utils.Log.app (fun m -> m "Total-Path\tValidity : %s\tAcc-Time : %d" (ProverLib.Smt.ZSolver.string_of_validity vld) (Utils.Timer.read_interval timer)) in
+              match (tz_init_stg_opt, ProverLib.Smt.ZSolver.is_invalid vld, ProverLib.Smt.ZSolver.is_valid vld) with
+              | Some _, true, _ -> (
+                  (* init-stg given & totalpath & refuted *)
+                  (* let _ = Utils.Log.debug (fun m -> m "%s" (ProverLib.Smt.ZModel.to_string (Option.get mopt))) in *)
+                  (Some (vld, mopt, time), accp, accppc, accc+1)
+                )
+              | Some _, _, true -> (
+                  (* init-stg given & totalpath & valid *)
+                  (* Check if the path can be excluded *)
+                  let (vld2, mopt2, time2) = Refute.check_ppath_validity timer None invm ms in
+                  let _ = Utils.Log.app (fun m -> m "-- Prunable-Check : %b\tAcc-Time : %d\t" (vld2 = ProverLib.Smt.ZSolver.VAL) (Utils.Timer.read_interval timer)) in
+                  let _ = ignore (mopt2, time2) in
+                  match (ProverLib.Smt.ZSolver.is_invalid vld2, ProverLib.Smt.ZSolver.is_valid vld2) with
+                  | _, true -> (* valid ==> able to exclude *) (None, accp, accppc, accc+1)
+                  | _, _ -> (* invalid or unknown ==> cannot exclude *) (None, Tz.PSet.add accp ms, accppc, accc+1)
+                )
+              | Some _, false, false -> (
+                  (* init-stg given & totalpath & unknown *)
+                  (None, Tz.PSet.add accp ms, accppc, accc+1)
+                )
+              | None, true, _ -> (
+                  (* init-stg not given & totalpath & refuted *)
+                  (* let _ = Utils.Log.debug (fun m -> m "%s" (ProverLib.Smt.ZModel.to_string (Option.get mopt))) in *)
+                  (Some (vld, mopt, time), accp, accppc, accc+1)
+                )
+              | None, _, true -> (
+                  (* init-stg not given & totalpath & valid *)
+                  (None, accp, accppc, accc+1)
+                )
+              | None, false, false -> (
+                  (* init-stg not given & totalpath & unknown *)
+                  (None, Tz.PSet.add accp ms, accppc, accc+1)
+                )
+            )
+          )
+
+          
+(*           
+          let (vld, mopt, time) = 
+            Refute.check_ppath_validity timer tz_init_stg_opt invm ms 
+            (* TODO : add initial storgae  constraints *)
+          in
           let _ = Utils.Log.app (fun m -> m "IsTotalPath : %b\tValidity : %s\tAcc-Time : %d" (Merge.is_trxentry_path ms) (ProverLib.Smt.ZSolver.string_of_validity vld) (Utils.Timer.read_interval timer)) in
           match (Merge.is_trxentry_path ms, ProverLib.Smt.ZSolver.is_invalid vld, ProverLib.Smt.ZSolver.is_valid vld) with
-          | true, true, _ -> (* totalpath & refuted *) (Some (vld, mopt, time), accp, accppc, accc+1)
+          | true, true, _ -> 
+            (* totalpath & refuted *) 
+            let _ = Utils.Log.debug (fun m -> m "%s" (ProverLib.Smt.ZModel.to_string (Option.get mopt))) in
+            (Some (vld, mopt, time), accp, accppc, accc+1)
           | true, false, true -> (* totalpath & valid *) (None, accp, accppc, accc+1)
           | true, false, false -> (* totalpath & unknown *) (None, Tz.PSet.add accp ms, accppc, accc+1)
           | false, _, true -> (* partialpath & valid *) (None, accp, accppc+1, accc)
-          | false, _, false -> (* partialpath & unknown *) (None, Tz.PSet.add accp ms, accppc+1, accc)
+          | false, _, false -> (* partialpath & unknown *) (None, Tz.PSet.add accp ms, accppc+1, accc) *)
+
         )
     in
     if (Utils.Timer.is_timeout timer) then (Utils.Log.warn (fun m -> m "Query-Id Refuter Halted"); (None, new_acc_ppcount, new_acc_count)) else

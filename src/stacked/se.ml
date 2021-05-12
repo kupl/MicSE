@@ -1146,6 +1146,16 @@ let inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
   let query = state_query_reduce query_ssp in
   MF_imply (MF_and (entry_fmla :: query_ss.ss_constraints), query)
 end (* function inv_query_fmla end *)
+let inv_query_fmla_with_precond : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f -> Tz.mich_f
+= fun query_ssp invm precond -> begin
+  let query_ss = Stdlib.fst query_ssp in
+  let inv_entry = PMap.find invm query_ss.ss_entry_mci 
+                  |> (function | Some v -> v | None -> Error "inv_query_fmla : inv_entry : not-found" |> raise) 
+  in
+  let entry_fmla = inv_app_guide_entry inv_entry query_ss in
+  let query = state_query_reduce query_ssp in
+  MF_imply (MF_and (precond :: entry_fmla :: query_ss.ss_constraints), query)
+end (* function inv_query_fmla_with_precond end *)
 
 
 (*****************************************************************************)

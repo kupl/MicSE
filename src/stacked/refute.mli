@@ -1,6 +1,6 @@
 (* Refuter *)
 
-val check_ppath_validity : Utils.Timer.t ref -> Se.invmap -> Merge.ms -> (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
+val check_ppath_validity : Utils.Timer.t ref -> (Tz.mich_v Tz.cc option) -> Se.invmap -> Merge.ms -> (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
 
 
 
