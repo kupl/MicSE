@@ -123,7 +123,93 @@ let main : unit -> unit
 
 *)
 
+  (*****************************************************************************)
+  (* 2.1. Simple expand & If refuted, stop.                                    *)
+  (*****************************************************************************)
 
+  (* INFO : It uses "Utils.Options.refuter_total_time_budget" for refuter total time budget, 
+            and "Utils.Options.refuter_sub_time_budget" for query-id refuting time budget.
+  *)
+
+  let rec expand_and_refute : Utils.Timer.t ref -> Se.invmap -> (int * int) -> Merge.ms Tz.PSet.t -> ((ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time) option * int * int)
+  = fun timer invm (acc_ppcount, acc_count) msset -> begin
+    let setsize = Tz.PSet.length msset in
+    if (setsize > merged_state_set_size_limit) then (None, acc_ppcount, acc_count) else
+    let _ = Utils.Log.app (fun m -> m "<< prune_expand_and_refute : msset-size : %d >>" setsize) in
+    let (result, filtered_paths, new_acc_ppcount, new_acc_count) : (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time) option * (Merge.ms Tz.PSet.t) * int * int = 
+      let timeout_printed = ref false in
+      Tz.PSet.fold msset ~init:(None, Tz.PSet.empty, acc_ppcount, acc_count)
+        ~f:(fun (accopt, accp, accppc, accc) ms -> 
+          let orig = (accopt, accp, accppc, accc) in
+          if Utils.Timer.is_timeout timer then (if !timeout_printed then () else (timeout_printed := true; Utils.Log.warn (fun m -> m "Query-Id Refuter Timeout")); orig) else
+          if (accopt <> None) then (accopt, accp, accppc, accc) else
+          (match (Merge.is_trxentry_path ms) with
+          | false -> (
+              (* 1. If the path is Partial Path - Just Expand *)
+              (None, Tz.PSet.add accp ms, accppc+1, accc)
+            )
+          | true -> (
+              (* 2. If the path is Total Path *)
+              let (vld, mopt, time) = Refute.check_ppath_validity timer tz_init_stg_opt invm ms in
+              let _ = Utils.Log.app (fun m -> m "Total-Path\tValidity : %s\tAcc-Time : %d" (ProverLib.Smt.ZSolver.string_of_validity vld) (Utils.Timer.read_interval timer)) in
+              match (ProverLib.Smt.ZSolver.is_invalid vld, ProverLib.Smt.ZSolver.is_valid vld) with
+              | true, _ -> (Some (vld, mopt, time), accp, accppc, accc+1)
+              | false, _ -> (None, Tz.PSet.add accp ms, accppc, accc+1)
+            )
+          )
+        )
+    in
+    if (Utils.Timer.is_timeout timer) then (Utils.Log.warn (fun m -> m "Query-Id Refuter Halted"); (None, new_acc_ppcount, new_acc_count)) else
+    let _ = Utils.Log.app (fun m -> m "FilteredPathSize : %d" (Tz.PSet.length filtered_paths)) in
+    (match result with 
+      | None -> 
+        if (Tz.PSet.length filtered_paths = 0) 
+        then (None, new_acc_ppcount, new_acc_count) 
+        else (expand_and_refute timer invm (new_acc_ppcount, new_acc_count) (Merge.expand expand_param filtered_paths))
+      | Some s -> (Some s, new_acc_ppcount, new_acc_count)
+    )
+  end in (* internal function expand_and_find end *)
+
+  let _ =
+    let open Tz in
+    let open Merge in
+    let open Utils in
+    let true_invmap : Se.invmap = Se.true_invmap_of_blocked_sset sset.Se.blocked in
+    let total_refuter_timer : Utils.Timer.t ref = (Utils.Timer.create ~budget:(!Utils.Options.refuter_total_time_budget)) in
+    PMap.iteri classified_queries_sset 
+      ~f:(fun ~key ~data -> 
+        let _ = Log.app (fun m -> m "\nQuery MCI = %s" (TzCvt.T2J.cv_mich_cut_info key |> Yojson.Safe.pretty_to_string)) in
+        if Utils.Timer.is_timeout total_refuter_timer then (Log.warn (fun m -> m "Refuter Total Timeout")) else
+        let timer : Utils.Timer.t ref = (Utils.Timer.create ~budget:(!Utils.Options.refuter_sub_time_budget)) in
+        PSet.map data 
+          ~f:(fun (ss, qc) -> 
+            { ms_state=(Merge.set_stvn_ss (Some 1, Some 0) ss);
+              ms_te_count=1; 
+              ms_le_count=PMap.empty; 
+              ms_le_stack=[]; 
+              ms_iinfo=empty_ms_iter_info; 
+              ms_querycat=(Some qc);
+            }
+          )
+        |> expand_and_refute timer true_invmap (0,0)
+        |> (fun (result, acc_ppcount, acc_count) -> (Utils.Timer.read_interval timer, result, acc_ppcount, acc_count))
+        |> (fun (time, result, acc_ppcount, acc_count) -> 
+            match result with 
+            | None -> Log.app (fun m -> m "Unknown / elapsed_time : %d / Searched PP : %d / Searched TP : %d" time acc_ppcount acc_count)
+            | Some (_, _, time) -> Log.app (fun m -> m "Refuted / elapsed_time : %d / Searched PP : %d / Searched TP : %d" time acc_ppcount acc_count)
+          )
+      )
+  in
+
+
+
+
+
+
+
+
+
+(*
 
   (*****************************************************************************)
   (* 3. Simple expand & pruning & If refuted, stop.                            *)
@@ -194,24 +280,6 @@ let main : unit -> unit
                 )
             )
           )
-
-          
-(*           
-          let (vld, mopt, time) = 
-            Refute.check_ppath_validity timer tz_init_stg_opt invm ms 
-            (* TODO : add initial storgae  constraints *)
-          in
-          let _ = Utils.Log.app (fun m -> m "IsTotalPath : %b\tValidity : %s\tAcc-Time : %d" (Merge.is_trxentry_path ms) (ProverLib.Smt.ZSolver.string_of_validity vld) (Utils.Timer.read_interval timer)) in
-          match (Merge.is_trxentry_path ms, ProverLib.Smt.ZSolver.is_invalid vld, ProverLib.Smt.ZSolver.is_valid vld) with
-          | true, true, _ -> 
-            (* totalpath & refuted *) 
-            let _ = Utils.Log.debug (fun m -> m "%s" (ProverLib.Smt.ZModel.to_string (Option.get mopt))) in
-            (Some (vld, mopt, time), accp, accppc, accc+1)
-          | true, false, true -> (* totalpath & valid *) (None, accp, accppc, accc+1)
-          | true, false, false -> (* totalpath & unknown *) (None, Tz.PSet.add accp ms, accppc, accc+1)
-          | false, _, true -> (* partialpath & valid *) (None, accp, accppc+1, accc)
-          | false, _, false -> (* partialpath & unknown *) (None, Tz.PSet.add accp ms, accppc+1, accc) *)
-
         )
     in
     if (Utils.Timer.is_timeout timer) then (Utils.Log.warn (fun m -> m "Query-Id Refuter Halted"); (None, new_acc_ppcount, new_acc_count)) else
@@ -255,6 +323,9 @@ let main : unit -> unit
           )
       )
   in
+
+*)
+
 
 
   ()
