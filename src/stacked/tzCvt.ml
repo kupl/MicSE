@@ -823,10 +823,12 @@ module T2S = struct
         | MV_nil _ -> ZMutez.zero_ ()
         | MV_cons (v11, vl12) -> (
           let v11' : mich_v cc = map_elem_acc v11 in
-          ZMutez.create_add (cv_mvcc vl12) (cv_mvcc v11'))
+          let vl12' : mich_v cc = MV_sigma_lm (vl12, v2) |> gen_dummy_cc in
+          ZMutez.create_add (cv_mvcc vl12') (cv_mvcc v11'))
         | MV_tl_l (vl11) -> (
           let hd' : mich_v cc = map_elem_acc (gen_dummy_cc (MV_hd_l vl11)) in
-          ZMutez.create_sub (cv_mvcc vl11) (cv_mvcc hd'))
+          let vl11' : mich_v cc = MV_sigma_lm (vl11, v2) |> gen_dummy_cc in
+          ZMutez.create_sub (cv_mvcc vl11') (cv_mvcc hd'))
         | _ -> (
           let v1_abbrs : string list = T2A.cv_mvcc v1 in
           let v2_abbrs : string list = T2A.cv_mvcc v1 in
