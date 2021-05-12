@@ -213,7 +213,7 @@ let f_count_sset : Se.state_set -> unit
 = let module CPSet = Core.Set.Poly in
   let sz s = CPSet.length s in
   fun {running; blocked; queries; terminated;} -> begin
-  Printf.printf "#running=%d, #blocked=%d, #queries=%d, #terminated=%d\n" (sz running) (sz blocked) (sz queries) (sz terminated)
+  Utils.Log.app (fun m -> m "#running=%d, #blocked=%d, #queries=%d, #terminated=%d\n" (sz running) (sz blocked) (sz queries) (sz terminated))
 end (* function f_count_sset end *)
 
 let f_print_blocked_paths_pretty : Se.state_set -> unit
@@ -221,8 +221,8 @@ let f_print_blocked_paths_pretty : Se.state_set -> unit
   fun sset -> begin
   let strop_j = TzCvt.T2Jnocc.cv_p1_ss_strop (CPSet.choose_exn sset.blocked) in
   let paths_j = CPSet.map sset.blocked ~f:(TzCvt.T2Jnocc.cv_p1_ss_path) in
-  print_endline (strop_j |> Yojson.Safe.pretty_to_string);
-  (CPSet.iter paths_j ~f:(fun x -> x |> Yojson.Safe.pretty_to_string |> print_endline))
+  Utils.Log.app (fun m -> m "%s" (strop_j |> Yojson.Safe.pretty_to_string));
+  (CPSet.iter paths_j ~f:(fun x -> Utils.Log.app (fun m -> m "%s" (x |> Yojson.Safe.pretty_to_string))))
 end (* function f_print_sset end *)
 
 let f_print_queries_pretty : Se.state_set -> unit
@@ -230,8 +230,8 @@ let f_print_queries_pretty : Se.state_set -> unit
   fun sset -> begin
   let strop_j = TzCvt.T2Jnocc.cv_p1_ss_strop (CPSet.choose_exn sset.queries |> Stdlib.fst) in
   let queries_j = CPSet.map sset.queries ~f:(fun (ss, qc) -> `Assoc ["query-cat", Se.S2J.cv_qc qc; "sym-state", TzCvt.T2Jnocc.cv_p1_ss_path ss]) in
-  print_endline (strop_j |> Yojson.Safe.pretty_to_string);
-  (CPSet.iter queries_j ~f:(fun x -> x |> Yojson.Safe.pretty_to_string |> print_endline))
+  Utils.Log.app (fun m -> m "%s" (strop_j |> Yojson.Safe.pretty_to_string));
+  (CPSet.iter queries_j ~f:(fun x -> Utils.Log.app (fun m -> m "%s" (x |> Yojson.Safe.pretty_to_string))))
 end (* function f_print_queries_pretty *)
 
 let f_print_query_solved_result_simple_pretty : ret -> unit
@@ -258,80 +258,44 @@ let f_print_query_solved_result_simple_pretty : ret -> unit
     |> CPSet.to_list 
   in
   (* Print Sizes *)
-  let _ : unit = 
-    Printf.printf 
-      "#Total: %d\n#SolvedElem: %d\n#FailedSetElem: %d\n#UntouchedSetElem: %d\n"
-      (solved_queries_size + failed_size + untouched_size) solved_queries_size failed_size untouched_size
-  in
+  Utils.Log.app (fun m -> m "#Total: %d\n#SolvedElem: %d\n#FailedSetElem: %d\n#UntouchedSetElem: %d\n" (solved_queries_size + failed_size + untouched_size) solved_queries_size failed_size untouched_size);
   (* Print Queries *)
-  let _ : unit = 
-    (* Print the number of queries *)
-    let _ : unit =
-      let (slen, flen, ulen) = (List.length solved_queries, List.length failed_queries, List.length untouched_queries) in
-      Printf.printf
-        "#Total Q: %d\n#Solved Q: %d\n#Failed Q: %d\n#Untouched Q: %d\n"
-        (slen + flen + ulen) slen flen ulen
-    in
-    (* Print solved_queries *)
-    let _ : unit =
-      print_newline ();
-      print_endline "<< SOLVED >>";
-      print_newline ();
-      List.iter 
-        (fun ((mci, qc), tfset) ->
-          `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
-                  "query-category", Se.S2J.cv_qc qc;]
-          |> Yojson.Safe.pretty_to_string |> print_endline;
-          ();
-          CPSet.iter 
-            ~f:(fun (t,fmla) ->
-              `Tuple [`Int t; TzCvt.T2Jnocc.cv_mf fmla] 
-              |> Yojson.Safe.to_string 
-              |> print_endline
-            )
+  (* Print the number of queries *)
+    let (slen, flen, ulen) = (List.length solved_queries, List.length failed_queries, List.length untouched_queries) in
+    Utils.Log.app (fun m -> m "#Total Q: %d\n#Solved Q: %d\n#Failed Q: %d\n#Untouched Q: %d\n" (slen + flen + ulen) slen flen ulen);
+  (* Print solved_queries *)
+  Utils.Log.app (fun m -> m "\n<< SOLVED >>\n");
+  Core.List.iter
+    solved_queries
+    ~f:(fun ((mci, qc), tfset) -> (
+          Utils.Log.app (fun m -> m "Cut-Info: %s" (mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.pretty_to_string));
+          Utils.Log.app (fun m -> m "Query-Category: %s" (qc |> Se.S2J.cv_qc |> Yojson.Safe.pretty_to_string));
+          CPSet.iter
             tfset
-        ) 
-        solved_queries
-    in
-    (* Print failed_queries *)
-    let _ : unit = 
-      print_newline ();
-      print_endline "<< FAILED >>";
-      print_newline ();
-      List.iter 
-      (fun ((mci, qc), vtfset) ->
-        `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
-                "query-category", Se.S2J.cv_qc qc;]
-        |> Yojson.Safe.pretty_to_string |> print_endline;
-        ();
-        CPSet.iter 
-          ~f:(fun (v, t,fmla) ->
-            `Tuple [`String (ProverLib.Smt.ZSolver.string_of_validity v);`Int t; TzCvt.T2Jnocc.cv_mf fmla] 
-            |> Yojson.Safe.to_string 
-            |> print_endline
-          )
-          vtfset
-      ) 
-      failed_queries
-    in
-    (* Print untouched_queries *)
-    let _ : unit =
-      print_newline ();
-      print_endline "<< UNTOUCHED >>";
-      print_newline ();
-      let sqjl = 
-        List.map
-          (fun ((mci, qc), cnt) ->
-            `Assoc ["cut-info", TzCvt.T2Jnocc.cv_mich_cut_info mci;
-                    "query-category", Se.S2J.cv_qc qc;
-                    "count", `Int cnt;]
-          )
-          untouched_queries
-      in
-      `List sqjl |> Yojson.Safe.pretty_to_string |> print_endline
-    in
-    ()
-  in
+            ~f:(fun (t, fmla) -> (
+                  Utils.Log.info (fun m -> m "Time: %ds" t);
+                  Utils.Log.debug (fun m -> m "Formula: %s" (fmla |> TzCvt.T2Jnocc.cv_mf |> Yojson.Safe.to_string))))));
+  (* Print failed_queries *)
+  Utils.Log.app (fun m -> m "\n<< FAILED >>\n");
+  Core.List.iter
+    failed_queries
+    ~f:(fun ((mci, qc), tfset) -> (
+          Utils.Log.app (fun m -> m "Cut-Info: %s" (mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.pretty_to_string));
+          Utils.Log.app (fun m -> m "Query-Category: %s" (qc |> Se.S2J.cv_qc |> Yojson.Safe.pretty_to_string));
+          CPSet.iter
+            tfset
+            ~f:(fun (v, t, fmla) -> (
+                  Utils.Log.info (fun m -> m "Validity: %s" (v |> ProverLib.Smt.ZSolver.string_of_validity));
+                  Utils.Log.info (fun m -> m "Time: %ds" t);
+                  Utils.Log.debug (fun m -> m "Formula: %s" (fmla |> TzCvt.T2Jnocc.cv_mf |> Yojson.Safe.to_string))))));
+  (* Print untouched_queries *)
+  Utils.Log.app (fun m -> m "\n<< UNTOUCHED >>\n");
+  Core.List.iter
+    untouched_queries
+    ~f:(fun ((mci, qc), cnt) -> (
+          Utils.Log.app (fun m -> m "Cut-Info: %s" (mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.pretty_to_string));
+          Utils.Log.app (fun m -> m "Query-Category: %s" (qc |> Se.S2J.cv_qc |> Yojson.Safe.pretty_to_string));
+          Utils.Log.app (fun m -> m "Count: %d" cnt)));
   ()
 end (* function f_print_query_solved_result_simple_pretty end *)
 
