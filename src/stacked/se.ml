@@ -1081,44 +1081,43 @@ let extract_typ_stack : Tz.mich_v Tz.cc list -> Tz.mich_t Tz.cc list
     ~init:[]
 end (* function get_type stack end *)
 
-let make_base_var : int -> Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
-= (* function make_base_var start *)
-  fun loc t -> begin
-  {t with cc_v=(MV_symbol(t, ("_VS[" ^ (loc |> string_of_int) ^ "]")))}
-end (* function make_base_var end *)
-
-let inv_app_guide_vstack : Tz.mich_f Core.Set.Poly.t -> Tz.mich_v Tz.cc list -> Tz.mich_f
+let inv_app_guide_vstack : mich_f Core.Set.Poly.t -> (mich_v cc list * mich_cut_info option) -> mich_f
 = let module CList = Core.List in
   let module CPSet = Core.Set.Poly in
-  (* function inv_app_guide_vstack *)
-  fun inv_fs vs -> begin
-  (* 0. get type stack from value stack *)
-  let ts : mich_t cc list = extract_typ_stack vs in
-  let base_vs : mich_v cc list = (
+  (* function inv_app_guide_vstack start *)
+  fun inv_fs (vs, mci_opt) -> begin
+  (* 1. make base variable from type stack *)
+  let vsp : (mich_v cc * mich_v cc) list = (
     CList.mapi
-      ts
-      ~f:(fun loc t -> make_base_var loc t)) in
-  CList.fold2 base_vs vs
+      vs
+      ~f:(fun loc v -> (
+        if (Option.is_some mci_opt) && 
+           ((Option.get mci_opt).mci_cutcat = MCC_trx_exit || (Option.get mci_opt).mci_cutcat = MCC_trx_entry) &&
+           loc = 0 then (
+          let strg_v : mich_v cc = (MV_cdr v |> gen_dummy_cc) in
+          let strg_t : mich_t cc = strg_v |> typ_of_val in
+          ((gen_dummy_cc (MV_symbol ((strg_t |> get_dummy_cc_of_typ), (Jc.Locvn.to_string {loc=loc; acc_l=[(Jc.abr_v_cdr)]})))), strg_v))
+        else
+          let t : mich_t cc = v |> typ_of_val in
+          ((gen_dummy_cc (MV_symbol ((t |> get_dummy_cc_of_typ), (Jc.Locvn.to_string {loc=loc; acc_l=[]})))), v)))) in
+  (* 2. substitute each base variable to proper value *)
+  CList.fold vsp
     ~init:(MF_and (inv_fs |> CPSet.to_list))
-    ~f:(fun accinv bv v -> (
-      map_f_v2v_outer accinv
-        ~v2v:(fun e -> if e.cc_v = bv.cc_v then Some v else None)))
-  |> function
-      | Ok fff -> fff
-      | Unequal_lengths -> Error "inv_app_guide_vstack : fold2" |> Stdlib.raise
-end (* function inv_app_guid_vstack *)
+    ~f:(fun accinv (bv, v) -> 
+      (map_f_v2v_outer accinv ~v2v:(fun e -> if e.cc_v = bv.cc_v then Some v else None))) 
+end (* function inv_app_guide_vstack end *)
 
 let inv_app_guide_entry : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
-= let module CPSet = Core.Set.Poly in
+= (* function inv_app_guide_entry start *)
   fun inv_fs ss -> begin
-  inv_app_guide_vstack inv_fs ss.ss_entry_symstack
-end (* function inv_app_guide end *)
+  inv_app_guide_vstack inv_fs (ss.ss_entry_symstack, Some ss.ss_entry_mci)
+end (* function inv_app_guide_entry end *)
 
 let inv_app_guide_block : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
-= let module CPSet = Core.Set.Poly in
+= (* function inv_app_guide_block start *)
   fun inv_fs ss -> begin
-  inv_app_guide_vstack inv_fs ss.ss_symstack
-end (* function inv_app_guide end *)
+  inv_app_guide_vstack inv_fs (ss.ss_symstack, Some ss.ss_block_mci)
+end (* function inv_app_guide_block end *)
 
 
 (*****************************************************************************)
@@ -1129,6 +1128,12 @@ let inv_induct_fmla_i : Tz.sym_state -> invmap -> Tz.mich_f
 = fun blocked_ss invm -> begin
   match (PMap.find invm blocked_ss.ss_entry_mci, PMap.find invm blocked_ss.ss_block_mci) with
   | (Some inv_entry, Some inv_block) ->
+      (* DEBUG START *)
+      Utils.Log.debug (fun m -> m "New Inductiveness Checking\nEntry MCI: %s\n> Inv Entry: %s\n> Inv Block: %s" 
+        (blocked_ss.ss_entry_mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string)
+        ((inv_app_guide_entry inv_entry blocked_ss) |> TzCvt.T2Jnocc.cv_mf |> Yojson.Safe.to_string)
+        ((inv_app_guide_block inv_block blocked_ss) |> TzCvt.T2Jnocc.cv_mf |> Yojson.Safe.to_string));
+      (* DEBUG END *)
       MF_imply (MF_and ((inv_app_guide_entry inv_entry blocked_ss) :: blocked_ss.ss_constraints), inv_app_guide_block inv_block blocked_ss)
   | _ -> Error "inv_induct_fmla : cannot find invariant" |> raise
 end (* function inv_induct_fmla_i end *) 

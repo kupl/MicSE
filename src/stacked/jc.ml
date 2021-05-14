@@ -94,37 +94,38 @@ end (* module Stvn end *)
 (*****************************************************************************)
 
 module Locvn : sig
-  type t = int
+  type t = {
+    loc: int;
+    acc_l: string list;
+  }
   val of_string : string -> t
   val to_string : t -> string
 end
 = struct
-  type t = int (* location *)
+  type t = {
+    loc: int;
+    acc_l: string list;
+  }
 
   let _prefix = "vstack"
   let _delim = '|'
+  let _inner_delim = '.'
 
   let of_string : string -> t =
     (* function of_string start *)
     fun s -> begin
     let sl : string list = Core.String.split s ~on:_delim in
-    let loc : int = 
-      sl 
-      |> Core.List.hd
-      |> (function 
-          | Some ss -> Stdlib.int_of_string_opt ss
-          | None -> Stdlib.failwith ("None of location"))
-      |> (function
-          | Some ii -> ii
-          | None -> Stdlib.failwith ("Location information is invalid")) in
-    if [(string_of_int loc); _prefix] = sl then loc
-    else Stdlib.failwith ("Invalid location variable")
+    match sl with
+    | "vstack"::loc::acc::[] -> {
+      loc=(loc |> Stdlib.int_of_string_opt |> (function Some ii -> ii | None -> Stdlib.failwith ("Location information is invalid")));
+      acc_l=(Core.String.split acc ~on:_inner_delim); }
+    | _ -> Stdlib.failwith ("Invalid name of variable")
   end (* function of_string end *)
 
   let to_string : t -> string =
     (* function to_string start *)
-    fun loc -> begin
-    _prefix ^ (Core.Char.escaped _delim) ^ (string_of_int loc)
+    fun t -> begin
+    _prefix ^ (Core.Char.escaped _delim) ^ (string_of_int t.loc) ^ (Core.Char.escaped _delim) ^ (Core.String.concat t.acc_l ~sep:(Core.Char.escaped _inner_delim))
   end (* function to_string end *)
 end
 

@@ -115,9 +115,8 @@ val run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) 
 (*****************************************************************************)
 
 val extract_typ_stack : Tz.mich_v Tz.cc list -> Tz.mich_t Tz.cc list
-val make_base_var : int -> Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
 
-val inv_app_guide_vstack : Tz.mich_f Core.Set.Poly.t -> Tz.mich_v Tz.cc list -> Tz.mich_f
+val inv_app_guide_vstack : Tz.mich_f Core.Set.Poly.t -> (Tz.mich_v Tz.cc list * Tz.mich_cut_info option) -> Tz.mich_f
 val inv_app_guide_entry : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
 val inv_app_guide_block : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
 

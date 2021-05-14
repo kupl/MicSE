@@ -5,32 +5,6 @@ exception Error of string
 
 (******************************************************************************)
 (******************************************************************************)
-(* Common Datatypes                                                           *)
-(******************************************************************************)
-(******************************************************************************)
-
-module TComparable = struct
-  exception Error of string
-
-  module T = struct
-    type t = Tz.mich_t Tz.cc
-    let compare : t -> t -> int
-    = fun x y -> Stdlib.compare (TzCvt.T2Nnocc.cv_mtcc x) (TzCvt.T2Nnocc.cv_mtcc y)
-    let sexp_of_t : t -> Core.Sexp.t
-    = TzCvt.T2CSnocc.cv_mtcc
-
-    let t_of_sexp : Core.Sexp.t -> t
-    = TzCvt.CS2Tnocc.cv_mtcc
-  end
-  include T
-  include Core.Comparable.Make(T)
-end
-
-module CTMap = TComparable.Map
-
-
-(******************************************************************************)
-(******************************************************************************)
 (* Set Combination                                                            *)
 (******************************************************************************)
 (******************************************************************************)
@@ -104,18 +78,6 @@ end (* function combination_self_two_diff_rf end *)
 type vstack = Tz.mich_v Tz.cc list (* syntax sugar *)
 type tstack = Tz.mich_t Tz.cc list (* syntax sugar *)
 
-  (*****************************************************************************
-    The type component is information from each component of the symbolic stack.
-    Each component is extracted from the given symbolic stack.
-    The type of component is statically baked from the type stack.
-  *****************************************************************************)
-type component = {
-  cp_typ          : Tz.mich_t Tz.cc;      (* type of component *)
-  cp_loc          : int;                  (* location of component in stack *)
-  cp_base_var     : Tz.mich_v Tz.cc;      (* base variable expression *)
-  cp_precond_lst  : Tz.mich_f list;       (* precondition list of component *)
-  cp_value        : Tz.mich_v Tz.cc;      (* value expression of component *)
-}
 
   (*****************************************************************************
     The type comp_map is a pre-baked component map.
@@ -123,244 +85,57 @@ type component = {
     The component set which is the value of comp_map is used to make a set of new invariants by recipe.
     type comp_map = MCI |-> (mich_t |-> component set)
   *****************************************************************************)
-type comp_map = (Tz.mich_cut_info, (component Core.Set.Poly.t) CTMap.t) Core.Map.Poly.t
+type comp_map = (Tz.mich_cut_info, (Comp.t Core.Set.Poly.t) Comp.CTMap.t) Core.Map.Poly.t
 
 let bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> comp_map
 = let module CList = Core.List in
   let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
+  let module CTMap = Comp.CTMap in
   let get_type_stack : vstack CPSet.t -> tstack option
   = let tstack_equal : tstack -> tstack -> bool
     = (* function tstack_equal start *)
       fun ts1 ts2 -> begin
-      CList.fold2
-        ts1
-        ts2
-        ~init:true
-        ~f:(fun c t1 t2 -> if t1.cc_v <> t2.cc_v then false else c)
-      |> function
-          | Ok cc -> cc
-          | Unequal_lengths -> false
+      CList.fold2 ts1 ts2 ~init:true ~f:(fun c t1 t2 -> if t1.cc_v <> t2.cc_v then false else c)
+      |> (function | Ok cc -> cc | Unequal_lengths -> false)
     end in (* function tstack_equal end *)
     (* function get_type_stack start *)
     fun vsset -> begin
     let vs : vstack = 
-      CPSet.choose vsset
-      |> function 
-          | Some ss -> ss
-          | None -> Error "bake_comp_map : get_type_stack : vs" |> Stdlib.raise in
+      (CPSet.choose vsset
+      |> (function | Some ss -> ss| None -> Error "bake_comp_map : get_type_stack : vs" |> Stdlib.raise)) in
     let ts : tstack = vs |> Se.extract_typ_stack in
-    CPSet.fold
-      (CPSet.remove vsset vs)
-      ~init:(Some ts)
-      ~f:(fun ts_opt vs -> (
-            if Option.is_none ts_opt then None
-            else 
-              let ts = Option.get ts_opt in
-              if tstack_equal ts (vs |> Se.extract_typ_stack) then ts_opt
-              else None))
+    vs
+    |> CPSet.remove vsset
+    |> CPSet.fold ~init:(Some ts) ~f:(fun ts_opt vs -> (if Option.is_none ts_opt then None else 
+        let ts = Option.get ts_opt in
+        if tstack_equal ts (vs |> Se.extract_typ_stack) then ts_opt else None))
   end in (* function get_type_stack end *)
-  let create_base_comp : Tz.mich_t Tz.cc -> (Tz.mich_cut_info * int) -> component option
-  = let open Tz in
-    (* function create_base_comp start *)
-    fun cur_typ (cur_mci, cur_loc) -> begin
-    match (cur_mci.mci_cutcat, cur_loc) with
-    | MCC_ln_loopleft, 0
-    | MCC_ln_map, 0
-    | MCC_lb_loopleft, 0 
-    | MCC_lb_map, 0
-    | MCC_lb_iter, 0 -> None
-    | MCC_trx_entry, 0 -> begin
-      match cur_typ.cc_v with
-      | MT_pair (_, strg_typ) -> begin
-        let bvar : mich_v cc = Se.make_base_var cur_loc cur_typ in
-        Some { cp_typ=strg_typ;
-               cp_loc=cur_loc;
-               cp_base_var=bvar;
-               cp_precond_lst=[];
-               cp_value=(gen_custom_cc bvar (MV_cdr bvar)) }
-        end
-      | _ -> (Error "bake_comp_map : create_base_comp : MCC_trx_entry, 0 : cur_typ" |> Stdlib.raise)
-      end
-    | _ -> begin
-      let bvar : mich_v cc = Se.make_base_var cur_loc cur_typ in
-      Some { cp_typ=cur_typ;
-             cp_loc=cur_loc;
-             cp_base_var=bvar;
-             cp_precond_lst=[];
-             cp_value=bvar }
-    end
-  end in (* function create_base_comp end *)
-  let rec collect_components : component -> (component Core.Set.Poly.t) CTMap.t -> (component Core.Set.Poly.t) CTMap.t
-  = let open Tz in
-    (* function collect_components start *)
-    fun cur_comp acc -> begin
-    let { cp_typ=cur_typ;
-          cp_loc=_;
-          cp_base_var=_;
-          cp_precond_lst=cur_prec_lst;
-          cp_value=cur_val; } : component = 
-      cur_comp in
-    match cur_typ.cc_v with
-    | MT_option t1cc -> begin
-      let precond_none : mich_f list = (MF_is_none cur_val) :: cur_prec_lst in
-      let precond_some : mich_f list = (MF_not (MF_is_none cur_val)) :: cur_prec_lst in
-      let value_unlifted : mich_v cc = gen_custom_cc cur_val (MV_unlift_option cur_val) in
-      let comp_none : component =
-        { cur_comp with cp_precond_lst=precond_none; cp_value=(gen_custom_cc cur_val (MV_none t1cc)); } in
-      let comp_some : component =
-        { cur_comp with cp_precond_lst=precond_some; cp_value=(gen_custom_cc cur_val (MV_some value_unlifted)); } in
-      let comp_some_unlifted : component =
-        { cur_comp with cp_typ=t1cc; cp_precond_lst=precond_some; cp_value=value_unlifted; } in
-      let acc' : (component Core.Set.Poly.t) CTMap.t = 
-        CTMap.update
-          acc
-          cur_typ
-          ~f:(function
-              | None -> CPSet.of_list [comp_none; comp_some;]
-              | Some cc -> CPSet.add (CPSet.add cc comp_none) comp_some) in
-      collect_components comp_some_unlifted acc'
-      end
-    | MT_pair (t1cc, t2cc) -> begin
-      let comp_pair : component = cur_comp in
-      let comp_fst : component =
-        { cur_comp with cp_typ=t1cc; cp_value=(gen_custom_cc cur_val (MV_car cur_val)); } in
-      let comp_snd : component =
-        { cur_comp with cp_typ=t2cc; cp_value=(gen_custom_cc cur_val (MV_cdr cur_val)); } in
-      let acc' : (component Core.Set.Poly.t) CTMap.t =
-        CTMap.update
-          acc
-          cur_typ
-          ~f:(function None -> CPSet.singleton comp_pair | Some cc -> CPSet.add cc comp_pair) in
-      let acc_fst : (component Core.Set.Poly.t) CTMap.t =
-        collect_components comp_fst acc' in
-      collect_components comp_snd acc_fst
-      end
-    | MT_or (t1cc, t2cc) -> begin
-      let precond_left : mich_f list = (MF_is_left cur_val) :: cur_prec_lst in
-      let precond_right : mich_f list = (MF_not (MF_is_left cur_val)) :: cur_prec_lst in
-      let value_left_unlifted : mich_v cc = gen_custom_cc cur_val (MV_unlift_left cur_val) in
-      let value_right_unlifted : mich_v cc = gen_custom_cc cur_val (MV_unlift_right cur_val) in
-      let comp_left : component =
-        { cur_comp with cp_precond_lst=precond_left; cp_value=(gen_custom_cc cur_val (MV_left (cur_typ, value_left_unlifted))); } in
-      let comp_right : component =
-        { cur_comp with cp_precond_lst=precond_right; cp_value=(gen_custom_cc cur_val (MV_right (cur_typ, value_right_unlifted))); } in
-      let comp_left_unlifted : component =
-        { cur_comp with cp_typ=t1cc; cp_precond_lst=precond_left; cp_value=value_left_unlifted; } in
-      let comp_right_unlifted : component =
-        { cur_comp with cp_typ=t2cc; cp_precond_lst=precond_right; cp_value=value_right_unlifted; } in
-      let acc' : (component Core.Set.Poly.t) CTMap.t =
-        CTMap.update
-          acc
-          cur_typ
-          ~f:(function
-              | None -> CPSet.of_list [comp_left; comp_right;]
-              | Some cc -> CPSet.add (CPSet.add cc comp_left) comp_right) in
-      let acc_left : (component Core.Set.Poly.t) CTMap.t =
-        collect_components comp_left_unlifted acc' in
-      collect_components comp_right_unlifted acc_left
-      end
-    | MT_list t1cc -> begin
-      let elem_v : mich_v cc =
-        MV_symbol (
-          t1cc, 
-          ( { Jc.Fsvn.typ=`elem;
-              Jc.Fsvn.c_vn="elem";
-              Jc.Fsvn.c_acc_l=[];
-              Jc.Fsvn.e_acc_l=[]; }  |> Jc.Fsvn.to_string))
-        |> gen_dummy_cc in
-      let comp_elem : component = { cur_comp with cp_typ=t1cc; cp_base_var=elem_v; cp_precond_lst=[]; cp_value=elem_v; } in
-      let elem_map : (component CPSet.t) CTMap.t = collect_components comp_elem CTMap.empty in
-      let acc' : (component CPSet.t) CTMap.t = 
-        CTMap.mapi
-          acc
-          ~f:(fun ~key ~data -> (
-            match key.cc_v with
-            | MT_mutez -> (
-              MT_mutez 
-              |> gen_dummy_cc
-              |> CTMap.find elem_map
-              |> (function Some sss -> sss | None -> CPSet.empty)
-              |> CPSet.fold
-                ~init:data
-                ~f:(fun data_acc elem_mutez -> (
-                  if CList.is_empty elem_mutez.cp_precond_lst then ( (* pair element only *)
-                    let value_sigma : mich_v cc = gen_custom_cc cur_val (MV_sigma_lm (cur_val, elem_mutez.cp_value)) in
-                    { cur_comp with cp_typ=key; cp_value=value_sigma; } |> CPSet.add data_acc)
-                  else data)))
-            | _ -> data)) in
-      CTMap.update acc' cur_typ ~f:(function None -> CPSet.singleton cur_comp | Some cc -> CPSet.add cc cur_comp)
-      end
-    | _ -> CTMap.update acc cur_typ ~f:(function None -> CPSet.singleton cur_comp | Some cc -> CPSet.add cc cur_comp)
-  end in (* function collect_components end *)
   (* function bake_comp_map start *)
   fun (sset, (init_strg_opt, _)) -> begin
   let mci_vstack_set : (Tz.mich_cut_info, vstack CPSet.t) CPMap.t =
-    CPSet.fold
-      sset.blocked
+    CPSet.fold sset.blocked
       ~init:CPMap.empty
-      ~f:(fun acc s -> (
-            CPMap.update
-              acc
-              s.ss_entry_mci
-              ~f:(function
-                  | None -> CPSet.singleton s.ss_entry_symstack
-                  | Some ss -> CPSet.add ss s.ss_entry_symstack))) in
+      ~f:(fun acc s -> (CPMap.update acc s.ss_entry_mci ~f:(function | None -> CPSet.singleton s.ss_entry_symstack | Some ss -> CPSet.add ss s.ss_entry_symstack))) in
   let mci_tstack : (Tz.mich_cut_info, tstack) CPMap.t =
-    CPMap.map
-      mci_vstack_set
-      ~f:(fun vsset -> (
-            vsset
-            |> get_type_stack
-            |> function
-                | Some ts -> ts
-                | None -> Error "bake_comp_map : mci_tstack" |> Stdlib.raise)) in
-  CPMap.mapi
-    mci_tstack
+    CPMap.map mci_vstack_set
+      ~f:(fun vsset -> (vsset
+        |> get_type_stack
+        |> (function | Some ts -> ts | None -> Error "bake_comp_map : mci_tstack" |> Stdlib.raise))) in
+  CPMap.mapi mci_tstack
     ~f:(fun ~key ~data -> (
-          CList.foldi
-            data
-            ~init:CTMap.empty
-            ~f:(fun i ctmap t -> (
-                  let base_comp_opt : component option = create_base_comp t (key, i) in
-                  match base_comp_opt with
-                  | None -> ctmap
-                  | Some base_comp -> (
-                    (if key.mci_cutcat = MCC_trx_entry && Option.is_some init_strg_opt then (
-                      collect_components { base_comp with cp_value=(Option.get init_strg_opt); } ctmap)
-                    else ctmap)
-                    |> collect_components base_comp)))))
-  |> (fun x ->
-        (* DEBUG START *) 
-        CPMap.iteri
-          x
-          ~f:(fun ~key ~data -> (
-            Utils.Log.debug (fun m -> m "MCI: %s\n%s"
-              (key |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string)
-              (CTMap.fold
-                data
-                ~init:""
-                ~f:(fun ~key ~data acc -> (
-                  acc ^ "> Ty: " ^ (key |> TzCvt.T2Jnocc.cv_mtcc |> Yojson.Safe.to_string) ^ "\n" ^
-                  "  [ " ^ (CPSet.map
-                              data
-                              ~f:(fun c -> (c.cp_value |> TzCvt.T2Jnocc.cv_mvcc |> Yojson.Safe.to_string))
-                            |> CPSet.to_list
-                            |> Core.String.concat ~sep:"\n    ") ^ " ];\n"))))))
-        (* DEBUG END*);
-        x)
+      CList.foldi data
+        ~init:CTMap.empty
+        ~f:(fun i ctmap t -> (
+          let base_comp_opt : Comp.t option = Comp.base_comp_from_mci (key, i, t) in
+          match base_comp_opt with
+          | None -> ctmap
+          | Some base_comp -> (
+            (if key.mci_cutcat = MCC_trx_entry && Option.is_some init_strg_opt then (
+              Comp.collect (Comp.base_comp_from_v (Option.get init_strg_opt) ~loc:base_comp.cp_loc) ctmap)
+            else ctmap)
+            |> Comp.collect base_comp)))))
 end (* function bake_comp_map end *)
-
-let fold_precond : component list -> Tz.mich_f
-= let module CList = Core.List in
-  (* function fold_precond start *)
-  fun comp_lst -> begin
-  Tz.MF_and (MF_true::(comp_lst
-            |> CList.map ~f:(fun c -> c.cp_precond_lst)
-            |> CList.join))
-  (* function fold_precond end *)
-end
-
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -368,8 +143,9 @@ end
 (*****************************************************************************)
 (*****************************************************************************)
 
-let all_equal : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
+let all_equal : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_f Core.Set.Poly.t
 = let open Tz in
+  let open Comp in
   let module CList = Core.List in
   let module CPSet = Core.Set.Poly in
   (* function all_equal start *)
@@ -386,8 +162,9 @@ let all_equal : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_f Core.Set.Poly.t
           |> CPSet.union acc))
 end (* function all_equal end *)
 
-let all_ge : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
+let all_ge : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
 = let open Tz in
+  let open Comp in
   let module CList = Core.List in
   let module CPSet = Core.Set.Poly in
   (* function all_ge start *)
@@ -412,8 +189,9 @@ let all_ge : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_t list -> Tz.mich_f 
           else acc))
 end (* function all_ge end *)
 
-let all_gt : (component Core.Set.Poly.t) CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
+let all_gt : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
 = let open Tz in
+  let open Comp in
   let module CList = Core.List in
   let module CPSet = Core.Set.Poly in
   (* function all_gt start *)
@@ -455,7 +233,7 @@ type ingredients = {
   igdt_model_opt      : ProverLib.Smt.ZModel.t option;
   igdt_vc             : Tz.mich_f;
   igdt_sym_state      : Tz.sym_state;
-  igdt_comp_type_map  : (component Core.Set.Poly.t) CTMap.t
+  igdt_comp_type_map  : (Comp.t Core.Set.Poly.t) Comp.CTMap.t
 }
 
 let collect_set : ('a Core.Set.Poly.t) list -> 'a Core.Set.Poly.t
@@ -474,35 +252,10 @@ let refine_t : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
 = let open Tz in
   let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
-  let get_base_var_stack : Tz.sym_state -> (Tz.mich_v Tz.cc * Tz.mich_v Tz.cc) CPSet.t
-  = let module CList = Core.List in
-    (* function get_base_var_stack start *)
-    fun ss -> begin
-      let strg_typ : Tz.mich_t Tz.cc = 
-        CPMap.find
-          ss.ss_dynchain.bc_storage
-          ss.ss_optt.optt_addr
-        |> (function Some vv -> vv | None -> Error "refine_t : get_base_var_stack : strg_typ" |> Stdlib.raise)
-        |> Tz.typ_of_val
-        |> Tz.get_dummy_cc_of_typ in
-      let entry_ts : Tz.mich_t Tz.cc list = Se.extract_typ_stack ss.ss_entry_symstack in
-      CList.foldi entry_ts
-        ~init:CPSet.empty
-        ~f:(fun loc acc entry_t ->
-              let exit_t : Tz.mich_t Tz.cc =
-                match entry_t.cc_v with
-                | MT_pair (_, t2) ->
-                  if t2 = strg_typ then Tz.gen_dummy_cc (MT_pair ((Tz.gen_dummy_cc (MT_list (Tz.gen_dummy_cc MT_operation))), strg_typ))
-                  else entry_t
-                | _ -> entry_t in
-              CPSet.add acc ((Se.make_base_var loc entry_t), (Se.make_base_var loc exit_t)))
-    end in (* function get_base_var_stack end *)
   (* function refine_t start *)
   fun cur_inv igdt -> begin
   (* 0-1. extract component on entrance of transaction *)
   let ctmap = igdt.igdt_comp_type_map in
-  (* 0-2. extract exit base variable stack from entry base variable stack *)
-  let exit_vs : (Tz.mich_v Tz.cc * Tz.mich_v Tz.cc) CPSet.t = get_base_var_stack igdt.igdt_sym_state in
   (* 1. generate recipe *)
   let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
   let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap [MT_int; MT_nat; MT_mutez] in
@@ -513,17 +266,7 @@ let refine_t : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
       all_ge_fmlas;
       all_gt_fmlas; ]
     |> collect_set
-    |> CPSet.map
-        ~f:(fun entry_f -> (
-              let exit_f : mich_f =
-                CPSet.fold
-                  exit_vs  
-                  ~init:entry_f
-                  ~f:(fun acc_f (entry_v, exit_v) -> (
-                        Tz.map_f_v2v_outer
-                          acc_f
-                          ~v2v:(fun v -> if v.cc_v = entry_v.cc_v then Some exit_v else None))) in
-              (entry_f, exit_f))) in
+    |> CPSet.map ~f:(fun entry_f -> ((entry_f, entry_f))) in
   CPSet.map
     fmlas
     ~f:(fun (entry_f, exit_f) -> (
@@ -577,7 +320,7 @@ let generate : generate_param -> Se.invmap Core.Set.Poly.t
       ~init:CPMap.empty
       ~f:(fun acc ((fs, qctg), (_, mopt), vc, _) ->
           (* 1-1. make new ingredients *)
-          let ctmap : (component CPSet.t) CTMap.t =
+          let ctmap : (Comp.t CPSet.t) Comp.CTMap.t =
             CPMap.find igi_comp_map fs.ss_entry_mci
             |> function
                 | Some ccss -> ccss

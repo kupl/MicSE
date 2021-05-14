@@ -99,7 +99,7 @@ let check_inv_inductiveness :
       (match CPMap.find invm init_ss.ss_entry_mci with
         | None -> Error "check_inv_inductiveness : init_stg_sat : Some" |> raise
         | Some inv_f ->
-          let sat_f : Tz.mich_f = Se.inv_app_guide_vstack inv_f [Tz.MV_pair (init_ss.ss_optt.optt_param, istg) |> Tz.gen_dummy_cc] in
+          let sat_f : Tz.mich_f = Se.inv_app_guide_vstack inv_f ([Tz.MV_pair (init_ss.ss_optt.optt_param, istg) |> Tz.gen_dummy_cc], Some init_ss.ss_entry_mci) in
           check_validity sat_f |> Stdlib.fst |> ProverLib.Smt.ZSolver.is_valid
       )
     ) 
