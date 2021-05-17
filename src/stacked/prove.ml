@@ -367,8 +367,6 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
     { cur_res with solved_map=new_solved_map }
   end in (* function union_result end *)
   fun init_stg_opt_ss sset -> begin
-  let inv_init : Se.invmap = sset.Se.blocked |> Se.true_invmap_of_blocked_sset in
-  let w_init : worklist = inv_init |> Tz.PSet.singleton in
   (* (Utils.Log.debug (fun m -> m "Prove : main : Initial Worklist Length : %d" (w_init |> CPSet.length))); *)
   let res_init : ret = { solved_map=CPMap.empty; failed_set=CPSet.empty; untouched_set=sset.queries } in
   let comp_map : InvSyn.comp_map = InvSyn.bake_comp_map (sset, init_stg_opt_ss) in
