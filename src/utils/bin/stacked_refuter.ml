@@ -172,7 +172,7 @@ let main : unit -> unit
 
   let _ =
     let open Tz in
-    let open Merge in
+    (* let open Merge in *)
     let open Utils in
     let true_invmap : Se.invmap = Se.true_invmap_of_blocked_sset sset.Se.blocked in
     let total_refuter_timer : Utils.Timer.t ref = (Utils.Timer.create ~budget:(!Utils.Options.refuter_total_time_budget)) in
