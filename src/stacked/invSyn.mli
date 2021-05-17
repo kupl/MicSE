@@ -36,7 +36,7 @@ val combination_self_two_diff_rf : 'a Core.Set.Poly.t -> ('a * 'a) Core.Set.Poly
 type comp_map = (Tz.mich_cut_info, (Comp.t Core.Set.Poly.t) Comp.CTMap.t) Core.Map.Poly.t
 
 val bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> comp_map
-val init_invmap : comp_map -> Tz.sym_state -> Se.invmap -> Se.invmap
+(* val init_invmap : comp_map -> Tz.sym_state -> Se.invmap -> Se.invmap *)
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -47,6 +47,7 @@ val init_invmap : comp_map -> Tz.sym_state -> Se.invmap -> Se.invmap
 val all_equal : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_f Core.Set.Poly.t
 val all_ge : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
 val all_gt : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
+val add_2_eq : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
 
 
 (*****************************************************************************)
