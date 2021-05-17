@@ -137,6 +137,51 @@ let bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> 
             |> Comp.collect base_comp)))))
 end (* function bake_comp_map end *)
 
+let init_invmap : comp_map -> Tz.sym_state -> Se.invmap -> Se.invmap
+= let module CPSet = Core.Set.Poly in
+  let module CPMap = Core.Map.Poly in
+  let module CTMap = Comp.CTMap in
+  (* function init_invmap start *)
+  fun cpmap init_ss true_invmap -> begin
+  true_invmap
+  |> CPMap.mapi
+    ~f:(fun ~key ~data -> (
+      (* 0. set the type map for the components *)
+      let tmap : (Comp.t CPSet.t) CTMap.t = 
+        CPMap.find cpmap key
+        |> (function Some tmap -> tmap | None -> CTMap.empty)
+        |> (fun tmap -> (
+          if key = init_ss.ss_entry_mci then (
+          init_ss.ss_entry_symstack
+          |> Core.List.hd_exn
+          |> (fun vvv -> Tz.MV_car vvv |> Tz.gen_custom_cc vvv)
+          |> Comp.base_comp_from_v ~loc:0
+          |> (fun bc -> Comp.collect bc tmap))
+          else if key = init_ss.ss_block_mci then (
+            CPMap.find cpmap (init_ss.ss_entry_mci)
+            |> (function Some tmap -> tmap | None -> CTMap.empty))
+          else tmap)) in
+      (* 1. Update initial invariant with each type *)
+      tmap
+      |> CTMap.fold
+        ~init:data
+        ~f:(fun ~key ~data acc -> (
+          if key.cc_v = MT_mutez then (
+            data
+            |> CPSet.filter
+              ~f:(fun c -> 
+                if Option.is_some c.Comp.cp_base_var && (Option.get c.Comp.cp_base_var) = c.Comp.cp_value then true
+                else (match c.Comp.cp_value.cc_v with MV_sigma_lm _ -> true | _ -> false))
+            |> CPSet.map
+              ~f:(fun c -> (
+                Tz.MF_and [ (* MUTEZ BOUND *)
+                  MF_add_mmm_no_overflow (c.Comp.cp_value, ((Tz.MV_lit_mutez Z.zero) |> Tz.gen_dummy_cc));
+                  MF_sub_mmm_no_underflow (c.Comp.cp_value, ((Tz.MV_lit_mutez Z.zero) |> Tz.gen_dummy_cc));]))
+            |> CPSet.union acc)
+          else acc))))
+end (* function init_invmap end *)
+
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Recipe                                                                    *)
