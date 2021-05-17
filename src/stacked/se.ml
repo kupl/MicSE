@@ -235,7 +235,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     | MT_list (t1) -> (
       MV_symbol (
         t1, 
-        ( { Jc.Fsvn.typ=`elem;
+        ( { Jc.Fsvn.typ=`Elem;
             Jc.Fsvn.c_vn="elem";
             Jc.Fsvn.c_acc_l=[];
             Jc.Fsvn.e_acc_l=[]; }  |> Jc.Fsvn.to_string))

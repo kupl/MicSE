@@ -138,7 +138,7 @@ end
 
 module Fsvn : sig
   type t = {
-    typ: [`elem | `remain];
+    typ: [`Elem | `Remain];
     c_vn: string;
     c_acc_l: string list;
     e_acc_l: string list;
@@ -148,7 +148,7 @@ module Fsvn : sig
 end
 = struct
   type t = {
-    typ: [`elem | `remain];
+    typ: [`Elem | `Remain];
     c_vn: string;
     c_acc_l: string list;
     e_acc_l: string list;
@@ -165,12 +165,12 @@ end
     let sl : string list = Core.String.split s ~on:_delim in
     match sl with
     | "e"::vn::c_acc::e_acc::[] -> {
-      typ=`elem;
+      typ=`Elem;
       c_vn=vn;
       c_acc_l=(Core.String.split c_acc ~on:_inner_delim);
       e_acc_l=(Core.String.split e_acc ~on:_inner_delim); }
     | "r"::vn::c_acc::e_acc::[] -> {
-      typ=`remain;
+      typ=`Remain;
       c_vn=vn;
       c_acc_l=(Core.String.split c_acc ~on:_inner_delim);
       e_acc_l=(Core.String.split e_acc ~on:_inner_delim); }
@@ -188,8 +188,8 @@ end
     (* function to_string start *)
     fun t -> begin
     match t.typ with
-    | `elem -> _elem_prefix ^ (Core.Char.escaped _delim) ^ (name_without_prefix t)
-    | `remain -> _remain_prefix ^ (Core.Char.escaped _delim) ^ (name_without_prefix t)
+    | `Elem -> _elem_prefix ^ (Core.Char.escaped _delim) ^ (name_without_prefix t)
+    | `Remain -> _remain_prefix ^ (Core.Char.escaped _delim) ^ (name_without_prefix t)
   end (* function to_string end *)
 end
 

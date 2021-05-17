@@ -831,7 +831,7 @@ module T2S = struct
           ZExpr.create_var
             (ZMutez.sort ())
             ~name:(
-              { Jc.Fsvn.typ=`remain;
+              { Jc.Fsvn.typ=`Remain;
                 Jc.Fsvn.c_vn=(Core.List.hd v1_abbrs |> (function Some ss -> ss | None -> Error "cv_mv : MV_sigma_lm : _ : c_vn" |> Stdlib.raise));
                 Jc.Fsvn.c_acc_l=(Core.List.tl v1_abbrs |> (function Some ll -> ll | None -> Error "cv_mv : MV_sigma_lm : _ : c_acc_l" |> Stdlib.raise));
                 Jc.Fsvn.e_acc_l=(Core.List.tl v2_abbrs |> (function Some ll -> ll | None -> Error "cv_mv : MV_sigma_lm : _ : e_acc_l" |> Stdlib.raise)); }

@@ -153,7 +153,7 @@ let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
       let elem_v : mich_v cc = (* should be same with se.run_inst.ss_add_list_sigma_constraint *)
         MV_symbol (
           t1cc, 
-          ( { Jc.Fsvn.typ=`elem;
+          ( { Jc.Fsvn.typ=`Elem;
               Jc.Fsvn.c_vn="elem";
               Jc.Fsvn.c_acc_l=[];
               Jc.Fsvn.e_acc_l=[]; }  |> Jc.Fsvn.to_string))
