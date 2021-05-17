@@ -150,7 +150,7 @@ let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
         collect_i comp_left_unlifted acc' in
       collect_i comp_right_unlifted acc_left)
     | MT_list t1cc -> (
-      let elem_v : mich_v cc =
+      let elem_v : mich_v cc = (* should be same with se.run_inst.ss_add_list_sigma_constraint *)
         MV_symbol (
           t1cc, 
           ( { Jc.Fsvn.typ=`elem;

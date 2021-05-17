@@ -198,7 +198,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let mutez_constraints : mich_f list = (
       sstack
       |> CList.filter ~f:(fun vvv -> (typ_of_val vvv).cc_v = MT_mutez)
-      |> CList.map ~f:(fun vvv -> (MF_and [
+      |> CList.map ~f:(fun vvv -> (MF_and [ (* MUTEZ BOUND *)
             MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
             MF_sub_mmm_no_underflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
           ]))) in
@@ -217,12 +217,52 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     if (typ_of_val vvv).cc_v = MT_mutez then 
       ss_add_constraint
         ss 
-        (MF_and [
+        (MF_and [ (* MUTEZ BOUND *)
           MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
           MF_sub_mmm_no_underflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
         ])
     else ss
   end in (* function ss_add_mutez_bound_constraint_if_v_is_mutez end *)
+  let ss_add_list_sigma_constraint : sym_state -> mich_v cc -> sym_state
+  = (* function ss_add_list_sigma_constraint start *)
+    fun ss vvv -> begin
+    (* 0. Make same expression of list with using cons *)
+    let hd_vvv : mich_v cc = MV_hd_l vvv |> gen_custom_cc vvv in
+    let tl_vvv : mich_v cc = MV_tl_l vvv |> gen_custom_cc vvv in
+    let cons_vvv : mich_v cc = MV_cons (hd_vvv, tl_vvv) |> gen_custom_cc vvv in
+    (* 1. Get components from each element *)
+    (match (typ_of_val vvv).cc_v with
+    | MT_list (t1) -> (
+      MV_symbol (
+        t1, 
+        ( { Jc.Fsvn.typ=`elem;
+            Jc.Fsvn.c_vn="elem";
+            Jc.Fsvn.c_acc_l=[];
+            Jc.Fsvn.e_acc_l=[]; }  |> Jc.Fsvn.to_string))
+      |> gen_dummy_cc
+      |> Comp.base_comp_from_v
+      |> (fun e -> Comp.collect e Comp.CTMap.empty))
+    | _ -> Error ("run_inst : ss_add_list_sigma_constraint : _") |> Stdlib.raise)
+    (* 2. Add constraints from each type of element *)
+    |> Comp.CTMap.fold
+      ~init:ss
+      ~f:(fun ~key ~data ss' -> (
+        match key.cc_v with
+        | MT_mutez -> (
+          PSet.fold
+            data
+            ~init:ss'
+            ~f:(fun acc c -> (
+              ss_add_constraint
+                acc
+                (MF_eq (
+                  (MV_sigma_lm (vvv, c.Comp.cp_value) |> gen_dummy_cc),
+                  (MV_sigma_lm (cons_vvv, c.Comp.cp_value) |> gen_dummy_cc)))
+              |> (fun ss -> ss_add_mutez_bound_constraint_if_v_is_mutez
+                ss
+                (MV_sigma_lm (tl_vvv, c.Comp.cp_value) |> gen_dummy_cc)))))
+        | _ -> ss'))
+  end in (* function ss_add_list_sigma_constraint end *)
   (* SUGAR - state set *)
   let sset_union_pointwise : state_set -> state_set -> state_set
   = fun sset1 sset2 -> {
@@ -364,7 +404,12 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       let hd_vvv : mich_v cc = MV_hd_l listv |> gen_inst_cc in
       (hd_vvv, gen_inst_cc (MV_tl_l listv))
       |> cons2_tl_n ss_symstack 1
-      |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_constraint ss cond_constraint) hd_vvv)
+      |> sstack_to_ss (
+        ss_add_list_sigma_constraint (
+          ss_add_mutez_bound_constraint_if_v_is_mutez 
+            (ss_add_constraint ss cond_constraint) 
+            hd_vvv) 
+          listv)
       |> ss_to_srset
       |> run_inst cache i1
     in
@@ -614,7 +659,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let hd_mutez_constraints : mich_f list = (
       hd
       |> CList.filter ~f:(fun vvv -> (typ_of_val vvv).cc_v = MT_mutez)
-      |> CList.map ~f:(fun vvv -> (MF_and [
+      |> CList.map ~f:(fun vvv -> (MF_and [ (* MUTEZ BOUND *)
             MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
             MF_sub_mmm_no_underflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
           ]))) in
