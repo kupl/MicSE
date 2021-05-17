@@ -73,6 +73,11 @@ type expand_param = {
 
 val set_stvn_ss : (int option * int option) -> Tz.sym_state -> Tz.sym_state
 
+(* "construct_first_ms" might be located right behind "ms" type definition, 
+  but the dependency issue leads here.
+*)
+val construct_first_ms : (Tz.sym_state * (Se.query_category option)) -> ms
+
 
 (*****************************************************************************)
 (* Expand                                                                    *)

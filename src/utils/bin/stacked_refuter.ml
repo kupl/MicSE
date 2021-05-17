@@ -182,17 +182,7 @@ let main : unit -> unit
         if Utils.Timer.is_timeout total_refuter_timer then (Log.warn (fun m -> m "Refuter Total Timeout")) else
         let timer : Utils.Timer.t ref = (Utils.Timer.create ~budget:(!Utils.Options.refuter_sub_time_budget)) in
         PSet.map data 
-          ~f:(fun (ss, qc) -> 
-            { ms_state=(Merge.set_stvn_ss (Some 1, Some 0) ss);
-              ms_te_count=1; 
-              ms_le_count=PMap.empty; 
-              ms_le_stack=[]; 
-              ms_iinfo=empty_ms_iter_info; 
-              ms_querycat=(Some qc);
-              ms_cf_l_st=ss;
-              ms_history=[(ss.ss_entry_mci, ss.ss_block_mci)];
-            }
-          )
+          ~f:(fun (ss, qc) -> Merge.construct_first_ms (ss, Some qc))
         |> expand_and_refute timer true_invmap (0,0)
         |> (fun (result, acc_ppcount, acc_count) -> (Utils.Timer.read_interval timer, result, acc_ppcount, acc_count))
         |> (fun (time, result, acc_ppcount, acc_count) -> 
@@ -309,17 +299,7 @@ let main : unit -> unit
         if Utils.Timer.is_timeout total_refuter_timer then (Log.warn (fun m -> m "Refuter Total Timeout")) else
         let timer : Utils.Timer.t ref = (Utils.Timer.create ~budget:(!Utils.Options.refuter_sub_time_budget)) in
         PSet.map data 
-          ~f:(fun (ss, qc) -> 
-            { ms_state=(Merge.set_stvn_ss (Some 1, Some 0) ss);
-              ms_te_count=1; 
-              ms_le_count=PMap.empty; 
-              ms_le_stack=[]; 
-              ms_iinfo=empty_ms_iter_info; 
-              ms_querycat=(Some qc);
-              ms_cf_l_st=ss;
-              ms_history=[(ss.ss_entry_mci, ss.ss_block_mci)];
-            }
-          )
+          ~f:(fun (ss, qc) -> ~f:(fun (ss, qc) -> Merge.construct_first_ms (ss, Some qc))
         |> prune_expand_and_refute timer true_invmap (0,0)
         |> (fun (result, acc_ppcount, acc_count) -> (Utils.Timer.read_interval timer, result, acc_ppcount, acc_count))
         |> (fun (time, result, acc_ppcount, acc_count) -> 

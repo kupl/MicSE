@@ -666,6 +666,22 @@ let set_stvn_ss : (int option * int option) -> Tz.sym_state -> Tz.sym_state
   }
 end (* function set_stvn_ss end *)
 
+(* "construct_first_ms" might be located right behind "ms" type definition, 
+  but the dependency issue leads here.
+*)
+let construct_first_ms : (Tz.sym_state * (Se.query_category option)) -> ms
+= fun (ss, qcopt) -> begin
+  { ms_state=(set_stvn_ss (Some 1, Some 0) ss);
+    ms_te_count=1; 
+    ms_le_count=Tz.PMap.empty;
+    ms_le_stack=[]; 
+    ms_iinfo=empty_ms_iter_info; 
+    ms_querycat=qcopt;
+    ms_cf_l_st=ss;
+    ms_history=[(ss.ss_entry_mci, ss.ss_block_mci)];
+  }
+end (* function construct_first_ms end *)
+
 
 (*****************************************************************************)
 (* Expand                                                                    *)
