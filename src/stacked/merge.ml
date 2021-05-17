@@ -598,7 +598,9 @@ end (* function intratrx_merge_state end *)
   ms_le_count : count loop-entered (initialized when the state leaves current transaction)
   ms_le_stack : count loop-entered using stack. It is useful to restrict the number of loop unrolling.
   ms_iinfo    : iteration information for intratrx-merge.
-  ms_qcopt    : query-category if exists
+  ms_querycat : query-category if exists
+  ms_cf_l_st  : control-flow last state. Mainly it is the first query-state.
+  ms_history  : (entry-mci * exit-mci) list which shows merged states' cut-infos.
 *)
   type ms = {
     ms_state    : Tz.sym_state;
@@ -607,6 +609,8 @@ end (* function intratrx_merge_state end *)
     ms_le_stack : (Tz.mich_cut_info * int) list;
     ms_iinfo    : ms_iter_info;
     ms_querycat : Se.query_category option;
+    ms_cf_l_st  : Tz.sym_state;
+    ms_history  : (Tz.mich_cut_info * Tz.mich_cut_info) list;
   }
 
 let is_trxentry_path : ms -> bool = fun ms -> (ms.ms_state.ss_entry_mci.mci_cutcat = Tz.MCC_trx_entry)
@@ -676,6 +680,7 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
 = let open Tz in
   fun ep sset ms -> begin
   let ms_en_mci = ms.ms_state.ss_entry_mci in
+  let gen_new_history ss his : (mich_cut_info * mich_cut_info) list = (ss.ss_entry_mci, ss.ss_block_mci) :: his in
   PSet.fold sset ~init:PSet.empty
     ~f:(fun accs ss ->
       (* TODO : There are no filtering logic *)
@@ -684,6 +689,7 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
       match (is_ln_mcc ssmcc, is_lb_mcc ssmcc, is_ln_mcc mmmcc, is_lb_mcc mmmcc) with
       | (true, false, true, false) -> (
           (* LN -> LN *)
+          let history' = gen_new_history ss ms.ms_history in
           let ss_trx_num = ms.ms_te_count in
           (* note : cur_loop_num : "[] -> 0" for query-loop case *)
           let ss_loop_num = (match ms.ms_le_stack with | [] -> 0 | (_, hdv) :: _ -> hdv) in
@@ -691,11 +697,12 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
           (* No loop-unroll limitation checking is needed in this case *)
           let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
           let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
-          {ms with ms_state=(ms'); ms_iinfo=(iinfo');}
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_history=(history');}
           |> PSet.add accs
         )
       | (true, false, false, true) -> (
           (* LN -> LB *)
+          let history' = gen_new_history ss ms.ms_history in
           let ss_trx_num = ms.ms_te_count in
           (* note : cur_loop_num : "_ -> 0" for query-loop case *)
           let ss_loop_num = (match ms.ms_le_stack with | _ :: (_, hdv) :: _ -> hdv | _ -> 0) in
@@ -704,11 +711,12 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
           let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
           let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
           let le_stack' = (match ms.ms_le_stack with | [] -> [] | _ :: tl -> tl) in
-          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_stack=(le_stack');}
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_stack=(le_stack'); ms_history=(history');}
           |> PSet.add accs
         )
       | (false, true, true, false) -> (
           (* LB -> LN *)
+          let history' = gen_new_history ss ms.ms_history in
           let ss_trx_num = ms.ms_te_count in
           let ms_le_count' = PMap.update ms.ms_le_count ss.ss_block_mci ~f:(function | None -> 1 | Some n -> (n+1)) in
           let ss_loop_num = pmap_find_dft (ms_le_count') ss.ss_block_mci ~default:0 in
@@ -717,11 +725,12 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
           let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
           let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
           let le_stack' = (ss.ss_block_mci, 1) :: ms.ms_le_stack in
-          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=(ms_le_count'); ms_le_stack=(le_stack');}
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=(ms_le_count'); ms_le_stack=(le_stack'); ms_history=(history');}
           |> PSet.add accs
         )
       | (false, true, false, true) -> (
           (* LB -> LB *)
+          let history' = gen_new_history ss ms.ms_history in
           let ss_trx_num = ms.ms_te_count in
           let ms_le_count' = PMap.update ms.ms_le_count ss.ss_block_mci ~f:(function | None -> 1 | Some n -> (n+1)) in
           let ss_loop_num = pmap_find_dft (ms_le_count') ss.ss_block_mci ~default:0 in
@@ -731,7 +740,7 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
           let ss' = set_stvn_ss (Some ss_trx_num, Some ss_loop_num) ss in
           let (ms', iinfo') = intratrx_merge_state ss' (ms.ms_state, ms.ms_iinfo) in
           let le_stack' = (match ms.ms_le_stack with | [] -> [(ss.ss_block_mci, 1)] | (bmci, n) :: tl -> (bmci, (n+1)) :: tl) in
-          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=(ms_le_count'); ms_le_stack=(le_stack');}
+          {ms with ms_state=(ms'); ms_iinfo=(iinfo'); ms_le_count=(ms_le_count'); ms_le_stack=(le_stack'); ms_history=(history');}
           |> PSet.add accs
         )
       | (false, false, false, false) -> (
@@ -747,6 +756,8 @@ let expand_i : expand_param -> (Tz.sym_state Tz.PSet.t) -> ms -> (ms Tz.PSet.t)
             ms_le_stack = [];
             ms_iinfo    = empty_ms_iter_info;
             ms_querycat = ms.ms_querycat;
+            ms_cf_l_st  = ms.ms_cf_l_st;
+            ms_history  = ms.ms_history;
           }
           |> PSet.add accs
         )
