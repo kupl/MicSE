@@ -2,6 +2,8 @@
 
 val check_ppath_validity : Utils.Timer.t ref -> (Tz.mich_v Tz.cc option) -> Se.invmap -> Merge.ms -> (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
 
+val check_ppath_validity_fmla_included : Utils.Timer.t ref -> (Tz.mich_v Tz.cc option) -> Se.invmap -> Merge.ms -> (Tz.mich_f * ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
+
 
 
 (*****************************************************************************)

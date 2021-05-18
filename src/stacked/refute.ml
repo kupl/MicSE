@@ -40,6 +40,24 @@ let check_ppath_validity : Utils.Timer.t ref -> (Tz.mich_v Tz.cc option) -> Se.i
   (vld, mopt, elapsed_time)
 end (* functino check_ppath_validity *)
 
+(* "check_ppath_validity_fmla_included" is just a copy of "check_ppath_validity", but returns mich_f value too *)
+let check_ppath_validity_fmla_included : Utils.Timer.t ref -> (Tz.mich_v Tz.cc option) -> Se.invmap -> Merge.ms -> (Tz.mich_f * ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
+= fun timer tz_init_stg_option invm ms -> begin
+  let start_time = Utils.Timer.read_interval timer in
+  let (ss, qc) = (ms.ms_state, (match ms.ms_querycat with | Some c -> c | None -> Stdlib.failwith Stdlib.__LOC__)) in
+  let qfmla : Tz.mich_f = 
+    match (Merge.is_trxentry_path ms, tz_init_stg_option) with
+    | true, Some istg -> 
+      let precond : Tz.mich_f = Tz.MF_eq (Tz.MV_cdr (List.hd ms.ms_state.ss_entry_symstack) |> Tz.gen_dummy_cc, istg) in
+      Se.inv_query_fmla_with_precond (ss, qc) invm precond
+    | true, None -> Se.inv_query_fmla (ss, qc) invm
+    | false, _ -> Se.inv_query_fmla (ss, qc) invm
+  in
+  (* let _ = Utils.Log.debug (fun m -> m "[%s] %s" (Stdlib.__LOC__) (TzCvt.T2Jnocc.cv_mf qfmla |> Yojson.Safe.to_string)) in *)
+  let (vld, mopt) = Prove.check_validity qfmla in
+  let elapsed_time = Utils.Timer.read_interval timer - start_time in
+  (qfmla, vld, mopt, elapsed_time)
+end (* function check_ppath_validity_fmla_included end *)
 
 
 (*
