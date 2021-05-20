@@ -56,6 +56,11 @@ let refuter_total_time_budget : int ref
 =ref 180 (* refuter time budgets in seconds *)
 let refuter_sub_time_budget : int ref
 =ref 180 (* Time budget for each "Refuter.main" function call. *)
+let queryid_time_budget : int ref
+=ref 180 (* Time budget for each Query-Id prove or refuting *)
+let total_time_budget : int ref
+=ref 360 (* Time budget for total program execution. Used for special cases *)
+
 
 (* INT - Cfg Unrolling *)
 let loop_unroll_num : int ref
@@ -109,6 +114,8 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-prover_timeout", (Arg.Int (fun i -> prover_time_budget := i)), "Time budget for prover in seconds. (default: 180s)");
     ("-refuter_timeout_t", (Arg.Int (fun i -> refuter_total_time_budget := i)), "Timebudget for refuter total-time in seconds. (default: 180s)");
     ("-refuter_timeout_s", (Arg.Int (fun i -> refuter_sub_time_budget_manually_set := true; refuter_sub_time_budget := i)), "Timebudget for \"Refuter.main\" function in seconds. If not set, it'll be automatically calculated. (default: 180s)");
+    ("--queryid_timeout", (Arg.Int (fun i -> queryid_time_budget := i)), "Time budget for query-id prove/refute in seconds. (default: 180s)");
+    ("--total_timeout", (Arg.Int (fun i -> total_time_budget := i)), "Time budget for entire program execution in seconds (in special case only). (default: 360s)");
     ("-unroll_l", (Arg.Int (fun i -> loop_unroll_num := i)), "Set the number of loop unrolling. (default 1)");
     ("-unroll_t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
   ]

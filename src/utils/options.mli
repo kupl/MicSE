@@ -37,6 +37,8 @@ val z3_time_budget : int ref
 val prover_time_budget : int ref
 val refuter_total_time_budget : int ref
 val refuter_sub_time_budget : int ref
+val queryid_time_budget : int ref
+val total_time_budget : int ref
 
 (* INT - Cfg Unrolling *)
 val loop_unroll_num : int ref
