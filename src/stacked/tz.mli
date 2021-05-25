@@ -549,6 +549,8 @@ val is_lb_mcc : mich_cut_category -> bool
 val is_trx_entry_mcc : mich_cut_category -> bool
 val is_trx_exit_mcc : mich_cut_category -> bool
 
+val is_normal_mcc : mich_cut_category -> bool
+
 (*****************************************************************************)
 (* Symbol & Symbolic Stack                                                   *)
 (*****************************************************************************)

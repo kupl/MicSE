@@ -100,6 +100,7 @@ module Locvn : sig
   }
   val of_string : string -> t
   val to_string : t -> string
+  val for_strg : string
 end
 = struct
   type t = {
@@ -127,6 +128,8 @@ end
     fun t -> begin
     _prefix ^ (Core.Char.escaped _delim) ^ (string_of_int t.loc) ^ (Core.Char.escaped _delim) ^ (Core.String.concat t.acc_l ~sep:(Core.Char.escaped _inner_delim))
   end (* function to_string end *)
+
+  let for_strg : string = to_string { loc=0; acc_l=[("strg")] }
 end
 
 

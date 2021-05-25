@@ -78,15 +78,6 @@ val map_ss_running : (Tz.sym_state -> Tz.sym_state) -> state_set -> state_set
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Utilities - Invmap                                                        *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-val true_invmap_of_blocked_sset : Tz.sym_state Tz.PSet.t -> invmap
-
-
-(*****************************************************************************)
-(*****************************************************************************)
 (* Run Instruction                                                           *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -111,12 +102,26 @@ val run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) 
 (*****************************************************************************)
 
 (*****************************************************************************)
+(* Coupled mich_cut_info for indicating invariant                            *)
+(*****************************************************************************)
+
+val get_normal_mci : invmap -> Tz.mich_cut_info -> Tz.mich_cut_info
+
+
+(*****************************************************************************)
+(* Initial invariant map                                                     *)
+(*****************************************************************************)
+
+val true_invmap_of_blocked_sset : Tz.sym_state Tz.PSet.t -> invmap
+
+
+(*****************************************************************************)
 (* Invariant Application form for each mich_cut_category                     *)
 (*****************************************************************************)
 
 val extract_typ_stack : Tz.mich_v Tz.cc list -> Tz.mich_t Tz.cc list
 
-val inv_app_guide_vstack : Tz.mich_f Core.Set.Poly.t -> (Tz.mich_v Tz.cc list * Tz.mich_cut_info option) -> Tz.mich_f
+val inv_app_guide_vstack : Tz.mich_f Core.Set.Poly.t -> ([`Entry | `Block] * Tz.mich_cut_info option * Tz.mich_v Tz.cc list) -> Tz.mich_f
 val inv_app_guide_entry : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
 val inv_app_guide_block : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
 
@@ -124,6 +129,8 @@ val inv_app_guide_block : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
 (*****************************************************************************)
 (* Invariant Map to Michelson Formula                                        *)
 (*****************************************************************************)
+
+val find_inv_fmla : invmap -> Tz.mich_cut_info -> Tz.mich_f Core.Set.Poly.t
 
 val inv_induct_fmla_i : Tz.sym_state -> invmap -> Tz.mich_f
 val inv_induct_fmla : (Tz.sym_state Tz.PSet.t) -> invmap -> (Tz.mich_f Tz.PSet.t)

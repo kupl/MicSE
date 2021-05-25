@@ -921,6 +921,11 @@ let is_trx_exit_mcc : mich_cut_category -> bool =
   | MCC_query         -> false
   )
 
+let is_normal_mcc : mich_cut_category -> bool
+= (* function is_normal_mcc start *) 
+  fun mcc -> begin
+  is_trx_entry_mcc mcc || is_ln_mcc mcc
+end (* function is_normal_mcc end *)
 
 (*****************************************************************************)
 (* Symbol & Symbolic Stack                                                   *)

@@ -59,39 +59,38 @@ let base_comp_from_v : ?loc:int -> Tz.mich_v Tz.cc -> t
     cp_value=v}
 end (* function base_comp_from_v end *)
 
-let base_comp_from_mci : (Tz.mich_cut_info * int * Tz.mich_t Tz.cc) -> t option
-= let open Tz in
+let base_comp_from_mci : (Tz.mich_cut_info) -> (Tz.mich_t Tz.cc) list -> (t option) list
+= let module CList = Core.List in
   (* function base_comp_from_mci start *)
-  fun (cur_mci, cur_loc, cur_typ) -> begin
-    match (cur_mci.mci_cutcat, cur_loc) with
-    | MCC_ln_loopleft, 0
-    | MCC_ln_map, 0
-    | MCC_lb_loopleft, 0 
-    | MCC_lb_map, 0
-    | MCC_lb_iter, 0 -> None
-    | MCC_trx_entry, 0 -> (
-      match cur_typ.cc_v with
-      | MT_pair (_, strg_typ) -> (
-        let bvar : mich_v cc = (
-          Tz.gen_custom_cc
-            strg_typ
-            (MV_symbol (strg_typ, (Jc.Locvn.to_string {loc=cur_loc; acc_l=[(Jc.abr_v_cdr)]})))) in
-        Some { cp_typ=strg_typ;
-               cp_loc=cur_loc;
-               cp_base_var=Some bvar;
-               cp_precond_lst=[];
-               cp_value=bvar })
-      | _ -> (Error "bake_comp_map : create_base_comp : MCC_trx_entry, 0 : cur_typ" |> Stdlib.raise))
-    | _ -> (
-      let bvar : mich_v cc = (
-        Tz.gen_custom_cc
-          cur_typ
-          (MV_symbol (cur_typ, (Jc.Locvn.to_string {loc=cur_loc; acc_l=[]})))) in
-      Some { cp_typ=cur_typ;
-             cp_loc=cur_loc;
-             cp_base_var=Some bvar;
-             cp_precond_lst=[];
-             cp_value=bvar })
+  fun entry_mci tstack -> begin
+  CList.mapi tstack
+    ~f:(fun cur_loc cur_typ -> (
+      match entry_mci.mci_cutcat, cur_loc with
+      | MCC_trx_entry   , 0 -> (
+        match cur_typ.cc_v with
+        | MT_pair (_, strg_typ) -> (
+          let bvar : Tz.mich_v Tz.cc = Tz.gen_custom_cc strg_typ (Tz.MV_symbol (strg_typ, (Jc.Locvn.for_strg))) in
+          Some ({ cp_typ=strg_typ; cp_loc=cur_loc; cp_base_var=Some bvar; cp_precond_lst=[]; cp_value=bvar; }))
+        | _ -> Error ("base_comp_from_mci : MCC_trx_entry : 0 : " ^ (cur_typ |> TzCvt.T2Jnocc.cv_mtcc |> Yojson.Safe.to_string)) |> Stdlib.raise)
+      | MCC_ln_loopleft , 0
+      | MCC_ln_map      , 0
+      | MCC_lb_loopleft , 0
+      | MCC_lb_map      , 0
+      | MCC_lb_iter     , 0 -> None
+      | MCC_ln_loopleft , _
+      | MCC_ln_map      , _
+      | MCC_lb_loopleft , _
+      | MCC_lb_map      , _
+      | MCC_lb_iter     , _ -> (
+        let cur_loc' : int = cur_loc - 1 in
+        let bvar : Tz.mich_v Tz.cc = Tz.gen_custom_cc cur_typ (Tz.MV_symbol (cur_typ, (Jc.Locvn.to_string {loc=cur_loc'; acc_l=[]}))) in
+        Some ({ cp_typ=cur_typ; cp_loc=cur_loc'; cp_base_var=Some bvar; cp_precond_lst=[]; cp_value=bvar; }))
+      | MCC_ln_loop     , _
+      | MCC_ln_iter     , _
+      | MCC_lb_loop     , _ -> (
+        let bvar : Tz.mich_v Tz.cc = Tz.gen_custom_cc cur_typ (Tz.MV_symbol (cur_typ, (Jc.Locvn.to_string {loc=cur_loc; acc_l=[]}))) in
+        Some ({ cp_typ=cur_typ; cp_loc=cur_loc; cp_base_var=Some bvar; cp_precond_lst=[]; cp_value=bvar; }))
+      | _ -> Error ("base_comp_from_mci : " ^ (entry_mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string) ^ " : " ^ (string_of_int cur_loc)) |> Stdlib.raise))
 end (* function base_comp_from_mci end *)
 
 let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t

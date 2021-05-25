@@ -44,7 +44,7 @@ type t = {
 }
 
 val base_comp_from_v : ?loc:int -> Tz.mich_v Tz.cc -> t
-val base_comp_from_mci : (Tz.mich_cut_info * int * Tz.mich_t Tz.cc) -> t option
+val base_comp_from_mci : (Tz.mich_cut_info) -> (Tz.mich_t Tz.cc) list -> (t option) list
 
 val collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
 val merge : (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t

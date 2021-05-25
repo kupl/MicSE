@@ -133,24 +133,6 @@ let map_ss_running : (Tz.sym_state -> Tz.sym_state) -> state_set -> state_set
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Utilities - Invmap                                                        *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-let true_invmap_of_blocked_sset : Tz.sym_state Tz.PSet.t -> invmap
-= let pm_add_if_possible k v pmap = PMap.add pmap ~key:k ~data:v |> (function | `Ok m -> m | `Duplicate -> pmap) in
-  fun blocked_set -> begin
-  PSet.fold blocked_set ~init:PMap.empty 
-    ~f:(fun accm bl_ss -> 
-      accm 
-      |> pm_add_if_possible bl_ss.ss_entry_mci (MF_true |> Tz.PSet.singleton)
-      |> pm_add_if_possible bl_ss.ss_block_mci (MF_true |> Tz.PSet.singleton)
-    )
-end (* function true_invmap_from_blocked end *)
-
-
-(*****************************************************************************)
-(*****************************************************************************)
 (* Run Instruction                                                           *)
 (*****************************************************************************)
 (*****************************************************************************)
@@ -1109,6 +1091,52 @@ end (* function run_inst_in_fog end *)
 (*****************************************************************************)
 
 (*****************************************************************************)
+(* Get Coupled mich_cut_info for indicating invariant                        *)
+(*****************************************************************************)
+
+let get_normal_mci : invmap -> Tz.mich_cut_info -> Tz.mich_cut_info
+= let module CPMap = Core.Map.Poly in
+  let module CList = Core.List in
+  (* function get_normal_mcc start *)
+  fun invm mci -> begin
+  match mci.mci_cutcat with
+  | MCC_trx_entry
+  | MCC_ln_loop
+  | MCC_ln_loopleft
+  | MCC_ln_map
+  | MCC_ln_iter     -> mci
+  | MCC_trx_exit    -> (
+    CPMap.keys invm
+    |> CList.find ~f:(fun m -> Tz.is_trx_entry_mcc m.mci_cutcat)
+    |> (function Some mmm -> mmm | None -> Error "get_normal_mci : MCC_trx_exit" |> Stdlib.raise))
+  | MCC_lb_loop
+  | MCC_lb_loopleft
+  | MCC_lb_map
+  | MCC_lb_iter     -> mci |> Tz.ln_of_lb_exn ~debug:("get_normal_mci : " ^ (mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string))
+  | MCC_query       -> Error "get_normal_mci : MCC_query" |> Stdlib.raise
+end (* function get_normal_mci end *)
+
+
+(*****************************************************************************)
+(* Initial invariant map                                                     *)
+(*****************************************************************************)
+
+let true_invmap_of_blocked_sset : Tz.sym_state Tz.PSet.t -> invmap
+= let pm_add_if_possible k v pmap = (
+    if Tz.is_normal_mcc k.mci_cutcat then
+      PMap.add pmap ~key:k ~data:v |> (function | `Ok m -> m | `Duplicate -> pmap)
+    else pmap) in
+  fun blocked_set -> begin
+  PSet.fold blocked_set ~init:PMap.empty 
+    ~f:(fun accm bl_ss -> 
+      accm 
+      |> pm_add_if_possible bl_ss.ss_entry_mci (MF_true |> Tz.PSet.singleton)
+      |> pm_add_if_possible bl_ss.ss_block_mci (MF_true |> Tz.PSet.singleton)
+    )
+end (* function true_invmap_from_blocked end *)
+
+
+(*****************************************************************************)
 (* Invariant Application form for each mich_cut_category                     *)
 (*****************************************************************************)
 
@@ -1126,25 +1154,47 @@ let extract_typ_stack : Tz.mich_v Tz.cc list -> Tz.mich_t Tz.cc list
     ~init:[]
 end (* function get_type stack end *)
 
-let inv_app_guide_vstack : mich_f Core.Set.Poly.t -> (mich_v cc list * mich_cut_info option) -> mich_f
+let inv_app_guide_vstack : mich_f Core.Set.Poly.t -> ([`Entry | `Block] * mich_cut_info option * mich_v cc list) -> mich_f
 = let module CList = Core.List in
   let module CPSet = Core.Set.Poly in
   (* function inv_app_guide_vstack start *)
-  fun inv_fs (vs, mci_opt) -> begin
-  (* 1. make base variable from type stack *)
+  fun inv_fs (mci_loc, mci_opt, vs) -> begin
+  (* 0. set value stack following the mci *)
+  let vs' : mich_v cc list = (
+    if Option.is_none mci_opt then vs
+    else (
+      match (Option.get mci_opt).mci_cutcat, mci_loc with
+      | MCC_trx_entry   , `Entry
+      | MCC_trx_exit    , `Block -> (
+        if CList.length vs <> 1 then (Error "inv_app_guide_vstack : vs' : MCC_trx_entry | MCC_trx_exit" |> Stdlib.raise)
+        else (vs |> CList.hd_exn |> (fun v -> MV_cdr v |> gen_dummy_cc))::[])
+      | MCC_ln_loop     , `Entry
+      | MCC_lb_loop     , `Entry
+      | MCC_ln_iter     , `Entry
+      | MCC_lb_iter     , `Block -> vs
+      | MCC_ln_loop     , `Block
+      | MCC_lb_loop     , `Block
+      | MCC_ln_loopleft , `Entry
+      | MCC_lb_loopleft , `Entry
+      | MCC_ln_loopleft , `Block
+      | MCC_lb_loopleft , `Block
+      | MCC_lb_iter     , `Entry
+      | MCC_ln_iter     , `Block
+      | MCC_ln_map      , `Entry
+      | MCC_lb_map      , `Entry
+      | MCC_ln_map      , `Block
+      | MCC_lb_map      , `Block -> vs |> CList.tl |> (function Some lll -> lll | None -> Error "inv_app_guide_vstack : vs' : CList.tl" |> Stdlib.raise)
+      | _ -> Error ("inv_app_guide_vstack : vs' : " ^ (mci_opt |> Option.get |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string)) |> Stdlib.raise)) in
+  (* 1. make base variable and value pair *)
   let vsp : (mich_v cc * mich_v cc) list = (
-    CList.mapi
-      vs
+    CList.mapi vs'
       ~f:(fun loc v -> (
-        if (Option.is_some mci_opt) && 
-           ((Option.get mci_opt).mci_cutcat = MCC_trx_exit || (Option.get mci_opt).mci_cutcat = MCC_trx_entry) &&
-           loc = 0 then (
-          let strg_v : mich_v cc = (MV_cdr v |> gen_dummy_cc) in
-          let strg_t : mich_t cc = strg_v |> typ_of_val in
-          ((gen_dummy_cc (MV_symbol ((strg_t |> get_dummy_cc_of_typ), (Jc.Locvn.to_string {loc=loc; acc_l=[(Jc.abr_v_cdr)]})))), strg_v))
+        if (Option.is_some mci_opt) && ((Option.get mci_opt).mci_cutcat = MCC_trx_exit || (Option.get mci_opt).mci_cutcat = MCC_trx_entry) && loc = 0 then (
+          let t : mich_t cc = v |> typ_of_val in
+          (gen_dummy_cc (MV_symbol ((t |> get_dummy_cc_of_typ), Jc.Locvn.for_strg))), v)
         else
           let t : mich_t cc = v |> typ_of_val in
-          ((gen_dummy_cc (MV_symbol ((t |> get_dummy_cc_of_typ), (Jc.Locvn.to_string {loc=loc; acc_l=[]})))), v)))) in
+          (gen_dummy_cc (MV_symbol ((t |> get_dummy_cc_of_typ), (Jc.Locvn.to_string {loc=loc; acc_l=[]})))), v))) in
   (* 2. substitute each base variable to proper value *)
   CList.fold vsp
     ~init:(MF_and (inv_fs |> CPSet.to_list))
@@ -1155,13 +1205,13 @@ end (* function inv_app_guide_vstack end *)
 let inv_app_guide_entry : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
 = (* function inv_app_guide_entry start *)
   fun inv_fs ss -> begin
-  inv_app_guide_vstack inv_fs (ss.ss_entry_symstack, Some ss.ss_entry_mci)
+  inv_app_guide_vstack inv_fs (`Entry, Some ss.ss_entry_mci, ss.ss_entry_symstack)
 end (* function inv_app_guide_entry end *)
 
 let inv_app_guide_block : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
 = (* function inv_app_guide_block start *)
   fun inv_fs ss -> begin
-  inv_app_guide_vstack inv_fs (ss.ss_symstack, Some ss.ss_block_mci)
+  inv_app_guide_vstack inv_fs (`Block, Some ss.ss_block_mci, ss.ss_symstack)
 end (* function inv_app_guide_block end *)
 
 
@@ -1169,18 +1219,20 @@ end (* function inv_app_guide_block end *)
 (* Invariant Map to Michelson Formula                                        *)
 (*****************************************************************************)
 
+let find_inv_fmla : invmap -> Tz.mich_cut_info -> Tz.mich_f PSet.t
+= (* function find_inv_fmla start *)
+  fun invm mci -> begin
+  PMap.find invm (get_normal_mci invm mci)
+  |> (function Some sss -> sss | None -> PSet.empty)
+end (* function find_inv_fmla end *)
+
 let inv_induct_fmla_i : Tz.sym_state -> invmap -> Tz.mich_f
 = fun blocked_ss invm -> begin
-  match (PMap.find invm blocked_ss.ss_entry_mci, PMap.find invm blocked_ss.ss_block_mci) with
-  | (Some inv_entry, Some inv_block) ->
-      (* DEBUG START *)
-      Utils.Log.debug (fun m -> m "New Inductiveness Checking\nEntry MCI: %s\n> Inv Entry: %s\n> Inv Block: %s" 
-        (blocked_ss.ss_entry_mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string)
-        ((inv_app_guide_entry inv_entry blocked_ss) |> TzCvt.T2Jnocc.cv_mf |> Yojson.Safe.to_string)
-        ((inv_app_guide_block inv_block blocked_ss) |> TzCvt.T2Jnocc.cv_mf |> Yojson.Safe.to_string));
-      (* DEBUG END *)
-      MF_imply (MF_and ((inv_app_guide_entry inv_entry blocked_ss) :: blocked_ss.ss_constraints), inv_app_guide_block inv_block blocked_ss)
-  | _ -> Error "inv_induct_fmla : cannot find invariant" |> raise
+  let inv_entry : Tz.mich_f PSet.t = find_inv_fmla invm blocked_ss.ss_entry_mci in
+  let inv_block : Tz.mich_f PSet.t = find_inv_fmla invm blocked_ss.ss_block_mci in
+  match (PSet.length inv_entry, PSet.length inv_block) with
+  | 0, _ | _, 0 -> Error "inv_induct_fmla : cannot find invariant" |> raise
+  | _ -> MF_imply (MF_and ((inv_app_guide_entry inv_entry blocked_ss) :: blocked_ss.ss_constraints), inv_app_guide_block inv_block blocked_ss)
 end (* function inv_induct_fmla_i end *) 
 let inv_induct_fmla : (Tz.sym_state Tz.PSet.t) -> invmap -> (Tz.mich_f Tz.PSet.t)
 = fun blocked_sset invm -> begin
@@ -1189,8 +1241,8 @@ end (* function inv_induct_fmla end *)
 let inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
 = fun query_ssp invm -> begin
   let query_ss = Stdlib.fst query_ssp in
-  let inv_entry = PMap.find invm query_ss.ss_entry_mci 
-                  |> (function | Some v -> v | None -> Error "inv_query_fmla : inv_entry : not-found" |> raise) 
+  let inv_entry = find_inv_fmla invm query_ss.ss_entry_mci 
+    |> (fun s -> if PSet.length s > 0 then s else  Error "inv_query_fmla : inv_entry : not-found" |> raise)
   in
   let entry_fmla = inv_app_guide_entry inv_entry query_ss in
   let query = state_query_reduce query_ssp in
@@ -1199,8 +1251,8 @@ end (* function inv_query_fmla end *)
 let inv_query_fmla_with_precond : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f -> Tz.mich_f
 = fun query_ssp invm precond -> begin
   let query_ss = Stdlib.fst query_ssp in
-  let inv_entry = PMap.find invm query_ss.ss_entry_mci 
-                  |> (function | Some v -> v | None -> Error "inv_query_fmla : inv_entry : not-found" |> raise) 
+  let inv_entry = find_inv_fmla invm query_ss.ss_entry_mci 
+    |> (fun s -> if PSet.length s > 0 then s else  Error "inv_query_fmla : inv_entry : not-found" |> raise)
   in
   let entry_fmla = inv_app_guide_entry inv_entry query_ss in
   let query = state_query_reduce query_ssp in
