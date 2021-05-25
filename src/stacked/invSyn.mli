@@ -36,6 +36,7 @@ val combination_self_two_diff_rf : 'a Core.Set.Poly.t -> ('a * 'a) Core.Set.Poly
 type comp_map = (Tz.mich_cut_info, (Comp.t Core.Set.Poly.t) Comp.CTMap.t) Core.Map.Poly.t
 
 val bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> comp_map
+val bake_mci_couple : Tz.sym_state Core.Set.Poly.t -> (Tz.mich_cut_info, Tz.mich_cut_info) Core.Map.Poly.t
 (* val init_invmap : comp_map -> Tz.sym_state -> Se.invmap -> Se.invmap *)
 
 (*****************************************************************************)
@@ -56,22 +57,22 @@ val add_2_eq : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mic
 (*****************************************************************************)
 (*****************************************************************************)
 
-type generate_param = 
+type generate_param =
+  (* igi_mci_couple *)  (Tz.mich_cut_info, Tz.mich_cut_info) Core.Map.Poly.t *
   (* igi_failed_set *)  ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Core.Set.Poly.t *
   (* igi_cur_inv *)     Se.invmap *
   (* igi_comp_map *)    comp_map *
   (* igi_collected *)   Se.invmap Core.Set.Poly.t
 
 type ingredients = {
-  igdt_query_category : Se.query_category;
-  igdt_model_opt      : ProverLib.Smt.ZModel.t option;
-  igdt_vc             : Tz.mich_f;
-  igdt_sym_state      : Tz.sym_state;
+  igdt_mci            : Tz.mich_cut_info;
   igdt_comp_type_map  : (Comp.t Core.Set.Poly.t) Comp.CTMap.t
 }
 
 val collect_set : ('a Core.Set.Poly.t) list -> 'a Core.Set.Poly.t
-val refine_t : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
-val refine_l : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
+val combinate_invmap : Se.invmap -> (Tz.mich_cut_info, Tz.mich_f Core.Set.Poly.t) Core.Map.Poly.t -> Tz.mich_cut_info Core.Set.Poly.t -> (Tz.mich_cut_info, Tz.mich_cut_info) Core.Map.Poly.t -> Se.invmap Core.Set.Poly.t
+
+val refine_t : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
+val refine_l : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
 
 val generate : generate_param -> Se.invmap Core.Set.Poly.t

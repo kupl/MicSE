@@ -372,6 +372,7 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
   (* (Utils.Log.debug (fun m -> m "Prove : main : Initial Worklist Length : %d" (w_init |> CPSet.length))); *)
   let res_init : ret = { solved_map=CPMap.empty; failed_set=CPSet.empty; untouched_set=sset.queries } in
   let comp_map : InvSyn.comp_map = InvSyn.bake_comp_map (sset, init_stg_opt_ss) in
+  let mci_couple : (Tz.mich_cut_info, Tz.mich_cut_info) Core.Map.Poly.t = InvSyn.bake_mci_couple sset.Se.blocked in
   (* let inv_init : Se.invmap = sset.Se.blocked |> Se.true_invmap_of_blocked_sset |> InvSyn.init_invmap comp_map (Stdlib.snd init_stg_opt_ss) in
   let w_init : worklist = inv_init |> Tz.PSet.singleton in *)
   let timer : Utils.Timer.t ref = Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget) in
@@ -392,7 +393,7 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
       let res : ret = union_result ~prev_res ~cur_res in
       if CPSet.length res.failed_set = 0 && CPSet.length res.untouched_set = 0 then res
       else
-        let w'' : worklist = InvSyn.generate (res.failed_set, inv_cand, comp_map, collected') in
+        let w'' : worklist = InvSyn.generate (mci_couple, res.failed_set, inv_cand, comp_map, collected') in
         let w''' : worklist = Tz.PSet.union (strengthen_wl w' inv_cand) w'' in
         prove_loop (w''', collected') res
     else prove_loop (w', collected') prev_res

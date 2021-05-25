@@ -131,11 +131,46 @@ let bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> 
           match base_comp_opt with
           | None -> ctmap
           | Some base_comp -> (
-            (if key.mci_cutcat = MCC_trx_entry && Option.is_some init_strg_opt then (
+            (if Option.is_some init_strg_opt then (
               Comp.collect (Comp.base_comp_from_v (Option.get init_strg_opt) ~loc:base_comp.cp_loc) ctmap)
             else ctmap)
             |> Comp.collect base_comp)))))
 end (* function bake_comp_map end *)
+
+let bake_mci_couple : Tz.sym_state Core.Set.Poly.t -> (Tz.mich_cut_info, Tz.mich_cut_info) Core.Map.Poly.t
+= let module CPSet = Core.Set.Poly in
+  let module CPMap = Core.Map.Poly in
+  (* function bake_mci_couple start *)
+  fun blocked_set -> begin
+  let mci_set : Tz.mich_cut_info CPSet.t = (
+    blocked_set
+    |> CPSet.fold
+      ~init:CPSet.empty
+      ~f:(fun acc bl_ss -> CPSet.add (CPSet.add acc bl_ss.Tz.ss_entry_mci) bl_ss.Tz.ss_block_mci)) in
+  mci_set
+  |> CPSet.fold
+    ~init:CPMap.empty
+    ~f:(fun acc mci -> (
+      match mci.Tz.mci_cutcat with
+      | Tz.MCC_trx_entry -> (
+        let exit : Tz.mich_cut_info = (
+          CPSet.find mci_set ~f:(fun mmccii -> Tz.is_trx_exit_mcc mmccii.mci_cutcat)
+          |> (function Some mmccii -> mmccii | None -> Error "bake_mci_couple : MCC_trx_entry" |> Stdlib.raise)) in
+        CPMap.update acc mci ~f:(function None -> exit | Some _ -> exit))
+      | Tz.MCC_trx_exit -> (
+        let entry : Tz.mich_cut_info = (
+          CPSet.find mci_set ~f:(fun mmccii -> Tz.is_trx_entry_mcc mmccii.mci_cutcat)
+          |> (function Some mmccii -> mmccii | None -> Error "bake_mci_couple : MCC_trx_exit" |> Stdlib.raise)) in
+        CPMap.update acc mci ~f:(function None -> entry | Some _ -> entry))
+      | Tz.MCC_query -> Error "bake_mci_couple : MCC_query" |> Stdlib.raise
+      | _ -> (
+        if Tz.is_lb_mcc mci.Tz.mci_cutcat then (
+          CPMap.update acc mci
+            ~f:(function None -> (mci |> Tz.ln_of_lb_exn ~debug:"bake_mci_couple : _ : is_lb_mcc") | Some sss -> sss))
+        else (
+          CPMap.update acc mci
+            ~f:(function None -> (mci |> Tz.lb_of_ln_exn ~debug:"bake_mci_couple : _ : not is_lb_mcc") | Some sss -> sss)))))
+end (* function bake_mci_couple end *)
 
 (* 
 let init_invmap : comp_map -> Tz.sym_state -> Se.invmap -> Se.invmap
@@ -301,16 +336,14 @@ end (* function add_2_eq end *)
 (*****************************************************************************)
 
 type generate_param = 
+  (* igi_mci_couple *)    (Tz.mich_cut_info, Tz.mich_cut_info) Core.Map.Poly.t *
   (* igi_failed_set *)    ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Core.Set.Poly.t *
   (* igi_cur_inv *)       Se.invmap *
   (* igi_comp_map *)      comp_map *
   (* igi_collected *)     Se.invmap Core.Set.Poly.t
 
 type ingredients = {
-  igdt_query_category : Se.query_category;
-  igdt_model_opt      : ProverLib.Smt.ZModel.t option;
-  igdt_vc             : Tz.mich_f;
-  igdt_sym_state      : Tz.sym_state;
+  igdt_mci            : Tz.mich_cut_info;
   igdt_comp_type_map  : (Comp.t Core.Set.Poly.t) Comp.CTMap.t
 }
 
@@ -326,7 +359,83 @@ let collect_set : ('a Core.Set.Poly.t) list -> 'a Core.Set.Poly.t
   (* function collect_set end *)
 end
 
-let refine_t : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
+let combinate_invmap : 
+  Se.invmap ->
+  (Tz.mich_cut_info, Tz.mich_f Core.Set.Poly.t) Core.Map.Poly.t ->
+  Tz.mich_cut_info Core.Set.Poly.t ->
+  (Tz.mich_cut_info, Tz.mich_cut_info) Core.Map.Poly.t ->
+  Se.invmap Core.Set.Poly.t
+= let module CPSet = Core.Set.Poly in
+  let module CPMap = Core.Map.Poly in
+  let rec combinate_invmap_i :
+    (Tz.mich_cut_info, Tz.mich_f CPSet.t) CPMap.t ->
+    (Tz.mich_cut_info, Tz.mich_cut_info) Core.Map.Poly.t ->
+    Tz.mich_cut_info CPSet.t ->
+    Se.invmap CPSet.t -> 
+    Se.invmap CPSet.t
+  = (* function combinate_invmap_i start *)
+    fun cand_map mci_couple mci_set acc -> begin
+    if CPSet.is_empty mci_set then acc
+    else (
+      let get_partner_mcc : Tz.mich_cut_info -> Tz.mich_cut_info = (* syntax sugar *) (
+        fun key -> (
+          CPMap.find mci_couple key
+          |> (function Some mmccii -> mmccii | None -> Error "generate : partner_mcc" |> Stdlib.raise))) in
+      (* 1. get MCI target *)
+      let target : Tz.mich_cut_info = (
+        CPSet.choose mci_set
+        |> (function Some mci -> mci | None -> Error "combinate_invmap : combinate_invmap_i : target" |> Stdlib.raise)) in
+      let mci_set' : Tz.mich_cut_info CPSet.t = CPSet.remove mci_set target in
+      (* 2. get set of formulas in target MCI *)
+      let target_cand : Tz.mich_f CPSet.t = (
+        CPMap.find cand_map target
+        |> (function Some sss -> sss | None -> CPSet.empty)) in
+      (* 3. make combinations *)
+      let acc' : Se.invmap CPSet.t = (
+        if CPSet.is_empty acc then (
+          (* input candidates as a singleton set *)
+          CPSet.fold target_cand
+            ~init:CPSet.empty
+            ~f:(fun tacc cand -> (
+              let update_f : Tz.mich_f CPSet.t option -> Tz.mich_f CPSet.t = (
+                function None -> CPSet.singleton cand | Some sss -> CPSet.add sss cand) in
+              let invmap' = CPMap.update (CPMap.singleton target (CPSet.singleton cand)) target ~f:update_f in
+              CPSet.add tacc (CPMap.update invmap' (get_partner_mcc target) ~f:update_f))))
+        else (
+          (* attach the candidates to the acc inv candidates *)
+          CPSet.fold target_cand
+            ~init:CPSet.empty
+            ~f:(fun tacc cand -> (
+              CPSet.union tacc
+                (CPSet.map acc
+                  ~f:(fun invmap -> (
+                    let update_f : Tz.mich_f CPSet.t option -> Tz.mich_f CPSet.t = (
+                      function None -> CPSet.singleton cand | Some sss -> CPSet.add sss cand) in
+                    let invmap' = CPMap.update invmap target ~f:update_f in
+                    CPMap.update invmap' (get_partner_mcc target) ~f:update_f))))))) in
+      (Utils.Log.debug (fun m -> m "Comb:\n > Cand: %d\n > ACC_before: %d\n > ACC_after: %d" (CPSet.length target_cand) (CPSet.length acc) (CPSet.length acc')));
+      (* 4. Fold *)
+      combinate_invmap_i cand_map mci_couple mci_set' acc')
+  end in (* function combinate_invmap_i end *)
+  (* function combinate_invmap start *)
+  fun cur_invmap cand_map target_mci mci_couple -> begin
+  (* 1. get combinations *)
+  combinate_invmap_i cand_map mci_couple target_mci CPSet.empty
+  (* 2. merge with current invmap *)
+  |> CPSet.map
+    ~f:(fun new_invmap -> (
+      CPMap.merge
+        cur_invmap
+        new_invmap
+        ~f:(fun ~key indicator -> (
+          let _ = key in
+          match indicator with
+          | `Both (s1, s2) -> Some (CPSet.union s1 s2)
+          | `Left s1 -> Some s1
+          | `Right s2 -> Some s2))))
+end (* function combinate_invmap end *)
+
+let refine_t : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
 = let open Tz in
   let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
@@ -340,30 +449,25 @@ let refine_t : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
   let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in
   let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in
   (* 2. generate invariant map *)
-  let fmlas : (Tz.mich_f * Tz.mich_f) CPSet.t = 
     [ all_eq_fmlas;
       all_ge_fmlas;
       all_gt_fmlas;
       add_2_eq_fmlas; ]
     |> collect_set
-    |> CPSet.map ~f:(fun entry_f -> ((entry_f, entry_f))) in
-  CPSet.map
-    fmlas
-    ~f:(fun (entry_f, exit_f) -> (
-          CPMap.mapi
+  |> CPSet.filter
+  ~f:(fun c -> (
+    CPMap.find
             cur_inv
-            ~f:(fun ~key ~data ->
-                  if key.mci_cutcat = MCC_trx_entry then CPSet.add data entry_f
-                  else if key.mci_cutcat = MCC_trx_exit then CPSet.add data exit_f
-                  else data)))
+      igdt.igdt_mci
+    |> (function None -> CPSet.empty | Some ss -> ss)
+    |> (fun ss -> Stdlib.not (CPSet.mem ss c))))
 end (* function refine_t end *)
 
-let refine_l : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
+let refine_l : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
 = let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
   fun cur_inv igdt -> begin
   (* refine_l function start *)
-  let _ = cur_inv, igdt in
   (* 0. extract component on loop entrance *)
   let ctmap = igdt.igdt_comp_type_map in
   (* 1. generate recipe *)
@@ -372,31 +476,66 @@ let refine_l : Se.invmap -> ingredients -> Se.invmap Core.Set.Poly.t
   let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in
   let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in
   (* 2. generate invariant map *)
-  let fmlas : Tz.mich_f CPSet.t =
     [ all_eq_fmlas;
       all_ge_fmlas;
       all_gt_fmlas;
       add_2_eq_fmlas; ]
-    |> collect_set in
-  CPSet.map
-    fmlas
-    ~f:(fun f -> (
-          CPMap.mapi
+  |> collect_set
+  |> CPSet.filter
+    ~f:(fun c -> (
+      CPMap.find
             cur_inv
-            ~f:(fun ~key ~data -> (
-                  if key = igdt.igdt_sym_state.ss_entry_mci then CPSet.add data f
-                  else data))))
+        igdt.igdt_mci
+      |> (function None -> CPSet.empty | Some ss -> ss)
+      |> (fun ss -> Stdlib.not (CPSet.mem ss c))))
   (* refine_l function end *)
 end
 
 let generate : generate_param -> Se.invmap Core.Set.Poly.t
-= let open Tz in
-  let module CPSet = Core.Set.Poly in
+= let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
-  fun (igi_failed_set, igi_cur_inv, igi_comp_map, igi_collected) -> begin
+  let cand_update : (Tz.mich_cut_info, Tz.mich_f CPSet.t) CPMap.t -> 
+                    Tz.mich_cut_info -> 
+                    Tz.mich_f CPSet.t -> 
+                    (Tz.mich_cut_info, Tz.mich_f CPSet.t) CPMap.t
+  = (* function cand_update start *)
+    fun accm key cand -> begin
+    CPMap.update accm key
+      ~f:(fun cset_opt -> (
+        if Option.is_none cset_opt then (CPSet.add cand MF_true)
+        else (CPSet.union (Option.get cset_opt) cand)))
+  end in (* function cand_update end *)
+  fun (igi_mci_couple, igi_failed_set, igi_cur_inv, igi_comp_map, igi_collected) -> begin
   (* generate function start *)
+  let _ = igi_failed_set in
+  (* 1. collect ingredients *)
+  let refine_targets : (Tz.mich_cut_info, ingredients) CPMap.t = (
+    CPMap.mapi
+      igi_comp_map
+      ~f:(fun ~key ~data -> (
+        let _ = data in
+        (* 1-1. get component type map *)
+        let ctmap : (Comp.t CPSet.t) Comp.CTMap.t = (
+          CPMap.find igi_comp_map key
+          |> (function Some ccss -> ccss | None -> Error "generate : refine_targets : ctmap" |> Stdlib.raise)) in
+        (* 1-2. make new ingredients *)
+        { igdt_mci=key;
+          igdt_comp_type_map=ctmap; }))) in
+  (* 2. collect candidates from ingredients *)
+  let cand_map : (Tz.mich_cut_info, Tz.mich_f CPSet.t) CPMap.t = (
+    CPMap.fold
+      refine_targets
+      ~init:CPMap.empty
+      ~f:(fun ~key ~data accm -> (
+        let rf : ingredients -> Tz.mich_f CPSet.t = (
+          if Tz.is_trx_entry_mcc key.mci_cutcat then (refine_t igi_cur_inv) else (refine_l igi_cur_inv)) in
+        cand_update accm key (rf data)))) in
+    let target_mci : Tz.mich_cut_info CPSet.t = refine_targets |> CPMap.keys |> CPSet.of_list in
+  combinate_invmap igi_cur_inv cand_map target_mci igi_mci_couple
+  |> (fun x -> (Utils.Log.debug (fun m -> m "CAND: cand_length = %d" (CPSet.length x))); x)
+  |> (fun new_gen_inv -> CPSet.diff new_gen_inv igi_collected)
   (* 1. collect refine targets *)
-  let refine_targets : (Tz.mich_cut_info, (ingredients CPSet.t)) CPMap.t =
+  (* let refine_targets : (Tz.mich_cut_info, (ingredients CPSet.t)) CPMap.t =
     CPSet.fold
       igi_failed_set
       ~init:CPMap.empty
@@ -435,6 +574,6 @@ let generate : generate_param -> Se.invmap Core.Set.Poly.t
             data
             ~init:acc
             ~f:(fun acc igdt -> CPSet.union acc (rf igdt))) in
-  CPSet.diff newly_generated_inv igi_collected
+  CPSet.diff newly_generated_inv igi_collected *)
   (* generate function end *)
 end

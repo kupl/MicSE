@@ -546,6 +546,8 @@ val ln_of_lb_mci : mich_cut_info -> mich_cut_info option
 val ln_of_lb_exn : mich_cut_info -> debug:(string) -> mich_cut_info
 val is_lb_mcc : mich_cut_category -> bool
 
+val is_trx_entry_mcc : mich_cut_category -> bool
+val is_trx_exit_mcc : mich_cut_category -> bool
 
 (*****************************************************************************)
 (* Symbol & Symbolic Stack                                                   *)

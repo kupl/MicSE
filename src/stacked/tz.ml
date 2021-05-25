@@ -891,6 +891,36 @@ let is_lb_mcc : mich_cut_category -> bool =
   | MCC_query         -> false
   )
 
+let is_trx_entry_mcc : mich_cut_category -> bool =
+  (function
+  | MCC_ln_loop       -> false
+  | MCC_ln_loopleft   -> false
+  | MCC_ln_map        -> false
+  | MCC_ln_iter       -> false
+  | MCC_trx_entry     -> true
+  | MCC_trx_exit      -> false
+  | MCC_lb_loop       -> false
+  | MCC_lb_loopleft   -> false
+  | MCC_lb_map        -> false
+  | MCC_lb_iter       -> false
+  | MCC_query         -> false
+  )
+
+let is_trx_exit_mcc : mich_cut_category -> bool =
+  (function
+  | MCC_ln_loop       -> false
+  | MCC_ln_loopleft   -> false
+  | MCC_ln_map        -> false
+  | MCC_ln_iter       -> false
+  | MCC_trx_entry     -> false
+  | MCC_trx_exit      -> true
+  | MCC_lb_loop       -> false
+  | MCC_lb_loopleft   -> false
+  | MCC_lb_map        -> false
+  | MCC_lb_iter       -> false
+  | MCC_query         -> false
+  )
+
 
 (*****************************************************************************)
 (* Symbol & Symbolic Stack                                                   *)
