@@ -1141,7 +1141,13 @@ let optimize_v : mich_v cc -> mich_v cc
     | MV_ediv_iiin (v1, v2)           -> MV_ediv_iiin ((ov v1), (ov v2))
     | MV_ediv_mnmm (v1, v2)           -> MV_ediv_mnmm ((ov v1), (ov v2))
     | MV_ediv_mmnm (v1, v2)           -> MV_ediv_mmnm ((ov v1), (ov v2))
-    | MV_get_xmoy  (v1, v2)           -> MV_get_xmoy ((ov v1), (ov v2))
+    | MV_get_xmoy  (v1, v2)           -> (
+      let vvv' : mich_v cc = ov v2 in
+      (match vvv'.cc_v with
+      | MV_update_xomm (k, v_opt, _) -> (
+        if k = v1 then v_opt.cc_v else MV_get_xmoy ((ov v1), (vvv')))
+      | _ -> MV_get_xmoy ((ov v1), (vvv'))))
+    (* | MV_get_xmoy  (v1, v2)           -> MV_get_xmoy ((ov v1), (ov v2)) *)
     | MV_get_xbmo  (v1, v2)           -> MV_get_xbmo ((ov v1), (ov v2))
     | MV_slice_nnso (v1, v2, v3)      -> MV_slice_nnso ((ov v1), (ov v2), (ov v3))
     | MV_slice_nnbo (v1, v2, v3)      -> MV_slice_nnbo ((ov v1), (ov v2), (ov v3))
