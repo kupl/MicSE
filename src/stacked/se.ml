@@ -285,8 +285,23 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       ss_symstack;
       ss_constraints=_;
     } = ss in
+  (*
+  (* resolve ss_symstack optimization issue *)
+  let ss_symstack : mich_v cc list = (
+    match ss_symstack with
+    | [] -> []
+    | hd :: tl -> (Tz.optimize_v hd) :: tl
+  ) in
+  *)
   match inst.cc_v with
   | MI_seq (i1,i2) -> ss |> ss_to_srset |> run_inst cache i1 |> run_inst cache i2
+  (* | MI_seq (i1, i2) ->
+    let result_i1 = run_inst_i cache i1 ss in
+    let {running=r1; blocked=b1; queries=q1; terminated=t1;} = result_i1 in
+    (match (PSet.length r1, PSet.length b1, PSet.length q1, PSet.length t1) with
+    | 1, 0, 0, 0 -> print_endline (Stdlib.__LOC__ ^ " : DEBUG : 1"); run_inst_i cache i2 (PSet.choose_exn r1)
+    | _ -> print_endline (Stdlib.__LOC__ ^ " : DEBUG : NONOOOs"); run_inst cache i2 result_i1
+    ) *)
   | MI_drop zn -> (CList.split_n ss_symstack (Z.to_int zn) |> Stdlib.snd) |> sstack_to_srset ss
   | MI_dup zn -> (CList.nth_exn ss_symstack (Z.to_int zn - 1)) :: ss_symstack |> sstack_to_srset ss
   | MI_swap ->
@@ -316,16 +331,18 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let then_br_sset : state_set =
       (CList.tl_exn ss_symstack)
       |> sstack_to_ss (ss_add_constraint ss cond_constraint)
-      |> ss_to_srset
-      |> run_inst cache i1
+      (* |> ss_to_srset
+      |> run_inst cache i1 *)
+      |> run_inst_i cache i1
     in
     let else_br_sset : state_set = 
       let some_vvv : mich_v cc = MV_unlift_option (CList.hd_exn ss_symstack) |> gen_inst_cc in
       some_vvv
       |> cons_tl_n ss_symstack 1
       |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_constraint ss (MF_not cond_constraint)) some_vvv)
-      |> ss_to_srset
-      |> run_inst cache i2
+      (* |> ss_to_srset
+      |> run_inst cache i2 *)
+      |> run_inst_i cache i2
     in
     sset_union_pointwise then_br_sset else_br_sset
   | MI_pair ->
@@ -362,16 +379,18 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       left_vvv
       |> cons_tl_n ss_symstack 1
       |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_constraint ss cond_constraint) left_vvv)
-      |> ss_to_srset
-      |> run_inst cache i1
+      (* |> ss_to_srset
+      |> run_inst cache i1 *)
+      |> run_inst_i cache i1
     in
     let else_br_sset : state_set =
       let right_vvv : mich_v cc = MV_unlift_right (CList.hd_exn ss_symstack) |> gen_inst_cc in
       right_vvv
       |> cons_tl_n ss_symstack 1
       |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez (ss_add_constraint ss (MF_not cond_constraint)) right_vvv)
-      |> ss_to_srset
-      |> run_inst cache i2
+      (* |> ss_to_srset
+      |> run_inst cache i2 *)
+      |> run_inst_i cache i2
     in
     sset_union_pointwise then_br_sset else_br_sset
   | MI_nil t -> (MV_nil t |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
@@ -392,14 +411,16 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
             (ss_add_constraint ss cond_constraint) 
             hd_vvv) 
           listv)
-      |> ss_to_srset
-      |> run_inst cache i1
+      (* |> ss_to_srset
+      |> run_inst cache i1 *)
+      |> run_inst_i cache i1
     in
     let else_br_sset : state_set =
       (CList.tl_exn ss_symstack)
       |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
-      |> ss_to_srset
-      |> run_inst cache i2
+      (* |> ss_to_srset
+      |> run_inst cache i2 *)
+      |> run_inst_i cache i2
     in
     sset_union_pointwise then_br_sset else_br_sset
   | MI_size ->
@@ -540,14 +561,16 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     let then_br_sset : state_set =
       (CList.tl_exn ss_symstack)
       |> sstack_to_ss (ss_add_constraint ss cond_constraint)
-      |> ss_to_srset
-      |> run_inst cache i1
+      (* |> ss_to_srset
+      |> run_inst cache i1 *)
+      |> run_inst_i cache i1
     in
     let else_br_sset : state_set =
       (CList.tl_exn ss_symstack)
       |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
-      |> ss_to_srset
-      |> run_inst cache i2
+      (* |> ss_to_srset
+      |> run_inst cache i2 *)
+      |> run_inst_i cache i2
     in
     sset_union_pointwise then_br_sset else_br_sset
   | MI_loop (i) ->
@@ -885,6 +908,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     (MV_lit_contract ((typ_of_val ss.ss_optt.optt_param), ss.ss_optt.optt_addr) |> gen_inst_cc) 
     |> sstack_push ss_symstack
     |> sstack_to_srset ss
+  (*
   | MI_contract t ->
     (* In the concrete execution, Michelson-VM will seek fixed-blockchain if there are any contract exists.
       However, it is impossible to encode such information in Tz.bc_code.
@@ -903,6 +927,13 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> sstack_to_srset ss
     in
     sset_union_pointwise found_br_sset not_found_br_sset
+  *)
+  | MI_contract t ->
+    (* As current MicSE's verification does not require any blockchain value, 
+      previous approach which generates two running states will be deprecated. *)
+    (MV_contract_of_address (t, CList.hd_exn ss_symstack) |> gen_inst_cc)
+    |> cons_tl_n ss_symstack 1
+    |> sstack_to_srset ss
   | MI_transfer_tokens ->
     let (h,h2,h3) = (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1, CList.nth_exn ss_symstack 2) in
     (MV_transfer_tokens (h,h2,h3) |> gen_inst_cc)
