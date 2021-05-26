@@ -1,0 +1,88 @@
+parameter (or (mutez %addElem) (unit %retElem));
+storage   (pair (list %lst mutez) (mutez %total));
+code
+  {
+    DUP;        # pair @parameter @storage : pair @parameter @storage
+    CDR;        # @storage : pair @parameter @storage
+    SWAP;       # pair @parameter @storage : @storage
+    CAR;        # @parameter : @storage
+    IF_LEFT
+      {
+        SWAP;       # @storage : @parameter%addElem
+        # == addElem ==
+        # sp.verify(params.value < self.data.total) # @storage : @parameter%addElem
+        DUP;        # @storage : @storage : @parameter%addElem
+        DUG 2;      # @storage : @parameter%addElem : @storage
+        CDR;        # mutez : @parameter%addElem : @storage
+        SWAP;       # @parameter%addElem : mutez : @storage
+        DUP;        # @parameter%addElem : @parameter%addElem : mutez : @storage
+        DUG 2;      # @parameter%addElem : mutez : @parameter%addElem : @storage
+        COMPARE;    # int : @parameter%addElem : @storage
+        LT;         # bool : @parameter%addElem : @storage
+        IF
+          {}
+          {
+            PUSH string "WrongCondition: params.value < self.data.total"; # string : @parameter%addElem : @storage
+            FAILWITH;   # FAILED
+          }; # @parameter%addElem : @storage
+        SWAP;       # @storage : @parameter%addElem
+        # self.data.total -= params.value # @storage : @parameter%addElem
+        DUP;        # @storage : @storage : @parameter%addElem
+        CAR;        # list mutez : @storage : @parameter%addElem
+        SWAP;       # @storage : list mutez : @parameter%addElem
+        CDR;        # mutez : list mutez : @parameter%addElem
+        DIG 2;      # @parameter%addElem : mutez : list mutez
+        DUP;        # @parameter%addElem : @parameter%addElem : mutez : list mutez
+        DUG 3;      # @parameter%addElem : mutez : list mutez : @parameter%addElem
+        SWAP;       # mutez : @parameter%addElem : list mutez : @parameter%addElem
+        SUB;        # mutez : list mutez : @parameter%addElem
+        SWAP;       # list mutez : mutez : @parameter%addElem
+        PAIR;       # pair (list mutez) mutez : @parameter%addElem
+        # self.data.lst.push(params.value) # pair (list mutez) mutez : @parameter%addElem
+        DUP;        # pair (list mutez) mutez : pair (list mutez) mutez : @parameter%addElem
+        CDR;        # mutez : pair (list mutez) mutez : @parameter%addElem
+        SWAP;       # pair (list mutez) mutez : mutez : @parameter%addElem
+        CAR;        # list mutez : mutez : @parameter%addElem
+        DIG 2;      # @parameter%addElem : list mutez : mutez
+        CONS;       # list mutez : mutez
+        PAIR;       # pair (list mutez) mutez
+      }
+      {
+        # == retElem ==
+        # flag = sp.local("flag", True) # @parameter%retElem : @storage
+        PUSH bool True; # bool : @parameter%retElem : @storage
+        # while flag.value : ... # bool : @parameter%retElem : @storage
+        DUP;        # bool : bool : @parameter%retElem : @storage
+        LOOP
+          {
+            DROP;       # @parameter%retElem : @storage
+            SWAP;       # @storage : @parameter%retElem
+            # with sp.match_cons(self.data.lst) as match_cons_20: # @storage : @parameter%retElem
+            DUP;        # @storage : @storage : @parameter%retElem
+            DUG 2;      # @storage : @parameter%retElem : @storage
+            CAR;        # list mutez : @parameter%retElem : @storage
+            IF_CONS
+              {
+                # self.data.total += match_cons_20.head # mutez : list mutez : @parameter%retElem : @storage
+                DIG 3;      # @storage : mutez : list mutez : @parameter%retElem
+                CDR;        # mutez : mutez : list mutez : @parameter%retElem
+                ADD;        # mutez : list mutez : @parameter%retElem
+                SWAP;       # list mutez : mutez : @parameter%retElem
+                # self.data.lst = match_cons_20.tail # list mutez : mutez : @parameter%retElem
+                PAIR;       # pair (list mutez) mutez : @parameter%retElem
+                SWAP;       # @parameter%retElem : pair (list mutez) mutez
+                # flag.value = True # @parameter%retElem : pair (list mutez) mutez
+                PUSH bool True; # bool : @parameter%retElem : pair (list mutez) mutez
+              }
+              {
+                # flag.value = False # @parameter%retElem : @storage
+                PUSH bool False; # bool : @parameter%retElem : @storage
+              }; # bool : @parameter%retElem : pair (list mutez) mutez
+            # check for next loop: flag.value # bool : @parameter%retElem : pair (list mutez) mutez
+            DUP;        # bool : bool : @parameter%retElem : pair (list mutez) mutez
+          }; # bool : @parameter%retElem : @storage
+        DROP 2;     # @storage
+      }; # pair (list mutez) mutez
+    NIL operation; # list operation : pair (list mutez) mutez
+    PAIR;       # pair (list operation) (pair (list mutez) mutez)
+  };
