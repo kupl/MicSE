@@ -997,26 +997,26 @@ let optimize_v : mich_v cc -> mich_v cc
       let vvv' : mich_v cc = ov v1 in
       (match vvv'.cc_v with
       | MV_some v11 -> v11.cc_v
-      | MV_none _ -> Error "optimize_v : optimize_v_i : MV_unlift_option : MV_none" |> Stdlib.raise
+      (* | MV_none _ -> Error "optimize_v : optimize_v_i : MV_unlift_option : MV_none" |> Stdlib.raise *)
       | _ -> MV_unlift_option vvv'))
     | MV_unlift_left v1   -> (
       let vvv' : mich_v cc = ov v1 in
       (match vvv'.cc_v with
       | MV_left (_, v12) -> v12.cc_v
-      | MV_right _ -> Error "optimize_v : optimize_v_i : MV_unlift_left : MV_right" |> Stdlib.raise
+      (* | MV_right _ -> Error "optimize_v : optimize_v_i : MV_unlift_left : MV_right" |> Stdlib.raise *)
       | _ -> MV_unlift_left vvv'))
     | MV_unlift_right v1  -> (
       let vvv' : mich_v cc = ov v1 in
       (match vvv'.cc_v with
       | MV_right (_, v12) -> v12.cc_v
-      | MV_left _ -> Error "optimize_v : optimize_v_i : MV_unlift_right : MV_left" |> Stdlib.raise
+      (* | MV_left _ -> Error "optimize_v : optimize_v_i : MV_unlift_right : MV_left" |> Stdlib.raise *)
       | _ -> MV_unlift_right vvv'))
     | MV_hd_l v1          -> (
       let vvv' : mich_v cc = ov v1 in
       (match vvv'.cc_v with
-      | MV_lit_list (_, vl2) -> vl2 |> CList.hd |> (function Some hhdd -> hhdd.cc_v | None -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_lit_list" |> Stdlib.raise)
+      | MV_lit_list (_, vl2) -> vl2 |> CList.hd |> (function Some hhdd -> hhdd.cc_v | None -> MV_hd_l vvv'(*Error "optimize_v : optimize_v_i : MV_hd_l : MV_lit_list" |> Stdlib.raise*))
       | MV_cons (v1, _) -> v1.cc_v
-      | MV_nil _ -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_nil" |> Stdlib.raise
+      (* | MV_nil _ -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_nil" |> Stdlib.raise *)
       | _ -> MV_hd_l vvv'))
     (*************************************************************************)
     (* Integer                                                               *)
@@ -1163,9 +1163,9 @@ let optimize_v : mich_v cc -> mich_v cc
     | MV_tl_l v1            -> (
       let vvv' : mich_v cc = ov v1 in
       (match vvv'.cc_v with
-      | MV_lit_list (t1, vl2) -> vl2 |> CList.tl |> (function Some ttll -> MV_lit_list (t1, ttll) | None -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_lit_list" |> Stdlib.raise)
+      | MV_lit_list (t1, vl2) -> vl2 |> CList.tl |> (function Some ttll -> MV_lit_list (t1, ttll) | None -> MV_tl_l vvv'(* Error "optimize_v : optimize_v_i : MV_hd_l : MV_lit_list" |> Stdlib.raise *))
       | MV_cons (_, v2) -> v2.cc_v
-      | MV_nil _ -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_nil" |> Stdlib.raise
+      (* | MV_nil _ -> Error "optimize_v : optimize_v_i : MV_hd_l : MV_nil" |> Stdlib.raise *)
       | _ -> MV_tl_l vvv'))
     (*************************************************************************)
     (* Set                                                                   *)
