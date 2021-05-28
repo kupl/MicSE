@@ -235,6 +235,10 @@ module ZBool : sig
   val sort : unit -> ZSort.t
 
   val of_bool : bool -> t
+
+  val minus_one_ : unit -> t
+  val zero_ : unit -> t
+  val one_ : unit -> t
   
   val true_ : unit -> t
   val false_ : unit -> t
@@ -246,6 +250,8 @@ module ZBool : sig
 
   val create_eq : t -> t -> t
   val create_neq : t -> t -> t
+  
+  val create_cmp : t -> t -> t
 end
 
 

@@ -309,6 +309,13 @@ module ZBool = struct
 
   let of_bool : bool -> t
   =fun e -> e |> Z3.Boolean.mk_val (ZCtx.read ())
+
+  let minus_one_ : unit -> t
+  =fun () -> Z3.Arithmetic.Integer.mk_numeral_i (ZCtx.read ()) (-1)
+  let zero_ : unit -> t
+  =fun () -> Z3.Arithmetic.Integer.mk_numeral_i (ZCtx.read ()) (0)
+  let one_ : unit -> t
+  =fun () -> Z3.Arithmetic.Integer.mk_numeral_i (ZCtx.read ()) (1)
   
   let true_ : unit -> t
   =fun () -> Z3.Boolean.mk_true (ZCtx.read ())
@@ -328,6 +335,17 @@ module ZBool = struct
   =fun e1 e2 -> Z3.Boolean.mk_eq (ZCtx.read ()) e1 e2
   let create_neq : t -> t -> t
   =fun e1 e2 -> create_eq e1 e2 |> create_not
+
+  let create_cmp : t -> t -> t
+  =fun e1 e2 -> begin
+    ZExpr.create_ite
+      ~cond:(create_eq e1 e2)
+      ~t:(zero_ ())
+      ~f:(ZExpr.create_ite
+            ~cond:(e2)
+            ~t:(minus_one_ ())
+            ~f:(one_ ()))
+  end
 end
 
 

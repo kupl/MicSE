@@ -511,7 +511,7 @@ module T2S = struct
     | MT_string, MT_string -> ZStr.create_cmp (cv_mvcc e1) (cv_mvcc e2)
     | MT_bytes, MT_bytes -> ZStr.create_cmp (cv_mvcc e1) (cv_mvcc e2)
     | MT_mutez, MT_mutez -> ZMutez.create_cmp (cv_mvcc e1) (cv_mvcc e2)
-    | MT_bool, MT_bool -> Stdlib.raise (Not_Implemented_e e1)
+    | MT_bool, MT_bool -> ZBool.create_cmp (cv_mvcc e1) (cv_mvcc e2)
     | MT_key_hash, MT_key_hash -> ZKeyHash.create_cmp (cv_mvcc e1) (cv_mvcc e2)
     | MT_timestamp, MT_timestamp -> ZInt.create_cmp (cv_mvcc e1) (cv_mvcc e2)
     | MT_address, MT_address -> ZAddress.create_cmp (cv_mvcc e1) (cv_mvcc e2)
