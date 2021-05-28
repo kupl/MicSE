@@ -1,3 +1,5 @@
+module Comp = Comp
+module InvSyn = InvSyn
 module Jc = Jc
 module LoopUr = LoopUr
 module Merge = Merge
