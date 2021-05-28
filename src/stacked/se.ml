@@ -1125,11 +1125,11 @@ end (* function run_inst_in_fog end *)
 (* Get Coupled mich_cut_info for indicating invariant                        *)
 (*****************************************************************************)
 
-let get_normal_mci : invmap -> Tz.mich_cut_info -> Tz.mich_cut_info
-= let module CPMap = Core.Map.Poly in
+let get_normal_mci : (Tz.mich_cut_info list) -> Tz.mich_cut_info -> Tz.mich_cut_info
+= let module CPSet = Core.Set.Poly in
   let module CList = Core.List in
   (* function get_normal_mcc start *)
-  fun invm mci -> begin
+  fun mci_list mci -> begin
   match mci.mci_cutcat with
   | MCC_trx_entry
   | MCC_ln_loop
@@ -1137,8 +1137,7 @@ let get_normal_mci : invmap -> Tz.mich_cut_info -> Tz.mich_cut_info
   | MCC_ln_map
   | MCC_ln_iter     -> mci
   | MCC_trx_exit    -> (
-    CPMap.keys invm
-    |> CList.find ~f:(fun m -> Tz.is_trx_entry_mcc m.mci_cutcat)
+    CList.find mci_list ~f:(fun m -> Tz.is_trx_entry_mcc m.mci_cutcat)
     |> (function Some mmm -> mmm | None -> Error "get_normal_mci : MCC_trx_exit" |> Stdlib.raise))
   | MCC_lb_loop
   | MCC_lb_loopleft
@@ -1251,9 +1250,10 @@ end (* function inv_app_guide_block end *)
 (*****************************************************************************)
 
 let find_inv_fmla : invmap -> Tz.mich_cut_info -> Tz.mich_f PSet.t
-= (* function find_inv_fmla start *)
+= let module CPMap = Core.Map.Poly in
+  (* function find_inv_fmla start *)
   fun invm mci -> begin
-  PMap.find invm (get_normal_mci invm mci)
+  PMap.find invm (get_normal_mci (invm |> CPMap.keys) mci)
   |> (function Some sss -> sss | None -> PSet.empty)
 end (* function find_inv_fmla end *)
 

@@ -105,7 +105,7 @@ val run_contract_in_fog : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) 
 (* Coupled mich_cut_info for indicating invariant                            *)
 (*****************************************************************************)
 
-val get_normal_mci : invmap -> Tz.mich_cut_info -> Tz.mich_cut_info
+val get_normal_mci : (Tz.mich_cut_info list) -> Tz.mich_cut_info -> Tz.mich_cut_info
 
 
 (*****************************************************************************)
