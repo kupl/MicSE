@@ -17,7 +17,7 @@ module TComparable = struct
     let compare : t -> t -> int
     = fun x y -> Stdlib.compare (TzCvt.T2Nnocc.cv_mtcc x) (TzCvt.T2Nnocc.cv_mtcc y)
     let sexp_of_t : t -> Core.Sexp.t
-    = TzCvt.T2CSnocc.cv_mtcc
+    = TzCvt.T2CS.cv_mtcc
 
     let t_of_sexp : Core.Sexp.t -> t
     = TzCvt.CS2Tnocc.cv_mtcc

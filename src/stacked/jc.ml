@@ -262,6 +262,7 @@ let v_unlift_option = "ul_option"
 let v_unlift_left = "ul_left"
 let v_unlift_right = "ul_right"
 let v_hd_l = "hd_l"
+let v_elt = "elt"
 
 
 (*************************************************************************)
@@ -850,3 +851,22 @@ let abr_v_unlift_option = "uo"
 let abr_v_unpack = "up"
 let abr_v_unlift_right = "ur"
 let abr_v_xor = "xr"
+
+
+(*****************************************************************************)
+(*****************************************************************************)
+(* S expression                                                              *)
+(*****************************************************************************)
+(*****************************************************************************)
+
+let cs_pos = "pos"
+let cs_loc = "loc"
+let cs_annot = "annot"
+let cs_cc = "cc"
+let cs_mich_t = "mich_t"
+let cs_mich_v = "mich_v"
+let cs_mich_i = "mich_i"
+let cs_mich_f = "mich_f"
+let cs_mich_t_cc = cs_mich_t ^ " cc"
+let cs_mich_v_cc = cs_mich_v ^ " cc"
+let cs_mich_i_cc = cs_mich_i ^ " cc"
