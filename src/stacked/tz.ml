@@ -838,8 +838,8 @@ let lb_of_ln_mci : mich_cut_info -> mich_cut_info option
   if flag then Some {mci with mci_cutcat=lb_mcc;} else None
 end
 
-let lb_of_ln_exn : mich_cut_info -> debug:(string) -> mich_cut_info
-= fun mci ~debug -> begin
+let lb_of_ln_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
+= fun ?(debug="lb_of_ln_exn") mci -> begin
   match lb_of_ln_mci mci with | Some s -> s | None -> Stdlib.failwith debug
 end
 
@@ -871,8 +871,8 @@ let ln_of_lb_mci : mich_cut_info -> mich_cut_info option
   if flag then Some {mci with mci_cutcat=ln_mcc;} else None
 end
 
-let ln_of_lb_exn : mich_cut_info -> debug:(string) -> mich_cut_info
-= fun mci ~debug -> begin
+let ln_of_lb_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
+= fun ?(debug="ln_of_lb_exn") mci -> begin
   match ln_of_lb_mci mci with | Some s -> s | None -> Stdlib.failwith debug
 end
 
@@ -891,6 +891,17 @@ let is_lb_mcc : mich_cut_category -> bool =
   | MCC_query         -> false
   )
 
+let exit_of_entry_mci : mich_cut_info -> mich_cut_info option
+= (fun mci -> begin
+  match mci.mci_cutcat with
+  | MCC_trx_entry     -> Some { mci with mci_cutcat=MCC_trx_exit; }
+  | _                 -> None
+end)
+
+let exit_of_entry_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
+= fun ?(debug="exit_of_entry_exn") mci -> begin
+  match exit_of_entry_mci mci with | Some s -> s | None -> Stdlib.failwith debug
+end
 let is_trx_entry_mcc : mich_cut_category -> bool =
   (function
   | MCC_ln_loop       -> false
@@ -906,6 +917,18 @@ let is_trx_entry_mcc : mich_cut_category -> bool =
   | MCC_query         -> false
   )
 
+let entry_of_exit_mci : mich_cut_info -> mich_cut_info option
+= (fun mci -> begin
+  match mci.mci_cutcat with
+  | MCC_trx_exit      -> Some { mci with mci_cutcat=MCC_trx_entry; }
+  | _                 -> None
+end)
+
+let entry_of_exit_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
+= fun ?(debug="entry_of_exit_exn") mci -> begin
+  match entry_of_exit_mci mci with | Some s -> s | None -> Stdlib.failwith debug
+end
+
 let is_trx_exit_mcc : mich_cut_category -> bool =
   (function
   | MCC_ln_loop       -> false
@@ -920,6 +943,27 @@ let is_trx_exit_mcc : mich_cut_category -> bool =
   | MCC_lb_iter       -> false
   | MCC_query         -> false
   )
+
+let get_normal_mci : mich_cut_info -> mich_cut_info option
+= (fun mci -> begin
+  match mci.mci_cutcat with
+  | MCC_ln_loop
+  | MCC_ln_loopleft
+  | MCC_ln_map
+  | MCC_ln_iter
+  | MCC_trx_entry     -> Some mci
+  | MCC_trx_exit      -> entry_of_exit_mci mci
+  | MCC_lb_loop
+  | MCC_lb_loopleft
+  | MCC_lb_map
+  | MCC_lb_iter       -> ln_of_lb_mci mci
+  | MCC_query         -> None
+end)
+
+let get_normal_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
+= fun ?(debug="get_normal_exn") mci -> begin
+  match get_normal_mci mci with | Some s -> s | None -> Stdlib.failwith debug
+end
 
 let is_normal_mcc : mich_cut_category -> bool
 = (* function is_normal_mcc start *) 

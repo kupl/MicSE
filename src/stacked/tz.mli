@@ -539,16 +539,23 @@ val get_dummy_cc_of_typ : mich_t cc -> mich_t cc
 (*****************************************************************************)
 
 val lb_of_ln_mci : mich_cut_info -> mich_cut_info option
-val lb_of_ln_exn : mich_cut_info -> debug:(string) -> mich_cut_info
+val lb_of_ln_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
 val is_ln_mcc : mich_cut_category -> bool
 
 val ln_of_lb_mci : mich_cut_info -> mich_cut_info option
-val ln_of_lb_exn : mich_cut_info -> debug:(string) -> mich_cut_info
+val ln_of_lb_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
 val is_lb_mcc : mich_cut_category -> bool
 
+val exit_of_entry_mci : mich_cut_info -> mich_cut_info option
+val exit_of_entry_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
 val is_trx_entry_mcc : mich_cut_category -> bool
+
+val entry_of_exit_mci : mich_cut_info -> mich_cut_info option
+val entry_of_exit_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
 val is_trx_exit_mcc : mich_cut_category -> bool
 
+val get_normal_mci : mich_cut_info -> mich_cut_info option
+val get_normal_exn : ?debug:(string) -> mich_cut_info -> mich_cut_info
 val is_normal_mcc : mich_cut_category -> bool
 
 (*****************************************************************************)
