@@ -1243,25 +1243,25 @@ let inv_induct_fmla : (Tz.sym_state Tz.PSet.t) -> invmap -> (Tz.mich_f Tz.PSet.t
 = fun blocked_sset invm -> begin
   PSet.map blocked_sset ~f:(fun bl_ss -> inv_induct_fmla_i bl_ss invm)
 end (* function inv_induct_fmla end *)
+let inv_query_fmla_i : ?precond:Tz.mich_f -> (Tz.sym_state * query_category) -> (Tz.mich_f Core.Set.Poly.t) -> Tz.mich_f
+= fun ?(precond=MF_true) (query_ss, query_qcat) inv -> begin
+  let fmla = inv_app_guide_entry inv query_ss in
+  let query = state_query_reduce (query_ss, query_qcat) in
+  MF_imply (MF_and (precond :: fmla :: query_ss.ss_constraints), query)
+end
 let inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
-= fun query_ssp invm -> begin
-  let query_ss = Stdlib.fst query_ssp in
+= fun (query_ss, query_qcat) invm -> begin
   let inv_entry = find_inv_fmla invm query_ss.ss_entry_mci 
     |> (fun s -> if PSet.length s > 0 then s else  Error "inv_query_fmla : inv_entry : not-found" |> raise)
   in
-  let entry_fmla = inv_app_guide_entry inv_entry query_ss in
-  let query = state_query_reduce query_ssp in
-  MF_imply (MF_and (entry_fmla :: query_ss.ss_constraints), query)
+  inv_query_fmla_i (query_ss, query_qcat) inv_entry
 end (* function inv_query_fmla end *)
 let inv_query_fmla_with_precond : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f -> Tz.mich_f
-= fun query_ssp invm precond -> begin
-  let query_ss = Stdlib.fst query_ssp in
+= fun (query_ss, query_qcat) invm precond -> begin
   let inv_entry = find_inv_fmla invm query_ss.ss_entry_mci 
     |> (fun s -> if PSet.length s > 0 then s else  Error "inv_query_fmla : inv_entry : not-found" |> raise)
   in
-  let entry_fmla = inv_app_guide_entry inv_entry query_ss in
-  let query = state_query_reduce query_ssp in
-  MF_imply (MF_and (precond :: entry_fmla :: query_ss.ss_constraints), query)
+  inv_query_fmla_i (query_ss, query_qcat) inv_entry ~precond:precond
 end (* function inv_query_fmla_with_precond end *)
 
 
