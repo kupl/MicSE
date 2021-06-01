@@ -68,9 +68,12 @@ type ingredients = {
 }
 
 val collect_set : ('a Core.Set.Poly.t) list -> 'a Core.Set.Poly.t
-val combinate_invmap : Se.invmap -> (Tz.mich_cut_info, Tz.mich_f Core.Set.Poly.t) Core.Map.Poly.t -> Tz.mich_cut_info Core.Set.Poly.t -> Se.invmap Core.Set.Poly.t
-
 val refine_t : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
 val refine_l : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
+
+val gen_igdt : comp_map -> Tz.mich_cut_info -> ingredients
+val gen_cand : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
+val update_cand : (Tz.mich_cut_info, Tz.mich_f Core.Set.Poly.t) Core.Map.Poly.t -> Tz.mich_cut_info -> Tz.mich_f Core.Set.Poly.t -> (Tz.mich_cut_info, Tz.mich_f Core.Set.Poly.t) Core.Map.Poly.t
+val combinate_invmap : Se.invmap -> (Tz.mich_cut_info, Tz.mich_f Core.Set.Poly.t) Core.Map.Poly.t -> Tz.mich_cut_info Core.Set.Poly.t -> Se.invmap Core.Set.Poly.t
 
 val generate : generate_param -> Se.invmap Core.Set.Poly.t
