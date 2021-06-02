@@ -2464,6 +2464,36 @@ module T2CS = struct
     | MF_shiftR_nnn_rhs_in_256  (v1,v2)   -> s0e2 f_shiftR_nnn_rhs_in_256 v1 v2)
     |> gen_template cs_mich_f
   end (* function cv_mf end *)
+
+  let cv_mich_cut_category : Tz.mich_cut_category -> csexp
+  = let open Jc in
+    let module CSexp = Core.Sexp in
+    let a e = CSexp.Atom e in
+    (* function cv_mich_cut_category start *)
+    fun x -> begin
+    (match x with
+    | MCC_trx_entry     -> a mcc_trx_entry
+    | MCC_trx_exit      -> a mcc_trx_exit
+    | MCC_ln_loop       -> a mcc_ln_loop
+    | MCC_ln_loopleft   -> a mcc_ln_loopleft
+    | MCC_ln_map        -> a mcc_ln_map
+    | MCC_ln_iter       -> a mcc_ln_iter
+    | MCC_lb_loop       -> a mcc_lb_loop
+    | MCC_lb_loopleft   -> a mcc_lb_loopleft
+    | MCC_lb_map        -> a mcc_lb_map
+    | MCC_lb_iter       -> a mcc_lb_iter
+    | MCC_query         -> a mcc_query)
+    |> gen_template cs_mich_cut_category
+  end (* function cv_mich_cut_category end *)
+
+  let cv_mich_cut_info : Tz.mich_cut_info -> csexp
+  = let open Jc in
+    let module CSexp = Core.Sexp in
+    let l el = CSexp.List el in
+    (* function cv_mich_cut_info start *)
+    fun x -> begin
+    gen_template cs_mich_cut_info (l [(cv_loc x.mci_loc); (cv_mich_cut_category x.mci_cutcat)])
+  end (* function cv_mich_cut_info end *)
 end (* module T2CS end *)
 
 
@@ -2496,18 +2526,88 @@ module CS2Tnocc = struct
     | _ -> Error ("get_body_in_list_exn : _") |> Stdlib.raise)
   end (* function get_body_in_list_exn end *)
 
+  let get_template_type_exn : csexp -> string
+  = let module CSexp = Core.Sexp in
+    (* function get_template_type_exn start *)
+    fun cs -> begin
+    (match cs with
+    | CSexp.Atom s -> Error ("get_template_type_exn : Core.Sexp.Atom : " ^ s) |> Stdlib.raise
+    | CSexp.List (idc::_) -> (
+      match idc with
+      | CSexp.Atom t -> t
+      | _ -> Error ("get_template_type_exn : Core.Sexp.List : _") |> Stdlib.raise)
+    | _ -> Error ("get_template_type_exn : _") |> Stdlib.raise)
+  end (* function get_template_type_exn end *)
+
   let get_template_body_exn : string -> csexp -> csexp
   = let module CSexp = Core.Sexp in
-    (* function check_template start *)
+    (* function get_template_body_exn start *)
     fun temp cs -> begin
     (match cs with
-    | CSexp.Atom s -> Error ("check_template " ^ temp ^ " : Core.Sexp.Atom : " ^ s) |> Stdlib.raise
+    | CSexp.Atom s -> Error ("get_template_body_exn " ^ temp ^ " : Core.Sexp.Atom : " ^ s) |> Stdlib.raise
     | CSexp.List (idc::body::[]) -> (
       match idc with
       | CSexp.Atom t when t = temp -> body
-      | _ -> Error ("check_template " ^ temp ^ " : Core.Sexp.List : _") |> Stdlib.raise)
-    | _ -> Error ("check_template " ^ temp ^ " : _") |> Stdlib.raise)
-  end (* function check_template end *)
+      | _ -> Error ("get_template_body_exn " ^ temp ^ " : Core.Sexp.List : _") |> Stdlib.raise)
+    | _ -> Error ("get_template_body_exn " ^ temp ^ " : _") |> Stdlib.raise)
+  end (* function get_template_body_exn end *)
+
+  let cv_pos : csexp -> Tz.ccp_pos
+  = let open Tz in
+    let open Jc in
+    let module CSexp = Core.Sexp in
+    (* function cv_pos start *)
+    fun x -> begin
+    let body : csexp = get_template_body_exn cs_pos x in
+    (match body with
+    | CSexp.Atom s -> Error ("cv_pos : Core.Sexp.Atom : " ^ s) |> Stdlib.raise
+    | CSexp.List (a1::a2::[]) -> (
+      let lin_body : int = get_body_in_atom_exn a1 |> int_of_string in
+      let col_body : int = get_body_in_atom_exn a2 |> int_of_string in
+      { col=col_body; lin=lin_body; })
+    | CSexp.List (s::_) -> Error ("cv_pos : Core.Sexp.List : " ^ (s |> get_body_in_atom_exn)) |> Stdlib.raise
+    | _ -> Error ("cv_pos : _") |> Stdlib.raise)
+  end (* function cv_pos end *)
+
+  let cv_loc : csexp -> Tz.ccp_loc
+  = let open Tz in
+    let open Jc in
+    let module CSexp = Core.Sexp in
+    (* function cv_loc start *)
+    fun x -> begin
+    let body : csexp = get_template_body_exn cs_loc x in
+    (match body with
+    | CSexp.Atom s -> Error ("cv_loc : Core.Sexp.Atom : " ^ s) |> Stdlib.raise
+    | CSexp.List (s0::[]) -> (
+      match (get_body_in_atom_exn s0) with
+      | s when s = cc_l_unk -> CCLOC_Unknown
+      | s -> Error ("cv_mv : Core.Sexp.List s0 : " ^ s) |> Stdlib.raise)
+    | CSexp.List (s2::a1::a2::[]) -> (
+      match (get_body_in_atom_exn s2) with
+      | s when s = cc_l_pos -> CCLOC_Pos ((cv_pos a1), (cv_pos a2))
+      | s -> Error ("cv_mv : Core.Sexp.List s2 : " ^ s) |> Stdlib.raise)
+    | CSexp.List (s::_) -> Error ("cv_loc : Core.Sexp.List : " ^ (s |> get_body_in_atom_exn)) |> Stdlib.raise
+    | _ -> Error ("cv_loc : _") |> Stdlib.raise)
+  end (* function cv_loc end *)
+
+  let cv_annot : csexp -> Tz.ccp_annot
+  = let open Tz in
+    let open Jc in
+    let module CSexp = Core.Sexp in
+    (* function cv_annot start *)
+    fun x -> begin
+    let body : csexp = get_template_body_exn cs_annot x in
+    (match body with
+    | CSexp.Atom s -> Error ("cv_annot : Core.Sexp.Atom : " ^ s) |> Stdlib.raise
+    | CSexp.List (s1::a1::[]) -> (
+      match (get_body_in_atom_exn s1) with
+      | s when s = cc_a_typ -> CCA_typ (get_body_in_atom_exn a1)
+      | s when s = cc_a_var -> CCA_var (get_body_in_atom_exn a1)
+      | s when s = cc_a_fld -> CCA_fld (get_body_in_atom_exn a1)
+      | s -> Error ("cv_mv : Core.Sexp.List s1 : " ^ s) |> Stdlib.raise)
+    | CSexp.List (s::_) -> Error ("cv_annot : Core.Sexp.List : " ^ (s |> get_body_in_atom_exn)) |> Stdlib.raise
+    | _ -> Error ("cv_annot : _") |> Stdlib.raise)
+  end (* function cv_annot end *)
 
   let rec cv_mt : csexp -> Tz.mich_t
   = let open Tz in
@@ -3019,4 +3119,44 @@ module CS2Tnocc = struct
     | CSexp.List (s::_) -> Error ("cv_mf : Core.Sexp.List : " ^ (s |> get_body_in_atom_exn)) |> Stdlib.raise
     | _ -> Error ("cv_mf : _") |> Stdlib.raise)
   end (* function cv_mf end *)
+
+  let cv_mich_cut_category : csexp -> Tz.mich_cut_category
+  = let open Tz in
+    let open Jc in
+    let module CSexp = Core.Sexp in
+    (* function cv_mich_cut_category start *)
+    fun x -> begin
+    let body : csexp = get_template_body_exn cs_mich_cut_category x in
+    (match body with
+    | CSexp.Atom s -> (
+      match s with
+      | s when s = mcc_trx_entry    -> MCC_trx_entry
+      | s when s = mcc_trx_exit     -> MCC_trx_exit
+      | s when s = mcc_ln_loop      -> MCC_ln_loop
+      | s when s = mcc_ln_loopleft  -> MCC_ln_loopleft
+      | s when s = mcc_ln_map       -> MCC_ln_map
+      | s when s = mcc_ln_iter      -> MCC_ln_iter
+      | s when s = mcc_lb_loop      -> MCC_lb_loop
+      | s when s = mcc_lb_loopleft  -> MCC_lb_loopleft
+      | s when s = mcc_lb_map       -> MCC_lb_map
+      | s when s = mcc_lb_iter      -> MCC_lb_iter
+      | s when s = mcc_query        -> MCC_query
+      | s -> Error ("cv_mich_cut_category : Core.Sexp.List s : " ^ s) |> Stdlib.raise)
+    | CSexp.List (s::_) -> Error ("cv_mich_cut_category : Core.Sexp.List : " ^ (s |> get_body_in_atom_exn)) |> Stdlib.raise
+    | _ -> Error ("cv_mich_cut_category : _") |> Stdlib.raise)
+  end (* function cv_mich_cut_category end *)
+
+  let cv_mich_cut_info : csexp -> Tz.mich_cut_info
+  = let open Tz in
+    let open Jc in
+    let module CSexp = Core.Sexp in
+    (* function cv_mich_cut_info start *)
+    fun x -> begin
+    let body : csexp = get_template_body_exn cs_mich_cut_info x in
+    (match body with
+    | CSexp.Atom s -> Error ("cv_mich_cut_info : Core.Sexp.Atom : " ^ s) |> Stdlib.raise
+    | CSexp.List (a1::a2::[]) -> { mci_loc=(cv_loc a1); mci_cutcat=(cv_mich_cut_category a2); }
+    | CSexp.List (s::_) -> Error ("cv_mich_cut_info : Core.Sexp.List : " ^ (s |> get_body_in_atom_exn)) |> Stdlib.raise
+    | _ -> Error ("cv_mich_cut_info : _") |> Stdlib.raise)
+  end (* function cv_mich_cut_info end *)
 end (* module CS2T end *)
