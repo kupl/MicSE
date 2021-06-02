@@ -1203,7 +1203,7 @@ let inv_app_guide_vstack : mich_f Core.Set.Poly.t -> ([`Entry | `Block] * mich_c
   CList.fold vsp
     ~init:(MF_and (inv_fs |> CPSet.to_list))
     ~f:(fun accinv (bv, v) -> 
-      (map_f_v2v_outer accinv ~v2v:(fun e -> if e.cc_v = bv.cc_v then Some v else None))) 
+      (map_f_v2v_outer accinv ~v2v:(fun e -> if e.cc_v = bv.cc_v then Some (v |> Tz.optimize_v) else None))) 
 end (* function inv_app_guide_vstack end *)
 
 let inv_app_guide_entry : Tz.mich_f Core.Set.Poly.t -> Tz.sym_state -> Tz.mich_f
@@ -1263,9 +1263,14 @@ let inv_query_fmla_with_precond : (Tz.sym_state * query_category) -> invmap -> T
   in
   inv_query_fmla_i (query_ss, query_qcat) inv_entry ~precond:precond
 end (* function inv_query_fmla_with_precond end *)
+let inv_initial_fmla : Tz.sym_state -> Tz.mich_v Tz.cc -> Tz.mich_f Core.Set.Poly.t -> Tz.mich_f
+= fun init_ss istg inv -> begin
+  (* verification condition to check initial storage satisfy the transaction invariant *)
+  inv_app_guide_vstack inv (`Entry, Some init_ss.ss_entry_mci, [Tz.MV_pair (init_ss.ss_optt.optt_param, istg) |> Tz.gen_dummy_cc])
+end
 let inv_constraint_fmla : Tz.sym_state -> (Tz.mich_f Core.Set.Poly.t) -> Tz.mich_f
 = fun query_ss inv -> begin
-  (* If Inv /\ Constraint is unsat, it means that invariant kill the valid path *)
+  (* if Inv /\ Constraint is unsat, it means that invariant kill the valid path *)
   let fmla = inv_app_guide_entry inv query_ss in
   MF_and (fmla :: query_ss.ss_constraints)
 end (* function inv_constraint_fmla end *)
