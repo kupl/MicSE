@@ -1263,6 +1263,12 @@ let inv_query_fmla_with_precond : (Tz.sym_state * query_category) -> invmap -> T
   in
   inv_query_fmla_i (query_ss, query_qcat) inv_entry ~precond:precond
 end (* function inv_query_fmla_with_precond end *)
+let inv_constraint_fmla : Tz.sym_state -> (Tz.mich_f Core.Set.Poly.t) -> Tz.mich_f
+= fun query_ss inv -> begin
+  (* If Inv /\ Constraint is unsat, it means that invariant kill the valid path *)
+  let fmla = inv_app_guide_entry inv query_ss in
+  MF_and (fmla :: query_ss.ss_constraints)
+end (* function inv_constraint_fmla end *)
 
 
 (*****************************************************************************)

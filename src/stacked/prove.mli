@@ -33,6 +33,7 @@ type ret = {
 val gen_sset : PreLib.Adt.t -> (PreLib.Adt.data option) -> ((Tz.mich_v Tz.cc option) * Tz.sym_state * (Se.cache ref) * Se.state_set)
 
 val check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option
+val check_satisfiability : Tz.mich_f -> ProverLib.Smt.ZSolver.satisfiability * ProverLib.Smt.ZModel.t option
 
 val check_inv_inductiveness :
   Utils.Timer.t ref 

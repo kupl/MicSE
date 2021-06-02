@@ -62,6 +62,9 @@ end (* function gen_sset end *)
 let check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option
 = fun fmla -> ProverLib.Smt.ZSolver.check_validity [TzCvt.T2S.cv_mf fmla]
 
+let check_satisfiability : Tz.mich_f -> ProverLib.Smt.ZSolver.satisfiability * ProverLib.Smt.ZModel.t option
+= fun fmla -> ProverLib.Smt.ZSolver.check_satisfiability [TzCvt.T2S.cv_mf fmla]
+
 (* 
   Input
   - Timer

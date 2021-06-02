@@ -130,6 +130,7 @@ val inv_induct_fmla : (Tz.sym_state Tz.PSet.t) -> invmap -> (Tz.mich_f Tz.PSet.t
 val inv_query_fmla_i : ?precond:Tz.mich_f -> (Tz.sym_state * query_category) -> (Tz.mich_f Core.Set.Poly.t) -> Tz.mich_f
 val inv_query_fmla : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f
 val inv_query_fmla_with_precond : (Tz.sym_state * query_category) -> invmap -> Tz.mich_f -> Tz.mich_f
+val inv_constraint_fmla : Tz.sym_state -> (Tz.mich_f Core.Set.Poly.t) -> Tz.mich_f
 
 
 (*****************************************************************************)
