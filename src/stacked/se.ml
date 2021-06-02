@@ -285,14 +285,14 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       ss_symstack;
       ss_constraints=_;
     } = ss in
-  (*
+
   (* resolve ss_symstack optimization issue *)
   let ss_symstack : mich_v cc list = (
     match ss_symstack with
     | [] -> []
     | hd :: tl -> (Tz.optimize_v hd) :: tl
   ) in
-  *)
+
   match inst.cc_v with
   | MI_seq (i1,i2) -> ss |> ss_to_srset |> run_inst cache i1 |> run_inst cache i2
   (* | MI_seq (i1, i2) ->
