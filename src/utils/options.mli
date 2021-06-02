@@ -47,6 +47,9 @@ val transaction_unroll_num : int ref
 (* FLAGS - Refuter *)
 val refuter_sub_time_budget_manually_set : bool ref
 
+(* FLAGS - MicSE Baseline Mode *)
+val micse_baseline_mode : bool ref
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Option Settings                                                           *)

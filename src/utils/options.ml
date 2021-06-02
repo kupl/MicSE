@@ -72,6 +72,10 @@ let transaction_unroll_num : int ref
 let refuter_sub_time_budget_manually_set : bool ref
 =ref false  (* If the user set the "refuter_sub_time_budget" option, then set it true. This is used to automatically calculate "refuter_sub_time_budget" if it not set manually. *)
 
+(* FLAGS - MicSE Baseline Mode *)
+let micse_baseline_mode : bool ref
+= ref false (* If the user set the "baseline_mode" option, then set it true. Othercase, MicSE run on synergetic mode. *)
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Option Settings                                                           *)
@@ -118,6 +122,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("--total_timeout", (Arg.Int (fun i -> total_time_budget := i)), "Time budget for entire program execution in seconds (in special case only). (default: 360s)");
     ("-unroll_l", (Arg.Int (fun i -> loop_unroll_num := i)), "Set the number of loop unrolling. (default 1)");
     ("-unroll_t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
+    ("--baseline", (Arg.Set micse_baseline_mode), "Set the MicSE run as a baseline mode. (default: false)");
   ]
 
 let create_options : unit -> unit
