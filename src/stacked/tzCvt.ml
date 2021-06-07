@@ -182,6 +182,9 @@ module M2T = struct
         in 
         MV_lit_big_map (cv_typt t1, cv_typt t2, m)
       )
+    | T_big_map (t1,t2),  D_int _ -> 
+      let _ = Utils.Log.warn (fun m -> m "%s : D_int in this data is interpreted to MV_empty_big_map. If it is not intended situation, please check the data." Stdlib.__LOC__) in
+      MV_empty_big_map (cv_typt t1, cv_typt t2)
     | T_chain_id,         D_string s -> MV_lit_chain_id s
     | T_int,              D_int zn -> MV_lit_int zn
     | T_nat,              D_int zn -> MV_lit_nat zn
@@ -190,10 +193,13 @@ module M2T = struct
     | T_mutez,            D_int zn -> MV_lit_mutez zn
     | T_bool,             D_bool b -> MV_lit_bool b
     | T_key_hash,         D_string s -> MV_lit_key_hash s
+    | T_key_hash,         D_bytes s -> MV_lit_key_hash s
     | T_timestamp,        D_string s -> MV_lit_timestamp_str s
     | T_timestamp,        D_int zn -> MV_lit_timestamp_sec zn
     | T_address,          D_string s -> MV_lit_address (MV_lit_key_hash s |> gen_dummy_cc)
+    | T_address,          D_bytes s -> MV_lit_address (MV_lit_key_hash s |> gen_dummy_cc)
     | T_contract t,       D_string s when t.PreLib.Mich.d = PreLib.Mich.T_unit -> MV_implicit_account (MV_lit_key_hash s |> gen_dummy_cc)
+    | T_contract t,       D_bytes s -> MV_lit_contract (cv_typt t, (MV_lit_address (MV_lit_key_hash s |> gen_dummy_cc) |> gen_dummy_cc))
     | _ -> Error "cv_data : match failed" |> raise
     (* unused *)
     (* | T_operation,        D_ -> *)
