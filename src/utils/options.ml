@@ -105,13 +105,13 @@ let set_timeout : queries:int -> unit
   if !total_time_budget_set_flag then (
     if !queryid_time_budget > (!total_time_budget / queries) then (queryid_time_budget := !total_time_budget / queries)
     else ())
-  else total_time_budget := !queryid_time_budget * queries
+  else total_time_budget := !queryid_time_budget * queries * 11 / 10
 end (* function set_timeout end *)
 
 let activate_detector : string -> unit
 =fun s -> begin
   match s with
-  | _ -> invalid_arg "invalid option"
+  | _ -> invalid_arg ("invalid option : " ^ s)
 end
 
 let options : (Arg.key * Arg.spec * Arg.doc) list
