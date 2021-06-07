@@ -134,7 +134,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-initial_storage", (Arg.String (fun s -> initial_storage_file := s)), "File path for initial storage of input michelson program");
     ("-z3_timeout", (Arg.Int (fun i -> z3_time_budget := i)), "Time budget for z3 solver in seconds. (default: 30s)");
     ("-prover_timeout", (Arg.Int (fun i -> prover_time_budget := i)), "Time budget for prover in seconds. (default: 180s)");
-    ("-refuter_timeout", (Arg.Int (fun i -> prover_time_budget := i)), "Time budget for refuter in seconds. (default: 180s)");
+    ("-refuter_timeout", (Arg.Int (fun i -> refuter_time_budget := i)), "Time budget for refuter in seconds. (default: 180s)");
     ("-refuter_timeout_t", (Arg.Int (fun i -> refuter_total_time_budget := i)), "Timebudget for refuter total-time in seconds. (default: 180s)");
     ("-refuter_timeout_s", (Arg.Int (fun i -> refuter_sub_time_budget_manually_set := true; refuter_sub_time_budget := i)), "Timebudget for \"Refuter.main\" function in seconds. If not set, it'll be automatically calculated. (default: 180s)");
     ("--queryid_timeout", (Arg.Int (fun i -> queryid_time_budget := i)), "Time budget for query-id prove/refute in seconds. (default: 180s)");
