@@ -62,6 +62,8 @@ let queryid_time_budget : int ref
 =ref 180 (* Time budget for each Query-Id prove or refuting *)
 let total_time_budget : int ref
 =ref 360 (* Time budget for total program execution. Used for special cases *)
+let total_time_budget_set_flag : bool ref
+=ref false (* Flag for checking total time budget is set *)
 
 
 (* INT - Cfg Unrolling *)
@@ -95,6 +97,15 @@ let set_all_cfg_opt : unit -> unit
   )
 end
 
+let set_timeout : queries:int -> unit
+= (* funciton set_timeout start *)
+  fun ~queries -> begin
+  if !total_time_budget_set_flag then (
+    if !queryid_time_budget > (!total_time_budget / queries) then (queryid_time_budget := !total_time_budget / queries)
+    else ())
+  else total_time_budget := !queryid_time_budget * queries
+end (* function set_timeout end *)
+
 let activate_detector : string -> unit
 =fun s -> begin
   match s with
@@ -124,7 +135,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-refuter_timeout_t", (Arg.Int (fun i -> refuter_total_time_budget := i)), "Timebudget for refuter total-time in seconds. (default: 180s)");
     ("-refuter_timeout_s", (Arg.Int (fun i -> refuter_sub_time_budget_manually_set := true; refuter_sub_time_budget := i)), "Timebudget for \"Refuter.main\" function in seconds. If not set, it'll be automatically calculated. (default: 180s)");
     ("--queryid_timeout", (Arg.Int (fun i -> queryid_time_budget := i)), "Time budget for query-id prove/refute in seconds. (default: 180s)");
-    ("--total_timeout", (Arg.Int (fun i -> total_time_budget := i)), "Time budget for entire program execution in seconds (in special case only). (default: 360s)");
+    ("--total_timeout", (Arg.Int (fun i -> total_time_budget := i; total_time_budget_set_flag := true)), "Time budget for entire program execution in seconds (in special case only). (default: 360s)");
     ("-unroll_l", (Arg.Int (fun i -> loop_unroll_num := i)), "Set the number of loop unrolling. (default 1)");
     ("-unroll_t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
     ("--baseline", (Arg.Set micse_baseline_mode), "Set the MicSE run as a baseline mode. (default: false)");

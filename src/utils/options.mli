@@ -59,6 +59,7 @@ val micse_legacy_mode : bool ref
 (*****************************************************************************)
 
 val set_all_cfg_opt : unit -> unit
+val set_timeout : queries:int -> unit
 
 val activate_detector : string -> unit
 
