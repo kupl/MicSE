@@ -48,6 +48,9 @@ let gen_sset : PreLib.Adt.t -> (PreLib.Adt.data option) -> ((Tz.mich_v Tz.cc opt
     |> PreLib.Mich.subst_standard_macro_all_pgm
     |> PreLib.Mich.optm_all_pgm
   in
+  (* Count the number of instructions *)
+  let _ = (if (!Utils.Options.flag_inst_count_print) then (
+    Utils.Log.info (fun m -> m "# of Instructions : %d" (mich_program |> PreLib.Mich.count_inst_pgm))) else ()) in
   (* Convert them to Tz form *)
   let (param_typ, storage_typ, inst) : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) =
     TzCvt.M2T.cv_program mich_program in

@@ -1090,3 +1090,114 @@ let rec optm_remove_noop_in_seq : inst t -> inst t =
 
 let optm_all_pgm : program -> program
 =fun pgm -> {pgm with code=(optm_remove_noop_in_seq pgm.code);}
+
+
+(*****************************************************************************)
+(* Counter - Instruction Counter                                             *)
+(*****************************************************************************)
+
+let rec count_inst_pgm : program -> int
+= fun pgm -> begin
+  count_inst_pgm_i pgm.code
+end
+
+and count_inst_pgm_i : inst t -> int
+= fun i -> begin
+  match i.d with
+  (* Standard Instructions : Michelson-Defined *)
+  | I_seq (i1, i2) -> (count_inst_pgm_i i1) + (count_inst_pgm_i i2)
+  | I_if_none (i1, i2)
+  | I_if_left (i1, i2)
+  | I_if_cons (i1, i2)
+  | I_if (i1, i2) -> (count_inst_pgm_i i1) + (count_inst_pgm_i i2) + 1
+  | I_map i1
+  | I_iter i1
+  | I_loop i1
+  | I_loop_left i1
+  | I_lambda (_, _, i1)
+  | I_dip i1
+  | I_dip_n (_, i1) -> (count_inst_pgm_i i1) + 1
+  | I_create_contract p1 -> (count_inst_pgm p1) + 1
+  | I_drop
+  | I_drop_n _
+  | I_dup
+  | I_swap
+  | I_dig _
+  | I_dug _
+  | I_push (_, _)
+  | I_some
+  | I_none _
+  | I_unit
+  | I_pair
+  | I_car
+  | I_cdr
+  | I_left _
+  | I_right _
+  | I_nil _
+  | I_cons
+  | I_size
+  | I_empty_set _
+  | I_empty_map (_, _)
+  | I_empty_big_map (_, _)
+  | I_mem
+  | I_get
+  | I_update
+  | I_exec
+  | I_failwith
+  | I_cast _
+  | I_rename
+  | I_concat
+  | I_slice
+  | I_pack
+  | I_unpack _
+  | I_add
+  | I_sub
+  | I_mul
+  | I_ediv
+  | I_abs
+  | I_isnat
+  | I_int
+  | I_neg
+  | I_lsl
+  | I_lsr
+  | I_or
+  | I_and
+  | I_xor
+  | I_not
+  | I_compare
+  | I_eq
+  | I_neq
+  | I_lt
+  | I_gt
+  | I_le
+  | I_ge
+  | I_self
+  | I_contract _
+  | I_transfer_tokens
+  | I_set_delegate
+  | I_create_account
+  | I_implicit_account
+  | I_now
+  | I_amount
+  | I_balance
+  | I_check_signature
+  | I_blake2b
+  | I_sha256
+  | I_sha512
+  | I_hash_key
+  | I_steps_to_quota
+  | I_source
+  | I_sender
+  | I_address
+  | I_chain_id
+  | I_unpair -> 1
+  (* Non-Standard Instruction : Introduced to resolve parsing issue *)
+  | I_noop
+  (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
+  | I_micse_check _ -> 0
+  (* Standard Macros *)
+  | M_plain _
+  | M_num (_, _)
+  | M_code (_, _)
+  | M_code2 (_, _, _) -> Stdlib.failwith "count_inst_pgm_i: macro instruction should be substituted"
+end

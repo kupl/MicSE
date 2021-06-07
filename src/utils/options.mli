@@ -27,6 +27,7 @@ val flag_bp_print_pretty : bool ref (* turn on pretty-print *)
 val flag_param_storage : bool ref (* print counter-example on unsafe-path *)
 
 (* FLAGS - Print components *)
+val flag_inst_count_print : bool ref
 val flag_adt_print : bool ref
 val flag_cfg_print_dot : bool ref
 val flag_bp_print : bool ref

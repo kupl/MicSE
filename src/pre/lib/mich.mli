@@ -338,3 +338,12 @@ val fill_position_all_pgm : ?update_loc:bool -> program -> program
 val optm_remove_noop_in_seq : inst t -> inst t
 
 val optm_all_pgm : program -> program
+
+
+(*****************************************************************************)
+(* Counter - Instruction Counter                                             *)
+(*****************************************************************************)
+
+val count_inst_pgm : program -> int
+
+val count_inst_pgm_i : inst t -> int 
