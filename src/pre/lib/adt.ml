@@ -35,7 +35,7 @@ let parse_data : string -> data
   let in_c = Stdlib.open_in filename in
   let lexbuf = Lexing.from_channel in_c in
   try
-    let res = Parser.data Lexer.next_token lexbuf in
+    let res = Parser.data_entry Lexer.next_token lexbuf in
     let () = close_in in_c in
     res
   with
