@@ -644,12 +644,15 @@ module T2S = struct
             or https://github.com/dbuenzli/ptime
         *)
         Ptime.of_rfc3339 ~strict:false ~sub:true ~start:0 s 
-        |> Result.get_ok  (* It might raise "Invalid_argument" *)
-        |> (fun (pt, _, _) -> pt)
-        |> Ptime.to_span
-        |> Ptime.Span.to_int_s
-        |> Option.get   (* It might raise "Invalid_argument" *)
-        |> ZInt.of_int
+        |> (fun r -> (
+          if Result.is_ok r then (
+            Result.get_ok r
+            |> (fun (pt, _, _) -> pt)
+            |> Ptime.to_span
+            |> Ptime.Span.to_int_s
+            |> Option.get (* It might raise "Invalid_argument" *)
+            |> ZInt.of_int) 
+          else Z.of_string s |> ZInt.of_zarith))
       end
     | MV_lit_timestamp_sec zn -> ZInt.of_int (Z.to_int zn)
     | MV_add_tit (e1, e2) -> ZInt.create_add [cv_mvcc e1; cv_mvcc e2;]
