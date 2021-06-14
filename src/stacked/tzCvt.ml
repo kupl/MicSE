@@ -8,15 +8,15 @@
 (*****************************************************************************)
 
 module M2T = struct
-  open PreLib.Mich
+  open Mich
 
   exception Error of string
 
-  let cv_pos : pos -> Tz.ccp_pos = fun {col=c; lin=l} -> {col=c; lin=l}
-  let cv_loc : loc -> Tz.ccp_loc = (function | Unknown -> CCLOC_Unknown | Pos (p1,p2) -> CCLOC_Pos (cv_pos p1, cv_pos p2))
-  let cv_annot : annot -> Tz.ccp_annot = (function | A_typ s -> CCA_typ s | A_var s -> CCA_var s | A_fld s -> CCA_fld s)
-  let cv_t : 'a t -> 'a Tz.cc = fun {pos; ann; d} -> {cc_loc=(cv_loc pos); cc_anl=(List.map cv_annot ann); cc_v=d}
-  let rec cv_typ : typ -> Tz.mich_t = 
+  let cv_pos : Mich.pos -> Tz.ccp_pos = fun {col=c; lin=l} -> {col=c; lin=l}
+  let cv_loc : Mich.loc -> Tz.ccp_loc = (function | Unknown -> CCLOC_Unknown | Pos (p1,p2) -> CCLOC_Pos (cv_pos p1, cv_pos p2))
+  let cv_annot : Mich.annot -> Tz.ccp_annot = (function | A_typ s -> CCA_typ s | A_var s -> CCA_var s | A_fld s -> CCA_fld s)
+  let cv_t : 'a Mich.t -> 'a Tz.cc = fun {pos; ann; d} -> {cc_loc=(cv_loc pos); cc_anl=(List.map cv_annot ann); cc_v=d}
+  let rec cv_typ : Mich.typ -> Tz.mich_t = 
     (function
     | T_key        -> MT_key
     | T_unit       -> MT_unit
@@ -80,6 +80,7 @@ module M2T = struct
     | I_loop_left i   -> MI_loop_left (cv_instt i)
     | I_lambda (t1,t2,i) -> MI_lambda (cv_typt t1, cv_typt t2, cv_instt i)
     | I_exec          -> MI_exec
+    | I_apply         -> MI_apply
     | I_dip i         -> MI_dip_n (Z.one, cv_instt i)
     | I_dip_n (zn,i)  -> MI_dip_n (zn, cv_instt i)
     | I_failwith      -> MI_failwith
@@ -142,7 +143,7 @@ module M2T = struct
   and cv_data : typ t -> data -> Tz.mich_v =
     let open Tz in
     fun tt dd ->
-    (match tt.PreLib.Mich.d, dd with
+    (match tt.Mich.d, dd with
     | T_key,              D_string s -> MV_lit_key s
     | T_unit,             D_unit -> MV_unit
     | T_signature,        D_string s -> MV_lit_signature_str s
@@ -198,7 +199,7 @@ module M2T = struct
     | T_timestamp,        D_int zn -> MV_lit_timestamp_sec zn
     | T_address,          D_string s -> MV_lit_address (MV_lit_key_hash s |> gen_dummy_cc)
     | T_address,          D_bytes s -> MV_lit_address (MV_lit_key_hash s |> gen_dummy_cc)
-    | T_contract t,       D_string s when t.PreLib.Mich.d = PreLib.Mich.T_unit -> MV_implicit_account (MV_lit_key_hash s |> gen_dummy_cc)
+    | T_contract t,       D_string s when t.Mich.d = Mich.T_unit -> MV_implicit_account (MV_lit_key_hash s |> gen_dummy_cc)
     | T_contract t,       D_bytes s -> MV_lit_contract (cv_typt t, (MV_lit_address (MV_lit_key_hash s |> gen_dummy_cc) |> gen_dummy_cc))
     | _ -> Error "cv_data : match failed" |> raise
     (* unused *)

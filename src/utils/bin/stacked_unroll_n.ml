@@ -12,11 +12,11 @@ let loop_unroll_NUM = 2
 let main : unit -> unit
 = let open Stacked in
   fun () -> begin
-  let pgmfilecontent : PreLib.Adt.t = !Utils.Options.input_file |> PreLib.Adt.parse in
-  let strgfilecontentopt : PreLib.Adt.data option = 
+  let pgmfilecontent : Mich.program = !Utils.Options.input_file |> Parse.parse in
+  let strgfilecontentopt : (Mich.data Mich.t) option = 
     if !Utils.Options.initial_storage_file = "" 
       then None 
-      else Some (PreLib.Adt.parse_data !Utils.Options.initial_storage_file)
+      else Some (Parse.parse_data !Utils.Options.initial_storage_file)
   in
   let (tz_init_stg_opt, init_ss, cache, sset) = 
     Stacked.Prove.gen_sset pgmfilecontent strgfilecontentopt

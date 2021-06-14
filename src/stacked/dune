@@ -3,8 +3,13 @@
   (public_name micse.stacked)
   (libraries
     core
-    micse.pre
     micse.prover
     yojson
     zarith
     ))
+
+(menhir
+    (modules parser)
+    (flags --explain))
+    
+(ocamllex lexer)

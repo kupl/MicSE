@@ -40,17 +40,17 @@ type ret = {
     - Cache (For debugging purpose - Set of entered loop & lambdas)
     - State Set (Symbolic Execution Result)
 *)
-let gen_sset : PreLib.Adt.t -> (PreLib.Adt.data option) -> ((Tz.mich_v Tz.cc option) * Tz.sym_state * (Se.cache ref) * Se.state_set)
+let gen_sset : Mich.program -> ((Mich.data Mich.t) option) -> ((Tz.mich_v Tz.cc option) * Tz.sym_state * (Se.cache ref) * Se.state_set)
 = fun mich_program mich_init_stg_opt -> begin
   (* Prepare Michelson program and initial-storage if needed *)
-  let mich_program : PreLib.Mich.program = 
+  let mich_program : Mich.program = 
     mich_program
-    |> PreLib.Mich.subst_standard_macro_all_pgm
-    |> PreLib.Mich.optm_all_pgm
+    |> Mich.subst_standard_macro_all_pgm
+    |> Mich.optm_all_pgm
   in
   (* Count the number of instructions *)
   let _ = (if (!Utils.Options.flag_inst_count_print) then (
-    Utils.Log.info (fun m -> m "# of Instructions : %d" (mich_program |> PreLib.Mich.count_inst_pgm))) else ()) in
+    Utils.Log.info (fun m -> m "# of Instructions : %d" (mich_program |> Mich.count_inst_pgm))) else ()) in
   (* Convert them to Tz form *)
   let (param_typ, storage_typ, inst) : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) =
     TzCvt.M2T.cv_program mich_program in

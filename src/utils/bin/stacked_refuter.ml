@@ -17,11 +17,11 @@ let merged_state_set_size_limit = 10000
 let main : unit -> unit
 = let open Stacked in
   fun () -> begin
-  let pgmfilecontent : PreLib.Adt.t = !Utils.Options.input_file |> PreLib.Adt.parse in
-  let strgfilecontentopt : PreLib.Adt.data option = 
+  let pgmfilecontent : Stacked.Mich.program = !Utils.Options.input_file |> Stacked.Parse.parse in
+  let strgfilecontentopt : (Mich.data Mich.t) option = 
     if !Utils.Options.initial_storage_file = "" 
       then None 
-      else Some (PreLib.Adt.parse_data !Utils.Options.initial_storage_file)
+      else Some (Stacked.Parse.parse_data !Utils.Options.initial_storage_file)
   in
   let _ = Utils.Log.app (fun m -> m "Initial Storage Provided (Bool) : %b" (strgfilecontentopt <> None)) in
   let (tz_init_stg_opt, init_ss, cache, sset) = 

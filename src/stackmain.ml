@@ -2,10 +2,10 @@
 
 let f_generate_sset : unit -> unit
 = fun () -> begin
-  let pgmfilecontent : PreLib.Adt.t = !Utils.Options.input_file |> PreLib.Adt.parse in
-  let strgfilecontentopt : PreLib.Adt.data option =
+  let pgmfilecontent : Stacked.Mich.program = !Utils.Options.input_file |> Stacked.Parse.parse in
+  let strgfilecontentopt : (Stacked.Mich.data Stacked.Mich.t) option =
     if !Utils.Options.initial_storage_file = "" then None else
-    Some (PreLib.Adt.parse_data !Utils.Options.initial_storage_file)
+    Some (Stacked.Parse.parse_data !Utils.Options.initial_storage_file)
   in
   let (tz_init_stg_opt, init_ss, cache, sset) =
     Stacked.Prove.gen_sset pgmfilecontent strgfilecontentopt
@@ -18,15 +18,15 @@ end (* function f_generate_sset end *)
 
 let f_show_trueinv_solving : unit -> unit
 = fun () -> begin
-  let pgmfilecontent : PreLib.Adt.t = 
+  let pgmfilecontent : Stacked.Mich.program = 
     !Utils.Options.input_file 
-    |> PreLib.Adt.parse 
-    |> PreLib.Mich.subst_standard_macro_all_pgm 
-    |> PreLib.Mich.optm_all_pgm 
-    |> PreLib.Mich.fill_position_all_pgm ~update_loc:false in
-  let strgfilecontentopt : PreLib.Adt.data option =
+    |> Stacked.Parse.parse 
+    |> Stacked.Mich.subst_standard_macro_all_pgm 
+    |> Stacked.Mich.optm_all_pgm 
+    |> Stacked.Mich.fill_position_all_pgm ~update_loc:false in
+  let strgfilecontentopt : (Stacked.Mich.data Stacked.Mich.t) option =
     if !Utils.Options.initial_storage_file = "" then None else
-    Some (PreLib.Adt.parse_data !Utils.Options.initial_storage_file)
+    Some (Stacked.Parse.parse_data !Utils.Options.initial_storage_file)
   in
   let (tz_init_stg_opt, init_ss, cache, sset) =
     ( try
