@@ -1246,6 +1246,7 @@ module T2J = struct
     | MI_loop_left (i)              -> `Variant (i_loop_left,         ss1 i)
     | MI_lambda (t1,t2,i)           -> `Variant (i_lambda,            t2s1 t1 t2 i)
     | MI_exec                       -> `Variant (i_exec,              None)
+    | MI_apply                      -> `Variant (i_apply,             None)
     | MI_dip_n (zn, i)              -> `Variant (i_dip_n,             Some (`Tuple [`Intlit (Z.to_string zn); cv_micc i;]))
     | MI_failwith                   -> `Variant (i_failwith,          None)
     | MI_cast t                     -> `Variant (i_cast,              tt1 t)
@@ -1759,6 +1760,7 @@ module T2Jnocc = struct
     | MI_loop_left (i)              -> `Variant (i_loop_left,         ss1 i)
     | MI_lambda (t1,t2,i)           -> `Variant (i_lambda,            t2s1 t1 t2 i)
     | MI_exec                       -> `Variant (i_exec,              None)
+    | MI_apply                      -> `Variant (i_apply,             None)
     | MI_dip_n (zn, i)              -> `Variant (i_dip_n,             Some (`Tuple [`Intlit (Z.to_string zn); cv_micc i;]))
     | MI_failwith                   -> `Variant (i_failwith,          None)
     | MI_cast t                     -> `Variant (i_cast,              tt1 t)
@@ -2380,6 +2382,7 @@ module T2CS = struct
     | MI_loop_left (i)              -> s1   i_loop_left i
     | MI_lambda (t1,t2,i)           -> t2s1 i_lambda t1 t2 i
     | MI_exec                       -> s0   i_exec
+    | MI_apply                      -> s0   i_apply
     | MI_dip_n (zn, i)              -> v1s1 i_dip_n (Z.to_string zn) i
     | MI_failwith                   -> s0   i_failwith
     | MI_cast t                     -> s0t1 i_cast t
@@ -2996,6 +2999,7 @@ module CS2Tnocc = struct
       | s when s = i_get              -> MI_get
       | s when s = i_update           -> MI_update
       | s when s = i_exec             -> MI_exec
+      | s when s = i_apply            -> MI_apply
       | s when s = i_failwith         -> MI_failwith
       | s when s = i_rename           -> MI_rename
       | s when s = i_concat           -> MI_concat

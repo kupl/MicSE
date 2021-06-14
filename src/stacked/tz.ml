@@ -336,6 +336,7 @@ and mich_i =
   | MI_loop_left     of mich_i cc
   | MI_lambda        of mich_t cc * mich_t cc * mich_i cc
   | MI_exec
+  | MI_apply
   | MI_dip_n         of Z.t * mich_i cc
   | MI_failwith
   | MI_cast          of mich_t cc

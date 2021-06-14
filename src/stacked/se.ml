@@ -659,6 +659,25 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> cons_tl_n ss_symstack 2
     |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss ret_vvv)
     |> ss_to_srset
+  | MI_apply ->
+    (* For convenience (to not deal with any code-component issues), it does not check parameter's type. *)
+    let lmbd_ty : mich_t cc = CList.nth_exn ss_symstack 1 |> typ_of_val in
+    let (_, ret_ty) : mich_t cc * mich_t cc = (
+      match lmbd_ty.cc_v with
+      | MT_lambda (prm_ty, ret_ty) -> (
+          match prm_ty.cc_v with
+          | MT_pair (_, pt2) -> (prm_ty, MT_lambda (pt2, ret_ty) |> gen_dummy_cc)
+          | _ -> Error "run_inst_i : MI_apply : lambda-parameter" |> raise
+        )
+      | _ -> Error "run_inst_i : MI_apply" |> raise
+    ) in
+    let ret_vvv : mich_v cc = (
+      (gen_new_symval_t ret_ty).cc_v |> gen_inst_cc
+    ) in
+    ret_vvv
+    |> cons_tl_n ss_symstack 2
+    |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss ret_vvv)
+    |> ss_to_srset
   | MI_dip_n (zn, i) ->
     let (hd, tl) = CList.split_n ss_symstack (Z.to_int zn) in
     let hd_mutez_constraints : mich_f list = (
