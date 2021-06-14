@@ -489,7 +489,7 @@ module T2S = struct
     | MT_signature -> ZSignature.sort ()
     | MT_option t -> ZOption.create_sort ~content_sort:(sot t)
     | MT_list t -> ZList.create_sort ~content_sort:(sot t)
-    | MT_set t -> ZList.create_sort ~content_sort:(sot t)
+    | MT_set t -> ZSet.create_sort ~key_sort:(sot t) ~value_sort:(ZBool.sort ())
     | MT_operation -> ZOperation.sort ()
     | MT_contract _ -> ZContract.sort ()
     | MT_pair (t1, t2) -> ZPair.create_sort ~fst_sort:(sot t1) ~snd_sort:(sot t2)
