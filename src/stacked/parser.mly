@@ -9,6 +9,23 @@
       {lin=endpos.pos_lnum; col=(endpos.pos_cnum - endpos.pos_bol + 1)}
     )
 
+  (*
+  let pos_str (startpos, endpos) =
+    let open Lexing in
+    let spl, spc = startpos.pos_lnum, (startpos.pos_cnum - startpos.pos_bol + 1) in
+    let epl, epc = endpos.pos_lnum, (endpos.pos_cnum - endpos.pos_bol + 1) in
+    let s = Stdlib.string_of_int in
+    (s(spl) ^ ":" ^ s(spc) ^ " - " ^ s(epl) ^ ":" ^ s(epc))
+  *)
+
+  let construct_pair_comb : (typ t list) -> (typ t) 
+  = let rec foldf = function
+      | [] | (_ :: []) -> Stdlib.failwith "Parser.mly : construct_pair_comb : length < 2"
+      | [h1; h2] -> gen_t (T_pair (h1, h2))
+      | hd :: tl -> gen_t (T_pair (hd, foldf tl))
+    in
+    fun ttl -> foldf ttl
+
 %}
 
 
@@ -121,12 +138,13 @@ typ:
 
 typ_t:
   | t=typ_t_ty_noreq a=annots                 { gen_t_a a t }
-  | a=annots t=typ_t_ty_noreq                 { gen_t_a a t }
+  | a=annots t=typ_t_ty_noreq                 { gen_t_a a t } (* This rule causes a few shift/reduce conflicts *)
   | LP T_OPTION a=annots t=typ RP             { gen_t_a a (T_option t) }
   | LP T_LIST a=annots t=typ RP               { gen_t_a a (T_list t) }
   | LP T_SET a=annots t=typ RP                { gen_t_a a (T_set t) }
   | LP T_CONTRACT a=annots t=typ RP           { gen_t_a a (T_contract t) }
-  | LP T_PAIR a=annots t_1=typ t_2=typ RP     { gen_t_a a (T_pair (t_1, t_2)) }
+  // | LP T_PAIR a=annots t_1=typ t_2=typ RP     { gen_t_a a (T_pair (t_1, t_2)) }
+  | LP T_PAIR a=annots t_l=nonempty_list(typ) RP { gen_t_a a (construct_pair_comb(t_l)).d }
   | LP T_OR a=annots t_1=typ t_2=typ RP       { gen_t_a a (T_or (t_1, t_2)) }
   | LP T_LAMBDA a=annots t_1=typ t_2=typ RP   { gen_t_a a (T_lambda (t_1, t_2)) }
   | LP T_MAP a=annots t_1=typ t_2=typ RP      { gen_t_a a (T_map (t_1, t_2)) }
@@ -160,17 +178,21 @@ typ_t_ty_noreq:
 code:
   | i=inst_t SEMICOLON?    { i }
   | c=br_code             { c }
-  | i=inst_t SEMICOLON c=code { gen_insttseq [] [i; c] }
-  | c_1=br_code SEMICOLON? c_2=code { gen_insttseq [] [c_1; c_2] }
+  | i=inst_t SEMICOLON c=code { (*"code - " ^ (pos_str($loc(i))) ^ "  ~  " ^ (pos_str($loc(c))) |> print_endline ;*) gen_insttseq [] [i; c] }
+  | c_1=br_code SEMICOLON? c_2=code { (*"code - " ^ (pos_str($loc(c_1))) ^ "  ~  " ^ (pos_str($loc(c_2))) |> print_endline ;*) gen_insttseq [] [c_1; c_2] }
 
 br_code:
-  | LB RB { {pos=get_pos $loc; ann=[]; d=I_noop;} }
-  | LB c=code RB { {c with pos=get_pos($loc(c));} }
+  | LB RB { (*"br_code - " ^ (pos_str($loc)) |> print_endline;*) {pos=get_pos $loc; ann=[]; d=I_noop;} }
+  | LB c=code RB { (*"br_code - " ^ (pos_str($loc)) |> print_endline;*) {c with pos=get_pos($loc(c));} }
 
 inst_t:
   (* Rule to Add Location Information *)
-  | i=inst_t_i  { {i with pos=get_pos($loc(i));} }
-  | m=macro_t_i { {m with pos=get_pos($loc(m));} }
+  | i=inst_t_i  { (*"inst_t_i - " ^ (pos_str($loc)) |> print_endline;*) {i with pos=get_pos($loc(i));} }
+  | m=macro_t_i { (*"macro_t_i - " ^ (pos_str($loc)) |> print_endline;*) {m with pos=get_pos($loc(m));} }
+
+inst_t_noreq:
+  | i=inst_t_i_noreq a=annots   { let ii = (gen_t_a a i) in {ii with pos=get_pos($loc(i))} }
+  | m=macro_t_i_noreq a=annots  { let mm = (gen_t_a a m) in {mm with pos=get_pos($loc(m))} }
 
 inst_t_i:
   (** Standard Instructions : Michelson-Defined (except I_seq and curly braces) **)
@@ -181,20 +203,36 @@ inst_t_i:
   | I_DIG  a=annots n=NUM       { gen_t_a a (I_dig n) }
   | I_DUG  a=annots n=NUM       { gen_t_a a (I_dug n) }
   | I_DUP  a=annots n=NUM       { gen_t_a a (M_num ("DUP", n)) }
+  | I_GET  a=annots n=NUM       { gen_t_a a (M_num ("GET", n)) }
+  | I_PAIR a=annots n=NUM       { gen_t_a a (M_num ("PAIR", n)) }
+  | I_UPDATE a=annots n=NUM     { gen_t_a a (M_num ("UPDATE", n)) }
+  | I_UNPAIR a=annots n=NUM     { gen_t_a a (M_num ("UNPAIR", n)) }
   | I_PUSH a=annots t=typ d=data                  { gen_t_a a (I_push (t, d)) }
   | I_NONE a=annots t=typ       { gen_t_a a (I_none t) }
   | I_IF_NONE a=annots i_1=br_code i_2=br_code    { gen_t_a a (I_if_none (i_1, i_2)) }
+  | I_IF_NONE a=annots i_1=inst_t_noreq i_2=br_code { gen_t_a a (I_if_none (i_1, i_2)) }
+  | I_IF_NONE a=annots i_1=br_code i_2=inst_t_noreq { gen_t_a a (I_if_none (i_1, i_2)) }
+  // | I_IF_NONE a=annots                            { gen_t_a a (I_if_none (gen_t I_noop, gen_t I_noop)) }
   | I_LEFT a=annots t=typ                         { gen_t_a a (I_left t) }
   | I_RIGHT a=annots t=typ                        { gen_t_a a (I_right t) }
   | I_IF_LEFT a=annots i_1=br_code i_2=br_code    { gen_t_a a (I_if_left (i_1, i_2)) }
+  | I_IF_LEFT a=annots i_1=inst_t_noreq i_2=br_code { gen_t_a a (I_if_left (i_1, i_2)) }
+  | I_IF_LEFT a=annots i_1=br_code i_2=inst_t_noreq { gen_t_a a (I_if_left (i_1, i_2)) }
+  // | I_IF_LEFT a=annots                            { gen_t_a a (I_if_left (gen_t I_noop, gen_t I_noop)) }
   | I_NIL a=annots t=typ                          { gen_t_a a (I_nil t) }
   | I_IF_CONS a=annots i_1=br_code i_2=br_code    { gen_t_a a (I_if_cons (i_1, i_2)) }
+  | I_IF_CONS a=annots i_1=inst_t_noreq i_2=br_code { gen_t_a a (I_if_cons (i_1, i_2)) }
+  | I_IF_CONS a=annots i_1=br_code i_2=inst_t_noreq { gen_t_a a (I_if_cons (i_1, i_2)) }
+  // | I_IF_CONS a=annots                            { gen_t_a a (I_if_cons (gen_t I_noop, gen_t I_noop)) }
   | I_EMPTY_SET a=annots t=typ                    { gen_t_a a (I_empty_set t) }
   | I_EMPTY_MAP a=annots t_1=typ t_2=typ          { gen_t_a a (I_empty_map (t_1, t_2)) }
   | I_EMPTY_BIG_MAP a=annots t_1=typ t_2=typ      { gen_t_a a (I_empty_big_map (t_1, t_2)) }
   | I_MAP a=annots i=br_code    { gen_t_a a (I_map i) }
   | I_ITER a=annots i=br_code   { gen_t_a a (I_iter i) }
   | I_IF a=annots i_1=br_code i_2=br_code         { gen_t_a a (I_if (i_1, i_2)) }
+  | I_IF a=annots i_1=inst_t_noreq i_2=br_code    { gen_t_a a (I_if (i_1, i_2)) }
+  | I_IF a=annots i_1=br_code i_2=inst_t_noreq    { gen_t_a a (I_if (i_1, i_2)) }
+  // | I_IF a=annots                                 { gen_t_a a (I_if (gen_t I_noop, gen_t I_noop)) }
   | I_LOOP a=annots i=br_code   { gen_t_a a (I_loop i) }
   | I_LOOP_LEFT a=annots i=br_code                { gen_t_a a (I_loop_left i) }
   | I_LAMBDA a=annots t_1=typ t_2=typ i=br_code   { gen_t_a a (I_lambda (t_1, t_2, i)) }
@@ -276,11 +314,13 @@ inst_t_i:
 
 macro_t_i:
   (* Standard Macros *)
-  | m=IDENT a=annots                    { gen_t_a a (M_plain m) }
+  | m=macro_t_i_noreq a=annots          { gen_t_a a m }
   | m=IDENT a=annots n=NUM              { gen_t_a a (M_num (m, n)) }
   | m=IDENT a=annots i=br_code          { gen_t_a a (M_code (m, i)) }
   | m=IDENT a=annots i_1=br_code i_2=br_code { gen_t_a a (M_code2 (m, i_1, i_2))}
 
+macro_t_i_noreq:
+  | m=IDENT                             { M_plain m }
 
 
 (*****************************************************************************)

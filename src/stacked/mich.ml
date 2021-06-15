@@ -615,6 +615,7 @@ let resolve_plain_macro : inst t -> string -> inst t
   (* Search Fixed-name macros first *)
   match s with
   | "FAIL" -> m_fail
+  | "SELF_ADDRESS" -> gen_instseq ann [I_self; I_address;]
   | "ASSERT" -> m_assert
   | "ASSERT_NONE"  -> gen_t (I_if_none (gen_t I_noop, m_fail))
   | "ASSERT_SOME"  -> gen_t (I_if_none (m_fail, gen_t_a ann I_rename))
@@ -649,14 +650,56 @@ end
 
 (*  NUMBER MACRO LIST
     - DUP
+    - GET
+    - UPDATE
+    - PAIR
+    - UNPAIR
 *)
 
 let construct_duup : int -> string = fun n -> "D" ^ (String.make n 'U') ^ "P"
+
+let parse_get_n : int -> inst t
+=fun n -> begin
+  let last_il = if (n mod 2) = 0 then [] else [I_car] in
+  gen_instseq [] ((List.init (n/2) (fun _ -> I_cdr)) @ last_il)
+end
+
+let rec update_n_body : int -> inst t
+=fun n -> begin
+  if n < 0 then Stdlib.failwith "Mich.ml : update_n_body : n < 0" else
+  match n with
+  | 0 -> gen_t I_drop
+  | 1 -> gen_instseq [] [I_unpair; I_drop; I_swap; I_pair;]
+  | _ -> gen_instseq [] [I_unpair; I_dip (update_n_body (n-2)); I_pair;]
+end
+
+let parse_update_n : int -> inst t
+=fun n -> gen_t (I_seq (gen_t I_swap, update_n_body n))
+
+let rec parse_pair_n : int -> inst t
+= fun n -> begin
+  if n < 2 then Stdlib.failwith "Mich.ml : parse_pair_n : n < 1" else
+  match n with
+  | 2 -> gen_t I_pair
+  | _ -> gen_instseq [] [I_dip (parse_pair_n (n-1)); I_pair;]
+end
+
+let rec parse_unpair_n : int -> inst t
+= fun n -> begin 
+  if n < 2 then Stdlib.failwith "Mich.ml : parse_unpair_n : n < 1" else
+  match n with
+  | 2 -> gen_t I_unpair
+  | _ -> gen_instseq [] [I_unpair; I_dip (parse_unpair_n (n-1));]
+end
 
 let resolve_num_macro : string -> Z.t -> inst t
 =fun s zn -> begin
   match s with
   | "DUP" -> construct_duup (Z.to_int zn) |> parse_duup |> Stdlib.snd |> Option.get
+  | "GET" -> parse_get_n (Z.to_int zn)
+  | "UPDATE" -> parse_update_n (Z.to_int zn)
+  | "PAIR" -> parse_pair_n (Z.to_int zn)
+  | "UNPAIR" -> parse_unpair_n (Z.to_int zn)
   | _ -> nm_fail ("resolve_num_macro : every match failed : " ^ s)
 end
 

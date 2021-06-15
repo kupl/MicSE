@@ -152,6 +152,7 @@ module M2T = struct
     | T_list t,           D_list d -> MV_lit_list (cv_typt t, List.map (cv_datat t) d)
     | T_set t,            D_list d -> MV_lit_set (cv_typt t, PSet.of_list (List.map (cv_datat t) d))
     | T_pair (t1,t2),     D_pair (d1,d2) -> MV_pair (cv_datat t1 d1, cv_datat t2 d2)
+    | T_pair (t1,t2),     D_list (d1 :: d2) -> MV_pair (cv_datat t1 d1, cv_datat t2 (gen_t (D_list d2)))
     | T_or (t1,_),        D_left d -> MV_left (cv_typt tt, cv_datat t1 d)
     | T_or (_,t2),        D_right d -> MV_right (cv_typt tt, cv_datat t2 d)
     | T_lambda (t1,t2),   D_lambda i -> MV_lit_lambda (cv_typt t1, cv_typt t2, cv_instt i)
