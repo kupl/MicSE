@@ -314,7 +314,8 @@ inst_t_i:
 
 macro_t_i:
   (* Standard Macros *)
-  | m=macro_t_i_noreq a=annots          { gen_t_a a m }
+  | m=IDENT a=annots          { gen_t_a a (M_plain m) }
+  // | m=macro_t_i_noreq a=annots          { gen_t_a a m }
   | m=IDENT a=annots n=NUM              { gen_t_a a (M_num (m, n)) }
   | m=IDENT a=annots i=br_code          { gen_t_a a (M_code (m, i)) }
   | m=IDENT a=annots i_1=br_code i_2=br_code { gen_t_a a (M_code2 (m, i_1, i_2))}
