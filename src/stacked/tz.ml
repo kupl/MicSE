@@ -1525,3 +1525,13 @@ let map_f_v2v_outer : mich_f -> v2v:(mich_v cc -> mich_v cc option) -> mich_f
   fun fff ~v2v -> begin
   map_f_v2v_outer_i fff ~v2v
 end (* function map_f_v2v_outer end *)
+
+(* Formula Utilities *)
+
+let mutez_bound_f : mich_v cc -> mich_f
+= (* function mutez_bound_f start *)
+  fun vvv -> begin
+  MF_and [ (* MUTEZ BOUND *)
+    MF_add_mmm_no_overflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc));
+    MF_sub_mmm_no_underflow (vvv, ((MV_lit_mutez Z.zero) |> gen_dummy_cc)); ]
+end (* function mutez_bound_f end *)
