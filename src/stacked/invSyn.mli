@@ -19,6 +19,8 @@ val combination_rfl : 'a Core.Set.Poly.t -> ('a * 'a) Core.Set.Poly.t
 val combination_self_two_diff : 'a Core.Set.Poly.t -> ('a * 'a) Core.Set.Poly.t
 (* combination_self_two_diff_rf {1; 2; 3} === {(1, 2); (1, 3); (2, 1); (2, 3); (3, 1); (3, 2)} *)
 val combination_self_two_diff_rf : 'a Core.Set.Poly.t -> ('a * 'a) Core.Set.Poly.t
+(* combination_self_three_diff {1; 2; 3; 4} === {(1, 2, 3); (1, 2, 4); (1, 3, 4); (2, 3, 4)} *)
+val combination_self_three_diff : 'a Core.Set.Poly.t -> ('a * 'a * 'a) Core.Set.Poly.t
 
 
 (******************************************************************************)
@@ -48,6 +50,7 @@ val all_equal : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_f Core.Set.Poly
 val all_ge : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
 val all_gt : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
 val add_2_eq : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
+val add_3_eq : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
 
 
 (*****************************************************************************)

@@ -68,6 +68,26 @@ let combination_self_two_diff_rf : 'a Core.Set.Poly.t -> ('a * 'a) Core.Set.Poly
     ~f:(fun acc (x, y) -> CPSet.add acc (y, x))
 end (* function combination_self_two_diff_rf end *)
 
+(* combination_self_three_diff {1; 2; 3; 4} === {(1, 2, 3); (1, 2, 4); (1, 3, 4); (2, 3, 4)} *)
+let combination_self_three_diff : 'a Core.Set.Poly.t -> ('a * 'a * 'a) Core.Set.Poly.t
+= let module CPSet = Core.Set.Poly in
+  (* function combination_self_three_diff start *)
+  fun s -> begin
+  let (comb, _) : ('a * 'a * 'a) CPSet.t * 'a CPSet.t = 
+    CPSet.fold s ~init:(CPSet.empty, s)
+      ~f:(fun (acc, rs) x -> (
+            let rs' : 'a CPSet.t = CPSet.remove rs x in
+            let (icomb, _) : ('a * 'a) CPSet.t * 'a CPSet.t =
+              CPSet.fold rs' ~init:(CPSet.empty, rs')
+                ~f:(fun (iacc, irs) ix -> (
+                  let irs' : 'a CPSet.t = CPSet.remove irs ix in
+                  (CPSet.union iacc (bind ix irs'), irs'))) in
+            let comb : ('a * 'a * 'a) CPSet.t = (
+              CPSet.map icomb ~f:(fun (a, b) -> (x, a, b))) in
+            ((CPSet.union acc comb), rs'))) in
+  comb
+end (* function combination_self_three_diff end *)
+
 
 (******************************************************************************)
 (******************************************************************************)
@@ -138,6 +158,27 @@ let bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> 
               Comp.collect (Comp.base_comp_from_v (Option.get init_strg_opt) ~loc:0) ctmap)
             else ctmap)
             |> Comp.collect base_comp)))))
+  
+  (* DEBUG START *) 
+  (* |> (fun x ->
+    CPMap.iteri
+      x
+      ~f:(fun ~key ~data -> (
+        Utils.Log.debug (fun m -> m "MCI: %s\n%s"
+          (key |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string)
+          (CTMap.fold
+            data
+            ~init:""
+            ~f:(fun ~key ~data acc -> (
+              acc ^ "> Ty: " ^ (key |> TzCvt.T2Jnocc.cv_mtcc |> Yojson.Safe.to_string) ^ "\n" ^
+              "  [ " ^ (CPSet.map
+                          data
+                          ~f:(fun c -> (c.cp_value |> TzCvt.T2Jnocc.cv_mvcc |> Yojson.Safe.to_string))
+                        |> CPSet.to_list
+                        |> Core.String.concat ~sep:"\n    ") ^ " ];\n"))))));
+    x) *)
+  (* DEBUG END *)
+
 end (* function bake_comp_map end *)
 
 (* 
@@ -209,7 +250,7 @@ let all_equal : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_f Core.Set.Poly
           | MT_mutez -> (MF_and (CList.fold [c1; c2;] ~init:[(MF_eq (c1.cp_value, c2.cp_value));]
             ~f:(fun acc cin -> (Tz.mutez_bound_f cin.cp_value)::acc)))
           | _ -> MF_eq (c1.cp_value, c2.cp_value)))))
-          |> CPSet.union acc))
+      |> CPSet.union acc))
 end (* function all_equal end *)
 
 let all_ge : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
@@ -221,18 +262,18 @@ let all_ge : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_
   fun ctmap tl -> begin
   let ts : Tz.mich_t CPSet.t = tl |> CPSet.of_list in (* target types *)
   CTMap.fold ctmap ~init:CPSet.empty ~f:(fun ~key ~data acc -> (
-          if CPSet.exists ts ~f:(fun t -> t = key.cc_v) then (
+    if CPSet.exists ts ~f:(fun t -> t = key.cc_v) then (
       combination_self_two_diff_rf data
       |> CPSet.map ~f:(fun (c1, c2) -> (
-                    let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
-                    let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
+        let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
+        let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
         MF_imply ((fold_precond [c1; c2;]), (
           match key.cc_v with
           | MT_mutez -> (MF_and (CList.fold [c1; c2;] ~init:[(MF_is_true (gen_dummy_cc (MV_geq_ib (cmp, zero))));]
             ~f:(fun acc cin -> (Tz.mutez_bound_f cin.cp_value)::acc)))
           | _ -> MF_is_true (gen_dummy_cc (MV_geq_ib (cmp, zero)))))))
-            |> CPSet.union acc)
-          else acc))
+      |> CPSet.union acc)
+    else acc))
 end (* function all_ge end *)
 
 let all_gt : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
@@ -244,18 +285,18 @@ let all_gt : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_
   fun ctmap tl  -> begin
   let ts : Tz.mich_t CPSet.t = tl |> CPSet.of_list in (* target types *)
   CTMap.fold ctmap ~init:CPSet.empty ~f:(fun ~key ~data acc -> (
-          if CPSet.exists ts ~f:(fun t -> t = key.cc_v) then (
+    if CPSet.exists ts ~f:(fun t -> t = key.cc_v) then (
       combination_self_two_diff_rf data
       |> CPSet.map ~f:(fun (c1, c2) -> (
-                  let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
-                  let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
+        let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
+        let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
         MF_imply ((fold_precond [c1; c2;]), (
           match key.cc_v with
           | MT_mutez -> (MF_and (CList.fold [c1; c2;] ~init:[(MF_is_true (gen_dummy_cc (MV_gt_ib (cmp, zero))));]
             ~f:(fun acc cin -> (Tz.mutez_bound_f cin.cp_value)::acc)))
           | _ -> MF_is_true (gen_dummy_cc (MV_gt_ib (cmp, zero)))))))
-            |> CPSet.union acc)
-          else acc))
+      |> CPSet.union acc)
+    else acc))
 end (* function all_gt end *)
 
 let add_2_eq : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
@@ -267,14 +308,14 @@ let add_2_eq : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mic
   fun ctmap tl  -> begin
   let ts : Tz.mich_t CPSet.t = tl |> CPSet.of_list in (* target types *)
   CTMap.fold ctmap ~init:CPSet.empty ~f:(fun ~key ~data acc -> (
-          if CPSet.exists ts ~f:(fun t -> t = key.cc_v) then (
-            match key.cc_v with
-            | MT_mutez -> (
+    if CPSet.exists ts ~f:(fun t -> t = key.cc_v) then (
+      match key.cc_v with
+      | MT_mutez -> (
         (* mutez + mutez = mutez *)
         let mmm : Tz.mich_f CPSet.t = (
           CPSet.filter data ~f:(fun c -> Option.is_some c.cp_base_var)
-              |> combination_self_two_diff
-              |> CPSet.map 
+          |> combination_self_two_diff
+          |> CPSet.map 
             ~f:(fun (c1, c2) -> ((MV_add_mmm (c1.cp_value, c2.cp_value) |> gen_dummy_cc), [c1; c2;]))
           |> CPSet.fold ~init:acc
             ~f:(fun accs (add, clst) -> (
@@ -285,9 +326,40 @@ let add_2_eq : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mic
                     ~f:(fun acc cin -> (Tz.mutez_bound_f cin.cp_value)::acc))))))
               |> CPSet.union accs))) in
         mmm)
-            | _ -> acc)
-          else acc))
+      | _ -> acc)
+    else acc))
 end (* function add_2_eq end *)
+
+let add_3_eq : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_f Core.Set.Poly.t
+= let open Tz in
+  let open Comp in
+  let module CList = Core.List in
+  let module CPSet = Core.Set.Poly in
+  (* function add_3_eq start *)
+  fun ctmap tl  -> begin
+  let ts : Tz.mich_t CPSet.t = tl |> CPSet.of_list in (* target types *)
+  CTMap.fold ctmap ~init:CPSet.empty ~f:(fun ~key ~data acc -> (
+    if CPSet.exists ts ~f:(fun t -> t = key.cc_v) then (
+      match key.cc_v with
+      | MT_mutez -> (
+        (* mutez + mutez + mutez = mutez *)
+        let mmmm : Tz.mich_f CPSet.t = (
+          CPSet.filter data ~f:(fun c -> Option.is_some c.cp_base_var)
+          |> combination_self_three_diff
+          |> CPSet.map ~f:(fun (c1, c2, c3) -> (
+            (MV_add_mmm ((MV_add_mmm (c1.cp_value, c2.cp_value) |> gen_dummy_cc), c3.cp_value) |> gen_dummy_cc),
+            [c1; c2; c3;]))
+          |> CPSet.fold ~init:acc ~f:(fun accs (add, clst) -> (
+            CPSet.map data ~f:(fun c -> (
+              MF_imply (
+                (fold_precond (c::clst)),
+                (MF_and (CList.fold (c::clst) ~init:[MF_eq (add, c.cp_value);] 
+                  ~f:(fun acc cin -> (Tz.mutez_bound_f cin.cp_value)::acc))))))
+            |> CPSet.union accs))) in
+        mmmm)
+      | _ -> acc)
+    else acc))
+end (* function add_3_eq end *)
 
 
 (*****************************************************************************)
@@ -296,7 +368,7 @@ end (* function add_2_eq end *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-type generate_param = 
+type generate_param =
   (* igi_failed_set *)    ((Tz.sym_state * Se.query_category) * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option) * Tz.mich_f * Utils.Timer.time) Core.Set.Poly.t *
   (* igi_cur_inv *)       Se.invmap *
   (* igi_comp_map *)      comp_map *
@@ -331,12 +403,14 @@ let refine_t : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
   let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
   (* let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap [MT_int; MT_nat; MT_mutez] in *)
   (* let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in *)
-  let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in
+  (* let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in *)
+  let add_3_eq_fmlas : Tz.mich_f CPSet.t = add_3_eq ctmap [MT_mutez] in
   (* 2. generate invariant map *)
   [ all_eq_fmlas;
     (* all_ge_fmlas; *)
     (* all_gt_fmlas; *)
-    add_2_eq_fmlas; ]
+    (* add_2_eq_fmlas; *)
+    add_3_eq_fmlas; ]
   |> collect_set
   |> CPSet.filter
   ~f:(fun c -> (
@@ -358,12 +432,14 @@ let refine_l : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
   let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
   (* let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap [MT_int; MT_nat; MT_mutez] in *)
   (* let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in *)
-  let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in
+  (* let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in *)
+  let add_3_eq_fmlas : Tz.mich_f CPSet.t = add_3_eq ctmap [MT_mutez] in
   (* 2. generate invariant map *)
   [ all_eq_fmlas;
     (* all_ge_fmlas; *)
     (* all_gt_fmlas; *)
-    add_2_eq_fmlas; ]
+    (* add_2_eq_fmlas; *)
+    add_3_eq_fmlas; ]
   |> collect_set
   |> CPSet.filter
     ~f:(fun c -> (
