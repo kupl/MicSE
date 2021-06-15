@@ -298,7 +298,7 @@ and mich_v =
   (*************************************************************************)
   (* Custom Domain Value for Invariant Synthesis                           *)
   (*************************************************************************)
-  | MV_sigma_lm of mich_v cc * mich_v cc (* 'a list * mutez -> mutez *)
+  | MV_sigma_tmplm of mich_v cc (* (timestamp * mutez) list -> mutez *)
 
 
 and mich_i = 

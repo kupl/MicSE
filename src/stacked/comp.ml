@@ -97,6 +97,7 @@ let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
 = let module CList = Core.List in
   let module CPSet = Core.Set.Poly in
   let module CPMap = Core.Map.Poly in
+  let tmap_update k v tmap = CTMap.update tmap k ~f:(function None -> CPSet.singleton v | Some sss -> CPSet.add sss v) in
   let rec collect_i : t -> (t CPSet.t) CTMap.t -> (t CPSet.t) CTMap.t
   = let open Tz in
     (* function collect_i start *)
@@ -106,7 +107,7 @@ let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
     | MT_option t1cc -> (
       let precond_none : mich_f list = (MF_is_none cur_val) :: cur_prec_lst in
       let precond_some : mich_f list = (MF_not (MF_is_none cur_val)) :: cur_prec_lst in
-      let value_unlifted : mich_v cc = gen_custom_cc cur_val (MV_unlift_option cur_val) in
+      let value_unlifted : mich_v cc = gen_custom_cc cur_val (MV_unlift_option cur_val) |> Tz.optimize_v in
       let comp_none : t = { cur_comp with cp_precond_lst=precond_none; cp_value=(gen_custom_cc cur_val (MV_none t1cc)); } in
       let comp_some : t = { cur_comp with cp_precond_lst=precond_some; cp_value=(gen_custom_cc cur_val (MV_some value_unlifted)); } in
       let comp_some_unlifted : t = { cur_comp with cp_typ=t1cc; cp_precond_lst=precond_some; cp_value=value_unlifted; } in
@@ -120,8 +121,8 @@ let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
       collect_i comp_some_unlifted acc')
     | MT_pair (t1cc, t2cc) -> (
       let comp_pair : t = cur_comp in
-      let comp_fst : t = { cur_comp with cp_typ=t1cc; cp_value=(gen_custom_cc cur_val (MV_car cur_val)); } in
-      let comp_snd : t = { cur_comp with cp_typ=t2cc; cp_value=(gen_custom_cc cur_val (MV_cdr cur_val)); } in
+      let comp_fst : t = { cur_comp with cp_typ=t1cc; cp_value=(gen_custom_cc cur_val (MV_car cur_val) |> Tz.optimize_v); } in
+      let comp_snd : t = { cur_comp with cp_typ=t2cc; cp_value=(gen_custom_cc cur_val (MV_cdr cur_val) |> Tz.optimize_v); } in
       let acc' : (t CPSet.t) CTMap.t =
         CTMap.update
           acc
@@ -132,8 +133,8 @@ let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
     | MT_or (t1cc, t2cc) -> (
       let precond_left : mich_f list = (MF_is_left cur_val) :: cur_prec_lst in
       let precond_right : mich_f list = (MF_not (MF_is_left cur_val)) :: cur_prec_lst in
-      let value_left_unlifted : mich_v cc = gen_custom_cc cur_val (MV_unlift_left cur_val) in
-      let value_right_unlifted : mich_v cc = gen_custom_cc cur_val (MV_unlift_right cur_val) in
+      let value_left_unlifted : mich_v cc = gen_custom_cc cur_val (MV_unlift_left cur_val) |> Tz.optimize_v in
+      let value_right_unlifted : mich_v cc = gen_custom_cc cur_val (MV_unlift_right cur_val) |> Tz.optimize_v in
       let comp_left : t = { cur_comp with cp_precond_lst=precond_left; cp_value=(gen_custom_cc cur_val (MV_left (cur_typ, value_left_unlifted))); } in
       let comp_right : t = { cur_comp with cp_precond_lst=precond_right; cp_value=(gen_custom_cc cur_val (MV_right (cur_typ, value_right_unlifted))); } in
       let comp_left_unlifted : t = { cur_comp with cp_typ=t1cc; cp_precond_lst=precond_left; cp_value=value_left_unlifted; } in
@@ -149,33 +150,14 @@ let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
         collect_i comp_left_unlifted acc' in
       collect_i comp_right_unlifted acc_left)
     | MT_list t1cc -> (
-      let elem_v : mich_v cc = (* should be same with se.run_inst.ss_add_list_sigma_constraint *)
-        MV_symbol (
-          t1cc, 
-          ( { Jc.Fsvn.typ=`Elem;
-              Jc.Fsvn.c_vn="elem";
-              Jc.Fsvn.c_acc_l=[];
-              Jc.Fsvn.e_acc_l=[]; }  |> Jc.Fsvn.to_string))
-        |> gen_dummy_cc in
-      let comp_elem : t = { cur_comp with cp_typ=t1cc; cp_base_var=(Some elem_v); cp_precond_lst=[]; cp_value=elem_v; } in
-      let elem_map : (t CPSet.t) CTMap.t = collect_i comp_elem CTMap.empty in
-      let acc' : (t CPSet.t) CTMap.t = 
-        CTMap.mapi
-          acc
-          ~f:(fun ~key ~data -> (
-            match key.cc_v with
-            | MT_mutez -> (
-              gen_dummy_cc key.cc_v
-              |> CTMap.find elem_map
-              |> (function Some sss -> sss | None -> CPSet.empty)
-              |> CPSet.fold
-                  ~init:data
-                  ~f:(fun data_acc elem_mutez -> (
-                    if CList.is_empty elem_mutez.cp_precond_lst then ( (* pair element only *)
-                      let value_sigma : mich_v cc = gen_custom_cc cur_val (MV_sigma_lm (cur_val, elem_mutez.cp_value)) in
-                      { cur_comp with cp_typ=key; cp_value=value_sigma; } |> CPSet.add data_acc)
-                    else data)))
-            | _ -> data)) in
+      let acc' = (
+        match t1cc.cc_v with
+        | MT_pair (t11cc, t12cc) -> (
+          match (t11cc.cc_v, t12cc.cc_v) with
+          | (MT_timestamp, MT_mutez) -> (
+            tmap_update (MT_mutez |> gen_dummy_cc) ({ cur_comp with cp_value=(gen_custom_cc cur_val (MV_sigma_tmplm cur_val)); }) acc)
+          | _ -> acc)
+        | _ -> acc) in
       CTMap.update acc' cur_typ ~f:(function None -> CPSet.singleton cur_comp | Some cc -> CPSet.add cc cur_comp))
     | _ -> CTMap.update acc cur_typ ~f:(function None -> CPSet.singleton cur_comp | Some cc -> CPSet.add cc cur_comp)
   end in (* function collect_i end *)

@@ -298,7 +298,7 @@ and mich_v =
   (*************************************************************************)
   (* Custom Domain Value for Invariant Synthesis                           *)
   (*************************************************************************)
-  | MV_sigma_lm of mich_v cc * mich_v cc (* 'a list * mutez -> mutez *)
+  | MV_sigma_tmplm of mich_v cc (* (timestamp * mutez) list -> mutez *)
 
 and mich_i = 
   (* Michelson Instruction *)
@@ -770,7 +770,7 @@ and typ_of_val_i : (mich_t -> mich_t cc) -> mich_v -> mich_t cc
   (*************************************************************************)
   (* Custom Domain Value for Invariant Synthesis                           *)
   (*************************************************************************)
-  | MV_sigma_lm _ -> MT_mutez |> gen_cc
+  | MV_sigma_tmplm _ -> MT_mutez |> gen_cc
 end (* function typ_of_val_i end *)
 
 let get_innertyp : mich_t cc -> mich_t cc
@@ -1264,7 +1264,7 @@ let optimize_v : mich_v cc -> mich_v cc
     (*************************************************************************)
     (* Custom Domain Value for Invariant Synthesis                           *)
     (*************************************************************************)
-    | MV_sigma_lm (v1, v2) -> MV_sigma_lm ((ov v1), (ov v2)))
+    | MV_sigma_tmplm v1 -> MV_sigma_tmplm (ov v1))
     |> gen_custom_cc vvv
   end in (* function optimize_v_i end *)
   (* function optimize_v start *)
@@ -1484,7 +1484,7 @@ let map_v_v2v_outer : mich_v cc -> v2v:(mich_v cc -> mich_v cc option) -> mich_v
       (*************************************************************************)
       (* Custom Domain Value for Invariant Synthesis                           *)
       (*************************************************************************)
-      | MV_sigma_lm (v1, v2) -> MV_sigma_lm ((rv v1), (rv v2)))
+      | MV_sigma_tmplm v1 -> MV_sigma_tmplm (rv v1))
       |> gen_custom_cc vvv
   end in (* function map_v_v2v_outer_i end *)
   (* function map_v_v2v_outer start *)

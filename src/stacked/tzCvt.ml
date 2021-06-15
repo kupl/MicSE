@@ -458,7 +458,7 @@ module T2A = struct
     (*************************************************************************)
     (* Custom Domain Value for Invariant Synthesis                           *)
     (*************************************************************************)
-    | MV_sigma_lm (v1, v2) -> app ((abv v1)@(abv v2)) (abr_v_sigma ^ abr_t_list ^ abr_t_mutez)
+    | MV_sigma_tmplm v1 -> app (abv v1) (abr_v_sigma ^ abr_t_timestamp ^ abr_t_mutez ^ abr_t_pair ^ abr_t_list ^ abr_t_mutez)
     )
   
   and cv_mvcc : mich_v cc -> string list = (fun x -> cv_mv x.cc_v)
@@ -533,6 +533,24 @@ module T2S = struct
     ) (* function cv_compare end *)
   and cv_mv : mich_v -> ZExpr.t =
     (let err (e: mich_v) = (gen_dummy_cc e) |> typ_of_val |> cv_mtcc |> ZExpr.create_dummy in
+    let sigma_lm : l:mich_v cc -> acc:(mich_v cc -> mich_v cc) -> sigma:(mich_v cc -> mich_v cc) -> ZExpr.t
+    = (* internal function sigma_lm start *)
+      fun ~l ~acc ~sigma -> begin
+      let l' : mich_v cc = l |> Tz.optimize_v in
+      match l'.cc_v with
+      | MV_lit_list (_, lst) -> (
+        Core.List.fold lst ~init:(ZMutez.zero_ ())
+          ~f:(fun a vvv -> (ZMutez.create_add a (vvv |> acc |> cv_mvcc))))
+      | MV_nil _ -> ZMutez.zero_ ()
+      | MV_cons (hd, tl) -> ZMutez.create_add (cv_mvcc (acc hd)) (cv_mvcc (sigma tl))
+      | _ -> (
+        let l_abbrs : string list = T2A.cv_mvcc l' in
+        let e_abbrs : string list = T2A.cv_mvcc (acc (MV_hd_l l |> gen_dummy_cc |> Tz.typ_of_val |> Tz.gen_new_symval_t)) in
+        ZExpr.create_var (ZMutez.sort ()) ~name:(
+          { Jc.Fsvn.c_vn=(Core.List.hd_exn l_abbrs);
+            Jc.Fsvn.c_acc_l=(Core.List.tl_exn l_abbrs);
+            Jc.Fsvn.e_acc_l=(Core.List.tl_exn e_abbrs); } |> Jc.Fsvn.to_string))
+    end in (* internal function sigma_lm end *)
     fun eee -> match eee with
     (*************************************************************************)
     (* Symbol & Polymorphic                                                  *)
@@ -814,46 +832,45 @@ module T2S = struct
     (*************************************************************************)
     (* Custom Domain Value for Invariant Synthesis                           *)
     (*************************************************************************)
-    | MV_sigma_lm (v1, v2) -> begin
-      let map_elem_acc : mich_v cc -> mich_v cc = ( (* syntax sugar *)
-        fun vvv -> 
-          map_v_v2v_outer v2 ~v2v:(fun x -> (
-            match x.cc_v with
-            | MV_symbol (_, _) -> Some vvv
-            | _ -> None))) in
-      let v1' : mich_v cc = v1 |> Tz.optimize_v in
-      if (v2 |> Tz.typ_of_val).cc_v = MT_mutez then (
-        match v1'.cc_v with
-        | MV_lit_list (_, vl12) -> (
-          Core.List.fold
-            vl12
-            ~init:(ZMutez.zero_ ())
-            ~f:(fun acc vvv -> (
-              let vvv' : mich_v cc = map_elem_acc vvv in
-              ZMutez.create_add acc (cv_mvcc vvv'))))
-        | MV_nil _ -> ZMutez.zero_ ()
-        | MV_cons (v11, vl12) -> (
-          let v11' : mich_v cc = map_elem_acc v11 in
-          let vl12' : mich_v cc = MV_sigma_lm (vl12, v2) |> gen_dummy_cc in
-          ZMutez.create_add (cv_mvcc vl12') (cv_mvcc v11'))
-        | _ -> (
-          let v1_abbrs : string list = T2A.cv_mvcc v1' in
-          let v2_abbrs : string list = T2A.cv_mvcc (v2 |> Tz.optimize_v) in
-          ZExpr.create_var
-            (ZMutez.sort ())
-            ~name:(
-              { Jc.Fsvn.typ=`Remain;
-                Jc.Fsvn.c_vn=(Core.List.hd v1_abbrs |> (function Some ss -> ss | None -> Error "cv_mv : MV_sigma_lm : _ : c_vn" |> Stdlib.raise));
-                Jc.Fsvn.c_acc_l=(Core.List.tl v1_abbrs |> (function Some ll -> ll | None -> Error "cv_mv : MV_sigma_lm : _ : c_acc_l" |> Stdlib.raise));
-                Jc.Fsvn.e_acc_l=(Core.List.tl v2_abbrs |> (function Some ll -> ll | None -> Error "cv_mv : MV_sigma_lm : _ : e_acc_l" |> Stdlib.raise)); }
-              |> Jc.Fsvn.to_string
-            )))
-      else err eee
-      end
+    | MV_sigma_tmplm v1 -> sigma_lm ~l:v1 ~acc:(fun e -> MV_cdr e |> gen_dummy_cc) ~sigma:(fun l -> MV_sigma_tmplm l |> gen_dummy_cc)
     ) (* function cv_mv end *)
 
   and cv_mvcc : mich_v cc -> ZExpr.t = (fun x -> try cv_mv x.cc_v with | ZError s -> SMT_Encode_Error_e (x, s, Stdlib.__LINE__) |> raise)
   let rec cv_mf : mich_f -> ZFormula.t =
+    let make_eq : e1:mich_v cc -> e2:mich_v cc -> ZFormula.t
+    = (* internal function make_eq start *)
+      fun ~e1 ~e2 -> begin
+      let fl : ZFormula.t list = [ZFormula.create_eq (cv_mvcc e1) (cv_mvcc e2)] in
+      ZFormula.create_and (
+        match (e1 |> Tz.typ_of_val).cc_v with
+        | MT_list t1 -> (
+          match t1.cc_v with
+          | MT_pair (t11, t12) -> (
+            match t11.cc_v, t12.cc_v with
+            | (MT_timestamp, MT_mutez) -> (ZFormula.create_eq (cv_mv (MV_sigma_tmplm e1)) (cv_mv (MV_sigma_tmplm e2)))::fl
+            | _ -> fl)
+          | _ -> fl)
+        | _ -> fl)
+    end in (* internal function make_eq end *)
+    let make_is_cons : e:mich_v cc -> ZFormula.t
+    = (* internal function make_is_cons start *)
+      fun ~e -> begin
+      ZFormula.create_and (
+        match (e |> Tz.typ_of_val).cc_v with
+        | MT_list t1 -> (
+          let fl : ZFormula.t list = [ZList.is_cons (cv_mvcc e)] in
+          match t1.cc_v with
+          | MT_pair (t11, t12) -> (
+            match t11.cc_v, t12.cc_v with
+            | (MT_timestamp, MT_mutez) -> (
+              (ZFormula.create_eq 
+                (cv_mv (MV_sigma_tmplm e)) 
+                (cv_mv (MV_sigma_tmplm (MV_cons ((MV_hd_l e |> gen_custom_cc e), (MV_tl_l e |> gen_custom_cc e)) |> gen_custom_cc e))))::
+              (ZMutez.create_bound (cv_mv (MV_sigma_tmplm (MV_tl_l e |> gen_custom_cc e))))::fl)
+            | _ -> fl)
+          | _ -> fl)
+        | _ -> Error "T2S : cv_mf : make_is_cons: Wrong IS_CONS checking" |> raise)
+    end in (* internal function make_is_cons end *)
     (fun vf -> try
       (match vf with
       (* Logical Formula *)
@@ -862,17 +879,13 @@ module T2S = struct
       | MF_not f -> ZFormula.create_not (cv_mf f)
       | MF_and fl -> ZFormula.create_and (Core.List.map ~f:cv_mf fl)
       | MF_or fl -> ZFormula.create_or (Core.List.map ~f:cv_mf fl)
-      | MF_eq (e1, e2) -> ZFormula.create_eq (cv_mvcc e1) (cv_mvcc e2)
+      | MF_eq (e1, e2) -> make_eq ~e1 ~e2
       | MF_imply (f1, f2) -> ZFormula.create_imply (cv_mf f1) (cv_mf f2)
       (* MicSE-Cfg Pattern Matching *)
       | MF_is_true e -> ZBool.create_eq (cv_mvcc e) (ZBool.true_ ())
       | MF_is_none e -> ZOption.is_none (cv_mvcc e)
       | MF_is_left e -> ZOr.is_left (cv_mvcc e)
-      | MF_is_cons e -> begin
-          match (typ_of_val e).cc_v with
-          | MT_list _ -> ZList.is_cons (cv_mvcc e)
-          | _ -> SMT_Encode_Error_f (vf, "Wrong IS_CONS checking", Stdlib.__LINE__) |> raise
-        end
+      | MF_is_cons e -> make_is_cons ~e
       (* Custom Formula for verifiying *)
       | MF_add_mmm_no_overflow (e1, e2) -> begin
           ZMutez.check_add_no_overflow (cv_mvcc e1) (cv_mvcc e2)
@@ -1204,7 +1217,7 @@ module T2J = struct
     (*************************************************************************)
     (* Custom Domain Value for Invariant Synthesis                           *)
     (*************************************************************************)
-    | MV_sigma_lm (e1, e2) -> `Variant (v_sigma_lm, s2 e1 e2) (* 'a list * mutez -> mutez *)
+    | MV_sigma_tmplm e1 -> `Variant (v_sigma_tmplm, s e1) (* (timestamp * mutez) list -> mutez *)
     ) (* function cv_mv end *)
   and cv_mi : Tz.mich_i -> js
   = let ss1 i = Some (cv_micc i) in
@@ -1718,7 +1731,7 @@ module T2Jnocc = struct
     (*************************************************************************)
     (* Custom Domain Value for Invariant Synthesis                           *)
     (*************************************************************************)
-    | MV_sigma_lm (e1, e2) -> `Variant (v_sigma_lm, s2 e1 e2) (* 'a list -> 'a *)
+    | MV_sigma_tmplm e1 -> `Variant (v_sigma_tmplm, s e1) (* 'a list -> 'a *)
     ) (* function cv_mv end *)
   and cv_mi : Tz.mich_i -> js
   = let ss1 i = Some (cv_micc i) in
@@ -2329,7 +2342,7 @@ module T2CS = struct
     (*************************************************************************)
     (* Custom Domain Value for Invariant Synthesis                           *)
     (*************************************************************************)
-    | MV_sigma_lm (e1, e2) -> s2 v_sigma_lm e1 e2)
+    | MV_sigma_tmplm e1 -> s1 v_sigma_tmplm e1)
     |> gen_template cs_mich_v
   end (* function cv_mv end *)
   and cv_mi : Tz.mich_i -> csexp
@@ -2802,6 +2815,10 @@ module CS2Tnocc = struct
       (************************************************************************)
       | s when s = v_lit_chain_id -> MV_lit_chain_id (a1 |> get_body_in_atom_exn)
       (************************************************************************)
+      (* Custom Domain Value for Invariant Synthesis                          *)
+      (************************************************************************)
+      | s when s = v_sigma_tmplm -> MV_sigma_tmplm (cv_mvcc a1)
+      (************************************************************************)
       (* Error                                                                *)
       (************************************************************************)
       | s -> Error ("cv_mv : Core.Sexp.List s1 : " ^ s) |> Stdlib.raise)
@@ -2920,10 +2937,6 @@ module CS2Tnocc = struct
       (* Big Map                                                              *)
       (************************************************************************)
       | s when s = v_empty_big_map -> MV_empty_big_map ((cv_mtcc a1), (cv_mtcc a2))
-      (************************************************************************)
-      (* Custom Domain Value for Invariant Synthesis                          *)
-      (************************************************************************)
-      | s when s = v_sigma_lm -> MV_sigma_lm ((cv_mvcc a1), (cv_mvcc a2))
       (************************************************************************)
       (* Error                                                                *)
       (************************************************************************)
