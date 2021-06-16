@@ -53,6 +53,9 @@ val refuter_sub_time_budget_manually_set : bool ref
 val micse_baseline_mode : bool ref
 val micse_legacy_mode : bool ref
 
+(* INT - Query Filtering (for dev) *)
+val target_query_line : int ref
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Option Settings                                                           *)

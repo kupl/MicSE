@@ -84,6 +84,10 @@ let micse_baseline_mode : bool ref
 let micse_legacy_mode : bool ref
 = ref false (* If the user set the "legacy_mode" option, then set it true. Othercase, MicSE run depend on baseline_mode flag. *)
 
+(* INT - Query Filtering (for dev) *)
+let target_query_line : int ref
+= ref (-1)
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Option Settings                                                           *)
@@ -143,6 +147,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-unroll_t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
     ("--baseline", (Arg.Set micse_baseline_mode), "Set the MicSE run as a baseline mode. (default: false)");
     ("--legacy", (Arg.Set micse_legacy_mode), "Set the MicSE run as a legacy mode. (default: false)");
+    ("--target", (Arg.Int (fun i -> target_query_line := i)), "DEV - Filter all queries if query line is not same with target line when this parameter is set.");
   ]
 
 let create_options : unit -> unit
