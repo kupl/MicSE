@@ -8,5 +8,6 @@ module Parse = Parse
 module Prove = Prove
 module Refute = Refute
 module Se = Se
+module Sexp = Sexp
 module Tz = Tz
 module TzCvt = TzCvt

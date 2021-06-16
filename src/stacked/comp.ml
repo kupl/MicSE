@@ -15,12 +15,12 @@ module TComparable = struct
   module T = struct
     type t = Tz.mich_t Tz.cc
     let compare : t -> t -> int
-    = fun x y -> Stdlib.compare (TzCvt.T2Nnocc.cv_mtcc x) (TzCvt.T2Nnocc.cv_mtcc y)
+    = fun x y -> Core.Sexp.compare (Sexp.T2CSnocc.cv_mtcc x) (Sexp.T2CSnocc.cv_mtcc y)
     let sexp_of_t : t -> Core.Sexp.t
-    = TzCvt.T2CS.cv_mtcc
+    = Sexp.T2CS.cv_mtcc
 
     let t_of_sexp : Core.Sexp.t -> t
-    = TzCvt.CS2Tnocc.cv_mtcc
+    = Sexp.CS2Tnocc.cv_mtcc
   end
 
   include T
@@ -49,15 +49,17 @@ type t = {
 }
 
 let base_comp_from_v : ?loc:int -> Tz.mich_v Tz.cc -> t
-= let open Tz in
-  (* function base_comp_from_f start *)
+= (* function base_comp_from_v start *)
   fun ?(loc=0) v -> begin
-  { cp_typ=(v |> typ_of_val);
-    cp_loc=loc;
-    cp_base_var=None;
-    cp_precond_lst=[];
-    cp_value=v}
+  { cp_typ=(v |> Tz.typ_of_val); cp_loc=loc; cp_base_var=None; cp_precond_lst=[]; cp_value=v; }
 end (* function base_comp_from_v end *)
+
+let base_comp_from_t : ?loc:int -> ?name:string -> Tz.mich_t Tz.cc -> t
+= (* function base_comp_from_t start *)
+  fun ?(loc=0) ?(name="bv") t -> begin
+  let bvar : Tz.mich_v Tz.cc = Tz.gen_custom_cc t (Tz.MV_symbol (t, name)) in
+  { cp_typ=t; cp_loc=loc; cp_base_var=Some bvar; cp_precond_lst=[]; cp_value=bvar; }
+end (* function base_comp_from_t end *)
 
 let base_comp_from_mci : (Tz.mich_cut_info) -> (Tz.mich_t Tz.cc) list -> (t option) list
 = let module CList = Core.List in
@@ -68,10 +70,8 @@ let base_comp_from_mci : (Tz.mich_cut_info) -> (Tz.mich_t Tz.cc) list -> (t opti
       match entry_mci.mci_cutcat, cur_loc with
       | MCC_trx_entry   , 0 -> (
         match cur_typ.cc_v with
-        | MT_pair (_, strg_typ) -> (
-          let bvar : Tz.mich_v Tz.cc = Tz.gen_custom_cc strg_typ (Tz.MV_symbol (strg_typ, (Jc.Locvn.for_strg))) in
-          Some ({ cp_typ=strg_typ; cp_loc=cur_loc; cp_base_var=Some bvar; cp_precond_lst=[]; cp_value=bvar; }))
-        | _ -> Error ("base_comp_from_mci : MCC_trx_entry : 0 : " ^ (cur_typ |> TzCvt.T2Jnocc.cv_mtcc |> Yojson.Safe.to_string)) |> Stdlib.raise)
+        | MT_pair (_, strg_typ) -> Some (base_comp_from_t strg_typ ~name:Jc.Locvn.for_strg ~loc:cur_loc)
+        | _ -> Error ("base_comp_from_mci : MCC_trx_entry : 0 : " ^ (cur_typ |> Sexp.T2CS.cv_mtcc |> Core.Sexp.to_string)) |> Stdlib.raise)
       | MCC_ln_loopleft , 0
       | MCC_ln_map      , 0
       | MCC_lb_loopleft , 0
@@ -81,16 +81,11 @@ let base_comp_from_mci : (Tz.mich_cut_info) -> (Tz.mich_t Tz.cc) list -> (t opti
       | MCC_ln_map      , _
       | MCC_lb_loopleft , _
       | MCC_lb_map      , _
-      | MCC_lb_iter     , _ -> (
-        let cur_loc' : int = cur_loc - 1 in
-        let bvar : Tz.mich_v Tz.cc = Tz.gen_custom_cc cur_typ (Tz.MV_symbol (cur_typ, (Jc.Locvn.to_string {loc=cur_loc'; acc_l=[]}))) in
-        Some ({ cp_typ=cur_typ; cp_loc=cur_loc'; cp_base_var=Some bvar; cp_precond_lst=[]; cp_value=bvar; }))
+      | MCC_lb_iter     , _ -> Some (base_comp_from_t cur_typ ~name:(Jc.Locvn.to_string {loc=(cur_loc - 1); acc_l=[];}) ~loc:(cur_loc - 1))
       | MCC_ln_loop     , _
       | MCC_ln_iter     , _
-      | MCC_lb_loop     , _ -> (
-        let bvar : Tz.mich_v Tz.cc = Tz.gen_custom_cc cur_typ (Tz.MV_symbol (cur_typ, (Jc.Locvn.to_string {loc=cur_loc; acc_l=[]}))) in
-        Some ({ cp_typ=cur_typ; cp_loc=cur_loc; cp_base_var=Some bvar; cp_precond_lst=[]; cp_value=bvar; }))
-      | _ -> Error ("base_comp_from_mci : " ^ (entry_mci |> TzCvt.T2Jnocc.cv_mich_cut_info |> Yojson.Safe.to_string) ^ " : " ^ (string_of_int cur_loc)) |> Stdlib.raise))
+      | MCC_lb_loop     , _ -> Some (base_comp_from_t cur_typ ~name:(Jc.Locvn.to_string {loc=cur_loc; acc_l=[];}) ~loc:cur_loc)
+      | _ -> Error ("base_comp_from_mci : " ^ (entry_mci |> Sexp.T2CS.cv_mich_cut_info |> Core.Sexp.to_string) ^ " : " ^ (string_of_int cur_loc)) |> Stdlib.raise))
 end (* function base_comp_from_mci end *)
 
 let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
