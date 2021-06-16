@@ -237,6 +237,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     (function CCLOC_Unknown -> `Variant (Jc.cc_l_unk, None) | CCLOC_Pos (p1, p2) -> `Variant (Jc.cc_l_pos, Some (`Tuple [cv_pos p1; cv_pos p2]))) inst.cc_loc
     |> Yojson.Safe.pretty_to_string |> print_endline
   in *)
+  (* let _ = (Utils.Log.warn (fun m -> let (l1, c1) = (match inst.cc_loc with | CCLOC_Pos (p1, _)-> (p1.lin, p1.col) | CCLOC_Unknown -> (0,0) ) in  m "%d %d : %s" l1 c1 (ss.ss_symstack |> (fun sss -> `List (List.map TzCvt.T2Jnocc.cv_mvcc sss)) |> Yojson.Safe.to_string))) in *)
   (* DEBUG END *)
   let gen_inst_cc : 'a -> 'a cc = gen_custom_cc inst in
   let 
