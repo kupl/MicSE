@@ -862,27 +862,41 @@ module T2S = struct
           | _ -> acc))
       |> ZFormula.create_and
     end in (* internal function make_eq end *)
-    let make_is_cons : e:mich_v cc -> ZFormula.t
+    let make_is_cons : e:mich_v cc -> is_nil:bool -> ZFormula.t
     = (* internal function make_is_cons start *)
-      fun ~e -> begin
+      fun ~e ~is_nil -> begin
+      let to_cc : mich_v -> mich_v cc = gen_custom_cc e in (* syntax sugar *)
       ZFormula.create_and (
         match (e |> Tz.typ_of_val).cc_v with
         | MT_list t1 -> (
-          let fl : ZFormula.t list = [ZList.is_cons (cv_mvcc e)] in
+          (* List-1. original formula *)
+          let fl : ZFormula.t list = (
+            if is_nil then [ZList.is_nil (cv_mvcc e)] else [ZList.is_cons (cv_mvcc e)]) in
+          (* List-2. syntax sugar for adding formula *)
+          let goal_f : sigma:(mich_v cc -> mich_v) -> acc:(mich_v cc -> mich_v) -> ZFormula.t list = (fun ~sigma ~acc -> (
+            if is_nil then (ZFormula.create_eq (cv_mv (sigma e)) (cv_mv (sigma (MV_nil t1 |> to_cc))))::fl
+            else (
+              (ZFormula.create_eq (cv_mv (sigma e))
+                (cv_mv (sigma (MV_cons ((MV_hd_l e |> to_cc), (MV_tl_l e |> to_cc)) |> to_cc))))::
+              (ZMutez.create_bound (cv_mv (sigma (MV_tl_l e |> to_cc))))::
+              (ZMutez.create_bound (cv_mv (acc (MV_hd_l e |> to_cc))))::fl))) in
+          (* List-3. match list type and make formula *)
           match t1.cc_v with
           | MT_pair (t11, t12) -> (
             match t11.cc_v, t12.cc_v with
-            | (MT_timestamp, MT_mutez) -> (
-              (ZFormula.create_eq 
-                (cv_mv (MV_sigma_tmplm e)) 
-                (cv_mv (MV_sigma_tmplm (MV_cons ((MV_hd_l e |> gen_custom_cc e), (MV_tl_l e |> gen_custom_cc e)) |> gen_custom_cc e))))::
-              (ZMutez.create_bound (cv_mv (MV_sigma_tmplm (MV_tl_l e |> gen_custom_cc e))))::fl)
+            | (MT_timestamp, MT_mutez) -> goal_f ~sigma:(fun e -> MV_sigma_tmplm e) ~acc:(fun e -> MV_cdr e)
             | _ -> fl)
           | _ -> fl)
         | _ -> Error "T2S : cv_mf : make_is_cons: Wrong IS_CONS checking" |> raise)
     end in (* internal function make_is_cons end *)
     (fun vf -> try
       (match vf with
+      (* MicSE-Cfg Pattern Matching *)
+      | MF_is_true e -> ZBool.create_eq (cv_mvcc e) (ZBool.true_ ())
+      | MF_is_none e -> ZOption.is_none (cv_mvcc e)
+      | MF_is_left e -> ZOr.is_left (cv_mvcc e)
+      | MF_is_cons e -> make_is_cons ~e ~is_nil:false
+      | MF_not (MF_is_cons e) -> make_is_cons ~e ~is_nil:true (* Special case: is_nil *)
       (* Logical Formula *)
       | MF_true -> ZFormula.true_ ()
       | MF_false -> ZFormula.false_ ()
@@ -891,11 +905,6 @@ module T2S = struct
       | MF_or fl -> ZFormula.create_or (Core.List.map ~f:cv_mf fl)
       | MF_eq (e1, e2) -> make_eq ~e1 ~e2
       | MF_imply (f1, f2) -> ZFormula.create_imply (cv_mf f1) (cv_mf f2)
-      (* MicSE-Cfg Pattern Matching *)
-      | MF_is_true e -> ZBool.create_eq (cv_mvcc e) (ZBool.true_ ())
-      | MF_is_none e -> ZOption.is_none (cv_mvcc e)
-      | MF_is_left e -> ZOr.is_left (cv_mvcc e)
-      | MF_is_cons e -> make_is_cons ~e
       (* Custom Formula for verifiying *)
       | MF_add_mmm_no_overflow (e1, e2) -> begin
           ZMutez.check_add_no_overflow (cv_mvcc e1) (cv_mvcc e2)
