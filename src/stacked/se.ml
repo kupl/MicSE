@@ -212,6 +212,36 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     if Option.is_some bf_opt then ss_add_constraint ss (Option.get bf_opt)
     else ss
   end in (* function ss_add_mutez_bound_constraint_if_v_is_mutez end *)
+  let ss_add_constraint_if_cons : sym_state -> mich_v cc -> is_cons:bool -> sym_state
+  = (* internal function ss_add_constraint_if_cons start *)
+    fun ss vvv ~is_cons -> begin
+    let to_cc : mich_v -> mich_v cc = gen_custom_cc vvv in (* syntax sugar *)
+    match (typ_of_val vvv).cc_v with
+    | MT_list t1 -> (
+      (* 1. add original constraint *)
+      let cond_constraint : mich_f = if is_cons then MF_is_cons vvv else MF_not (MF_is_cons vvv) in
+      (* 2. syntax sugar for adding constraint *)
+      let add_constraint : sigma:(mich_v cc -> mich_v) -> acc:(mich_v cc -> mich_v) -> mich_f
+      = fun ~sigma ~acc -> (
+        let sigma' = fun e -> sigma e |> to_cc in (* syntax sugar *)
+        let acc' = fun e -> acc e |> to_cc in (* syntax sugar *)
+        if is_cons then MF_and 
+          [ cond_constraint; 
+            (MF_eq ((sigma' vvv), (sigma' ((MV_cons ((MV_hd_l vvv |> to_cc), (MV_tl_l vvv |> to_cc)) |> to_cc)))));
+            (formula_for_mutez_bound (sigma' (MV_tl_l vvv |> to_cc)) |> Option.get);
+            (formula_for_mutez_bound (acc' (MV_hd_l vvv |> to_cc)) |> Option.get); ]
+        else MF_and [cond_constraint; (MF_eq ((sigma' vvv), (sigma' (MV_nil t1 |> to_cc))));]
+      ) in
+      (* 3. add additional constraint if type is matching *)
+      ss_add_constraint ss (
+        match t1.cc_v with
+        | MT_pair (t11, t12) -> (
+          match (t11.cc_v, t12.cc_v) with
+          | (MT_timestamp, MT_mutez) -> add_constraint ~sigma:(fun e -> MV_sigma_tmplm e) ~acc:(fun e -> MV_cdr e)
+          | _ -> cond_constraint)
+        | _ -> cond_constraint))
+    | _ -> Error "Se : run_inst_i : ss_add_constraint_if_cons : _" |> Stdlib.raise
+  end in (* internal function ss_add_constraint_if_cons end *)
   (* SUGAR - state set *)
   let sset_union_pointwise : state_set -> state_set -> state_set
   = fun sset1 sset2 -> {
@@ -367,25 +397,17 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> cons_tl_n ss_symstack 2
     |> sstack_to_srset ss
   | MI_if_cons (i1,i2) ->
-    let cond_constraint : mich_f = MF_is_cons (CList.hd_exn ss_symstack) in
+    let listv : mich_v cc = CList.hd_exn ss_symstack in
     let then_br_sset : state_set =
-      let listv : mich_v cc = CList.hd_exn ss_symstack in
       let hd_vvv : mich_v cc = MV_hd_l listv |> gen_inst_cc in
       (hd_vvv, gen_inst_cc (MV_tl_l listv))
       |> cons2_tl_n ss_symstack 1
-      |> sstack_to_ss (
-          ss_add_mutez_bound_constraint_if_v_is_mutez 
-            (ss_add_constraint ss cond_constraint) 
-            hd_vvv) 
-      (* |> ss_to_srset
-      |> run_inst cache i1 *)
+      |> sstack_to_ss (ss_add_constraint_if_cons ss listv ~is_cons:true)
       |> run_inst_i cache i1
     in
     let else_br_sset : state_set =
       (CList.tl_exn ss_symstack)
-      |> sstack_to_ss (ss_add_constraint ss (MF_not cond_constraint))
-      (* |> ss_to_srset
-      |> run_inst cache i2 *)
+      |> sstack_to_ss (ss_add_constraint_if_cons ss listv ~is_cons:false)
       |> run_inst_i cache i2
     in
     sset_union_pointwise then_br_sset else_br_sset

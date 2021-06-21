@@ -862,6 +862,7 @@ module T2S = struct
           | _ -> acc))
       |> ZFormula.create_and
     end in (* internal function make_eq end *)
+(*     
     let make_is_cons : e:mich_v cc -> is_nil:bool -> ZFormula.t
     = (* internal function make_is_cons start *)
       fun ~e ~is_nil -> begin
@@ -888,15 +889,9 @@ module T2S = struct
             | _ -> fl)
           | _ -> fl)
         | _ -> Error "T2S : cv_mf : make_is_cons: Wrong IS_CONS checking" |> raise)
-    end in (* internal function make_is_cons end *)
+    end in (* internal function make_is_cons end *) *)
     (fun vf -> try
       (match vf with
-      (* MicSE-Cfg Pattern Matching *)
-      | MF_is_true e -> ZBool.create_eq (cv_mvcc e) (ZBool.true_ ())
-      | MF_is_none e -> ZOption.is_none (cv_mvcc e)
-      | MF_is_left e -> ZOr.is_left (cv_mvcc e)
-      | MF_is_cons e -> make_is_cons ~e ~is_nil:false
-      | MF_not (MF_is_cons e) -> make_is_cons ~e ~is_nil:true (* Special case: is_nil *)
       (* Logical Formula *)
       | MF_true -> ZFormula.true_ ()
       | MF_false -> ZFormula.false_ ()
@@ -905,6 +900,13 @@ module T2S = struct
       | MF_or fl -> ZFormula.create_or (Core.List.map ~f:cv_mf fl)
       | MF_eq (e1, e2) -> make_eq ~e1 ~e2
       | MF_imply (f1, f2) -> ZFormula.create_imply (cv_mf f1) (cv_mf f2)
+      (* MicSE-Cfg Pattern Matching *)
+      | MF_is_true e -> ZBool.create_eq (cv_mvcc e) (ZBool.true_ ())
+      | MF_is_none e -> ZOption.is_none (cv_mvcc e)
+      | MF_is_left e -> ZOr.is_left (cv_mvcc e)
+      | MF_is_cons e -> ZList.is_cons (cv_mvcc e)
+      (* | MF_is_cons e -> make_is_cons ~e ~is_nil:false *)
+      (* | MF_not (MF_is_cons e) -> make_is_cons ~e ~is_nil:true *)
       (* Custom Formula for verifiying *)
       | MF_add_mmm_no_overflow (e1, e2) -> begin
           ZMutez.check_add_no_overflow (cv_mvcc e1) (cv_mvcc e2)
