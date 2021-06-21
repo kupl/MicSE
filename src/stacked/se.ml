@@ -402,7 +402,10 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       let hd_vvv : mich_v cc = MV_hd_l listv |> gen_inst_cc in
       (hd_vvv, gen_inst_cc (MV_tl_l listv))
       |> cons2_tl_n ss_symstack 1
-      |> sstack_to_ss (ss_add_constraint_if_cons ss listv ~is_cons:true)
+      |> sstack_to_ss (
+          ss_add_mutez_bound_constraint_if_v_is_mutez 
+              (ss_add_constraint_if_cons ss listv ~is_cons:true) 
+              hd_vvv)
       |> run_inst_i cache i1
     in
     let else_br_sset : state_set =
