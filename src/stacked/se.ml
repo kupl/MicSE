@@ -226,18 +226,17 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
         let sigma' = fun e -> sigma e |> to_cc in (* syntax sugar *)
         let acc' = fun e -> acc e |> to_cc in (* syntax sugar *)
         if is_cons then MF_and 
-          [ cond_constraint; 
-            (MF_eq ((sigma' vvv), (sigma' ((MV_cons ((MV_hd_l vvv |> to_cc), (MV_tl_l vvv |> to_cc)) |> to_cc)))));
+          [ (MF_eq ((sigma' vvv), (sigma' ((MV_cons ((MV_hd_l vvv |> to_cc), (MV_tl_l vvv |> to_cc)) |> to_cc)))));
             (formula_for_mutez_bound (sigma' (MV_tl_l vvv |> to_cc)) |> Option.get);
             (formula_for_mutez_bound (acc' (MV_hd_l vvv |> to_cc)) |> Option.get); ]
-        else MF_and [cond_constraint; (MF_eq ((sigma' vvv), (sigma' (MV_nil t1 |> to_cc))));]
+        else MF_eq ((sigma' vvv), (sigma' (MV_nil t1 |> to_cc)))
       ) in
       (* 3. add additional constraint if type is matching *)
       ss_add_constraint ss (
         match t1.cc_v with
         | MT_pair (t11, t12) -> (
           match (t11.cc_v, t12.cc_v) with
-          | (MT_timestamp, MT_mutez) -> add_constraint ~sigma:(fun e -> MV_sigma_tmplm e) ~acc:(fun e -> MV_cdr e)
+          | (MT_timestamp, MT_mutez) -> MF_and [ cond_constraint; add_constraint ~sigma:(fun e -> MV_sigma_tmplm e) ~acc:(fun e -> MV_cdr e); ]
           | _ -> cond_constraint)
         | _ -> cond_constraint))
     | _ -> Error "Se : run_inst_i : ss_add_constraint_if_cons : _" |> Stdlib.raise
