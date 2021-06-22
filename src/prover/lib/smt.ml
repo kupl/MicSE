@@ -573,7 +573,7 @@ module ZMutez = struct
   let check_add_no_overflow : t -> t -> ZBool.t
   = fun e1 e2 -> begin
     let addition = create_add e1 e2 in
-    create_le addition (max_ ())
+    create_lt addition (max_ ())
   end (* function check_add_no_overflow end *)
   (* =fun e1 e2 -> Z3.BitVector.mk_add_no_overflow (ZCtx.read ()) e1 e2 false *)
   let check_mul_no_overflow : t -> t -> ZBool.t
@@ -718,10 +718,10 @@ module ZKeyHash = struct
     ZExpr.create_ite ~cond:(ZDatatype.is_field t1 ~const_idx:0)
     ~t:(ZExpr.create_ite ~cond:(ZDatatype.is_field t2 ~const_idx:0)
         ~t:(ZStr.create_cmp (_read_innerstr t1) (_read_innerstr t2))
-        ~f:(ZInt.one_ ())
+        ~f:(ZExpr.create_dummy (ZInt.sort ()))
     )
     ~f:(ZExpr.create_ite ~cond:(ZDatatype.is_field t2 ~const_idx:0)
-        ~t:(ZInt.minus_one_ ())
+        ~t:(ZExpr.create_dummy (ZInt.sort ()))
         ~f:(ZKey.create_cmp (_read_innerkey t1) (_read_innerkey t2))
     )
   end
