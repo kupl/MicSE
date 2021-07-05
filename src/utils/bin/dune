@@ -7,6 +7,7 @@
     stacked_refuter
     stacked_unroll_n
     test_data_parse
+    test_domain
     test_log
     test_timer
     test_z3)
@@ -18,6 +19,7 @@
     micse.utils.stacked_refuter
     micse.utils.stacked_unroll_n
     micse.utils.test_data_parse
+    micse.utils.test_domain
     micse.utils.test_log
     micse.utils.test_timer
     micse.utils.test_z3)
@@ -28,6 +30,7 @@
     micse.prover
     micse.refuter
     micse.stacked
+    domainslib
   )
   (package micse)
 )
