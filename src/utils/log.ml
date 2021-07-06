@@ -72,6 +72,7 @@ end (* function err end *)
 
 let create : unit -> unit
 = fun () -> begin
+  Logs_threaded.enable ();
   Logs.set_reporter (Setting.reporter ());
   if !Options.flag_debug then (Logs.set_level (Some Logs.Debug))
   else if !Options.flag_verbose then (Logs.set_level (Some Logs.Info))

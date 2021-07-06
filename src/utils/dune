@@ -4,6 +4,7 @@
   (libraries
     unix
     logs
+    Logs.threaded
     mtime
     mtime.clock.os
     ))
