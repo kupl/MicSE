@@ -10,39 +10,29 @@ let mc = Chan.make_unbounded ()
 let fc = Chan.make_unbounded ()
 let sc = Chan.make_unbounded ()
 
-let sleep n = (
-  let rec s c = (
-    if c > 0 then s (c - 1) else ()
-  ) in
-  s (n * 1000000)
-)
 
 let first (nf, ns) = (
   let rec get_all_msg acc = (
     let msg = Chan.recv_poll fc in
     if Option.is_none msg then acc else (
-      Utils.Log.app (fun m -> m "Got message from second");
       get_all_msg (acc + (match Option.get msg with Info -> 1 | _ -> Failure "" |> Stdlib.raise)))
     ) in
-  let _ = sleep 5 in
+  let _ = Unix.sleep 5 in
   let ns' = ns - (get_all_msg 0) in
   let _ = Chan.send mc F in
   if (nf = 0) then (nf, ns') else (nf - 1, ns')
-  |> (fun x -> Utils.Log.app (fun m -> m "Result from First (%d, %d)" (fst x) (snd x)); x)
   )
 
 let second (nf, ns) = (
   let rec get_all_msg acc = (
     let msg = Chan.recv_poll sc in
     if Option.is_none msg then acc else (
-      Utils.Log.app (fun m -> m "Got message from first");
       get_all_msg (acc + (match Option.get msg with Info -> 1 | _ -> Failure "" |> Stdlib.raise)))
     ) in
-  let _ = sleep 2 in
+  let _ = Unix.sleep 2 in
   let nf' = nf - (get_all_msg 0) in
   let _ = Chan.send mc S in
   if (ns = 0) then (nf', ns) else (nf', ns - 1)
-  |> (fun x -> Utils.Log.app (fun m -> m "Result from Second (%d, %d)" (fst x) (snd x)); x)
   )
 
 
@@ -78,7 +68,7 @@ let _ = (
   ) in
 
   Utils.Log.app (fun m -> m "Start");
-  let init_pair = (10, 10) in
+  let init_pair = (4, 10) in
   let proc_f = call_f init_pair in
   let proc_s = call_s init_pair in
   let _ = loop proc_f proc_s init_pair in
