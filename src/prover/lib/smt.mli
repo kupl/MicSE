@@ -75,12 +75,13 @@ end
 module ZCtx : sig
   type body = (string * string)
   type t = Z3.context
-  type t_ref = t option ref
+  type id = (int * int) (* pid, tid *)
+  type ctx_map = (id, t) Core.Map.Poly.t Stdlib.ref
 
-  val _obj : t_ref
+  val _obj : ctx_map
 
   val body_timeout : unit -> body
-  val create : unit -> unit
+  val create : id -> t
   val read : unit -> t
 end
 

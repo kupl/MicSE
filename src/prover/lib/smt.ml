@@ -84,26 +84,33 @@ end
 module ZCtx = struct
   type body = (string * string)
   type t = Z3.context
-  type t_ref = t option ref
+  type id = (int * int) (* pid, tid *)
+  type ctx_map = (id, t) Core.Map.Poly.t Stdlib.ref
 
-  let _obj : t_ref
-  =ref None
+  let _obj : ctx_map
+  =ref (Core.Map.Poly.empty)
 
   let body_timeout : unit -> body
-  =fun () -> begin
+  = fun () -> begin
     let budget = !Utils.Options.z3_time_budget * 1000 in
     ("timeout", (string_of_int (budget)))
   end
-  let create : unit -> unit
-  =fun () -> begin
-    let c = (body_timeout ())::
-            [] in
-    _obj := c |> Z3.mk_context |> Option.some
+  let create : id -> t
+  = let module PMap = Core.Map.Poly in
+    fun id -> begin
+    let (ctx) : t = (
+      [ (body_timeout ()); ]
+      |> Z3.mk_context ) in
+    let _ = _obj := PMap.update (!_obj) id ~f:(function | None -> ctx | Some c -> c) in
+    ctx
   end
   let read : unit -> t
-  =fun () -> begin
-    let _ = if Option.is_none !_obj then create () in
-    !_obj |> Option.get
+  = let module PMap = Core.Map.Poly in
+    fun () -> begin
+    let (id) : id = ((Unix.getpid ()), (Thread.self () |> Thread.id)) in
+    let (ctx_opt) : t option = PMap.find (!_obj) id in
+    let (ctx) : t = (if Option.is_none ctx_opt then create id else Option.get ctx_opt) in
+    ctx
   end
 end
 
