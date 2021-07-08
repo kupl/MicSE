@@ -100,22 +100,23 @@ module ZCtx = struct
   = let module PMap = Core.Map.Poly in
     fun () -> begin
     let (id) : id = ((Unix.getpid ()), (Thread.self () |> Thread.id)) in
-    let _ = _obj := PMap.update (!_obj) id ~f:(function
-      | None -> (
-        [ (body_timeout ()); ]
-        |> Z3.mk_context)
-      | Some c -> c) in
+    let (ctx_opt) : t option = PMap.find (!_obj) id in
+    if Option.is_some ctx_opt then () else
+    let _ = _obj := (
+      PMap.add (!_obj) 
+        ~key:id
+        ~data:([ (body_timeout ()); ] |> Z3.mk_context)
+      |> (function | `Ok mmm -> mmm | `Duplicate -> Stdlib.raise (ZError "Context Create Error"))) in
     ()
   end
 
   let read : unit -> t
   = let module PMap = Core.Map.Poly in
     fun () -> begin
-    let _ = create () in
     let (id) : id = ((Unix.getpid ()), (Thread.self () |> Thread.id)) in
     let (ctx_opt) : t option = PMap.find (!_obj) id in
     if Option.is_some ctx_opt then Option.get ctx_opt
-    else ZError "Context Read Error" |> Stdlib.raise
+    else Stdlib.raise (ZError "Context Read Error")
   end
 
   let delete : unit -> unit
