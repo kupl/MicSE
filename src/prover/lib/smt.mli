@@ -81,8 +81,10 @@ module ZCtx : sig
   val _obj : ctx_map
 
   val body_timeout : unit -> body
-  val create : id -> t
-  val read : unit -> t
+
+  val create  : unit -> unit
+  val read    : unit -> t
+  val delete  : unit -> unit
 end
 
 

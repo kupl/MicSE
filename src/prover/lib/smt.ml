@@ -95,22 +95,35 @@ module ZCtx = struct
     let budget = !Utils.Options.z3_time_budget * 1000 in
     ("timeout", (string_of_int (budget)))
   end
-  let create : id -> t
-  = let module PMap = Core.Map.Poly in
-    fun id -> begin
-    let (ctx) : t = (
-      [ (body_timeout ()); ]
-      |> Z3.mk_context ) in
-    let _ = _obj := PMap.update (!_obj) id ~f:(function | None -> ctx | Some c -> c) in
-    ctx
-  end
-  let read : unit -> t
+  
+  let create : unit -> unit
   = let module PMap = Core.Map.Poly in
     fun () -> begin
     let (id) : id = ((Unix.getpid ()), (Thread.self () |> Thread.id)) in
+    let _ = _obj := PMap.update (!_obj) id ~f:(function
+      | None -> (
+        [ (body_timeout ()); ]
+        |> Z3.mk_context)
+      | Some c -> c) in
+    ()
+  end
+
+  let read : unit -> t
+  = let module PMap = Core.Map.Poly in
+    fun () -> begin
+    let _ = create () in
+    let (id) : id = ((Unix.getpid ()), (Thread.self () |> Thread.id)) in
     let (ctx_opt) : t option = PMap.find (!_obj) id in
-    let (ctx) : t = (if Option.is_none ctx_opt then create id else Option.get ctx_opt) in
-    ctx
+    if Option.is_some ctx_opt then Option.get ctx_opt
+    else ZError "Context Read Error" |> Stdlib.raise
+  end
+
+  let delete : unit -> unit
+  = let module PMap = Core.Map.Poly in
+    fun () -> begin
+    let (id) : id = ((Unix.getpid ()), (Thread.self () |> Thread.id)) in
+    let _ = _obj := PMap.remove (!_obj) id in
+    ()
   end
 end
 
