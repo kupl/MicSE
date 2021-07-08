@@ -20,8 +20,8 @@ module Setting = struct
       msgf @@ (fun ?header ?tags fmt -> (
         ignore (tags);
         match level with
-        | Logs.App  -> Format.kfprintf k' Format.std_formatter ("%a@[" ^^ fmt ^^ "@]@.") Logs.pp_header (level, header)
-        | _         -> Format.kfprintf k' Format.err_formatter ("%a[%06.0fms] @[" ^^ fmt ^^ "@]@.") Logs.pp_header (level, header) dt))
+        | Logs.App  -> Format.kfprintf k' Format.std_formatter ("%a @[" ^^ fmt ^^ "@]@.") Logs.pp_header (level, header)
+        | _         -> Format.kfprintf k' Format.err_formatter ("%a [%06.0fms] @[" ^^ fmt ^^ "@]@.") Logs.pp_header (level, header) dt))
     end in (* report function end *)
     { Logs.report = report }
   end (* reporter function end *)
