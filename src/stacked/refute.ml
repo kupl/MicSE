@@ -59,6 +59,21 @@ let check_ppath_validity_fmla_included : Utils.Timer.t ref -> (Tz.mich_v Tz.cc o
   (qfmla, vld, mopt, elapsed_time)
 end (* function check_ppath_validity_fmla_included end *)
 
+(* "make_ppath_fmla" constructs formula from ppath *)
+let make_ppath_fmla : Merge.ms -> Tz.mich_v Tz.cc option -> Se.invmap -> Tz.mich_f
+= fun ms tz_init_stg_option invm -> begin
+  let (ss) : Tz.sym_state = ms.ms_state in
+  let (qc) : Se.query_category = (match ms.ms_querycat with | Some c -> c | None -> Stdlib.failwith Stdlib.__LOC__) in
+  let (qfmla) : Tz.mich_f = (
+    match (Merge.is_trxentry_path ms, tz_init_stg_option) with
+    | true, Some istg -> 
+      let precond : Tz.mich_f = Tz.MF_eq (Tz.MV_cdr (List.hd ms.ms_state.ss_entry_symstack) |> Tz.gen_dummy_cc, istg) in
+      Se.inv_query_fmla_with_precond (ss, qc) invm precond
+    | true, None -> Se.inv_query_fmla (ss, qc) invm
+    | false, _ -> Se.inv_query_fmla (ss, qc) invm) in
+  qfmla
+end (* function make_ppath_fmla end *)
+
 
 (*
 
