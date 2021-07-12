@@ -5,12 +5,12 @@ exception Error of string
 (* Type for each transaction information *)
 type trx = {
   index : int;
-  storage : ProverLib.Smt.ZExpr.t;    (* storage of contract before the transaction *)
-  parameter : ProverLib.Smt.ZExpr.t;  (* parameter value of the transaction *)
-  sender : ProverLib.Smt.ZExpr.t;     (* sender address of the transaction *)
-  source : ProverLib.Smt.ZExpr.t;     (* source address of the transaction *)
-  amount : ProverLib.Smt.ZExpr.t;     (* amount of the transaction *)
-  balance : ProverLib.Smt.ZExpr.t;    (* updated balance of contract by the transaction *)
+  storage : ProverLib.Smt_deprecated.ZExpr.t;    (* storage of contract before the transaction *)
+  parameter : ProverLib.Smt_deprecated.ZExpr.t;  (* parameter value of the transaction *)
+  sender : ProverLib.Smt_deprecated.ZExpr.t;     (* sender address of the transaction *)
+  source : ProverLib.Smt_deprecated.ZExpr.t;     (* source address of the transaction *)
+  amount : ProverLib.Smt_deprecated.ZExpr.t;     (* amount of the transaction *)
+  balance : ProverLib.Smt_deprecated.ZExpr.t;    (* updated balance of contract by the transaction *)
 }
 
 (* Type for Transaction Trace *)
@@ -22,23 +22,23 @@ type t = {
   trx_list : trx list;                        (* transaction information of this trace *)
 }
 
-let gen : PreLib.Cfg.t -> (PreLib.Cfg.vertex -> PreLib.Mich.loc) -> int -> int -> Prover.VcGen.query_vc -> ProverLib.Smt.ZModel.t -> t
+let gen : PreLib.Cfg.t -> (PreLib.Cfg.vertex -> PreLib.Mich.loc) -> int -> int -> Prover.VcGen.query_vc -> ProverLib.Smt_deprecated.ZModel.t -> t
 = let open PreLib in
   let open ProverLib in
   let open Prover in
   (* trx-length, location-read-function scenario-index, query-information, smt-model *)
   fun cfg read_loc len idx qvc model -> begin
     (* Set helper function for getting SMT expression of value as syntax sugar *)
-    let read_value : Smt.ZSort.t -> string -> Smt.ZExpr.t
+    let read_value : Smt_deprecated.ZSort.t -> string -> Smt_deprecated.ZExpr.t
     =fun sort name -> begin
-      let var_expr = Smt.ZExpr.create_var sort ~name in
-      Smt.ZModel.eval var_expr ~model:model 
+      let var_expr = Smt_deprecated.ZExpr.create_var sort ~name in
+      Smt_deprecated.ZModel.eval var_expr ~model:model 
       |> (function | Some ee -> ee | None -> (Error "gen.read_value: variable not found") |> Stdlib.raise)
     end in (* helper function read_value end *)
     (* Read location information from the query *)
     let loc = read_loc qvc.qvc_vtx in
     (* Set the sorts *)
-    let param_sort : Smt.ZSort.t = 
+    let param_sort : Smt_deprecated.ZSort.t = 
       Cfg.t_map_find 
         ~errtrace:("Refuter.Lib.Trace.gen : Some param : ps_vtyp")
         cfg.type_info
@@ -48,11 +48,11 @@ let gen : PreLib.Cfg.t -> (PreLib.Cfg.vertex -> PreLib.Mich.loc) -> int -> int -
       |> Vlang.TypeUtil.get_innertyp2
       |> Stdlib.fst 
       |> Verifier.smtsort_of_vlangtyp in
-    let sender_sort : Smt.ZSort.t = Vlang.Ty.T_address |> Verifier.smtsort_of_vlangtyp in
-    let source_sort : Smt.ZSort.t = Vlang.Ty.T_address |> Verifier.smtsort_of_vlangtyp in
-    let amount_sort : Smt.ZSort.t = Vlang.Ty.T_mutez |> Verifier.smtsort_of_vlangtyp in
-    let balance_sort : Smt.ZSort.t = Vlang.Ty.T_mutez |> Verifier.smtsort_of_vlangtyp in
-    let storage_sort : Smt.ZSort.t =
+    let sender_sort : Smt_deprecated.ZSort.t = Vlang.Ty.T_address |> Verifier.smtsort_of_vlangtyp in
+    let source_sort : Smt_deprecated.ZSort.t = Vlang.Ty.T_address |> Verifier.smtsort_of_vlangtyp in
+    let amount_sort : Smt_deprecated.ZSort.t = Vlang.Ty.T_mutez |> Verifier.smtsort_of_vlangtyp in
+    let balance_sort : Smt_deprecated.ZSort.t = Vlang.Ty.T_mutez |> Verifier.smtsort_of_vlangtyp in
+    let storage_sort : Smt_deprecated.ZSort.t =
       Cfg.t_map_find 
         ~errtrace:("Refuter.Lib.Trace.gen : Some stg : ps_vtyp")
         cfg.type_info
@@ -68,12 +68,12 @@ let gen : PreLib.Cfg.t -> (PreLib.Cfg.vertex -> PreLib.Mich.loc) -> int -> int -
         let stg_vn : string = GlVar.gen_storage trx_idx in
         let stg_varname : string = if !Utils.Options.initial_storage_file <> "" && trx_idx = 0 then VcGen.NameEnv.new_var stg_vn else stg_vn in
         (* get ZExprs *)
-        let stg_val : Smt.ZExpr.t = read_value storage_sort (stg_varname) in
-        let param_val : Smt.ZExpr.t = read_value param_sort (GlVar.gen_param trx_idx) in
-        let sender_val : Smt.ZExpr.t = read_value sender_sort (GlVar.gen_sender trx_idx) in
-        let source_val : Smt.ZExpr.t = read_value source_sort (GlVar.gen_source trx_idx) in
-        let amount_val : Smt.ZExpr.t = read_value amount_sort (GlVar.gen_amount trx_idx) in
-        let balance_val : Smt.ZExpr.t = read_value balance_sort (GlVar.gen_balance trx_idx) in
+        let stg_val : Smt_deprecated.ZExpr.t = read_value storage_sort (stg_varname) in
+        let param_val : Smt_deprecated.ZExpr.t = read_value param_sort (GlVar.gen_param trx_idx) in
+        let sender_val : Smt_deprecated.ZExpr.t = read_value sender_sort (GlVar.gen_sender trx_idx) in
+        let source_val : Smt_deprecated.ZExpr.t = read_value source_sort (GlVar.gen_source trx_idx) in
+        let amount_val : Smt_deprecated.ZExpr.t = read_value amount_sort (GlVar.gen_amount trx_idx) in
+        let balance_val : Smt_deprecated.ZExpr.t = read_value balance_sort (GlVar.gen_balance trx_idx) in
         let transaction : trx = {
           index=trx_idx;
           storage=stg_val;
@@ -103,12 +103,12 @@ let to_string : t -> string
     let str = str ^ ((
       trace.trx_list |> Core.List.fold_left ~init:"" ~f:(fun (s : string) (t: trx) -> begin
         let s = s ^ ("==== Trx #" ^ (t.index |> string_of_int) ^ "\n") in
-        let s = s ^ ("== Storage: \n" ^ (t.storage |> Smt.ZExpr.to_string) ^ "\n") in
-        let s = s ^ ("== Parameter: \n" ^ (t.parameter |> Smt.ZExpr.to_string) ^ "\n") in
-        let s = s ^ ("== Sender: \n" ^ (t.sender |> Smt.ZExpr.to_string) ^ "\n") in
-        let s = s ^ ("== Source: \n" ^ (t.source |> Smt.ZExpr.to_string) ^ "\n") in
-        let s = s ^ ("== Amount: \n" ^ (t.amount |> Smt.ZExpr.to_string) ^ "\n") in
-        let s = s ^ ("== Balance: \n" ^ (t.balance |> Smt.ZExpr.to_string) ^ "\n") in
+        let s = s ^ ("== Storage: \n" ^ (t.storage |> Smt_deprecated.ZExpr.to_string) ^ "\n") in
+        let s = s ^ ("== Parameter: \n" ^ (t.parameter |> Smt_deprecated.ZExpr.to_string) ^ "\n") in
+        let s = s ^ ("== Sender: \n" ^ (t.sender |> Smt_deprecated.ZExpr.to_string) ^ "\n") in
+        let s = s ^ ("== Source: \n" ^ (t.source |> Smt_deprecated.ZExpr.to_string) ^ "\n") in
+        let s = s ^ ("== Amount: \n" ^ (t.amount |> Smt_deprecated.ZExpr.to_string) ^ "\n") in
+        let s = s ^ ("== Balance: \n" ^ (t.balance |> Smt_deprecated.ZExpr.to_string) ^ "\n") in
         s
       end)
     ) ^ "\n") in

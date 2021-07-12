@@ -23,7 +23,7 @@ module QuerySet = Set.Make(QueryOT)
 
 let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t) * (ProverLib.Bp.query_category * PreLib.Cfg.vertex -> bool)) -> validate_result
 = let open ProverLib in
-  let is_valid : Smt.ZSolver.validity -> bool = (function | Smt.ZSolver.VAL -> true | _ -> false) in
+  let is_valid : Smt_deprecated.ZSolver.validity -> bool = (function | Smt_deprecated.ZSolver.VAL -> true | _ -> false) in
   fun (timer, inv_candidate, vc_fl, isc_f, is_up_query) -> begin
   (* vcl : verification condition list *)
   (* isc : initial storage condition. deprecated *)
@@ -47,7 +47,7 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
       match remain_indt_vc_l with
       | [] -> acc_validity_b, []
       | h :: t -> 
-        let (validity, _) : Smt.ZSolver.validity * Smt.ZModel.t option = 
+        let (validity, _) : Smt_deprecated.ZSolver.validity * Smt_deprecated.ZModel.t option = 
           (* if the formula trivial, do not pass it to z3 *)
           (match h with
           | Vlang.Formula.VF_true -> (VAL, None)
@@ -55,7 +55,7 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
           | _ -> (Verifier.verify h)
           )
         in 
-        foldf (Smt.ZSolver.is_valid validity, t)
+        foldf (Smt_deprecated.ZSolver.is_valid validity, t)
     end in
     foldf (true, indt_vc_l)
   in
@@ -102,7 +102,7 @@ let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.
 (*       
       (* debug *) let _ = 
         (match mopt with
-        | Some m -> print_endline "FORMULA : "; print_endline (Vlang.Formula.to_string q.qvc_fml); print_endline "ZMODEL : "; Smt.ZModel.to_string m |> print_endline 
+        | Some m -> print_endline "FORMULA : "; print_endline (Vlang.Formula.to_string q.qvc_fml); print_endline "ZMODEL : "; Smt_deprecated.ZModel.to_string m |> print_endline 
           | _ -> ()
 
         )

@@ -265,7 +265,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
   (* 3.3. Refute *)
   (* refute each basicpaths/queries until timeout or run out of basicpaths. *)
   let true_inv : Inv.t = {trx_inv=(CPSet.singleton Vlang.Formula.VF_true); loop_inv=CPMap.empty} in (* Invariant "True" *)
-  let rec refute : (Bp.t CPSet.t * (VcGen.query_vc * Smt.ZModel.t) CPSet.t) -> (Utils.Timer.t ref) -> (Bp.t CPSet.t * (VcGen.query_vc * Smt.ZModel.t) CPSet.t)
+  let rec refute : (Bp.t CPSet.t * (VcGen.query_vc * Smt_deprecated.ZModel.t) CPSet.t) -> (Utils.Timer.t ref) -> (Bp.t CPSet.t * (VcGen.query_vc * Smt_deprecated.ZModel.t) CPSet.t)
   =fun (worklist, refuted_set) timer -> begin
     (* check escape condition *)
     if CPSet.is_empty worklist || Utils.Timer.is_timeout timer then (worklist, refuted_set) else
@@ -293,9 +293,9 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
       |> CPSet.of_list
     in
     (* Refute Query. Similar to query-validation procedure in "Prover.Validator.validate" *)
-    let (pset, _, _) : (VcGen.query_vc * Smt.ZModel.t) CPSet.t * (VcGen.query_vc CPSet.t) * (VcGen.query_vc CPSet.t) =
+    let (pset, _, _) : (VcGen.query_vc * Smt_deprecated.ZModel.t) CPSet.t * (VcGen.query_vc CPSet.t) * (VcGen.query_vc CPSet.t) =
       let open VcGen in
-      let rec foldf : ((VcGen.query_vc * Smt.ZModel.t) CPSet.t * (VcGen.query_vc CPSet.t) * (VcGen.query_vc CPSet.t)) -> (VcGen.query_vc CPSet.t) -> ((VcGen.query_vc * Smt.ZModel.t) CPSet.t * (VcGen.query_vc CPSet.t) * (VcGen.query_vc CPSet.t))
+      let rec foldf : ((VcGen.query_vc * Smt_deprecated.ZModel.t) CPSet.t * (VcGen.query_vc CPSet.t) * (VcGen.query_vc CPSet.t)) -> (VcGen.query_vc CPSet.t) -> ((VcGen.query_vc * Smt_deprecated.ZModel.t) CPSet.t * (VcGen.query_vc CPSet.t) * (VcGen.query_vc CPSet.t))
       (* refuted-query accumulator & unrefuted-query accumulator & ignored-query accumulator *)
       =fun (r_acc, u_acc, ig_acc) qset -> begin
         (* check if timeover *)
@@ -318,12 +318,12 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
         (* this fold-function separates refuted-queries and unrefuted/unknown-queries *)
         let q_validity, modelopt = Verifier.verify q_picked.qvc_fml in
         let (nracc, nuacc) =
-          if Smt.ZSolver.is_invalid q_validity
+          if Smt_deprecated.ZSolver.is_invalid q_validity
           then (
             (* PROVER-REFUTER-REFUTER SYNC - collect refuted query *)
             let _ = refuted_queries := (CPSet.add !refuted_queries q_id) in
             (* WARNING: "Option.get" below might raise the exception "Invalid_argument" *)
-            let mdl : Smt.ZModel.t = Option.get modelopt in
+            let mdl : Smt_deprecated.ZModel.t = Option.get modelopt in
             (CPSet.add r_acc (q_picked, mdl), u_acc)
           )
           else (r_acc, CPSet.add u_acc q_picked)
@@ -336,7 +336,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
     refute (new_worklist_1, CPSet.union pset refuted_set) timer
   end in (* internal function refute end s*)
   (* CALL REFUTER *)
-  let (unsearched_set, refuted_set) : Bp.t CPSet.t * (VcGen.query_vc * Smt.ZModel.t) CPSet.t = 
+  let (unsearched_set, refuted_set) : Bp.t CPSet.t * (VcGen.query_vc * Smt_deprecated.ZModel.t) CPSet.t = 
     refute 
       (generated_complete_combination, CPSet.empty) 
       timer
@@ -356,7 +356,7 @@ let main : (PreLib.Cfg.t * PreLib.Cfg.cfgcon_ctr) -> PreLib.Adt.data option -> i
         let trace = RefuterLib.Trace.gen cfg vtx_to_michloc trx_ur_num !scenario_idx qvc mdl in
         trace |> RefuterLib.Trace.to_string |> print_endline;
         (* print_newline ();
-        print_endline (mdl |> ProverLib.Smt.ZModel.to_string) *)
+        print_endline (mdl |> ProverLib.Smt_deprecated.ZModel.to_string) *)
       );
   ) in
   ()

@@ -48,12 +48,12 @@ module T2S : sig
   exception SMT_Encode_Error_f of (Tz.mich_f * string * int)
   exception SMT_Encode_Error_e of (Tz.mich_v Tz.cc * string * int)
 
-  val cv_mt : Tz.mich_t -> ProverLib.Smt.ZSort.t
-  val cv_mtcc : Tz.mich_t Tz.cc -> ProverLib.Smt.ZSort.t
-  val cv_compare : Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc -> ProverLib.Smt.ZExpr.t
-  val cv_mv : Tz.mich_v -> ProverLib.Smt.ZExpr.t
-  val cv_mvcc : Tz.mich_v Tz.cc -> ProverLib.Smt.ZExpr.t
-  val cv_mf : Tz.mich_f -> ProverLib.Smt.ZFormula.t
+  val cv_mt : ProverLib.Smt.ZCtx.t -> Tz.mich_t -> ProverLib.Smt.ZSort.t
+  val cv_mtcc : ProverLib.Smt.ZCtx.t -> Tz.mich_t Tz.cc -> ProverLib.Smt.ZSort.t
+  val cv_compare : ProverLib.Smt.ZCtx.t -> Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc -> ProverLib.Smt.ZExpr.t
+  val cv_mv : ProverLib.Smt.ZCtx.t -> Tz.mich_v -> ProverLib.Smt.ZExpr.t
+  val cv_mvcc : ProverLib.Smt.ZCtx.t -> Tz.mich_v Tz.cc -> ProverLib.Smt.ZExpr.t
+  val cv_mf : ProverLib.Smt.ZCtx.t -> Tz.mich_f -> ProverLib.Smt.ZFormula.t
 end (* module T2S end *)
 
 

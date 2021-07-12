@@ -75,10 +75,16 @@ end
 module ZCtx : sig
   type body = (string * string)
   type t = Z3.context
+  type id = (int * int) (* pid, tid *)
+  type ctx_map = (id, t) Core.Map.Poly.t Stdlib.ref
+
+  val _obj : ctx_map
 
   val body_timeout : unit -> body
 
-  val create  : unit -> t
+  val create  : unit -> unit
+  val read    : unit -> t
+  val delete  : unit -> unit
 end
 
 
@@ -94,8 +100,8 @@ module ZSym : sig
   val _name_dummy : string
   val _count_dummy : int ref
 
-  val create : ZCtx.t -> string -> t
-  val create_dummy : ZCtx.t -> t
+  val create : string -> t
+  val create_dummy : unit -> t
   
   val to_string : t -> string
 end
@@ -110,8 +116,8 @@ end
 module ZSort : sig
   type t = Z3.Sort.sort
 
-  val create_dummy : ZCtx.t -> t
-  val create : ZCtx.t -> name:string -> t
+  val create_dummy : unit -> t
+  val create : name:string -> t
 
   val to_string : t -> string
 end
@@ -126,10 +132,10 @@ end
 module ZExpr : sig
   type t = Z3.Expr.expr
 
-  val create_dummy : ZCtx.t -> ZSort.t -> t
-  val create_var : ZCtx.t -> ZSort.t -> name:string -> t
+  val create_dummy : ZSort.t -> t
+  val create_var : ZSort.t -> name:string -> t
 
-  val create_ite : ZCtx.t -> cond:t -> t:t -> f:t -> t
+  val create_ite : cond:t -> t:t -> f:t -> t
 
   val read_sort : t -> ZSort.t
 
@@ -165,8 +171,8 @@ module ZDatatype : sig
 
   val get_idx : 'a list -> idx:int -> 'a
 
-  val create_const : ZCtx.t -> name:string -> recog_func_name:string -> field_names:string list -> field_sorts:ZSort.t option list -> field_sort_refs:int list -> const
-  val create_sort : ZCtx.t -> name:string -> const_list:const list -> ZSort.t
+  val create_const : name:string -> recog_func_name:string -> field_names:string list -> field_sorts:ZSort.t option list -> field_sort_refs:int list -> const
+  val create_sort : name:string -> const_list:const list -> ZSort.t
   val create_const_func : ZSort.t -> const_idx:int -> ZFunc.t
   val create_recog_func : ZSort.t -> const_idx:int -> ZFunc.t
   val create_access_func : ZSort.t -> const_idx:int -> field_idx:int -> ZFunc.t
@@ -188,20 +194,20 @@ end
 module ZFormula : sig
   type t = ZExpr.t
 
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
   
-  val true_ : ZCtx.t -> t
-  val false_ : ZCtx.t -> t
-  val uninterpreted_ : ZCtx.t -> t
+  val true_ : unit -> t
+  val false_ : unit -> t
+  val uninterpreted_ : unit -> t
 
-  val create_not : ZCtx.t -> t -> t
-  val create_and : ZCtx.t -> t list -> t
-  val create_or : ZCtx.t -> t list -> t
-  val create_xor : ZCtx.t -> t -> t -> t
-  val create_eq : ZCtx.t -> t -> t -> t
-  val create_neq : ZCtx.t -> t -> t -> t
-  val create_imply : ZCtx.t -> t -> t -> t
-  val create_iff : ZCtx.t -> t -> t -> t
+  val create_not : t -> t
+  val create_and : t list -> t
+  val create_or : t list -> t
+  val create_xor : t -> t -> t
+  val create_eq : t -> t -> t
+  val create_neq : t -> t -> t
+  val create_imply : t -> t -> t
+  val create_iff : t -> t -> t
 end
 
 
@@ -214,9 +220,9 @@ end
 module ZUnit : sig
   type t = ZExpr.t
 
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val create : ZCtx.t -> t
+  val create : unit -> t
 end
 
 
@@ -229,26 +235,26 @@ end
 module ZBool : sig
   type t = ZExpr.t
 
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val of_bool : ZCtx.t -> bool -> t
+  val of_bool : bool -> t
 
-  val minus_one_ : ZCtx.t -> t
-  val zero_ : ZCtx.t -> t
-  val one_ : ZCtx.t -> t
+  val minus_one_ : unit -> t
+  val zero_ : unit -> t
+  val one_ : unit -> t
   
-  val true_ : ZCtx.t -> t
-  val false_ : ZCtx.t -> t
+  val true_ : unit -> t
+  val false_ : unit -> t
 
-  val create_not : ZCtx.t -> t -> t
-  val create_and : ZCtx.t -> t -> t -> t
-  val create_or : ZCtx.t -> t -> t -> t
-  val create_xor : ZCtx.t -> t -> t -> t
+  val create_not : t -> t
+  val create_and : t -> t -> t
+  val create_or : t -> t -> t
+  val create_xor : t -> t -> t
 
-  val create_eq : ZCtx.t -> t -> t -> t
-  val create_neq : ZCtx.t -> t -> t -> t
+  val create_eq : t -> t -> t
+  val create_neq : t -> t -> t
   
-  val create_cmp : ZCtx.t -> t -> t -> t
+  val create_cmp : t -> t -> t
 end
 
 
@@ -261,44 +267,44 @@ end
 module ZInt : sig
   type t = ZExpr.t
 
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val of_zarith : ZCtx.t -> Z.t -> t
-  val of_int : ZCtx.t -> int -> t
+  val of_zarith : Z.t -> t
+  val of_int : int -> t
 
-  val minus_one_ : ZCtx.t -> t
-  val zero_ : ZCtx.t -> t
-  val one_ : ZCtx.t -> t
+  val minus_one_ : unit -> t
+  val zero_ : unit -> t
+  val one_ : unit -> t
 
-  val mutez_max_ : ZCtx.t -> t
+  val mutez_max_ : unit -> t
 
-  val create_neg : ZCtx.t -> t -> t
-  val create_add : ZCtx.t -> t list -> t
-  val create_sub : ZCtx.t -> t list -> t
-  val create_mul : ZCtx.t -> t list -> t
-  val create_div : ZCtx.t -> t -> t -> t
-  val create_mod : ZCtx.t -> t -> t -> t
-  val create_power : ZCtx.t -> t -> t -> t
+  val create_neg : t -> t
+  val create_add : t list -> t
+  val create_sub : t list -> t
+  val create_mul : t list -> t
+  val create_div : t -> t -> t
+  val create_mod : t -> t -> t
+  val create_power : t -> t -> t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
-  val create_lt : ZCtx.t -> t -> t -> ZBool.t
-  val create_le : ZCtx.t -> t -> t -> ZBool.t
-  val create_gt : ZCtx.t -> t -> t -> ZBool.t
-  val create_ge : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+  val create_lt : t -> t -> ZBool.t
+  val create_le : t -> t -> ZBool.t
+  val create_gt : t -> t -> ZBool.t
+  val create_ge : t -> t -> ZBool.t
 
   (* bitwise operations *)
-  val _to_finite_bv : ZCtx.t -> t -> ZExpr.t
-  val _create_finite_bv_expressible : ZCtx.t -> t -> ZBool.t
-  val create_shiftL : ZCtx.t -> t -> t -> t
-  val create_shiftR : ZCtx.t -> t -> t -> t
-  val create_not : ZCtx.t -> t -> t
-  val create_and : ZCtx.t -> t -> t -> t
-  val create_or : ZCtx.t -> t -> t -> t
-  val create_xor : ZCtx.t -> t -> t -> t
+  val _to_finite_bv : t -> ZExpr.t
+  val _create_finite_bv_expressible : t -> ZBool.t
+  val create_shiftL : t -> t -> t
+  val create_shiftR : t -> t -> t
+  val create_not : t -> t
+  val create_and : t -> t -> t
+  val create_or : t -> t -> t
+  val create_xor : t -> t -> t
 
-  val create_cmp : ZCtx.t -> t -> t -> t
-  val create_abs : ZCtx.t -> t -> t
+  val create_cmp : t -> t -> t
+  val create_abs : t -> t
 
   val to_zmutez : t -> ZExpr.t
 end
@@ -322,35 +328,35 @@ module ZNat = ZInt
 module ZMutez : sig
   type t = ZExpr.t
 
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val of_zarith : ZCtx.t -> Z.t -> t
-  val of_int : ZCtx.t -> int -> t
+  val of_zarith : Z.t -> t
+  val of_int : int -> t
 
-  val max_ : ZCtx.t -> t
-  val zero_ : ZCtx.t -> t
+  val max_ : unit -> t
+  val zero_ : unit -> t
 
-  val create_add : ZCtx.t -> t -> t -> t
-  val create_sub : ZCtx.t -> t -> t -> t
-  val create_mul : ZCtx.t -> t -> t -> t
-  val create_div : ZCtx.t -> t -> t -> t
-  val create_mod : ZCtx.t -> t -> t -> t
+  val create_add : t -> t -> t
+  val create_sub : t -> t -> t
+  val create_mul : t -> t -> t
+  val create_div : t -> t -> t
+  val create_mod : t -> t -> t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
-  val create_lt : ZCtx.t -> t -> t -> ZBool.t
-  val create_le : ZCtx.t -> t -> t -> ZBool.t
-  val create_gt : ZCtx.t -> t -> t -> ZBool.t
-  val create_ge : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
+  val create_lt : t -> t -> ZBool.t
+  val create_le : t -> t -> ZBool.t
+  val create_gt : t -> t -> ZBool.t
+  val create_ge : t -> t -> ZBool.t
 
-  val create_cmp : ZCtx.t -> t -> t -> ZInt.t
+  val create_cmp : t -> t -> ZInt.t
 
   val to_zint : t -> ZInt.t
 
-  val create_bound : ZCtx.t -> t -> ZBool.t
-  val check_add_no_overflow : ZCtx.t -> t -> t -> ZBool.t
-  val check_mul_no_overflow : ZCtx.t -> t -> t -> ZBool.t
-  val check_sub_no_underflow : ZCtx.t -> t -> t -> ZBool.t
+  val create_bound : t -> ZBool.t
+  val check_add_no_overflow : t -> t -> ZBool.t
+  val check_mul_no_overflow : t -> t -> ZBool.t
+  val check_sub_no_underflow : t -> t -> ZBool.t
 end
 
 
@@ -363,18 +369,18 @@ end
 module ZStr : sig
   type t = ZExpr.t
 
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val of_string : ZCtx.t -> string -> t
+  val of_string : string -> t
 
-  val create_concat : ZCtx.t -> t list -> t
-  val create_slice : ZCtx.t -> t -> low:ZInt.t -> high:ZInt.t -> t
-  val create_length : ZCtx.t -> t -> ZInt.t
+  val create_concat : t list -> t
+  val create_slice : t -> low:ZInt.t -> high:ZInt.t -> t
+  val create_length : t -> ZInt.t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
 
-  val create_cmp : ZCtx.t -> t -> t -> ZInt.t
+  val create_cmp : t -> t -> ZInt.t
 end
 
 
@@ -387,17 +393,17 @@ end
 module ZKey : sig
   type t = ZExpr.t
 
-  val _create_const_of_keystr : ZCtx.t -> ZDatatype.const
+  val _create_const_of_keystr : unit -> ZDatatype.const
 
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val of_string : ZCtx.t -> string -> t
-  val create_keystr : ZCtx.t -> ZExpr.t -> t
+  val of_string : string -> t
+  val create_keystr : ZExpr.t -> t
 
   val _read_innerstr : t -> ZStr.t
 
-  val create_cmp : ZCtx.t -> t -> t -> ZInt.t
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
+  val create_cmp : t -> t -> ZInt.t
+  val create_eq : t -> t -> ZBool.t
 end
 
 
@@ -410,19 +416,19 @@ end
 module ZKeyHash : sig
   type t = ZExpr.t
 
-  val _create_const_of_str : ZCtx.t -> ZDatatype.const
-  val _create_const_of_hashkey : ZCtx.t -> ZDatatype.const
+  val _create_const_of_str : unit -> ZDatatype.const
+  val _create_const_of_hashkey : unit -> ZDatatype.const
   
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val of_string : ZCtx.t -> string -> t
-  val create_hashkey : ZCtx.t -> ZExpr.t -> t
+  val of_string : string -> t
+  val create_hashkey : ZExpr.t -> t
 
   val _read_innerstr : t -> ZStr.t
   val _read_innerkey : t -> ZKey.t
 
-  val create_cmp : ZCtx.t -> t -> t -> ZInt.t
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
+  val create_cmp : t -> t -> ZInt.t
+  val create_eq : t -> t -> ZBool.t
 end
 
 
@@ -435,18 +441,18 @@ end
 module ZOption : sig
   type t = ZExpr.t
 
-  val _create_const_of_none : ZCtx.t -> ZDatatype.const
-  val _create_const_of_some : ZCtx.t -> content_sort:ZSort.t -> ZDatatype.const
+  val _create_const_of_none : unit -> ZDatatype.const
+  val _create_const_of_some : content_sort:ZSort.t -> ZDatatype.const
   val _create_sort_name : content_sort:ZSort.t -> string
 
-  val create_sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
+  val create_sort : content_sort:ZSort.t -> ZSort.t
 
-  val create_none : ZCtx.t -> content_sort:ZSort.t -> t
-  val create_some : ZCtx.t -> content:ZExpr.t -> t
+  val create_none : content_sort:ZSort.t -> t
+  val create_some : content:ZExpr.t -> t
   val read : t -> ZExpr.t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
 
   val is_none : t -> ZBool.t
   val is_some : t -> ZBool.t
@@ -462,17 +468,17 @@ end
 module ZPair : sig
   type t = ZExpr.t
 
-  val _create_const_of_pair : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZDatatype.const
+  val _create_const_of_pair : fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZDatatype.const
   val _create_sort_name : fst_sort:ZSort.t -> snd_sort:ZSort.t -> string
 
-  val create_sort : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZSort.t
+  val create_sort : fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZSort.t
 
-  val create : ZCtx.t -> fst:ZExpr.t -> snd:ZExpr.t -> t
+  val create : fst:ZExpr.t -> snd:ZExpr.t -> t
   val read_fst : t -> ZExpr.t
   val read_snd : t -> ZExpr.t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
 end
 
 
@@ -485,32 +491,32 @@ end
 module ZBytes : sig
   type t = ZExpr.t
 
-  val _create_const_of_bytnil : ZCtx.t -> ZDatatype.const
-  val _create_const_of_bytstr : ZCtx.t -> ZDatatype.const
+  val _create_const_of_bytnil : unit -> ZDatatype.const
+  val _create_const_of_bytstr : unit -> ZDatatype.const
   (* val _create_const_of_pack : content_sort:ZSort.t -> ZDatatype.const*) (* deprecated *)
-  val _create_const_of_concatenated : ZCtx.t -> ZDatatype.const
+  val _create_const_of_concatenated : unit -> ZDatatype.const
   (* let _create_const_of_sliced : content_sort:ZSort.t -> ZDatatype.const *) (* TODO : after ZNat completed *)
-  val _create_const_of_blake2b : ZCtx.t -> ZDatatype.const
-  val _create_const_of_sha256 : ZCtx.t -> ZDatatype.const
-  val _create_const_of_sha512 : ZCtx.t -> ZDatatype.const
+  val _create_const_of_blake2b : unit -> ZDatatype.const
+  val _create_const_of_sha256 : unit -> ZDatatype.const
+  val _create_const_of_sha512 : unit -> ZDatatype.const
 
   (* val create_sort : content_sort:ZSort.t -> ZSort.t *) (* deprecated *)
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  (* val bytnil : ZCtx.t -> t *)
+  (* val bytnil : unit -> t *)
 
-  val of_string : ZCtx.t -> string -> t
-  val create_bytstr : ZCtx.t -> ZExpr.t -> t
-  val create_pack : ZCtx.t -> t
+  val of_string : string -> t
+  val create_bytstr : ZExpr.t -> t
+  val create_pack : unit -> t
 
   (* "create_concatenated" does not check that the ~fst_bytes and ~snd_bytes has real bytes type expression *)
-  val create_concatenated : ZCtx.t -> fst_bytes:ZExpr.t -> snd_bytes:ZExpr.t -> t
+  val create_concatenated : fst_bytes:ZExpr.t -> snd_bytes:ZExpr.t -> t
 
   (* val create_sliced : ZExpr.t -> t *) (* TODO : after _create_const_of_sliced finished *)
 
-  val create_blake2b : ZCtx.t -> ZExpr.t -> t
-  val create_sha256 : ZCtx.t -> ZExpr.t -> t
-  val create_sha512 : ZCtx.t -> ZExpr.t -> t
+  val create_blake2b : ZExpr.t -> t
+  val create_sha256 : ZExpr.t -> t
+  val create_sha512 : ZExpr.t -> t
 end
 
 
@@ -523,15 +529,15 @@ end
 module ZSignature : sig
   type t = ZExpr.t
 
-  val _create_const_of_sigstr : ZCtx.t -> ZDatatype.const
-  val _create_const_of_signed : ZCtx.t -> ZDatatype.const
+  val _create_const_of_sigstr : unit -> ZDatatype.const
+  val _create_const_of_signed : unit -> ZDatatype.const
   
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
   
-  val of_string : ZCtx.t -> string -> t
-  val create_sigstr : ZCtx.t -> ZExpr.t -> t
+  val of_string : string -> t
+  val create_sigstr : ZExpr.t -> t
   
-  val create_signed : ZCtx.t -> key_data:ZExpr.t -> bytes_data:ZExpr.t -> t
+  val create_signed : key_data:ZExpr.t -> bytes_data:ZExpr.t -> t
 end
 
 
@@ -544,18 +550,18 @@ end
 module ZAddress : sig
   type t = ZExpr.t
 
-  val _create_const_of_addrkh : ZCtx.t -> ZDatatype.const
+  val _create_const_of_addrkh : unit -> ZDatatype.const
 
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val of_string : ZCtx.t -> string -> t
+  val of_string : string -> t
 
-  val create_addrkh : ZCtx.t -> ZKeyHash.t -> t
+  val create_addrkh : ZKeyHash.t -> t
 
   val _read_innerkh : t -> ZKeyHash.t
   
-  val create_cmp : ZCtx.t -> t -> t -> ZInt.t
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
+  val create_cmp : t -> t -> ZInt.t
+  val create_eq : t -> t -> ZBool.t
 end
 
 
@@ -568,19 +574,19 @@ end
 module ZOr : sig
   type t = ZExpr.t
 
-  val _create_const_of_left : ZCtx.t -> left_sort:ZSort.t -> ZDatatype.const
-  val _create_const_of_right : ZCtx.t -> right_sort:ZSort.t -> ZDatatype.const
+  val _create_const_of_left : left_sort:ZSort.t -> ZDatatype.const
+  val _create_const_of_right : right_sort:ZSort.t -> ZDatatype.const
   val _create_sort_name : left_sort:ZSort.t -> right_sort:ZSort.t -> string
 
-  val create_sort : ZCtx.t -> left_sort:ZSort.t -> right_sort:ZSort.t -> ZSort.t
+  val create_sort : left_sort:ZSort.t -> right_sort:ZSort.t -> ZSort.t
 
-  val create_left : ZCtx.t -> left_content:ZExpr.t -> right_sort:ZSort.t -> t
-  val create_right : ZCtx.t -> left_sort:ZSort.t -> right_content:ZExpr.t -> t
+  val create_left : left_content:ZExpr.t -> right_sort:ZSort.t -> t
+  val create_right : left_sort:ZSort.t -> right_content:ZExpr.t -> t
   val read_left : t -> ZExpr.t
   val read_right : t -> ZExpr.t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
 
   val is_left : t -> ZBool.t
   val is_right : t -> ZBool.t
@@ -596,19 +602,19 @@ end
 module ZList : sig
   type t = ZExpr.t
 
-  val _create_const_of_nil : ZCtx.t -> ZDatatype.const
-  val _create_const_of_cons : ZCtx.t -> content_sort:ZSort.t -> ZDatatype.const
+  val _create_const_of_nil : unit -> ZDatatype.const
+  val _create_const_of_cons : content_sort:ZSort.t -> ZDatatype.const
   val _create_sort_name : content_sort:ZSort.t -> string
 
-  val create_sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
+  val create_sort : content_sort:ZSort.t -> ZSort.t
 
-  val create : ZCtx.t -> content_sort:ZSort.t -> t
+  val create : content_sort:ZSort.t -> t
   val read_head : t -> ZExpr.t
   val read_tail : t -> t
-  val update : ZCtx.t -> t -> content:ZExpr.t -> t
+  val update : t -> content:ZExpr.t -> t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
 
   val is_nil : t -> ZBool.t
   val is_cons : t -> ZBool.t
@@ -627,17 +633,17 @@ module ZMap : sig
   val _count_map : int ref
   val _create_name : key_sort:ZSort.t -> value_sort:ZSort.t -> string
 
-  val create_sort : ZCtx.t -> key_sort:ZSort.t -> value_sort:ZSort.t -> ZSort.t
+  val create_sort : key_sort:ZSort.t -> value_sort:ZSort.t -> ZSort.t
 
-  val read_default_value : ZCtx.t -> t -> ZExpr.t
+  val read_default_value : t -> ZExpr.t
 
-  val create : ZCtx.t -> key_sort:ZSort.t -> value_sort:ZSort.t -> t
-  val read_value : ZCtx.t -> key:ZExpr.t -> map:t -> ZExpr.t
-  val read_exist : ZCtx.t -> key:ZExpr.t -> map:t -> ZBool.t
-  val update : ZCtx.t -> key:ZExpr.t -> value:ZExpr.t -> map:t -> t
+  val create : key_sort:ZSort.t -> value_sort:ZSort.t -> t
+  val read_value : key:ZExpr.t -> map:t -> ZExpr.t
+  val read_exist : key:ZExpr.t -> map:t -> ZBool.t
+  val update : key:ZExpr.t -> value:ZExpr.t -> map:t -> t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
 end
 
 
@@ -659,10 +665,10 @@ module ZSet = ZMap
 module ZOperation : sig
   type t = ZExpr.t
   
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
 end
 
 
@@ -675,10 +681,10 @@ end
 module ZContract : sig
   type t = ZExpr.t
   
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
 end
 
 
@@ -691,10 +697,10 @@ end
 module ZLambda : sig
   type t = ZExpr.t
   
-  val sort : ZCtx.t -> ZSort.t
+  val sort : unit -> ZSort.t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : t -> t -> ZBool.t
+  val create_neq : t -> t -> ZBool.t
 end
 
 
@@ -724,11 +730,11 @@ module ZSolver : sig
   type validity = VAL | INVAL | UNKNOWN
   type satisfiability = SAT | UNSAT | UNKNOWN
 
-  val _create : ZCtx.t -> t
+  val _create : unit -> t
   val _formula_add : t -> ZFormula.t list -> unit
   
-  val check_satisfiability : ZCtx.t -> ZFormula.t list -> (satisfiability * ZModel.t option)
-  val check_validity : ZCtx.t -> ZFormula.t list -> (validity * ZModel.t option)
+  val check_satisfiability : ZFormula.t list -> (satisfiability * ZModel.t option)
+  val check_validity : ZFormula.t list -> (validity * ZModel.t option)
 
   val is_unknown_sat : satisfiability -> bool
   val is_sat : satisfiability -> bool

@@ -483,121 +483,123 @@ module T2S = struct
   exception SMT_Encode_Error_f of (mich_f * string * int)
   exception SMT_Encode_Error_e of (mich_v cc * string * int)
 
-  let rec cv_mt : mich_t -> ZSort.t = 
-    (let sot = cv_mtcc in (* syntax sugar *)
-    function
-    | MT_key -> ZKey.sort ()
-    | MT_unit -> ZUnit.sort ()
-    | MT_signature -> ZSignature.sort ()
-    | MT_option t -> ZOption.create_sort ~content_sort:(sot t)
-    | MT_list t -> ZList.create_sort ~content_sort:(sot t)
-    | MT_set t -> ZSet.create_sort ~key_sort:(sot t) ~value_sort:(ZBool.sort ())
-    | MT_operation -> ZOperation.sort ()
-    | MT_contract _ -> ZContract.sort ()
-    | MT_pair (t1, t2) -> ZPair.create_sort ~fst_sort:(sot t1) ~snd_sort:(sot t2)
-    | MT_or (t1, t2) -> ZOr.create_sort ~left_sort:(sot t1) ~right_sort:(sot t2)
-    | MT_lambda (_, _) -> ZLambda.sort ()
-    | MT_map (t1, t2) -> ZMap.create_sort ~key_sort:(sot t1) ~value_sort:(sot t2)
-    | MT_big_map (t1, t2) -> ZMap.create_sort ~key_sort:(sot t1) ~value_sort:(sot t2)
-    | MT_chain_id -> ZStr.sort ()
-    | MT_int -> ZInt.sort ()
-    | MT_nat -> ZNat.sort ()
-    | MT_string -> ZStr.sort ()
-    | MT_bytes -> ZBytes.sort ()
-    | MT_mutez -> ZMutez.sort ()
-    | MT_bool -> ZBool.sort ()
-    | MT_key_hash -> ZKeyHash.sort ()
-    | MT_timestamp -> ZInt.sort ()
-    | MT_address -> ZAddress.sort ()
+  let rec cv_mt : ZCtx.t -> mich_t -> ZSort.t = 
+    (fun ctx t1 ->
+    let sot = cv_mtcc ctx in (* syntax sugar *)
+    match t1 with
+    | MT_key -> ZKey.sort ctx
+    | MT_unit -> ZUnit.sort ctx
+    | MT_signature -> ZSignature.sort ctx
+    | MT_option t -> ZOption.create_sort ctx ~content_sort:(sot t)
+    | MT_list t -> ZList.create_sort ctx ~content_sort:(sot t)
+    | MT_set t -> ZSet.create_sort ctx ~key_sort:(sot t) ~value_sort:(ZBool.sort ctx)
+    | MT_operation -> ZOperation.sort ctx
+    | MT_contract _ -> ZContract.sort ctx
+    | MT_pair (t1, t2) -> ZPair.create_sort ctx ~fst_sort:(sot t1) ~snd_sort:(sot t2)
+    | MT_or (t1, t2) -> ZOr.create_sort ctx ~left_sort:(sot t1) ~right_sort:(sot t2)
+    | MT_lambda (_, _) -> ZLambda.sort ctx
+    | MT_map (t1, t2) -> ZMap.create_sort ctx ~key_sort:(sot t1) ~value_sort:(sot t2)
+    | MT_big_map (t1, t2) -> ZMap.create_sort ctx ~key_sort:(sot t1) ~value_sort:(sot t2)
+    | MT_chain_id -> ZStr.sort ctx
+    | MT_int -> ZInt.sort ctx
+    | MT_nat -> ZNat.sort ctx
+    | MT_string -> ZStr.sort ctx
+    | MT_bytes -> ZBytes.sort ctx
+    | MT_mutez -> ZMutez.sort ctx
+    | MT_bool -> ZBool.sort ctx
+    | MT_key_hash -> ZKeyHash.sort ctx
+    | MT_timestamp -> ZInt.sort ctx
+    | MT_address -> ZAddress.sort ctx
     ) (* function cv_mt end *)
-  and cv_mtcc : mich_t cc -> ZSort.t = (fun x -> cv_mt x.cc_v)
-  let rec cv_compare : mich_v cc -> mich_v cc -> ZExpr.t =
-    (fun e1 e2 ->
+  and cv_mtcc : ZCtx.t -> mich_t cc -> ZSort.t = (fun ctx x -> cv_mt ctx x.cc_v)
+  let rec cv_compare : ZCtx.t -> mich_v cc -> mich_v cc -> ZExpr.t =
+    (fun ctx e1 e2 ->
     match (typ_of_val e1).cc_v, (typ_of_val e2).cc_v with
-    | MT_int, MT_int -> ZInt.create_cmp (cv_mvcc e1) (cv_mvcc e2)
-    | MT_nat, MT_nat -> ZInt.create_cmp (cv_mvcc e1) (cv_mvcc e2)
-    | MT_string, MT_string -> ZStr.create_cmp (cv_mvcc e1) (cv_mvcc e2)
-    | MT_bytes, MT_bytes -> ZStr.create_cmp (cv_mvcc e1) (cv_mvcc e2)
-    | MT_mutez, MT_mutez -> ZMutez.create_cmp (cv_mvcc e1) (cv_mvcc e2)
-    | MT_bool, MT_bool -> ZBool.create_cmp (cv_mvcc e1) (cv_mvcc e2)
-    | MT_key_hash, MT_key_hash -> ZKeyHash.create_cmp (cv_mvcc e1) (cv_mvcc e2)
-    | MT_timestamp, MT_timestamp -> ZInt.create_cmp (cv_mvcc e1) (cv_mvcc e2)
-    | MT_address, MT_address -> ZAddress.create_cmp (cv_mvcc e1) (cv_mvcc e2)
+    | MT_int, MT_int -> ZInt.create_cmp ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MT_nat, MT_nat -> ZInt.create_cmp ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MT_string, MT_string -> ZStr.create_cmp ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MT_bytes, MT_bytes -> ZStr.create_cmp ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MT_mutez, MT_mutez -> ZMutez.create_cmp ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MT_bool, MT_bool -> ZBool.create_cmp ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MT_key_hash, MT_key_hash -> ZKeyHash.create_cmp ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MT_timestamp, MT_timestamp -> ZInt.create_cmp ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MT_address, MT_address -> ZAddress.create_cmp ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
     | MT_pair (_, _), MT_pair (_, _) -> 
-      let fstcmp : ZInt.t = cv_compare (MV_car e1 |> gen_dummy_cc) (MV_car e2 |> gen_dummy_cc) in
-      let fst_is_zero : ZExpr.t = ZInt.create_eq fstcmp (ZInt.zero_ ()) in
-      let sndcmp : ZInt.t = cv_compare (MV_cdr e1 |> gen_dummy_cc) (MV_cdr e2 |> gen_dummy_cc) in
-      ZExpr.create_ite ~cond:(fst_is_zero) ~t:(sndcmp) ~f:(fstcmp)
+      let fstcmp : ZInt.t = cv_compare ctx (MV_car e1 |> gen_dummy_cc) (MV_car e2 |> gen_dummy_cc) in
+      let fst_is_zero : ZExpr.t = ZInt.create_eq ctx fstcmp (ZInt.zero_ ctx) in
+      let sndcmp : ZInt.t = cv_compare ctx (MV_cdr e1 |> gen_dummy_cc) (MV_cdr e2 |> gen_dummy_cc) in
+      ZExpr.create_ite ctx ~cond:(fst_is_zero) ~t:(sndcmp) ~f:(fstcmp)
     | t1, t2 when t1 = t2 -> Stdlib.failwith ("TzCvt.cv_compare : expression like this cannot be compared")
     | _ -> Stdlib.failwith ("TzCvt.cv_compare : two expressions have different types")
     ) (* function cv_compare end *)
-  and cv_mv : mich_v -> ZExpr.t =
-    (let err (e: mich_v) = (gen_dummy_cc e) |> typ_of_val |> cv_mtcc |> ZExpr.create_dummy in
+  and cv_mv : ZCtx.t -> mich_v -> ZExpr.t =
+    (fun ctx eee ->
+    let err (e: mich_v) = (gen_dummy_cc e) |> typ_of_val |> cv_mtcc ctx |> ZExpr.create_dummy ctx in
     let sigma_lm : l:mich_v cc -> acc:(mich_v cc -> mich_v cc) -> sigma:(mich_v cc -> mich_v cc) -> ZExpr.t
     = (* internal function sigma_lm start *)
       fun ~l ~acc ~sigma -> begin
       let l' : mich_v cc = l |> Tz.optimize_v in
       match l'.cc_v with
       | MV_lit_list (_, lst) -> (
-        Core.List.fold lst ~init:(ZMutez.zero_ ())
-          ~f:(fun a vvv -> (ZMutez.create_add a (vvv |> acc |> cv_mvcc))))
-      | MV_nil _ -> ZMutez.zero_ ()
-      | MV_cons (hd, tl) -> ZMutez.create_add (cv_mvcc (acc hd)) (cv_mvcc (sigma tl))
+        Core.List.fold lst ~init:(ZMutez.zero_ ctx)
+          ~f:(fun a vvv -> (ZMutez.create_add ctx a (vvv |> acc |> cv_mvcc ctx))))
+      | MV_nil _ -> ZMutez.zero_ ctx
+      | MV_cons (hd, tl) -> ZMutez.create_add ctx (cv_mvcc ctx (acc hd)) (cv_mvcc ctx (sigma tl))
       | _ -> (
         let l_abbrs : string list = T2A.cv_mvcc l' in
         let e_abbrs : string list = T2A.cv_mvcc (acc (MV_hd_l l |> gen_dummy_cc |> Tz.typ_of_val |> Tz.gen_new_symval_t)) in
-        ZExpr.create_var (ZMutez.sort ()) ~name:(
+        ZExpr.create_var ctx (ZMutez.sort ctx) ~name:(
           { Jc.Fsvn.c_vn=(Core.List.hd_exn l_abbrs);
             Jc.Fsvn.c_acc_l=(Core.List.tl_exn l_abbrs);
             Jc.Fsvn.e_acc_l=(Core.List.tl_exn e_abbrs); } |> Jc.Fsvn.to_string))
     end in (* internal function sigma_lm end *)
-    fun eee -> match eee with
+    match eee with
     (*************************************************************************)
     (* Symbol & Polymorphic                                                  *)
     (*************************************************************************)
-    | MV_symbol (t,v) -> ZExpr.create_var (cv_mtcc t) ~name:v
-    | MV_car e -> ZPair.read_fst (cv_mvcc e)
-    | MV_cdr e -> ZPair.read_snd (cv_mvcc e)
-    | MV_unlift_option e -> ZOption.read (cv_mvcc e)
-    | MV_unlift_left e -> ZOr.read_left (cv_mvcc e)
-    | MV_unlift_right e -> ZOr.read_right (cv_mvcc e)
-    | MV_hd_l e -> ZList.read_head (cv_mvcc e)
+    | MV_symbol (t,v) -> ZExpr.create_var ctx (cv_mtcc ctx t) ~name:v
+    | MV_car e -> ZPair.read_fst (cv_mvcc ctx e)
+    | MV_cdr e -> ZPair.read_snd (cv_mvcc ctx e)
+    | MV_unlift_option e -> ZOption.read (cv_mvcc ctx e)
+    | MV_unlift_left e -> ZOr.read_left (cv_mvcc ctx e)
+    | MV_unlift_right e -> ZOr.read_right (cv_mvcc ctx e)
+    | MV_hd_l e -> ZList.read_head (cv_mvcc ctx e)
   
     (*************************************************************************)
     (* Integer                                                               *)
     (*************************************************************************)
-    | MV_lit_int zn -> ZInt.of_zarith zn
-    | MV_neg_ni e -> ZInt.create_neg (cv_mvcc e)
-    | MV_neg_ii e -> ZInt.create_neg (cv_mvcc e)
-    | MV_not_ni e -> ZInt.create_not (cv_mvcc e)
-    | MV_not_ii e -> ZInt.create_not (cv_mvcc e)
-    | MV_add_nii (e1, e2) -> ZInt.create_add [cv_mvcc e1; cv_mvcc e2;]
-    | MV_add_ini (e1, e2) -> ZInt.create_add [cv_mvcc e1; cv_mvcc e2;]
-    | MV_add_iii (e1, e2) -> ZInt.create_add [cv_mvcc e1; cv_mvcc e2;]
-    | MV_sub_nni (e1, e2) -> ZInt.create_sub [cv_mvcc e1; cv_mvcc e2;]
-    | MV_sub_nii (e1, e2) -> ZInt.create_sub [cv_mvcc e1; cv_mvcc e2;]
-    | MV_sub_ini (e1, e2) -> ZInt.create_sub [cv_mvcc e1; cv_mvcc e2;]
-    | MV_sub_iii (e1, e2) -> ZInt.create_sub [cv_mvcc e1; cv_mvcc e2;]
-    | MV_sub_tti (e1, e2) -> ZInt.create_sub [cv_mvcc e1; cv_mvcc e2;]
-    | MV_mul_nii (e1, e2) -> ZInt.create_mul [cv_mvcc e1; cv_mvcc e2;]
-    | MV_mul_ini (e1, e2) -> ZInt.create_mul [cv_mvcc e1; cv_mvcc e2;]
-    | MV_mul_iii (e1, e2) -> ZInt.create_mul [cv_mvcc e1; cv_mvcc e2;]
-    | MV_compare (e1, e2) -> cv_compare e1 e2
-    | MV_int_of_nat e -> cv_mvcc e
+    | MV_lit_int zn -> ZInt.of_zarith ctx zn
+    | MV_neg_ni e -> ZInt.create_neg ctx (cv_mvcc ctx e)
+    | MV_neg_ii e -> ZInt.create_neg ctx (cv_mvcc ctx e)
+    | MV_not_ni e -> ZInt.create_not ctx (cv_mvcc ctx e)
+    | MV_not_ii e -> ZInt.create_not ctx (cv_mvcc ctx e)
+    | MV_add_nii (e1, e2) -> ZInt.create_add ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_add_ini (e1, e2) -> ZInt.create_add ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_add_iii (e1, e2) -> ZInt.create_add ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_sub_nni (e1, e2) -> ZInt.create_sub ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_sub_nii (e1, e2) -> ZInt.create_sub ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_sub_ini (e1, e2) -> ZInt.create_sub ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_sub_iii (e1, e2) -> ZInt.create_sub ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_sub_tti (e1, e2) -> ZInt.create_sub ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_mul_nii (e1, e2) -> ZInt.create_mul ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_mul_ini (e1, e2) -> ZInt.create_mul ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_mul_iii (e1, e2) -> ZInt.create_mul ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_compare (e1, e2) -> cv_compare ctx e1 e2
+    | MV_int_of_nat e -> cv_mvcc ctx e
   
     (*************************************************************************)
     (* Natural Number                                                        *)
     (*************************************************************************)
-    | MV_lit_nat zn -> ZNat.of_zarith zn
-    | MV_abs_in e -> ZNat.create_abs (cv_mvcc e)
-    | MV_add_nnn (e1, e2) -> ZNat.create_add [cv_mvcc e1; cv_mvcc e2;]
-    | MV_mul_nnn (e1, e2) -> ZNat.create_mul [cv_mvcc e1; cv_mvcc e2;]
-    | MV_shiftL_nnn (e1, e2) -> ZNat.create_shiftL (cv_mvcc e1) (cv_mvcc e2)
-    | MV_shiftR_nnn (e1, e2) -> ZNat.create_shiftR (cv_mvcc e1) (cv_mvcc e2)
-    | MV_and_nnn (e1, e2) -> ZNat.create_and (cv_mvcc e1) (cv_mvcc e2)
-    | MV_and_inn (e1, e2) -> ZNat.create_and (cv_mvcc e1) (cv_mvcc e2)
-    | MV_or_nnn (e1, e2) -> ZNat.create_or (cv_mvcc e1) (cv_mvcc e2)
-    | MV_xor_nnn (e1, e2) -> ZNat.create_xor (cv_mvcc e1) (cv_mvcc e2)
+    | MV_lit_nat zn -> ZNat.of_zarith ctx zn
+    | MV_abs_in e -> ZNat.create_abs ctx (cv_mvcc ctx e)
+    | MV_add_nnn (e1, e2) -> ZNat.create_add ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_mul_nnn (e1, e2) -> ZNat.create_mul ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_shiftL_nnn (e1, e2) -> ZNat.create_shiftL ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_shiftR_nnn (e1, e2) -> ZNat.create_shiftR ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_and_nnn (e1, e2) -> ZNat.create_and ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_and_inn (e1, e2) -> ZNat.create_and ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_or_nnn (e1, e2) -> ZNat.create_or ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_xor_nnn (e1, e2) -> ZNat.create_xor ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
     | MV_size_s _ -> err eee
     | MV_size_m _ -> err eee
     | MV_size_l _ -> err eee
@@ -607,54 +609,54 @@ module T2S = struct
     (*************************************************************************)
     (* String                                                                *)
     (*************************************************************************)
-    | MV_lit_string s -> ZStr.of_string s
-    | MV_concat_sss (e1, e2) -> ZStr.create_concat [cv_mvcc e1; cv_mvcc e2;]
+    | MV_lit_string s -> ZStr.of_string ctx s
+    | MV_concat_sss (e1, e2) -> ZStr.create_concat ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
     | MV_concat_list_s _ -> err eee
   
     (*************************************************************************)
     (* Bytes                                                                 *)
     (*************************************************************************)
-    | MV_lit_bytes s -> ZBytes.create_bytstr (ZStr.of_string s)
-    | MV_concat_bbb (e1, e2) -> ZBytes.create_concatenated ~fst_bytes:(cv_mvcc e1) ~snd_bytes:(cv_mvcc e2)
+    | MV_lit_bytes s -> ZBytes.create_bytstr ctx (ZStr.of_string ctx s)
+    | MV_concat_bbb (e1, e2) -> ZBytes.create_concatenated ctx ~fst_bytes:(cv_mvcc ctx e1) ~snd_bytes:(cv_mvcc ctx e2)
     | MV_concat_list_b _ -> err eee
-    | MV_pack _ -> ZBytes.create_pack ()
-    | MV_blake2b e -> ZBytes.create_blake2b (cv_mvcc e)
-    | MV_sha256  e -> ZBytes.create_sha256 (cv_mvcc e)
-    | MV_sha512  e -> ZBytes.create_sha512 (cv_mvcc e)
+    | MV_pack _ -> ZBytes.create_pack ctx
+    | MV_blake2b e -> ZBytes.create_blake2b ctx (cv_mvcc ctx e)
+    | MV_sha256  e -> ZBytes.create_sha256 ctx (cv_mvcc ctx e)
+    | MV_sha512  e -> ZBytes.create_sha512 ctx (cv_mvcc ctx e)
   
     (*************************************************************************)
     (* Mutez                                                                 *)
     (*************************************************************************)
-    | MV_lit_mutez zn -> ZMutez.of_zarith zn
-    | MV_add_mmm (e1, e2) -> ZMutez.create_add (cv_mvcc e1) (cv_mvcc e2)
-    | MV_sub_mmm (e1, e2) -> ZMutez.create_sub (cv_mvcc e1) (cv_mvcc e2)
-    | MV_mul_mnm (e1, e2) -> ZMutez.create_mul (cv_mvcc e1) (cv_mvcc e2 |> ZNat.to_zmutez)
-    | MV_mul_nmm (e1, e2) -> ZMutez.create_mul (cv_mvcc e1 |> ZNat.to_zmutez) (cv_mvcc e2)
+    | MV_lit_mutez zn -> ZMutez.of_zarith ctx zn
+    | MV_add_mmm (e1, e2) -> ZMutez.create_add ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_sub_mmm (e1, e2) -> ZMutez.create_sub ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_mul_mnm (e1, e2) -> ZMutez.create_mul ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2 |> ZNat.to_zmutez)
+    | MV_mul_nmm (e1, e2) -> ZMutez.create_mul ctx (cv_mvcc ctx e1 |> ZNat.to_zmutez) (cv_mvcc ctx e2)
   
     (*************************************************************************)
     (* Bool                                                                  *)
     (*************************************************************************)
-    | MV_lit_bool b -> ZBool.of_bool b
-    | MV_not_bb e -> ZBool.create_not (cv_mvcc e)
-    | MV_and_bbb (e1, e2) -> ZBool.create_and (cv_mvcc e1) (cv_mvcc e2)
-    | MV_or_bbb  (e1, e2) -> ZBool.create_or  (cv_mvcc e1) (cv_mvcc e2)
-    | MV_xor_bbb (e1, e2) -> ZBool.create_xor (cv_mvcc e1) (cv_mvcc e2)
-    | MV_eq_ib   (e1, e2) -> ZInt.create_eq   (cv_mvcc e1) (cv_mvcc e2)
-    | MV_neq_ib  (e1, e2) -> ZInt.create_neq  (cv_mvcc e1) (cv_mvcc e2)
-    | MV_lt_ib   (e1, e2) -> ZInt.create_lt   (cv_mvcc e1) (cv_mvcc e2)
-    | MV_gt_ib   (e1, e2) -> ZInt.create_gt   (cv_mvcc e1) (cv_mvcc e2)
-    | MV_leq_ib  (e1, e2) -> ZInt.create_le   (cv_mvcc e1) (cv_mvcc e2)
-    | MV_geq_ib  (e1, e2) -> ZInt.create_ge   (cv_mvcc e1) (cv_mvcc e2)
+    | MV_lit_bool b -> ZBool.of_bool ctx b
+    | MV_not_bb e -> ZBool.create_not ctx (cv_mvcc ctx e)
+    | MV_and_bbb (e1, e2) -> ZBool.create_and ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_or_bbb  (e1, e2) -> ZBool.create_or ctx  (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_xor_bbb (e1, e2) -> ZBool.create_xor ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_eq_ib   (e1, e2) -> ZInt.create_eq ctx   (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_neq_ib  (e1, e2) -> ZInt.create_neq ctx  (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_lt_ib   (e1, e2) -> ZInt.create_lt ctx   (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_gt_ib   (e1, e2) -> ZInt.create_gt ctx   (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_leq_ib  (e1, e2) -> ZInt.create_le ctx   (cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_geq_ib  (e1, e2) -> ZInt.create_ge ctx   (cv_mvcc ctx e1) (cv_mvcc ctx e2)
     | MV_mem_xsb _ -> err eee
-    | MV_mem_xmb (e1, e2) -> ZMap.read_exist ~key:(cv_mvcc e1) ~map:(cv_mvcc e2)
-    | MV_mem_xbmb (e1, e2) -> ZMap.read_exist ~key:(cv_mvcc e1) ~map:(cv_mvcc e2)
+    | MV_mem_xmb (e1, e2) -> ZMap.read_exist ctx ~key:(cv_mvcc ctx e1) ~map:(cv_mvcc ctx e2)
+    | MV_mem_xbmb (e1, e2) -> ZMap.read_exist ctx ~key:(cv_mvcc ctx e1) ~map:(cv_mvcc ctx e2)
     | MV_check_signature _ -> err eee
   
     (*************************************************************************)
     (* Key Hash                                                              *)
     (*************************************************************************)
-    | MV_lit_key_hash s -> ZKeyHash.of_string s
-    | MV_hash_key k -> ZKeyHash.create_hashkey (cv_mvcc k)
+    | MV_lit_key_hash s -> ZKeyHash.of_string ctx s
+    | MV_hash_key k -> ZKeyHash.create_hashkey ctx (cv_mvcc ctx k)
   
     (*************************************************************************)
     (* Timestamp                                                             *)
@@ -671,29 +673,29 @@ module T2S = struct
             |> Ptime.to_span
             |> Ptime.Span.to_int_s
             |> Option.get (* It might raise "Invalid_argument" *)
-            |> ZInt.of_int) 
-          else Z.of_string s |> ZInt.of_zarith))
+            |> ZInt.of_int ctx) 
+          else Z.of_string s |> ZInt.of_zarith ctx))
       end
-    | MV_lit_timestamp_sec zn -> ZInt.of_int (Z.to_int zn)
-    | MV_add_tit (e1, e2) -> ZInt.create_add [cv_mvcc e1; cv_mvcc e2;]
-    | MV_add_itt (e1, e2) -> ZInt.create_add [cv_mvcc e1; cv_mvcc e2;]
-    | MV_sub_tit (e1, e2) -> ZInt.create_sub [cv_mvcc e1; cv_mvcc e2;]
+    | MV_lit_timestamp_sec zn -> ZInt.of_int ctx (Z.to_int zn)
+    | MV_add_tit (e1, e2) -> ZInt.create_add ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_add_itt (e1, e2) -> ZInt.create_add ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
+    | MV_sub_tit (e1, e2) -> ZInt.create_sub ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;]
   
     (*************************************************************************)
     (* Address                                                               *)
     (*************************************************************************)
-    | MV_lit_address kh -> ZAddress.create_addrkh (cv_mvcc kh)
+    | MV_lit_address kh -> ZAddress.create_addrkh ctx (cv_mvcc ctx kh)
     | MV_address_of_contract _ -> err eee
   
     (*************************************************************************)
     (* Key                                                                   *)
     (*************************************************************************)
-    | MV_lit_key s -> ZKey.create_keystr (ZStr.of_string s)
+    | MV_lit_key s -> ZKey.create_keystr ctx (ZStr.of_string ctx s)
   
     (*************************************************************************)
     (* Unit                                                                  *)
     (*************************************************************************)
-    | MV_unit -> ZUnit.create ()
+    | MV_unit -> ZUnit.create ctx
   
     (*************************************************************************)
     (* Signature                                                             *)
@@ -704,32 +706,32 @@ module T2S = struct
     (*************************************************************************)
     (* Option                                                                *)
     (*************************************************************************)
-    | MV_some e -> ZOption.create_some ~content:(cv_mvcc e)
-    | MV_none t -> ZOption.create_none ~content_sort:(cv_mtcc t)
+    | MV_some e -> ZOption.create_some ctx ~content:(cv_mvcc ctx e)
+    | MV_none t -> ZOption.create_none ctx ~content_sort:(cv_mtcc ctx t)
     | MV_ediv_nnnn (e1, e2) 
     | MV_ediv_niin (e1, e2)
     | MV_ediv_inin (e1, e2)
     | MV_ediv_iiin (e1, e2) -> begin
-        let dividend, divisor = (cv_mvcc e1), (cv_mvcc e2) in
-        let qr = ZPair.create ~fst:(ZInt.create_div dividend divisor) ~snd:(ZInt.create_mod dividend divisor) in
-        let div_zero_result = ZOption.create_none ~content_sort:(qr |> ZExpr.read_sort) in
-        ZExpr.create_ite ~cond:(ZInt.create_eq divisor (ZInt.zero_ ())) ~t:div_zero_result ~f:(ZOption.create_some ~content:(qr))
+        let dividend, divisor = (cv_mvcc ctx e1), (cv_mvcc ctx e2) in
+        let qr = ZPair.create ctx ~fst:(ZInt.create_div ctx dividend divisor) ~snd:(ZInt.create_mod ctx dividend divisor) in
+        let div_zero_result = ZOption.create_none ctx ~content_sort:(qr |> ZExpr.read_sort) in
+        ZExpr.create_ite ctx ~cond:(ZInt.create_eq ctx divisor (ZInt.zero_ ctx)) ~t:div_zero_result ~f:(ZOption.create_some ctx ~content:(qr))
       end
     | MV_ediv_mnmm (e1, e2) -> begin
-        let dividend, divisor = (cv_mvcc e1), (cv_mvcc e2 |> ZInt.to_zmutez) in
-        let qr = ZPair.create ~fst:(ZMutez.create_div dividend divisor) ~snd:(ZMutez.create_mod dividend divisor) in
-        let div_zero_result = ZOption.create_none ~content_sort:(qr |> ZExpr.read_sort) in
-        ZExpr.create_ite ~cond:(ZMutez.create_eq divisor (ZMutez.zero_ ())) ~t:div_zero_result ~f:(ZOption.create_some ~content:(qr))
+        let dividend, divisor = (cv_mvcc ctx e1), (cv_mvcc ctx e2 |> ZInt.to_zmutez) in
+        let qr = ZPair.create ctx ~fst:(ZMutez.create_div ctx dividend divisor) ~snd:(ZMutez.create_mod ctx dividend divisor) in
+        let div_zero_result = ZOption.create_none ctx ~content_sort:(qr |> ZExpr.read_sort) in
+        ZExpr.create_ite ctx ~cond:(ZMutez.create_eq ctx divisor (ZMutez.zero_ ctx)) ~t:div_zero_result ~f:(ZOption.create_some ctx ~content:(qr))
       end
     | MV_ediv_mmnm (e1, e2) -> begin
-        let dividend, divisor = (cv_mvcc e1), (cv_mvcc e2) in
-        let qr = ZPair.create ~fst:(ZMutez.create_div dividend divisor |> ZMutez.to_zint) ~snd:(ZMutez.create_mod dividend divisor) in
-        let div_zero_result = ZOption.create_none ~content_sort:(qr |> ZExpr.read_sort) in
-        ZExpr.create_ite ~cond:(ZMutez.create_eq divisor (ZMutez.zero_ ())) ~t:div_zero_result ~f:(ZOption.create_some ~content:(qr))
+        let dividend, divisor = (cv_mvcc ctx e1), (cv_mvcc ctx e2) in
+        let qr = ZPair.create ctx ~fst:(ZMutez.create_div ctx dividend divisor |> ZMutez.to_zint) ~snd:(ZMutez.create_mod ctx dividend divisor) in
+        let div_zero_result = ZOption.create_none ctx ~content_sort:(qr |> ZExpr.read_sort) in
+        ZExpr.create_ite ctx ~cond:(ZMutez.create_eq ctx divisor (ZMutez.zero_ ctx)) ~t:div_zero_result ~f:(ZOption.create_some ctx ~content:(qr))
       end
-    | MV_get_xmoy (e1, e2) -> ZMap.read_value ~key:(cv_mvcc e1) ~map:(cv_mvcc e2)
-    | MV_get_xbmo (e1, e2) -> ZMap.read_value ~key:(cv_mvcc e1) ~map:(cv_mvcc e2)
-    | MV_slice_nnso (e1, e2, e3) -> (cv_mvcc e3) |> ZStr.create_slice ~low:(cv_mvcc e1) ~high:(ZInt.create_add [cv_mvcc e1; cv_mvcc e2;])
+    | MV_get_xmoy (e1, e2) -> ZMap.read_value ctx ~key:(cv_mvcc ctx e1) ~map:(cv_mvcc ctx e2)
+    | MV_get_xbmo (e1, e2) -> ZMap.read_value ctx ~key:(cv_mvcc ctx e1) ~map:(cv_mvcc ctx e2)
+    | MV_slice_nnso (e1, e2, e3) -> (cv_mvcc ctx e3) |> ZStr.create_slice ctx ~low:(cv_mvcc ctx e1) ~high:(ZInt.create_add ctx [cv_mvcc ctx e1; cv_mvcc ctx e2;])
     | MV_slice_nnbo _ -> err eee
     | MV_unpack _ -> err eee
     | MV_contract_of_address _ -> err eee
@@ -740,12 +742,12 @@ module T2S = struct
     (*************************************************************************)
     | MV_lit_list (t, el) -> begin
         el |> Core.List.fold_right
-                ~f:(fun e l -> l |> ZList.update ~content:(cv_mvcc e))
-                ~init:(ZList.create ~content_sort:(cv_mtcc t))
+                ~f:(fun e l -> l |> ZList.update ctx ~content:(cv_mvcc ctx e))
+                ~init:(ZList.create ctx ~content_sort:(cv_mtcc ctx t))
       end
-    | MV_nil t -> ZList.create ~content_sort:(cv_mtcc t)
-    | MV_cons (e1, e2) -> ZList.update ~content:(cv_mvcc e1) (cv_mvcc e2)
-    | MV_tl_l e -> ZList.read_tail (cv_mvcc e)
+    | MV_nil t -> ZList.create ctx ~content_sort:(cv_mtcc ctx t)
+    | MV_cons (e1, e2) -> ZList.update ctx ~content:(cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_tl_l e -> ZList.read_tail (cv_mvcc ctx e)
   
     (*************************************************************************)
     (* Set                                                                   *)
@@ -753,21 +755,21 @@ module T2S = struct
     | MV_lit_set (elt, e) -> begin
       let kt, vt = elt, MT_bool in
       e |> PSet.fold
-            ~init:(ZMap.create ~key_sort:(cv_mtcc kt) ~value_sort:(cv_mt vt))
-            ~f:(fun acc_set key -> ZMap.update ~key:(cv_mvcc key) ~value:(ZOption.create_some ~content:(cv_mv (MV_lit_bool true))) ~map:acc_set)
+            ~init:(ZMap.create ctx ~key_sort:(cv_mtcc ctx kt) ~value_sort:(cv_mt ctx vt))
+            ~f:(fun acc_set key -> ZMap.update ctx ~key:(cv_mvcc ctx key) ~value:(ZOption.create_some ctx ~content:(cv_mv ctx (MV_lit_bool true))) ~map:acc_set)
       end
     | MV_empty_set elt -> begin
         let kt, vt = elt, MT_bool in
-        ZMap.create ~key_sort:(cv_mtcc kt) ~value_sort:(cv_mt vt)
+        ZMap.create ctx ~key_sort:(cv_mtcc ctx kt) ~value_sort:(cv_mt ctx vt)
       end
     | MV_update_xbss (e1, e2, e3) -> begin
         let elem = begin
-          ZExpr.create_ite
-          ~cond:(cv_mvcc e2)
-          ~t:(ZOption.create_some ~content:(ZBool.true_ ()))
-          ~f:(ZOption.create_none ~content_sort:(ZBool.sort ()))
+          ZExpr.create_ite ctx
+          ~cond:(cv_mvcc ctx e2)
+          ~t:(ZOption.create_some ctx ~content:(ZBool.true_ ctx))
+          ~f:(ZOption.create_none ctx ~content_sort:(ZBool.sort ctx))
         end in
-        ZMap.update ~key:(cv_mvcc e1) ~value:(elem) ~map:(cv_mvcc e3)
+        ZMap.update ctx ~key:(cv_mvcc ctx e1) ~value:(elem) ~map:(cv_mvcc ctx e3)
       end
   
     (*************************************************************************)
@@ -787,13 +789,13 @@ module T2S = struct
     (*************************************************************************)
     (* Pair                                                                  *)
     (*************************************************************************)
-    | MV_pair (e1, e2) -> ZPair.create ~fst:(cv_mvcc e1) ~snd:(cv_mvcc e2)
+    | MV_pair (e1, e2) -> ZPair.create ctx ~fst:(cv_mvcc ctx e1) ~snd:(cv_mvcc ctx e2)
   
     (*************************************************************************)
     (* Or                                                                    *)
     (*************************************************************************)
-    | MV_left (t, e) -> ZOr.create_left ~left_content:(cv_mvcc e) ~right_sort:(t |> get_innertyp2 |> Stdlib.snd |> cv_mtcc)
-    | MV_right (t, e) -> ZOr.create_right ~left_sort:(t |> get_innertyp2 |> Stdlib.fst |> cv_mtcc) ~right_content:(cv_mvcc e)
+    | MV_left (t, e) -> ZOr.create_left ctx ~left_content:(cv_mvcc ctx e) ~right_sort:(t |> get_innertyp2 |> Stdlib.snd |> cv_mtcc ctx)
+    | MV_right (t, e) -> ZOr.create_right ctx ~left_sort:(t |> get_innertyp2 |> Stdlib.fst |> cv_mtcc ctx) ~right_content:(cv_mvcc ctx e)
   
     (*************************************************************************)
     (* Lambda                                                                *)
@@ -807,22 +809,22 @@ module T2S = struct
     (*************************************************************************)
     | MV_lit_map (kt, vt, e) -> begin
         e |> Core.Map.Poly.fold
-          ~init:(ZMap.create ~key_sort:(cv_mtcc kt) ~value_sort:(cv_mtcc vt))
-          ~f:(fun ~key ~data acc_zm -> ZMap.update ~key:(cv_mvcc key) ~value:(ZOption.create_some ~content:(cv_mvcc data)) ~map:acc_zm)
+          ~init:(ZMap.create ctx ~key_sort:(cv_mtcc ctx kt) ~value_sort:(cv_mtcc ctx vt))
+          ~f:(fun ~key ~data acc_zm -> ZMap.update ctx ~key:(cv_mvcc ctx key) ~value:(ZOption.create_some ctx ~content:(cv_mvcc ctx data)) ~map:acc_zm)
       end
-    | MV_empty_map (kt, vt) -> ZMap.create ~key_sort:(cv_mtcc kt) ~value_sort:(cv_mtcc vt)
-    | MV_update_xomm (e1, e2, e3) -> ZMap.update ~key:(cv_mvcc e1) ~value:(cv_mvcc e2) ~map:(cv_mvcc e3)
+    | MV_empty_map (kt, vt) -> ZMap.create ctx ~key_sort:(cv_mtcc ctx kt) ~value_sort:(cv_mtcc ctx vt)
+    | MV_update_xomm (e1, e2, e3) -> ZMap.update ctx ~key:(cv_mvcc ctx e1) ~value:(cv_mvcc ctx e2) ~map:(cv_mvcc ctx e3)
   
     (*************************************************************************)
     (* Big Map                                                               *)
     (*************************************************************************)
     | MV_lit_big_map (kt, vt, e) -> begin
         e |> Core.Map.Poly.fold
-          ~init:(ZMap.create ~key_sort:(cv_mtcc kt) ~value_sort:(cv_mtcc vt))
-          ~f:(fun ~key ~data acc_zm -> ZMap.update ~key:(cv_mvcc key) ~value:(ZOption.create_some ~content:(cv_mvcc data)) ~map:acc_zm)
+          ~init:(ZMap.create ctx ~key_sort:(cv_mtcc ctx kt) ~value_sort:(cv_mtcc ctx vt))
+          ~f:(fun ~key ~data acc_zm -> ZMap.update ctx ~key:(cv_mvcc ctx key) ~value:(ZOption.create_some ctx ~content:(cv_mvcc ctx data)) ~map:acc_zm)
       end
-    | MV_empty_big_map (kt, vt) -> ZMap.create ~key_sort:(cv_mtcc kt) ~value_sort:(cv_mtcc vt)
-    | MV_update_xobmbm (e1, e2, e3) -> ZMap.update ~key:(cv_mvcc e1) ~value:(cv_mvcc e2) ~map:(cv_mvcc e3)
+    | MV_empty_big_map (kt, vt) -> ZMap.create ctx ~key_sort:(cv_mtcc ctx kt) ~value_sort:(cv_mtcc ctx vt)
+    | MV_update_xobmbm (e1, e2, e3) -> ZMap.update ctx ~key:(cv_mvcc ctx e1) ~value:(cv_mvcc ctx e2) ~map:(cv_mvcc ctx e3)
   
     (*************************************************************************)
     (* Chain Id                                                              *)
@@ -835,33 +837,8 @@ module T2S = struct
     | MV_sigma_tmplm v1 -> sigma_lm ~l:v1 ~acc:(fun e -> MV_cdr e |> gen_dummy_cc) ~sigma:(fun l -> MV_sigma_tmplm l |> gen_dummy_cc)
     ) (* function cv_mv end *)
 
-  and cv_mvcc : mich_v cc -> ZExpr.t = (fun x -> try cv_mv x.cc_v with | ZError s -> SMT_Encode_Error_e (x, s, Stdlib.__LINE__) |> raise)
-  let rec cv_mf : mich_f -> ZFormula.t =
-    let make_eq : e1:mich_v cc -> e2:mich_v cc -> ZFormula.t
-    = let module CPSet = Core.Set.Poly in
-      let zexpr_from_comp : Comp.t -> mich_v cc -> ZExpr.t
-      = (* internal function zexpr_from_comp start *)
-        fun c e -> begin
-        Tz.map_v_v2v_outer c.Comp.cp_value ~v2v:(fun v -> if v = (Option.get c.Comp.cp_base_var) then Some e else None) (* c.Comp.cp_base_var must be Some bv *)
-        |> cv_mvcc
-      end in (* internal function zexpr_from_comp end *)
-      (* internal function make_eq start *)
-      fun ~e1 ~e2 -> begin
-      Comp.base_comp_from_t (Tz.typ_of_val e1)
-      |> (fun bcomp -> Comp.collect bcomp Comp.CTMap.empty)
-      |> Comp.CTMap.fold ~init:[ZFormula.create_eq (cv_mvcc e1) (cv_mvcc e2)] ~f:(fun ~key ~data acc -> (
-          match key.cc_v with
-          | MT_mutez -> (
-            CPSet.filter data ~f:(fun c -> 
-              match c.Comp.cp_value.cc_v with
-              | MV_sigma_tmplm _ -> true
-              | _ -> false)
-            |> CPSet.fold ~init:acc ~f:(fun acc c -> (
-              (ZFormula.create_eq (zexpr_from_comp c e1) (zexpr_from_comp c e2))::
-              acc)))
-          | _ -> acc))
-      |> ZFormula.create_and
-    end in (* internal function make_eq end *)
+  and cv_mvcc : ZCtx.t -> mich_v cc -> ZExpr.t = (fun ctx x -> try cv_mv ctx x.cc_v with | ZError s -> Utils.Log.err (fun m -> m "TzCvt SMT Encoding Error : %s" s); SMT_Encode_Error_e (x, s, Stdlib.__LINE__) |> raise)
+  let rec cv_mf : ZCtx.t -> mich_f -> ZFormula.t =
 (*     
     let make_is_cons : e:mich_v cc -> is_nil:bool -> ZFormula.t
     = (* internal function make_is_cons start *)
@@ -872,7 +849,7 @@ module T2S = struct
         | MT_list t1 -> (
           (* List-1. original formula *)
           let fl : ZFormula.t list = (
-            if is_nil then [ZList.is_nil (cv_mvcc e)] else [ZList.is_cons (cv_mvcc e)]) in
+            if is_nil then [ZList.is_nil (cv_mvcc ctx e)] else [ZList.is_cons (cv_mvcc ctx e)]) in
           (* List-2. syntax sugar for adding formula *)
           let goal_f : sigma:(mich_v cc -> mich_v) -> acc:(mich_v cc -> mich_v) -> ZFormula.t list = (fun ~sigma ~acc -> (
             if is_nil then (ZFormula.create_eq (cv_mv (sigma e)) (cv_mv (sigma (MV_nil t1 |> to_cc))))::fl
@@ -890,35 +867,61 @@ module T2S = struct
           | _ -> fl)
         | _ -> Error "T2S : cv_mf : make_is_cons: Wrong IS_CONS checking" |> raise)
     end in (* internal function make_is_cons end *) *)
-    (fun vf -> try
+    (fun ctx vf -> 
+      let make_eq : e1:mich_v cc -> e2:mich_v cc -> ZFormula.t
+      = let module CPSet = Core.Set.Poly in
+        let zexpr_from_comp : Comp.t -> mich_v cc -> ZExpr.t
+        = (* internal function zexpr_from_comp start *)
+          fun c e -> begin
+          Tz.map_v_v2v_outer c.Comp.cp_value ~v2v:(fun v -> if v = (Option.get c.Comp.cp_base_var) then Some e else None) (* c.Comp.cp_base_var must be Some bv *)
+          |> cv_mvcc ctx
+        end in (* internal function zexpr_from_comp end *)
+        (* internal function make_eq start *)
+        fun ~e1 ~e2 -> begin
+        Comp.base_comp_from_t (Tz.typ_of_val e1)
+        |> (fun bcomp -> Comp.collect bcomp Comp.CTMap.empty)
+        |> Comp.CTMap.fold ~init:[ZFormula.create_eq ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)] ~f:(fun ~key ~data acc -> (
+            match key.cc_v with
+            | MT_mutez -> (
+              CPSet.filter data ~f:(fun c -> 
+                match c.Comp.cp_value.cc_v with
+                | MV_sigma_tmplm _ -> true
+                | _ -> false)
+              |> CPSet.fold ~init:acc ~f:(fun acc c -> (
+                (ZFormula.create_eq ctx (zexpr_from_comp c e1) (zexpr_from_comp c e2))::
+                acc)))
+            | _ -> acc))
+        |> ZFormula.create_and ctx
+      end in (* internal function make_eq end *)
+      try
       (match vf with
       (* Logical Formula *)
-      | MF_true -> ZFormula.true_ ()
-      | MF_false -> ZFormula.false_ ()
-      | MF_not f -> ZFormula.create_not (cv_mf f)
-      | MF_and fl -> ZFormula.create_and (Core.List.map ~f:cv_mf fl)
-      | MF_or fl -> ZFormula.create_or (Core.List.map ~f:cv_mf fl)
+      | MF_true -> ZFormula.true_ ctx
+      | MF_false -> ZFormula.false_ ctx
+      | MF_not f -> ZFormula.create_not ctx (cv_mf ctx f)
+      | MF_and fl -> ZFormula.create_and ctx (Core.List.map ~f:(cv_mf ctx) fl)
+      | MF_or fl -> ZFormula.create_or ctx (Core.List.map ~f:(cv_mf ctx) fl)
       | MF_eq (e1, e2) -> make_eq ~e1 ~e2
-      | MF_imply (f1, f2) -> ZFormula.create_imply (cv_mf f1) (cv_mf f2)
+      | MF_imply (f1, f2) -> ZFormula.create_imply ctx (cv_mf ctx f1) (cv_mf ctx f2)
       (* MicSE-Cfg Pattern Matching *)
-      | MF_is_true e -> ZBool.create_eq (cv_mvcc e) (ZBool.true_ ())
-      | MF_is_none e -> ZOption.is_none (cv_mvcc e)
-      | MF_is_left e -> ZOr.is_left (cv_mvcc e)
-      | MF_is_cons e -> ZList.is_cons (cv_mvcc e)
+      | MF_is_true e -> ZBool.create_eq ctx (cv_mvcc ctx e) (ZBool.true_ ctx)
+      | MF_is_none e -> ZOption.is_none (cv_mvcc ctx e)
+      | MF_is_left e -> ZOr.is_left (cv_mvcc ctx e)
+      | MF_is_cons e -> ZList.is_cons (cv_mvcc ctx e)
       (* | MF_is_cons e -> make_is_cons ~e ~is_nil:false *)
       (* | MF_not (MF_is_cons e) -> make_is_cons ~e ~is_nil:true *)
       (* Custom Formula for verifiying *)
       | MF_add_mmm_no_overflow (e1, e2) -> begin
-          ZMutez.check_add_no_overflow (cv_mvcc e1) (cv_mvcc e2)
+          ZMutez.check_add_no_overflow ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
           (* let (soe1, soe2) = (cv_mvcc e1, cv_mvcc e2) in
           ZMutez.create_ge (ZMutez.create_add soe1 soe2) soe1 *)
         end
       | MF_sub_mmm_no_underflow (e1, e2) -> begin
-          ZMutez.check_sub_no_underflow (cv_mvcc e1) (cv_mvcc e2)
+          ZMutez.check_sub_no_underflow ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
           (* ZMutez.create_ge (cv_mvcc e1) (cv_mvcc e2) *)
         end
       | MF_mul_mnm_no_overflow (e1, e2) -> begin
-          ZMutez.check_mul_no_overflow (cv_mvcc e1) (cv_mvcc e2)
+          ZMutez.check_mul_no_overflow ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
           (* let soe1, soe2 = (cv_mvcc e1), (cv_mvcc e2 |> ZInt.to_zmutez) in
           let e1_mul_e2 = ZMutez.create_mul soe1 soe2 in  (* e1 * e2 *)
           let e1_mul_e2_div_e1 = ZMutez.create_div e1_mul_e2 soe2 in (* (e1 * e2) / e1 *)
@@ -931,7 +934,7 @@ module T2S = struct
           ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *) *)
         end
       | MF_mul_nmm_no_overflow (e1, e2) -> begin
-          ZMutez.check_mul_no_overflow (cv_mvcc e1) (cv_mvcc e2)
+          ZMutez.check_mul_no_overflow ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
           (* let soe1, soe2 = (cv_mvcc e1 |> ZInt.to_zmutez), (cv_mvcc e2) in
           let e1_mul_e2 = ZMutez.create_mul soe1 soe2 in  (* e1 * e2 *)
           let e1_mul_e2_div_e1 = ZMutez.create_div e1_mul_e2 soe2 in (* (e1 * e2) / e1 *)
@@ -943,8 +946,8 @@ module T2S = struct
           ] in
           ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *) *)
         end
-      | MF_shiftL_nnn_rhs_in_256 (_, e2) -> ZNat.create_le (cv_mvcc e2) (ZNat.of_int 256)
-      | MF_shiftR_nnn_rhs_in_256 (_, e2) -> ZNat.create_le (cv_mvcc e2) (ZNat.of_int 256)
+      | MF_shiftL_nnn_rhs_in_256 (_, e2) -> ZNat.create_le ctx (cv_mvcc ctx e2) (ZNat.of_int ctx 256)
+      | MF_shiftR_nnn_rhs_in_256 (_, e2) -> ZNat.create_le ctx (cv_mvcc ctx e2) (ZNat.of_int ctx 256)
       )
     with
     | ZError s -> SMT_Encode_Error_f (vf, s, Stdlib.__LINE__) |> raise

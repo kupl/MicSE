@@ -10,6 +10,8 @@ module Bp = Bp
 
 module BpUtil = BpUtil
 
+module Smt_deprecated = Smt_deprecated
+
 module Smt = Smt
 
 module Ftmp = Ftmp
