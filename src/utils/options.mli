@@ -52,6 +52,7 @@ val refuter_sub_time_budget_manually_set : bool ref
 (* FLAGS - MicSE  Mode *)
 val micse_baseline_mode : bool ref
 val micse_legacy_mode : bool ref
+val micse_parallel_mode : bool ref
 
 (* INT - Query Filtering (for dev) *)
 val target_query_line : int ref

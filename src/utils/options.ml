@@ -83,10 +83,13 @@ let micse_baseline_mode : bool ref
 = ref false (* If the user set the "baseline_mode" option, then set it true. Othercase, MicSE run on synergetic mode. *)
 let micse_legacy_mode : bool ref
 = ref false (* If the user set the "legacy_mode" option, then set it true. Othercase, MicSE run depend on baseline_mode flag. *)
+let micse_parallel_mode : bool ref
+= ref false (* If the user set the "parallel" option, then it will be set true. Othercase MicSE run on sequential mode. *)
 
 (* INT - Query Filtering (for dev) *)
 let target_query_line : int ref
 = ref (-1)
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -145,6 +148,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("--total_timeout", (Arg.Int (fun i -> total_time_budget := i; total_time_budget_set_flag := true)), "Time budget for entire program execution in seconds (in special case only). (default: 360s)");
     ("-unroll_l", (Arg.Int (fun i -> loop_unroll_num := i)), "Set the number of loop unrolling. (default 1)");
     ("-unroll_t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
+    ("--parallel", (Arg.Set micse_parallel_mode), "Set the MicSE run as a parallel mode. (default: false)");
     ("--baseline", (Arg.Set micse_baseline_mode), "Set the MicSE run as a baseline mode. (default: false)");
     ("--legacy", (Arg.Set micse_legacy_mode), "Set the MicSE run as a legacy mode. (default: false)");
     ("--target", (Arg.Int (fun i -> target_query_line := i)), "DEV - Filter all queries if query line is not same with target line when this parameter is set.");
