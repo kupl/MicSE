@@ -1,67 +1,75 @@
-(*****************************************************************************)
-(*****************************************************************************)
-(* Flag                                                                      *)
-(*****************************************************************************)
-(*****************************************************************************)
+(* Timer *)
 
-type flag = bool
+(******************************************************************************)
+(******************************************************************************)
+(* Setting                                                                    *)
+(******************************************************************************)
+(******************************************************************************)
 
-let flag_set : flag
-=true
+module Setting = struct
+  type t = {
+    counter : Mtime_clock.counter;
+    timeout : bool;
+    budget  : float;
+  }
 
-let flag_unset : flag
-=false
+  let create : ?budget:int -> unit -> t
+  = fun ?(budget=0) () -> begin
+    { counter = Mtime_clock.counter ();
+      timeout = false;
+      budget  = float_of_int budget; }
+  end (* function create end *)
 
+  let read_elapsed_time : t -> float
+  = fun timer -> begin
+    timer.counter |> Mtime_clock.count |> Mtime.Span.to_ms
+  end (* function read_time end *)
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Time                                                                      *)
-(*****************************************************************************)
-(*****************************************************************************)
-
-type time = int (* second *)
-
-let time_curr : unit -> time (* Current time from start of the execution *)
-=fun () -> begin
-  let t = Unix.times () in
-  Float.to_int (t.tms_utime)
+  let read_is_timeout : t -> bool
+  = fun timer -> begin
+    (read_elapsed_time timer) >= timer.budget
+  end (* function read_is_timeout end *)
 end
 
-let string_of_time : time -> string
-=fun t -> (string_of_int t) ^ "s"
 
+(******************************************************************************)
+(******************************************************************************)
+(* Functions                                                                  *)
+(******************************************************************************)
+(******************************************************************************)
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Timer                                                                     *)
-(*****************************************************************************)
-(*****************************************************************************)
+type t = Setting.t Stdlib.ref
+type time = int
 
-type t = {
-  timeout: flag;
-  budget: time;
-  start_time: time;
-}
+(* Current time from start of the execution *)
+let time_curr : unit -> time
+= fun () -> begin
+  Mtime_clock.elapsed () |> Mtime.Span.to_ms |> int_of_float
+end (* function time_curr end *)
 
-let create : budget:time -> t ref
-=fun ~budget -> ref { timeout=flag_unset; budget=budget; start_time=(time_curr ()) }
+(* Current time from start of the execution *)
+let string_of_curr_time : unit -> string
+= fun () -> (time_curr () |> string_of_int) ^ "ms"
 
-let read_interval : t ref -> time
-=fun timer -> begin
-  let cur_time = time_curr () in
-  (cur_time - !timer.start_time)
-end
+let create : ?budget:time -> unit -> t
+= fun ?(budget=0) () -> begin
+  Stdlib.ref (Setting.create ~budget ())
+end (* function create end *)
 
-let check_timeout : t ref -> unit
-=fun timer -> begin
-  if (read_interval timer) >= !timer.budget
-  then timer := { !timer with timeout=flag_set }
-  else ()
-end
+let read_interval : t -> time
+= fun timer -> Setting.read_elapsed_time !timer |> int_of_float
 
-let is_timeout : t ref -> bool
-=fun timer -> begin
+let check_timeout : t -> unit
+= fun timer -> begin
+  if Setting.read_is_timeout !timer
+  then timer := { !timer with timeout=true; }
+end (* function check_timeout end *)
+
+let is_timeout : t -> bool
+= fun timer -> begin
   let _ = check_timeout timer in
   !timer.timeout
 end
 
+let string_of_elapsed_time : t -> string
+= fun timer -> (read_interval timer |> string_of_int) ^ "ms"

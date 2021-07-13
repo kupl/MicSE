@@ -131,7 +131,7 @@ let main : unit -> unit
             and "Utils.Options.refuter_sub_time_budget" for query-id refuting time budget.
   *)
 
-  let rec expand_and_refute : Utils.Timer.t ref -> Se.invmap -> (int * int) -> Merge.ms Tz.PSet.t -> ((ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time) option * int * int)
+  let rec expand_and_refute : Utils.Timer.t -> Se.invmap -> (int * int) -> Merge.ms Tz.PSet.t -> ((ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time) option * int * int)
   = fun timer invm (acc_ppcount, acc_count) msset -> begin
     let setsize = Tz.PSet.length msset in
     if (setsize > merged_state_set_size_limit) then (None, acc_ppcount, acc_count) else
@@ -175,12 +175,12 @@ let main : unit -> unit
     (* let open Merge in *)
     let open Utils in
     let true_invmap : Se.invmap = Se.true_invmap_of_blocked_sset sset.Se.blocked in
-    let total_refuter_timer : Utils.Timer.t ref = (Utils.Timer.create ~budget:(!Utils.Options.refuter_total_time_budget)) in
+    let total_refuter_timer : Utils.Timer.t = (Utils.Timer.create () ~budget:(!Utils.Options.refuter_total_time_budget)) in
     PMap.iteri classified_queries_sset 
       ~f:(fun ~key ~data -> 
         let _ = Log.app (fun m -> m "\nQuery MCI = %s" (TzCvt.T2J.cv_mich_cut_info key |> Yojson.Safe.pretty_to_string)) in
         if Utils.Timer.is_timeout total_refuter_timer then (Log.warn (fun m -> m "Refuter Total Timeout")) else
-        let timer : Utils.Timer.t ref = (Utils.Timer.create ~budget:(!Utils.Options.refuter_sub_time_budget)) in
+        let timer : Utils.Timer.t = (Utils.Timer.create () ~budget:(!Utils.Options.refuter_sub_time_budget)) in
         PSet.map data 
           ~f:(fun (ss, qc) -> Merge.construct_first_ms (ss, Some qc))
         |> expand_and_refute timer true_invmap (0,0)

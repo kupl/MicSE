@@ -36,14 +36,14 @@ val check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt
 val check_satisfiability : Tz.mich_f -> ProverLib.Smt.ZSolver.satisfiability * ProverLib.Smt.ZModel.t option
 
 val check_inv_inductiveness :
-  Utils.Timer.t ref 
+  Utils.Timer.t
   -> (Tz.mich_v Tz.cc) option * Tz.sym_state
   -> Tz.sym_state Core.Set.Poly.t
   -> Se.invmap 
   -> (bool * (Tz.sym_state * (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option)) option * Utils.Timer.time)
 
 val solve_queries :
-  Utils.Timer.t ref 
+  Utils.Timer.t
   -> query_state Core.Set.Poly.t
   -> Se.invmap
   -> ret

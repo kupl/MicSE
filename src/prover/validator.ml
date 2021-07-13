@@ -21,7 +21,7 @@ end
 module QuerySet = Set.Make(QueryOT)
 
 
-let validate : (Utils.Timer.t ref * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t) * (ProverLib.Bp.query_category * PreLib.Cfg.vertex -> bool)) -> validate_result
+let validate : (Utils.Timer.t * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_cond) list * (ProverLib.Inv.t -> ProverLib.Vlang.t) * (ProverLib.Bp.query_category * PreLib.Cfg.vertex -> bool)) -> validate_result
 = let open ProverLib in
   let is_valid : Smt_deprecated.ZSolver.validity -> bool = (function | Smt_deprecated.ZSolver.VAL -> true | _ -> false) in
   fun (timer, inv_candidate, vc_fl, isc_f, is_up_query) -> begin

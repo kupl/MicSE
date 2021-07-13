@@ -22,7 +22,7 @@
   - "Jc.Stvn" to avoid variable name conflicts when merging two states
 *)
 
-let check_ppath_validity : Utils.Timer.t ref -> (Tz.mich_v Tz.cc option) -> Se.invmap -> Merge.ms -> (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
+let check_ppath_validity : Utils.Timer.t -> (Tz.mich_v Tz.cc option) -> Se.invmap -> Merge.ms -> (ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
 = fun timer tz_init_stg_option invm ms -> begin
   let start_time = Utils.Timer.read_interval timer in
   let (ss, qc) = (ms.ms_state, (match ms.ms_querycat with | Some c -> c | None -> Stdlib.failwith Stdlib.__LOC__)) in
@@ -41,7 +41,7 @@ let check_ppath_validity : Utils.Timer.t ref -> (Tz.mich_v Tz.cc option) -> Se.i
 end (* functino check_ppath_validity *)
 
 (* "check_ppath_validity_fmla_included" is just a copy of "check_ppath_validity", but returns mich_f value too *)
-let check_ppath_validity_fmla_included : Utils.Timer.t ref -> (Tz.mich_v Tz.cc option) -> Se.invmap -> Merge.ms -> (Tz.mich_f * ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
+let check_ppath_validity_fmla_included : Utils.Timer.t -> (Tz.mich_v Tz.cc option) -> Se.invmap -> Merge.ms -> (Tz.mich_f * ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option * Utils.Timer.time)
 = fun timer tz_init_stg_option invm ms -> begin
   let start_time = Utils.Timer.read_interval timer in
   let (ss, qc) = (ms.ms_state, (match ms.ms_querycat with | Some c -> c | None -> Stdlib.failwith Stdlib.__LOC__)) in

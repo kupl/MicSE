@@ -90,7 +90,7 @@ end
   - Utils.Options.prover_time_budget (total prover time limit - timeout will raise ProverTimeout)
 *)
 let check_inv_inductiveness :
-  Utils.Timer.t ref 
+  Utils.Timer.t
   -> (Tz.mich_v Tz.cc) option * Tz.sym_state
   -> Tz.sym_state Core.Set.Poly.t
   -> Se.invmap 
@@ -149,7 +149,7 @@ end (* function check_inv_inductiveness end *)
   - Utils.Options.prover_time_budget (total prover time limit - timeout will return accumulated result)
 *)
 let solve_queries : 
-  Utils.Timer.t ref 
+  Utils.Timer.t
   -> query_state Core.Set.Poly.t
   -> Se.invmap
   -> ret
@@ -386,7 +386,7 @@ let main : (Tz.mich_v Tz.cc option) * Tz.sym_state -> Se.state_set -> ret
   let comp_map : InvSyn.comp_map = InvSyn.bake_comp_map (sset, init_stg_opt_ss) in
   (* let inv_init : Se.invmap = sset.Se.blocked |> Se.true_invmap_of_blocked_sset |> InvSyn.init_invmap comp_map (Stdlib.snd init_stg_opt_ss) in
   let w_init : worklist = inv_init |> Tz.PSet.singleton in *)
-  let timer : Utils.Timer.t ref = Utils.Timer.create ~budget:!(Utils.Options.prover_time_budget) in
+  let timer : Utils.Timer.t = Utils.Timer.create () ~budget:!(Utils.Options.prover_time_budget) in
   let rec prove_loop : (worklist * Se.invmap CPSet.t) -> ret -> ret = fun (w, collected) prev_res -> begin
     if Utils.Timer.is_timeout timer || CPSet.is_empty w then prev_res else
     let inv_cand : Se.invmap =
