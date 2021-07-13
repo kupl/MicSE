@@ -17,7 +17,7 @@ module Setting = struct
   = fun ?(budget=0) () -> begin
     { counter = Mtime_clock.counter ();
       timeout = false;
-      budget  = float_of_int budget; }
+      budget  = float_of_int (budget * 1000); }
   end (* function create end *)
 
   let read_elapsed_time : t -> float
@@ -63,6 +63,7 @@ let check_timeout : t -> unit
 = fun timer -> begin
   if Setting.read_is_timeout !timer
   then timer := { !timer with timeout=true; }
+  else ()
 end (* function check_timeout end *)
 
 let is_timeout : t -> bool
