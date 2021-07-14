@@ -59,6 +59,12 @@ end (* function create end *)
 let read_interval : t -> time
 = fun timer -> Setting.read_elapsed_time !timer |> int_of_float
 
+let read_elapsed_time : t -> time
+= read_interval
+
+let read_remaining : t -> time
+= fun timer -> (!timer.budget -. (Setting.read_elapsed_time !timer)) |> int_of_float
+
 let check_timeout : t -> unit
 = fun timer -> begin
   if Setting.read_is_timeout !timer
