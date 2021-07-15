@@ -1141,8 +1141,8 @@ let true_invmap_of_blocked_sset : Tz.sym_state Tz.PSet.t -> invmap
   PSet.fold blocked_set ~init:PMap.empty 
     ~f:(fun accm bl_ss -> 
       accm 
-      |> pm_add_if_possible bl_ss.ss_entry_mci (MF_true |> Tz.PSet.singleton)
-      |> pm_add_if_possible bl_ss.ss_block_mci (MF_true |> Tz.PSet.singleton)
+      |> pm_add_if_possible (Tz.get_normal_exn bl_ss.ss_entry_mci ~debug:"find_inv_fmla : get_normal_exn") (MF_true |> Tz.PSet.singleton)
+      |> pm_add_if_possible (Tz.get_normal_exn bl_ss.ss_block_mci ~debug:"find_inv_fmla : get_normal_exn") (MF_true |> Tz.PSet.singleton)
     )
 end (* function true_invmap_from_blocked end *)
 
