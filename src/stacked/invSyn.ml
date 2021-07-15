@@ -402,13 +402,13 @@ let refine_t : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
   (* 1. generate recipe *)
   let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
   (* let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap [MT_int; MT_nat; MT_mutez] in *)
-  (* let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in *)
+  let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in
   (* let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in *)
   let add_3_eq_fmlas : Tz.mich_f CPSet.t = add_3_eq ctmap [MT_mutez] in
   (* 2. generate invariant map *)
   [ all_eq_fmlas;
     (* all_ge_fmlas; *)
-    (* all_gt_fmlas; *)
+    all_gt_fmlas;
     (* add_2_eq_fmlas; *)
     add_3_eq_fmlas; ]
   |> collect_set
@@ -431,13 +431,13 @@ let refine_l : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
   (* 1. generate recipe *)
   let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
   (* let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap [MT_int; MT_nat; MT_mutez] in *)
-  (* let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in *)
+  let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in
   (* let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in *)
   let add_3_eq_fmlas : Tz.mich_f CPSet.t = add_3_eq ctmap [MT_mutez] in
   (* 2. generate invariant map *)
   [ all_eq_fmlas;
     (* all_ge_fmlas; *)
-    (* all_gt_fmlas; *)
+    all_gt_fmlas;
     (* add_2_eq_fmlas; *)
     add_3_eq_fmlas; ]
   |> collect_set
