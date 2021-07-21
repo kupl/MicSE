@@ -42,6 +42,9 @@ val refuter_sub_time_budget : int ref
 val queryid_time_budget : int ref
 val total_time_budget : int ref
 
+(* INT - Memory Budgets *)
+val memory_budget : int ref
+
 (* INT - Cfg Unrolling *)
 val loop_unroll_num : int ref
 val transaction_unroll_num : int ref

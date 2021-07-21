@@ -67,6 +67,9 @@ let total_time_budget : int ref
 let total_time_budget_set_flag : bool ref
 =ref false (* Flag for checking total time budget is set *)
 
+(* INT - Memory Budgets *)
+let memory_budget : int ref
+=ref 5 (* memory budget in gigabytes *)
 
 (* INT - Cfg Unrolling *)
 let loop_unroll_num : int ref
@@ -152,6 +155,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("--baseline", (Arg.Set micse_baseline_mode), "Set the MicSE run as a baseline mode. (default: false)");
     ("--legacy", (Arg.Set micse_legacy_mode), "Set the MicSE run as a legacy mode. (default: false)");
     ("--target", (Arg.Int (fun i -> target_query_line := i)), "DEV - Filter all queries if query line is not same with target line when this parameter is set.");
+    ("--memory", (Arg.Int (fun i -> memory_budget := i)), "Set the memory budget in gigabytes. (default: 5GB)");
   ]
 
 let create_options : unit -> unit
