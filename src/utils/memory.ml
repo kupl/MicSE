@@ -52,7 +52,7 @@ module Setting = struct
   let read_memory_remain : t -> int
   = fun memory -> begin
     if (Option.is_none memory.budget) then 0 else
-    (Option.get memory.budget) - (read_memory_usage memory)
+    Stdlib.max ((Option.get memory.budget) - (read_memory_usage memory)) 0
   end (* function read_memory_remain end *)
 
   let read_is_memoryout : t -> bool
@@ -86,7 +86,7 @@ let memory_curr : ?typ:typ -> unit -> memory
 
 (* Current maximum usage of memory in this execution *)
 let string_of_curr_memory : ?typ:typ -> unit -> string
-= fun ?(typ=Both) () -> (((Setting.cur_max_memory typ |> Float.of_int) /. (Setting.gB |> Float.of_int)) |> string_of_float) ^ "GB"
+= fun ?(typ=Both) () -> (((Setting.cur_max_memory typ |> Float.of_int) /. (Setting.gB |> Float.of_int)) |> string_of_float) ^ " GB"
 
 (* Create memory restriction in gigabytes *)
 let create : ?budget:int -> ?typ:typ -> unit -> t
@@ -114,4 +114,4 @@ let is_memoryout : t -> bool
 end
 
 let string_of_used_memory : t -> string
-= fun memory -> (((Setting.read_memory_remain !memory |> Float.of_int) /. (Setting.gB |> Float.of_int)) |> string_of_float) ^ "GB"
+= fun memory -> (((Setting.read_memory_usage !memory |> Float.of_int) /. (Setting.gB |> Float.of_int)) |> string_of_float) ^ " GB"

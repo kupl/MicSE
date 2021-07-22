@@ -28,7 +28,7 @@ module Setting = struct
   let read_time_remain : t -> float
   = fun timer -> begin
     if Option.is_none timer.budget then 0. else
-    (Option.get timer.budget) -. (read_time_elapsed timer)
+    Float.max ((Option.get timer.budget) -. (read_time_elapsed timer)) 0.
   end (* function read_time_remain end *)
 
   let read_is_timeout : t -> bool
