@@ -10,25 +10,39 @@ module Setting = struct
   type t = {
     counter : Mtime_clock.counter;
     timeout : bool;
-    budget  : float;
+    budget  : float option;
   }
 
   let create : ?budget:int -> unit -> t
-  = fun ?(budget=0) () -> begin
+  = fun ?(budget=(-1)) () -> begin
     { counter = Mtime_clock.counter ();
       timeout = false;
-      budget  = float_of_int (budget * 1000); }
+      budget  = if budget < 0 then None else Some (float_of_int (budget * 1000)); }
   end (* function create end *)
 
-  let read_elapsed_time : t -> float
+  let read_time_elapsed : t -> float
   = fun timer -> begin
     timer.counter |> Mtime_clock.count |> Mtime.Span.to_ms
-  end (* function read_time end *)
+  end (* function read_time_elapsed end *)
+
+  let read_time_remain : t -> float
+  = fun timer -> begin
+    if Option.is_none timer.budget then 0. else
+    (Option.get timer.budget) -. (read_time_elapsed timer)
+  end (* function read_time_remain end *)
 
   let read_is_timeout : t -> bool
   = fun timer -> begin
-    (read_elapsed_time timer) >= timer.budget
+    if Option.is_none timer.budget then false else
+    (read_time_elapsed timer) >= (Option.get timer.budget)
   end (* function read_is_timeout end *)
+
+  let update_timeout : t -> t
+  = fun timer -> begin
+    if read_is_timeout timer
+    then { timer with timeout=true; }
+    else timer
+  end (* function update_timeout end *)
 end
 
 
@@ -57,18 +71,18 @@ let create : ?budget:time -> unit -> t
 end (* function create end *)
 
 let read_interval : t -> time
-= fun timer -> Setting.read_elapsed_time !timer |> int_of_float
+= fun timer -> Setting.read_time_elapsed !timer |> int_of_float
 
 let read_elapsed_time : t -> time
 = read_interval
 
 let read_remaining : t -> time
-= fun timer -> (!timer.budget -. (Setting.read_elapsed_time !timer)) |> int_of_float
+= fun timer -> Setting.read_time_remain !timer |> int_of_float
 
 let check_timeout : t -> unit
 = fun timer -> begin
   if Setting.read_is_timeout !timer
-  then timer := { !timer with timeout=true; }
+  then timer := Setting.update_timeout !timer
   else ()
 end (* function check_timeout end *)
 

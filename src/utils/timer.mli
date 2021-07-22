@@ -10,12 +10,14 @@ module Setting : sig
   type t = {
     counter : Mtime_clock.counter;
     timeout : bool;
-    budget  : float;
+    budget  : float option;
   }
 
   val create : ?budget:int -> unit -> t
-  val read_elapsed_time : t -> float
+  val read_time_elapsed : t -> float
+  val read_time_remain : t -> float
   val read_is_timeout : t -> bool
+  val update_timeout : t -> t
 end
 
 
