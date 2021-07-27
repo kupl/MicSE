@@ -65,13 +65,15 @@ end (* function gen_sset end *)
 let check_validity : Tz.mich_f -> ProverLib.Smt.ZSolver.validity * ProverLib.Smt.ZModel.t option
 = fun fmla -> begin
   let (ctx) : ProverLib.Smt.ZCtx.t = ProverLib.Smt.ZCtx.create () in
-  ProverLib.Smt.ZSolver.check_validity ctx [TzCvt.T2S.cv_mf ctx fmla]
+  let (solver) : ProverLib.Smt.ZSolver.t = ProverLib.Smt.ZSolver.create ctx in
+  ProverLib.Smt.ZSolver.check_validity solver ctx [TzCvt.T2S.cv_mf ctx fmla]
 end
 
 let check_satisfiability : Tz.mich_f -> ProverLib.Smt.ZSolver.satisfiability * ProverLib.Smt.ZModel.t option
 = fun fmla -> begin 
   let (ctx) : ProverLib.Smt.ZCtx.t = ProverLib.Smt.ZCtx.create () in
-  ProverLib.Smt.ZSolver.check_satisfiability ctx [TzCvt.T2S.cv_mf ctx fmla]
+  let (solver) : ProverLib.Smt.ZSolver.t = ProverLib.Smt.ZSolver.create ctx in
+  ProverLib.Smt.ZSolver.check_satisfiability solver ctx [TzCvt.T2S.cv_mf ctx fmla]
 end
 
 (* 

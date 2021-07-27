@@ -1273,22 +1273,21 @@ module ZSolver = struct
   type validity = VAL | INVAL | UNKNOWN
   type satisfiability = SAT | UNSAT | UNKNOWN
 
-  let _create : ZCtx.t -> t
+  let create : ZCtx.t -> t
   =fun ctx -> Z3.Solver.mk_solver ctx None
   let _formula_add : t -> ZFormula.t list -> unit
   =Z3.Solver.add
 
-  let check_satisfiability : ZCtx.t -> ZFormula.t list -> (satisfiability * ZModel.t option)
-  =fun ctx fl -> begin
-    let solver = _create ctx in
+  let check_satisfiability : t -> ZCtx.t -> ZFormula.t list -> (satisfiability * ZModel.t option)
+  =fun solver ctx fl -> begin
+    let _ = ignore (ctx) in
     match Z3.Solver.check solver fl with
     | UNKNOWN -> (UNKNOWN, None)
     | UNSATISFIABLE -> (UNSAT, None)
     | SATISFIABLE -> (SAT, (solver |> Z3.Solver.get_model))
   end
-  let check_validity : ZCtx.t -> ZFormula.t list -> (validity * ZModel.t option)
-  =fun ctx fl -> begin
-    let solver = _create ctx in
+  let check_validity : t -> ZCtx.t -> ZFormula.t list -> (validity * ZModel.t option)
+  =fun solver ctx fl -> begin
     let fmla = fl |> ZFormula.create_and ctx |> ZFormula.create_not ctx in
     match Z3.Solver.check solver [fmla] with
     | UNKNOWN -> (UNKNOWN, None)

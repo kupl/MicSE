@@ -724,11 +724,11 @@ module ZSolver : sig
   type validity = VAL | INVAL | UNKNOWN
   type satisfiability = SAT | UNSAT | UNKNOWN
 
-  val _create : ZCtx.t -> t
+  val create : ZCtx.t -> t
   val _formula_add : t -> ZFormula.t list -> unit
   
-  val check_satisfiability : ZCtx.t -> ZFormula.t list -> (satisfiability * ZModel.t option)
-  val check_validity : ZCtx.t -> ZFormula.t list -> (validity * ZModel.t option)
+  val check_satisfiability : t -> ZCtx.t -> ZFormula.t list -> (satisfiability * ZModel.t option)
+  val check_validity : t -> ZCtx.t -> ZFormula.t list -> (validity * ZModel.t option)
 
   val is_unknown_sat : satisfiability -> bool
   val is_sat : satisfiability -> bool
