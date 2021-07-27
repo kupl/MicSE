@@ -84,6 +84,8 @@ let refuter_sub_time_budget_manually_set : bool ref
 (* FLAGS - MicSE Mode *)
 let micse_baseline_mode : bool ref
 = ref false (* If the user set the "baseline_mode" option, then set it true. Othercase, MicSE run on synergetic mode. *)
+let micse_legacy_mode : bool ref
+= ref false (* If the user set the "legacy_mode" option, then set it true. Othercase, MicSE run depend on baseline_mode flag. *)
 let micse_sequential_mode : bool ref
 = ref false (* If the user set the "sequential" option, then it will be set true. Othercase MicSE run on sequential mode. *)
 let micse_manager : int ref
@@ -153,6 +155,7 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("-unroll_t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
     ("--sequential", (Arg.Set micse_sequential_mode), "Set the MicSE run as a sequential mode. (default: false)");
     ("--baseline", (Arg.Set micse_baseline_mode), "Set the MicSE run as a baseline mode. (default: false)");
+    ("--legacy", (Arg.Set micse_legacy_mode), "Set the MicSE run as a legacy mode. (default: false)");
     ("--manager", (Arg.Int (fun i -> micse_manager := i)), "Set the MicSE manager. (REQUIRED)");
     ("--target", (Arg.Int (fun i -> target_query_line := i)), "DEV - Filter all queries if query line is not same with target line when this parameter is set.");
     ("--memory", (Arg.Int (fun i -> memory_budget := i)), "Set the memory budget in gigabytes. (default: 5GB)");
