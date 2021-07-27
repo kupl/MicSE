@@ -839,34 +839,6 @@ module T2S = struct
 
   and cv_mvcc : ZCtx.t -> mich_v cc -> ZExpr.t = (fun ctx x -> try cv_mv ctx x.cc_v with | ZError s -> Utils.Log.err (fun m -> m "TzCvt SMT Encoding Error : %s" s); SMT_Encode_Error_e (x, s, Stdlib.__LINE__) |> raise)
   let rec cv_mf : ZCtx.t -> mich_f -> ZFormula.t =
-(*     
-    let make_is_cons : e:mich_v cc -> is_nil:bool -> ZFormula.t
-    = (* internal function make_is_cons start *)
-      fun ~e ~is_nil -> begin
-      let to_cc : mich_v -> mich_v cc = gen_custom_cc e in (* syntax sugar *)
-      ZFormula.create_and (
-        match (e |> Tz.typ_of_val).cc_v with
-        | MT_list t1 -> (
-          (* List-1. original formula *)
-          let fl : ZFormula.t list = (
-            if is_nil then [ZList.is_nil (cv_mvcc ctx e)] else [ZList.is_cons (cv_mvcc ctx e)]) in
-          (* List-2. syntax sugar for adding formula *)
-          let goal_f : sigma:(mich_v cc -> mich_v) -> acc:(mich_v cc -> mich_v) -> ZFormula.t list = (fun ~sigma ~acc -> (
-            if is_nil then (ZFormula.create_eq (cv_mv (sigma e)) (cv_mv (sigma (MV_nil t1 |> to_cc))))::fl
-            else (
-              (ZFormula.create_eq (cv_mv (sigma e))
-                (cv_mv (sigma (MV_cons ((MV_hd_l e |> to_cc), (MV_tl_l e |> to_cc)) |> to_cc))))::
-              (ZMutez.create_bound (cv_mv (sigma (MV_tl_l e |> to_cc))))::
-              (ZMutez.create_bound (cv_mv (acc (MV_hd_l e |> to_cc))))::fl))) in
-          (* List-3. match list type and make formula *)
-          match t1.cc_v with
-          | MT_pair (t11, t12) -> (
-            match t11.cc_v, t12.cc_v with
-            | (MT_timestamp, MT_mutez) -> goal_f ~sigma:(fun e -> MV_sigma_tmplm e) ~acc:(fun e -> MV_cdr e)
-            | _ -> fl)
-          | _ -> fl)
-        | _ -> Error "T2S : cv_mf : make_is_cons: Wrong IS_CONS checking" |> raise)
-    end in (* internal function make_is_cons end *) *)
     (fun ctx vf -> 
       let make_eq : e1:mich_v cc -> e2:mich_v cc -> ZFormula.t
       = let module CPSet = Core.Set.Poly in
@@ -908,49 +880,24 @@ module T2S = struct
       | MF_is_none e -> ZOption.is_none (cv_mvcc ctx e)
       | MF_is_left e -> ZOr.is_left (cv_mvcc ctx e)
       | MF_is_cons e -> ZList.is_cons (cv_mvcc ctx e)
-      (* | MF_is_cons e -> make_is_cons ~e ~is_nil:false *)
-      (* | MF_not (MF_is_cons e) -> make_is_cons ~e ~is_nil:true *)
       (* Custom Formula for verifiying *)
       | MF_add_mmm_no_overflow (e1, e2) -> begin
           ZMutez.check_add_no_overflow ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
-          (* let (soe1, soe2) = (cv_mvcc e1, cv_mvcc e2) in
-          ZMutez.create_ge (ZMutez.create_add soe1 soe2) soe1 *)
         end
       | MF_sub_mmm_no_underflow (e1, e2) -> begin
           ZMutez.check_sub_no_underflow ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
-          (* ZMutez.create_ge (cv_mvcc e1) (cv_mvcc e2) *)
         end
       | MF_mul_mnm_no_overflow (e1, e2) -> begin
           ZMutez.check_mul_no_overflow ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
-          (* let soe1, soe2 = (cv_mvcc e1), (cv_mvcc e2 |> ZInt.to_zmutez) in
-          let e1_mul_e2 = ZMutez.create_mul soe1 soe2 in  (* e1 * e2 *)
-          let e1_mul_e2_div_e1 = ZMutez.create_div e1_mul_e2 soe2 in (* (e1 * e2) / e1 *)
-          let e1_is_zero = ZMutez.create_eq soe1 (ZMutez.zero_ ()) in (* e1 = 0 *)
-          let e2_is_zero = ZNat.create_eq (cv_mvcc e2) (ZNat.zero_ ()) in  (* e2 = 0 *)
-          let e1_is_not_zero = ZFormula.create_and [ (* e1 != 0 /\ ((e1 * e2) / e1) = e2 *)
-            (ZFormula.create_not e1_is_zero);
-            (ZMutez.create_eq e1_mul_e2_div_e1 soe1)
-          ] in
-          ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *) *)
         end
       | MF_mul_nmm_no_overflow (e1, e2) -> begin
           ZMutez.check_mul_no_overflow ctx (cv_mvcc ctx e1) (cv_mvcc ctx e2)
-          (* let soe1, soe2 = (cv_mvcc e1 |> ZInt.to_zmutez), (cv_mvcc e2) in
-          let e1_mul_e2 = ZMutez.create_mul soe1 soe2 in  (* e1 * e2 *)
-          let e1_mul_e2_div_e1 = ZMutez.create_div e1_mul_e2 soe2 in (* (e1 * e2) / e1 *)
-          let e1_is_zero = ZNat.create_eq (cv_mvcc e1) (ZNat.zero_ ()) in  (* e1 = 0 *)
-          let e2_is_zero = ZMutez.create_eq (cv_mvcc e2) (ZMutez.zero_ ()) in (* e2 = 0 *)
-          let e1_is_not_zero = ZFormula.create_and [ (* e1 != 0 /\ ((e1 * e2) / e1) = e2 *)
-            (ZFormula.create_not e1_is_zero);
-            (ZMutez.create_eq e1_mul_e2_div_e1 soe1)
-          ] in
-          ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *) *)
         end
       | MF_shiftL_nnn_rhs_in_256 (_, e2) -> ZNat.create_le ctx (cv_mvcc ctx e2) (ZNat.of_int ctx 256)
       | MF_shiftR_nnn_rhs_in_256 (_, e2) -> ZNat.create_le ctx (cv_mvcc ctx e2) (ZNat.of_int ctx 256)
       )
     with
-    | ZError s -> SMT_Encode_Error_f (vf, s, Stdlib.__LINE__) |> raise
+    | ZError s -> Utils.Log.err (fun m -> m "TzCvt SMT Encoding Error : %s" s); SMT_Encode_Error_f (vf, s, Stdlib.__LINE__) |> raise
     ) (* function cv_mf end *)
 end (* module T2S end *)
 

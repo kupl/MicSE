@@ -977,7 +977,7 @@ module ZAddress = struct
 
   let sort : ZCtx.t -> ZSort.t
   =fun ctx -> ZDatatype.create_sort ctx
-    ~name:CONST._sort_signature
+    ~name:CONST._sort_address
     ~const_list:[ (_create_const_of_addrkh ctx);
                 ]
 

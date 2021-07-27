@@ -362,9 +362,9 @@ let intratrx_merge_state : Tz.sym_state -> (Tz.sym_state * ms_iter_info) -> (Tz.
           let f_i0 = MF_eq (gdcc (MV_size_l hd1), gdcc (MV_lit_nat Z.zero)) in
           [f_inil; f_i0;]
         )
-      | MT_set _ -> (
+      | MT_set elt -> (
           (* 1. input container is nil *)
-          let f_ieset = MF_eq (hd1, gdcc (MV_empty_set typ_hd1)) in
+          let f_ieset = MF_eq (hd1, gdcc (MV_empty_set elt)) in
           (* 2. input container's size is 0 *)
           let f_i0 = MF_eq (gdcc (MV_size_s hd1), gdcc (MV_lit_nat Z.zero)) in
           [f_ieset; f_i0;]
