@@ -1078,6 +1078,10 @@ let optimize_v : mich_v cc -> mich_v cc
     | MV_sub_nii (v1, v2) -> MV_sub_nii ((ov v1), (ov v2))
     | MV_sub_ini (v1, v2) -> MV_sub_ini ((ov v1), (ov v2))
     | MV_sub_iii (v1, v2) -> MV_sub_iii ((ov v1), (ov v2))
+    | MV_sub_tti ({cc_v=(MV_lit_timestamp_str st1); _}, {cc_v=(MV_lit_timestamp_str st2); _}) -> (
+        try MV_lit_int (Z.sub (Z.of_string st1) (Z.of_string st2))
+        with _ -> vvv.cc_v
+      )
     | MV_sub_tti (v1, v2) -> MV_sub_tti ((ov v1), (ov v2))
     | MV_mul_nii (v1, v2) -> MV_mul_nii ((ov v1), (ov v2))
     | MV_mul_ini (v1, v2) -> MV_mul_ini ((ov v1), (ov v2))
@@ -1183,6 +1187,11 @@ let optimize_v : mich_v cc -> mich_v cc
     | MV_ediv_nnnn (v1, v2)           -> MV_ediv_nnnn ((ov v1), (ov v2))
     | MV_ediv_niin (v1, v2)           -> MV_ediv_niin ((ov v1), (ov v2))
     | MV_ediv_inin (v1, v2)           -> MV_ediv_inin ((ov v1), (ov v2))
+    | MV_ediv_iiin ({cc_v=(MV_lit_int i1); _}, {cc_v=(MV_lit_int i2); _}) -> (
+        if Z.zero = i2 then MV_none (typ_of_val (gen_custom_cc vvv (MV_pair (gen_custom_cc vvv (MV_lit_int Z.zero), gen_custom_cc vvv (MV_lit_nat Z.zero))))) else
+        let (q, r) = Z.ediv_rem i1 i2 in
+        MV_some (gen_custom_cc vvv (MV_pair (gen_custom_cc vvv (MV_lit_int q), gen_custom_cc vvv (MV_lit_nat r))))
+      )
     | MV_ediv_iiin (v1, v2)           -> MV_ediv_iiin ((ov v1), (ov v2))
     | MV_ediv_mnmm (v1, v2)           -> MV_ediv_mnmm ((ov v1), (ov v2))
     | MV_ediv_mmnm (v1, v2)           -> MV_ediv_mmnm ((ov v1), (ov v2))
