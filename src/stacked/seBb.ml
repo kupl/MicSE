@@ -84,11 +84,11 @@ let rec run_inst : (mich_i cc) -> state_set -> state_set
   (* PLACEHOLDER *) let _ = Stdlib.ignore chosen_rs in
   (* let integrated_rs = merge_stack ss_set.running |> (fun (x,y) -> {chosen_rs with }) *) (* TODO *)
   PSet.fold ss_set.running 
-    ~init:{running=PSet.empty; blocked=ss_set.blocked; queries=ss_set.queries; terminated=ss_set.terminated}
+    ~init:{running=PSet.empty; blocked=ss_set.blocked; queries=ss_set.queries; terminated=ss_set.terminated; literals=ss_set.literals; }
     ~f:(
-      fun {running; blocked; queries; terminated} ss ->
-      let {running=ps; blocked=bs; queries=qs; terminated=ts} = rii inst ss in
-      {running=(PSet.union ps running); blocked=(PSet.union bs blocked); queries=(PSet.union qs queries); terminated=(PSet.union ts terminated)}
+      fun {running; blocked; queries; terminated; literals} ss ->
+      let {running=ps; blocked=bs; queries=qs; terminated=ts; literals=ls;} = rii inst ss in
+      {running=(PSet.union ps running); blocked=(PSet.union bs blocked); queries=(PSet.union qs queries); terminated=(PSet.union ts terminated); literals=(PSet.union ls literals);}
     )
 end (* function run_inst end *)
 
@@ -114,5 +114,5 @@ and run_inst_i : (mich_i cc) -> sym_state -> state_set
   (* match inst.cc_v with
   | MI_seq (i1,i2) -> ss |>  *) (* TODO *)
   (* PLACEHOLDER *) let _ = Stdlib.ignore (se_run_inst, inst, ss_symstack) in
-  (* PLACEHOLDER *) {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.empty;}
+  (* PLACEHOLDER *) {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.empty; literals=PSet.empty;}
 end (* function run_inst end *)

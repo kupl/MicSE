@@ -254,7 +254,7 @@ end (* function strengthen_wl end *)
 let f_count_sset : Se.state_set -> unit
 = let module CPSet = Core.Set.Poly in
   let sz s = CPSet.length s in
-  fun {running; blocked; queries; terminated;} -> begin
+  fun {running; blocked; queries; terminated; _} -> begin
   Utils.Log.app (fun m -> m "#running=%d, #blocked=%d, #queries=%d, #terminated=%d\n" (sz running) (sz blocked) (sz queries) (sz terminated))
 end (* function f_count_sset end *)
 

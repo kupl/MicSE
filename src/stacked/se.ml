@@ -21,6 +21,7 @@ type state_set = {
   blocked : Tz.sym_state Tz.PSet.t;
   queries : (Tz.sym_state * query_category) Tz.PSet.t;
   terminated : Tz.sym_state Tz.PSet.t;
+  literals : Comp.t Tz.PSet.t;
 }
 
 type cache = {
@@ -128,7 +129,7 @@ end (* function state_query_reduce end *)
 (*****************************************************************************)
 
 let map_ss_running : (Tz.sym_state -> Tz.sym_state) -> state_set -> state_set
-= fun map_f {running; blocked; queries; terminated} -> {running=(Tz.PSet.map running ~f:map_f); blocked; queries; terminated;}
+= fun map_f {running; blocked; queries; terminated; literals;} -> {running=(Tz.PSet.map running ~f:map_f); blocked; queries; terminated; literals;}
 
 
 (*****************************************************************************)
@@ -140,11 +141,11 @@ let map_ss_running : (Tz.sym_state -> Tz.sym_state) -> state_set -> state_set
 let rec run_inst : cache ref -> (mich_i cc) -> state_set -> state_set
 = fun cache inst ss_set -> begin 
   PSet.fold ss_set.running 
-    ~init:{running=PSet.empty; blocked=ss_set.blocked; queries=ss_set.queries; terminated=ss_set.terminated}
+    ~init:{running=PSet.empty; blocked=ss_set.blocked; queries=ss_set.queries; terminated=ss_set.terminated; literals=ss_set.literals;}
     ~f:(
-      fun {running; blocked; queries; terminated} ss ->
-      let {running=ps; blocked=bs; queries=qs; terminated=ts} = run_inst_i cache inst ss in
-      {running=(PSet.union ps running); blocked=(PSet.union bs blocked); queries=(PSet.union qs queries); terminated=(PSet.union ts terminated)}
+      fun {running; blocked; queries; terminated; literals;} ss ->
+      let {running=ps; blocked=bs; queries=qs; terminated=ts; literals=ls;} = run_inst_i cache inst ss in
+      {running=(PSet.union ps running); blocked=(PSet.union bs blocked); queries=(PSet.union qs queries); terminated=(PSet.union ts terminated); literals=(PSet.union ls literals);}
     )
 end (* function run_inst end *)
 
@@ -169,7 +170,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   = fun ss sstack -> {ss with ss_symstack=sstack}
   in
   let ss_to_srset : sym_state -> state_set
-  = fun ss -> {running=PSet.singleton(ss); blocked=PSet.empty; queries=PSet.empty; terminated=PSet.empty}
+  = fun ss -> {running=PSet.singleton(ss); blocked=PSet.empty; queries=PSet.empty; terminated=PSet.empty; literals=PSet.empty;}
   in
   let sstack_to_srset : sym_state -> (mich_v cc list) -> state_set
   = fun ss sstack -> sstack |> sstack_to_ss ss |> ss_to_srset 
@@ -248,13 +249,17 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     blocked = PSet.union sset1.blocked sset2.blocked;
     queries = PSet.union sset1.queries sset2.queries;
     terminated = PSet.union sset1.terminated sset2.terminated;
+    literals = PSet.union sset1.literals sset2.literals;
   } in
-  let empty_sset : state_set = {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.empty} in
+  let empty_sset : state_set = {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.empty; literals=PSet.empty;} in
   let move_running_to_blocked : mich_cut_info -> state_set -> state_set
   = fun mci sset -> {sset with running=PSet.empty; blocked=(PSet.union (PSet.map sset.running ~f:(update_block_mci mci)) sset.blocked)} 
   in
   (* SUGAR - michelson value *)
   let mich_int_0 : mich_v cc = MV_lit_int Z.zero |> gen_dummy_cc in
+  (* SUGAR - add literals *)
+  let ss_add_literal : mich_v cc -> state_set -> state_set
+  = fun v sset -> { sset with literals=(PSet.add sset.literals (Comp.base_comp_from_v v ~loc:0)); } in
   (* FUNCTION BEGIN *)
   fun cache inst ss -> begin
   (* DEBUG START *) 
@@ -320,6 +325,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     (v :: ss_symstack)
     |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss v)
     |> ss_to_srset
+    |> ss_add_literal v
   | MI_some -> (MV_some (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_none t -> (MV_none t |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss 
   | MI_unit -> (MV_unit |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
@@ -684,7 +690,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_failwith -> 
     let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=MCC_trx_exit} in
     update_block_mci blocked_mci ss
-    |> (fun x -> {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.singleton(x)})
+    |> (fun x -> {running=PSet.empty; blocked=PSet.empty; queries=PSet.empty; terminated=PSet.singleton(x); literals=PSet.empty; })
   | MI_cast _ -> 
     (* Currently, it is enough to make "MI_cast"'s symbolic execution as identity function. *)
     ss_to_srset ss

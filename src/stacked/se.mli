@@ -19,6 +19,7 @@ type state_set = {
   blocked : Tz.sym_state Tz.PSet.t;
   queries : (Tz.sym_state * query_category) Tz.PSet.t;
   terminated : Tz.sym_state Tz.PSet.t;
+  literals : Comp.t Tz.PSet.t;
 }
 
 type cache = {

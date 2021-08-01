@@ -145,20 +145,23 @@ let bake_comp_map : Se.state_set * ((Tz.mich_v Tz.cc) option * Tz.sym_state) -> 
       ~f:(fun vsset -> (vsset
         |> get_type_stack
         |> (function | Some ts -> ts | None -> Error "bake_comp_map : mci_tstack" |> Stdlib.raise))) in
-  CPMap.mapi mci_tstack
-    ~f:(fun ~key ~data -> (
-      Comp.base_comp_from_mci key data
-      |> CList.fold
-        ~init:CTMap.empty
-        ~f:(fun ctmap base_comp_opt -> (
-          match base_comp_opt with
-          | None -> ctmap
-          | Some base_comp -> (
-            (if Option.is_some init_strg_opt then (
-              Comp.collect (Comp.base_comp_from_v (Option.get init_strg_opt) ~loc:0) ctmap)
-            else ctmap)
-            |> Comp.collect base_comp)))))
-  
+  let (initial_comps) : (Comp.t CPSet.t) CTMap.t = ( (* initial components *)
+    let (literals_comps) : (Comp.t CPSet.t) CTMap.t = (
+      CPSet.fold sset.literals ~init:CTMap.empty ~f:(fun ctmap lit -> Comp.collect lit ctmap)) in
+    let (init_strg_comp_map) : (Comp.t CPSet.t) CTMap.t = (
+      if Option.is_some init_strg_opt
+      then Comp.collect (Comp.base_comp_from_v (Option.get init_strg_opt) ~loc:0) literals_comps
+      else literals_comps) in
+    init_strg_comp_map) in
+  let (component_map) : comp_map = (CPMap.mapi mci_tstack ~f:(fun ~key:nmci ~data:typ_stack -> (
+    let (base_comp_lst) : (Comp.t option) list = Comp.base_comp_from_mci nmci typ_stack in
+    let (comps) : (Comp.t CPSet.t) CTMap.t = (
+      CList.fold base_comp_lst ~init:initial_comps ~f:(fun ctmap base_comp_opt -> (
+        match base_comp_opt with
+        | None -> ctmap
+        | Some base_comp -> Comp.collect base_comp ctmap))) in
+    comps))) in
+  component_map
   (* DEBUG START *) 
   (* |> (fun x ->
     CPMap.iteri
