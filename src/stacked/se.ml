@@ -321,14 +321,18 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       | ((hdhd :: hdtl), tl) -> (hdtl @ (hdhd :: tl))
       | _ -> Error ("run_inst_i : MI_dug" ^ (zn |> Z.to_string)) |> raise)
     |> sstack_to_srset ss
-  | MI_push (_, v) -> 
+  | MI_push (_, v) -> (
     (v :: ss_symstack)
     |> sstack_to_ss (ss_add_mutez_bound_constraint_if_v_is_mutez ss v)
     |> ss_to_srset
-    |> ss_add_literal v
+    |> ss_add_literal v)
   | MI_some -> (MV_some (CList.hd_exn ss_symstack) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
-  | MI_none t -> (MV_none t |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss 
-  | MI_unit -> (MV_unit |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_none t -> (
+    let (v) : mich_v cc = MV_none t |> gen_inst_cc in
+    sstack_push ss_symstack v |> sstack_to_srset ss |> ss_add_literal v)
+  | MI_unit -> (
+    let (v) : mich_v cc = MV_unit |> gen_inst_cc in
+    sstack_push ss_symstack v |> sstack_to_srset ss |> ss_add_literal v)
   | MI_if_none (i1,i2) ->
     let cond_constraint : mich_f = MF_is_none (CList.hd_exn ss_symstack) in
     let then_br_sset : state_set =
@@ -396,7 +400,9 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> run_inst_i cache i2
     in
     sset_union_pointwise then_br_sset else_br_sset
-  | MI_nil t -> (MV_nil t |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_nil t -> (
+    let (v) : mich_v cc = MV_nil t |> gen_inst_cc in
+    sstack_push ss_symstack v |> sstack_to_srset ss |> ss_add_literal v)
   | MI_cons -> 
     (MV_cons (CList.hd_exn ss_symstack, CList.nth_exn ss_symstack 1) |> gen_inst_cc)
     |> cons_tl_n ss_symstack 2
@@ -431,9 +437,15 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     |> gen_inst_cc
     |> cons_tl_n ss_symstack 1
     |> sstack_to_srset ss
-  | MI_empty_set t -> (MV_empty_set t |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
-  | MI_empty_map (t1,t2) -> (MV_empty_map (t1,t2) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
-  | MI_empty_big_map (t1,t2) -> (MV_empty_big_map (t1,t2) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+  | MI_empty_set t -> (
+    let (v) : mich_v cc = MV_empty_set t |> gen_inst_cc in
+    sstack_push ss_symstack v |> sstack_to_srset ss |> ss_add_literal v)
+  | MI_empty_map (t1,t2) -> (
+    let (v) : mich_v cc = MV_empty_map (t1,t2) |> gen_inst_cc in
+    sstack_push ss_symstack v |> sstack_to_srset ss |> ss_add_literal v)
+  | MI_empty_big_map (t1,t2) -> (
+    let (v) : mich_v cc = MV_empty_big_map (t1,t2) |> gen_inst_cc in
+    sstack_push ss_symstack v |> sstack_to_srset ss |> ss_add_literal v)
   | MI_map (i) ->
     let (outer_cutcat, inner_cutcat) : (mich_cut_category * mich_cut_category) = (MCC_ln_map, MCC_lb_map) in
     let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
@@ -623,7 +635,7 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
       |> ss_to_srset
     in
     sset_union_pointwise {thenbr_sset with blocked=(PSet.add thenbr_sset.blocked blocked_state)} elsebr_sset
-  | MI_lambda (t1,t2,i) ->
+  | MI_lambda (t1,t2,i) -> (
     (*
     (* perform symbolic execution for instruction-i *)
     let funcbody_mci : mich_cut_info = {mci_loc=i.cc_loc; mci_cutcat=MCC_lb_lmbd;} in
@@ -638,7 +650,8 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
     in
       ...
     *)
-    (MV_lit_lambda (t1,t2,i) |> gen_inst_cc) |> sstack_push ss_symstack |> sstack_to_srset ss
+    let (v) : mich_v cc = MV_lit_lambda (t1,t2,i) |> gen_inst_cc in
+    sstack_push ss_symstack v |> sstack_to_srset ss |> ss_add_literal v)
   | MI_exec ->
     (* MicSE does not perform any symbolic execution for the body of the function in MI_exec case.
       Thus it does not create any blocked state, just emit a running state that has one new variable on the top of the stack. *)
@@ -917,10 +930,11 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   | MI_gt -> (MV_gt_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_le -> (MV_leq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
   | MI_ge -> (MV_geq_ib (CList.hd_exn ss_symstack, mich_int_0) |> gen_inst_cc) |> cons_tl_n ss_symstack 1 |> sstack_to_srset ss
-  | MI_self -> 
-    (MV_lit_contract ((typ_of_val ss.ss_optt.optt_param), ss.ss_optt.optt_addr) |> gen_inst_cc) 
-    |> sstack_push ss_symstack
+  | MI_self -> (
+    let (v) : mich_v cc = MV_lit_contract ((typ_of_val ss.ss_optt.optt_param), ss.ss_optt.optt_addr) |> gen_inst_cc in
+    sstack_push ss_symstack v
     |> sstack_to_srset ss
+    |> ss_add_literal v)
   (*
   | MI_contract t ->
     (* In the concrete execution, Michelson-VM will seek fixed-blockchain if there are any contract exists.
