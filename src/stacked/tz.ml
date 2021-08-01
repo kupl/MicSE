@@ -1013,6 +1013,27 @@ end (* function pmap_to_mtmap end *)
 (* Michelson Value & Formula Utilities                                       *)
 (*****************************************************************************)
 
+(* Check Literal *)
+let check_literal : mich_v cc -> bool
+= fun vvv -> begin
+  match vvv.cc_v with
+  | MV_lit_int              _   | MV_lit_nat              _   | MV_lit_string           _
+  | MV_lit_bytes            _   | MV_lit_mutez            _   | MV_lit_bool             _
+  | MV_lit_key_hash         _   | MV_lit_timestamp_sec    _   | MV_lit_timestamp_str    _
+  | MV_lit_address          _   | MV_lit_key              _   | MV_lit_signature_str    _
+  | MV_lit_signature_signed _   | MV_lit_list             _   | MV_lit_set              _
+  | MV_lit_contract         _   | MV_lit_lambda           _   | MV_lit_map              _
+  | MV_lit_big_map          _   | MV_lit_chain_id         _
+  -> true
+  | MV_unit                     | MV_none                 _   | MV_nil                  _
+  | MV_empty_set            _   | MV_empty_map            _   | MV_empty_big_map        _
+  -> true
+  | MV_sigma_tmplm sig_v
+  -> (match sig_v.cc_v with MV_lit_list _ -> true | _ -> false)
+  | _
+  -> false
+end
+
 (* Optimization *)
 
 let optimize_v : mich_v cc -> mich_v cc

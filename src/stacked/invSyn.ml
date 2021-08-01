@@ -247,6 +247,7 @@ let all_equal : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_f Core.Set.Poly
   CTMap.fold ctmap ~init:CPSet.empty
     ~f:(fun ~key ~data acc -> (
       combination_self_two_diff data
+      |> CPSet.filter ~f:(fun (c1, c2) -> Stdlib.not (Tz.check_literal c1.cp_value && Tz.check_literal c2.cp_value))
       |> CPSet.map ~f:(fun (c1, c2) -> (
         MF_imply ((fold_precond [c1; c2;]), (
           match key.cc_v with
@@ -267,6 +268,12 @@ let all_ge : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_
   CTMap.fold ctmap ~init:CPSet.empty ~f:(fun ~key ~data acc -> (
     if CPSet.exists ts ~f:(fun t -> t = key.cc_v) then (
       combination_self_two_diff_rf data
+      |> CPSet.filter ~f:(fun (c1, c2) -> Stdlib.not (Tz.check_literal c1.cp_value && Tz.check_literal c2.cp_value))
+      |> CPSet.filter ~f:(fun (_, c2) -> (
+        match key.cc_v with
+        | MT_mutez  -> c2.cp_value.cc_v <> MV_lit_mutez (Z.zero)
+        | MT_nat    -> c2.cp_value.cc_v <> MV_lit_nat (Z.zero)
+        | _         -> true))
       |> CPSet.map ~f:(fun (c1, c2) -> (
         let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
         let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
@@ -290,6 +297,7 @@ let all_gt : (Comp.t Core.Set.Poly.t) Comp.CTMap.t -> Tz.mich_t list -> Tz.mich_
   CTMap.fold ctmap ~init:CPSet.empty ~f:(fun ~key ~data acc -> (
     if CPSet.exists ts ~f:(fun t -> t = key.cc_v) then (
       combination_self_two_diff_rf data
+      |> CPSet.filter ~f:(fun (c1, c2) -> Stdlib.not (Tz.check_literal c1.cp_value && Tz.check_literal c2.cp_value))
       |> CPSet.map ~f:(fun (c1, c2) -> (
         let cmp : Tz.mich_v Tz.cc = MV_compare (c1.cp_value, c2.cp_value) |> gen_dummy_cc in
         let zero : Tz.mich_v Tz.cc = MV_lit_int (Z.zero) |> gen_dummy_cc in
@@ -404,13 +412,13 @@ let refine_t : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
   let ctmap = igdt.igdt_comp_type_map in
   (* 1. generate recipe *)
   let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
-  (* let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap [MT_int; MT_nat; MT_mutez] in *)
+  let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap [MT_int; MT_nat; MT_mutez] in
   let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in
   (* let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in *)
   let add_3_eq_fmlas : Tz.mich_f CPSet.t = add_3_eq ctmap [MT_mutez] in
   (* 2. generate invariant map *)
   [ all_eq_fmlas;
-    (* all_ge_fmlas; *)
+    all_ge_fmlas;
     all_gt_fmlas;
     (* add_2_eq_fmlas; *)
     add_3_eq_fmlas; ]
@@ -433,13 +441,13 @@ let refine_l : Se.invmap -> ingredients -> Tz.mich_f Core.Set.Poly.t
   let ctmap = igdt.igdt_comp_type_map in
   (* 1. generate recipe *)
   let all_eq_fmlas : Tz.mich_f CPSet.t = all_equal ctmap in
-  (* let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap [MT_int; MT_nat; MT_mutez] in *)
+  let all_ge_fmlas : Tz.mich_f CPSet.t = all_ge ctmap [MT_int; MT_nat; MT_mutez] in
   let all_gt_fmlas : Tz.mich_f CPSet.t = all_gt ctmap [MT_int; MT_nat; MT_mutez] in
   (* let add_2_eq_fmlas : Tz.mich_f CPSet.t = add_2_eq ctmap [MT_mutez] in *)
   let add_3_eq_fmlas : Tz.mich_f CPSet.t = add_3_eq ctmap [MT_mutez] in
   (* 2. generate invariant map *)
   [ all_eq_fmlas;
-    (* all_ge_fmlas; *)
+    all_ge_fmlas;
     all_gt_fmlas;
     (* add_2_eq_fmlas; *)
     add_3_eq_fmlas; ]

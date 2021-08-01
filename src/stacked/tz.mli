@@ -587,6 +587,9 @@ val pmap_to_mtmap : mich_t cc * mich_t cc * (mich_v cc, mich_v cc) PMap.t -> mic
 (* Michelson Value & Formula Utilities                                       *)
 (*****************************************************************************)
 
+(* Check Literal *)
+val check_literal : mich_v cc -> bool
+
 (* Optimization *)
 
 val optimize_v : mich_v cc -> mich_v cc

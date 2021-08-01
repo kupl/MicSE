@@ -150,7 +150,9 @@ let collect : t -> (t Core.Set.Poly.t) CTMap.t -> (t Core.Set.Poly.t) CTMap.t
         | MT_pair (t11cc, t12cc) -> (
           match (t11cc.cc_v, t12cc.cc_v) with
           | (MT_timestamp, MT_mutez) -> (
-            tmap_update (MT_mutez |> gen_dummy_cc) ({ cur_comp with cp_value=(gen_custom_cc cur_val (MV_sigma_tmplm cur_val)); }) acc)
+            match cur_val.cc_v with
+            | MV_nil _ | MV_lit_list (_, []) -> tmap_update (MT_mutez |> gen_dummy_cc) ({ cur_comp with cp_value=(gen_custom_cc cur_val (MV_lit_mutez Z.zero)); }) acc
+            | _ -> tmap_update (MT_mutez |> gen_dummy_cc) ({ cur_comp with cp_value=(gen_custom_cc cur_val (MV_sigma_tmplm cur_val)); }) acc)
           | _ -> acc)
         | _ -> acc) in
       CTMap.update acc' cur_typ ~f:(function None -> CPSet.singleton cur_comp | Some cc -> CPSet.add cc cur_comp))
