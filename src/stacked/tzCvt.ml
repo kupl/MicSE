@@ -490,13 +490,13 @@ module T2S = struct
     | MT_key -> ZKey.sort ctx
     | MT_unit -> ZUnit.sort ctx
     | MT_signature -> ZSignature.sort ctx
-    | MT_option t -> ZOption.create_sort ctx ~content_sort:(sot t)
+    | MT_option t -> ZOption.sort ctx ~content_sort:(sot t)
     | MT_list t -> ZList.create_sort ctx ~content_sort:(sot t)
     | MT_set t -> ZSet.create_sort ctx ~key_sort:(sot t) ~value_sort:(ZBool.sort ctx)
     | MT_operation -> ZOperation.sort ctx
     | MT_contract _ -> ZContract.sort ctx
-    | MT_pair (t1, t2) -> ZPair.create_sort ctx ~fst_sort:(sot t1) ~snd_sort:(sot t2)
-    | MT_or (t1, t2) -> ZOr.create_sort ctx ~left_sort:(sot t1) ~right_sort:(sot t2)
+    | MT_pair (t1, t2) -> ZPair.sort ctx ~fst_sort:(sot t1) ~snd_sort:(sot t2)
+    | MT_or (t1, t2) -> ZOr.sort ctx ~left_sort:(sot t1) ~right_sort:(sot t2)
     | MT_lambda (_, _) -> ZLambda.sort ctx
     | MT_map (t1, t2) -> ZMap.create_sort ctx ~key_sort:(sot t1) ~value_sort:(sot t2)
     | MT_big_map (t1, t2) -> ZMap.create_sort ctx ~key_sort:(sot t1) ~value_sort:(sot t2)
@@ -742,11 +742,11 @@ module T2S = struct
     (*************************************************************************)
     | MV_lit_list (t, el) -> begin
         el |> Core.List.fold_right
-                ~f:(fun e l -> l |> ZList.update ctx ~content:(cv_mvcc ctx e))
+                ~f:(fun e l -> l |> ZList.update ~content:(cv_mvcc ctx e))
                 ~init:(ZList.create ctx ~content_sort:(cv_mtcc ctx t))
       end
     | MV_nil t -> ZList.create ctx ~content_sort:(cv_mtcc ctx t)
-    | MV_cons (e1, e2) -> ZList.update ctx ~content:(cv_mvcc ctx e1) (cv_mvcc ctx e2)
+    | MV_cons (e1, e2) -> ZList.update ~content:(cv_mvcc ctx e1) (cv_mvcc ctx e2)
     | MV_tl_l e -> ZList.read_tail (cv_mvcc ctx e)
   
     (*************************************************************************)

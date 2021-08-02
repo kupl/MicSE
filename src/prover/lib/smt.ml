@@ -8,6 +8,10 @@ module CONST = struct
   let _tmpname_source : string = "SOURCE"
   let _tmpname_sender : string = "SENDER"
 
+  let _sort_unit : string = "Unit"
+  let _sort_bool : string = "Bool"
+  let _sort_int : string = "Int"
+  let _sort_str : string = "String"
   let _sort_key : string = "Key"
   let _sort_keyhash : string = "KeyHash"
   let _sort_unit : string = "Unit"
@@ -21,10 +25,12 @@ module CONST = struct
   let _sort_pair : string = "Pair"
   let _sort_or : string = "Or"
   let _sort_list : string = "List"
+  let _sort_map : string = "Map"
 
   let _const_key_keystr : string = "KeyStr"
   let _const_keyhash_str : string = "KeyHashStr"
   let _const_keyhash_hashkey : string = "KeyHashKey"
+  let _const_bytes_nil : string = "BytNil"
   let _const_bytes_bytstr : string = "BytStr"
   let _const_bytes_pack : string = "Pack"
   let _const_bytes_concatenated : string = "BytConcat"
@@ -46,6 +52,7 @@ module CONST = struct
   let _recog_key_keystr : string = "is_keystr"
   let _recog_keyhash_str : string = "is_keyhashStr"
   let _recog_keyhash_hashkey : string = "is_keyhashKey"
+  let _recog_bytes_bytnil : string = "is_bytnil"
   let _recog_bytes_bytstr : string = "is_bytstr"
   let _recog_bytes_pack : string = "is_pack"
   let _recog_bytes_concatenated : string = "is_bytes_concatenated"
@@ -106,125 +113,711 @@ module ZSym = struct
   type t = Z3.Symbol.symbol
 
   let _name_dummy : string
-  =CONST._name_dummy
+  = CONST._name_dummy
   let _count_dummy : int ref
-  =ref 0
+  = ref 0
 
   let create : ZCtx.t -> string -> t
-  = fun ctx name -> name |> Z3.Symbol.mk_string ctx
+  = fun ctx name -> Z3.Symbol.mk_string ctx name
+
   let create_dummy : ZCtx.t -> t
   = fun ctx -> begin
-    _count_dummy := !_count_dummy + 1;
-    (_name_dummy ^ (!_count_dummy |> string_of_int)) |> create ctx
-  end
+    let _ = Stdlib.incr _count_dummy in
+    let (name) : string = (_name_dummy ^ (!_count_dummy |> string_of_int)) in
+    create ctx name
+  end (* function create_dummy end *)
 
   let to_string : t -> string
-  =Z3.Symbol.to_string
+  = Z3.Symbol.to_string
 end
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Sorts                                                                     *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Sorts                                                                      *)
+(******************************************************************************)
+(******************************************************************************)
 
 module ZSort = struct
   type t = Z3.Sort.sort
 
   let create_dummy : ZCtx.t -> t
-  =fun ctx -> ctx |> ZSym.create_dummy |> Z3.Sort.mk_uninterpreted ctx
+  = fun ctx -> Z3.Sort.mk_uninterpreted ctx (ZSym.create_dummy ctx)
+
   let create : ZCtx.t -> name:string -> t
-  =fun ctx ~name -> name |> ZSym.create ctx |> Z3.Sort.mk_uninterpreted ctx
+  = fun ctx ~name -> Z3.Sort.mk_uninterpreted ctx (ZSym.create ctx name)
 
   let to_string : t -> string
-  =Z3.Sort.to_string
+  = Z3.Sort.to_string
+
+  (****************************************************************************)
+  (* Sort of Types                                                            *)
+  (****************************************************************************)
+
+  module PMap = Core.Map.Poly
+
+  let sort_map : (ZCtx.t, (string, t) PMap.t) PMap.t Stdlib.ref
+  = Stdlib.ref PMap.empty
+
+  let _read_x_sort : ZCtx.t -> string -> cst:(ZCtx.t -> t) -> t
+  = fun ctx name ~cst -> begin
+    match PMap.find !sort_map ctx with
+    | None -> (
+      let (new_sort) : t = cst ctx in
+      let _ = sort_map := (PMap.add_exn !sort_map ~key:ctx ~data:(PMap.singleton name new_sort)) in
+      new_sort)
+    | Some smap -> (
+      match PMap.find smap name with
+      | None      -> (
+        let (new_sort) : t = cst ctx in
+        let _ = sort_map := (PMap.set !sort_map ~key:ctx ~data:(PMap.add_exn smap ~key:name ~data:new_sort)) in
+        new_sort)
+      | Some sss  -> sss)
+  end (* function read_x_sort end *)
+
+  let read_unit_sort : ZCtx.t -> t
+  = fun ctx -> _read_x_sort ~cst:(create ~name:CONST._sort_unit) ctx CONST._sort_unit
+
+  let read_bool_sort : ZCtx.t -> t
+  = fun ctx -> _read_x_sort ~cst:Z3.Boolean.mk_sort ctx CONST._sort_bool
+
+  let read_int_sort : ZCtx.t -> t
+  = fun ctx -> _read_x_sort ~cst:Z3.Arithmetic.Integer.mk_sort ctx CONST._sort_int
+
+  let read_str_sort : ZCtx.t -> t
+  = fun ctx -> _read_x_sort ~cst:Z3.Seq.mk_string_sort ctx CONST._sort_str
 end
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Expressions                                                               *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Expressions                                                                *)
+(******************************************************************************)
+(******************************************************************************)
 
 module ZExpr = struct
   type t = Z3.Expr.expr
 
   let create_dummy : ZCtx.t -> ZSort.t -> t
-  =fun ctx sort -> sort |> (ZSym.create_dummy ctx |> Z3.Expr.mk_const ctx)
+  = fun ctx sort -> Z3.Expr.mk_const ctx (ZSym.create_dummy ctx) sort
+
   let create_var : ZCtx.t -> ZSort.t -> name:string -> t
-  =fun ctx sort ~name -> sort |> (name |> ZSym.create ctx |> Z3.Expr.mk_const ctx)
+  = fun ctx sort ~name -> Z3.Expr.mk_const ctx (ZSym.create ctx name) sort
 
   let create_ite : ZCtx.t -> cond:t -> t:t -> f:t -> t
-  =fun ctx ~cond ~t ~f -> Z3.Boolean.mk_ite ctx cond t f
+  = fun ctx ~cond ~t ~f -> Z3.Boolean.mk_ite ctx cond t f
 
   let read_sort : t -> ZSort.t
-  =Z3.Expr.get_sort
+  = Z3.Expr.get_sort
 
   let to_string : t -> string
-  =Z3.Expr.to_string
+  = Z3.Expr.to_string
+
+  (****************************************************************************)
+  (* Expression of Literals                                                   *)
+  (****************************************************************************)
+
+  module PMap = Core.Map.Poly
+
+  type 'a _lit_map = (ZCtx.t, ('a, t) PMap.t) PMap.t Stdlib.ref
+
+  let _read_x_lit : 'a _lit_map -> ZCtx.t -> 'a -> cst:(ZCtx.t -> t) -> t
+  = fun cmap ctx idx ~cst -> begin
+    match PMap.find !cmap ctx with
+    | None -> (
+      let (new_lit) : t = cst ctx in
+      let _ = cmap := (PMap.add_exn !cmap ~key:ctx ~data:(PMap.singleton idx new_lit)) in
+      new_lit)
+    | Some lmap -> (
+      match PMap.find lmap idx with
+      | None      -> (
+        let (new_lit) : t = cst ctx in
+        let _ = cmap := (PMap.set !cmap ~key:ctx ~data:(PMap.add_exn lmap ~key:idx ~data:new_lit)) in
+        new_lit)
+      | Some lll  -> lll)
+  end (* function _read_x_lit end *)
+
+  
+  (* Unit Literals ************************************************************)
+  let _unit_lit_map : unit _lit_map
+  = Stdlib.ref PMap.empty
+  
+  let read_unit : ZCtx.t -> t
+  = fun ctx -> _read_x_lit _unit_lit_map ~cst:(fun c -> create_var c (ZSort.read_unit_sort c) ~name:CONST._name_unit) ctx ()
+
+  (* Boolean Literals *********************************************************)
+  let _bool_lit_map : bool _lit_map
+  = Stdlib.ref PMap.empty
+
+  let read_bool : ZCtx.t -> bool -> t
+  = fun ctx e -> _read_x_lit _bool_lit_map ~cst:(fun c -> Z3.Boolean.mk_val c e) ctx e
+
+  (* Integer Literals *********************************************************)
+  let _int_lit_map : Z.t _lit_map
+  = Stdlib.ref PMap.empty
+
+  let read_int : ZCtx.t -> int -> t
+  = fun ctx e -> _read_x_lit _int_lit_map ~cst:(fun c -> Z3.Arithmetic.Integer.mk_numeral_i c e) ctx (Z.of_int e)
+
+  let read_zint : ZCtx.t -> Z.t -> t
+  = fun ctx e -> _read_x_lit _int_lit_map ~cst:(fun c -> Z3.Arithmetic.Integer.mk_numeral_s c (Z.to_string e)) ctx e
+
+  (* String Literals **********************************************************)
+  let _str_lit_map : string _lit_map
+  = Stdlib.ref PMap.empty
+
+  let read_str : ZCtx.t -> string -> t
+  = fun ctx e -> _read_x_lit _str_lit_map ~cst:(fun c -> Z3.Seq.mk_string c e) ctx e
 end
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* FuncDecls                                                                 *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* FuncDecls                                                                  *)
+(******************************************************************************)
+(******************************************************************************)
 
 module ZFunc = struct
   type t = Z3.FuncDecl.func_decl
 
   let get_idx : 'a list -> idx:int -> 'a
-  =fun l ~idx -> try idx |> (l |> Core.List.nth_exn) with |_ -> ZError ("get_idx " ^ (idx |> string_of_int) ^ " called on list of length " ^ (l |> Core.List.length |> string_of_int)) |> raise
+  = fun l ~idx -> begin
+    try Core.List.nth_exn l idx
+    with
+    | _ -> Stdlib.raise (ZError (Printf.sprintf "get_idx %d called on list of length %d" idx (Core.List.length l)))
+  end (* function get_idx end *)
 
   let apply : t -> params:ZExpr.t list -> ZExpr.t
-  =fun f ~params -> params |> (f |> Z3.FuncDecl.apply)
+  = fun f ~params -> Z3.FuncDecl.apply f params
 
   let sort_of_domain : t -> idx:int -> ZSort.t
-  =fun f ~idx -> f |> Z3.FuncDecl.get_domain |> get_idx ~idx:idx
+  = fun f ~idx -> get_idx (Z3.FuncDecl.get_domain f) ~idx:idx
 end
 
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Datatypes                                                                 *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Datatypes                                                                  *)
+(******************************************************************************)
+(******************************************************************************)
 
 module ZDatatype = struct
   type const = Z3.Datatype.Constructor.constructor
 
   let get_idx : 'a list -> idx:int -> 'a
-  =fun l ~idx -> try idx |> (l |> Core.List.nth_exn) with |_ -> ZError ("get_idx " ^ (idx |> string_of_int) ^ " called on list of length " ^ (l |> Core.List.length |> string_of_int)) |> raise
+  = fun l ~idx -> begin
+    try Core.List.nth_exn l idx
+    with
+    | _ -> Stdlib.raise (ZError (Printf.sprintf "get_idx %d called on list of length %d" idx (Core.List.length l)))
+  end (* function get_idx end *)
 
-  let create_const : ZCtx.t -> name:string -> recog_func_name:string -> field_names:string list -> field_sorts:ZSort.t option list -> field_sort_refs:int list -> const
-  =fun ctx ~name ~recog_func_name ~field_names ~field_sorts ~field_sort_refs -> begin
-    field_sort_refs |> (
-    field_sorts |> (
-    (field_names |> (Core.List.map ~f:(ZSym.create ctx))) |> (
-    (recog_func_name |> (ZSym.create ctx)) |> (
-    (name |> (ZSym.create ctx)) |> 
-    Z3.Datatype.mk_constructor ctx))))
-  end
+  let create_const : ZCtx.t -> name:string -> recog_func_name:string -> field_names:string list -> field_sorts:Z3.Sort.sort option list -> field_sort_refs:int list -> const
+  = fun ctx ~name ~recog_func_name ~field_names ~field_sorts ~field_sort_refs -> begin
+    Z3.Datatype.mk_constructor
+      ctx
+      (ZSym.create ctx name)
+      (ZSym.create ctx recog_func_name)
+      (Core.List.map field_names ~f:(ZSym.create ctx))
+      field_sorts
+      field_sort_refs
+  end (* function create_const *)
+
   let create_sort : ZCtx.t -> name:string -> const_list:const list -> ZSort.t
-  =fun ctx ~name ~const_list -> const_list |> (name |> ZSym.create ctx |> Z3.Datatype.mk_sort ctx)
+  = fun ctx ~name ~const_list -> Z3.Datatype.mk_sort ctx (ZSym.create ctx name) const_list
+
   let create_const_func : ZSort.t -> const_idx:int -> ZFunc.t
-  =fun sort ~const_idx -> sort |> Z3.Datatype.get_constructors |> get_idx ~idx:const_idx
+  = fun sort ~const_idx -> get_idx (Z3.Datatype.get_constructors sort) ~idx:const_idx
+
   let create_recog_func : ZSort.t -> const_idx:int -> ZFunc.t
-  =fun sort ~const_idx -> sort |> Z3.Datatype.get_recognizers |> get_idx ~idx:const_idx
+  = fun sort ~const_idx -> get_idx (Z3.Datatype.get_recognizers sort) ~idx:const_idx
+
   let create_access_func : ZSort.t -> const_idx:int -> field_idx:int -> ZFunc.t
-  =fun sort ~const_idx ~field_idx -> sort |> Z3.Datatype.get_accessors |> get_idx ~idx:const_idx |> get_idx ~idx:field_idx
+  = fun sort ~const_idx ~field_idx -> get_idx (Z3.Datatype.get_accessors sort) ~idx:const_idx |> get_idx ~idx:field_idx
+
   let read_field_sort : ZSort.t -> const_idx:int -> field_idx:int -> ZSort.t
-  =fun sort ~const_idx ~field_idx -> sort |> create_const_func ~const_idx:const_idx |> ZFunc.sort_of_domain ~idx:field_idx
+  = fun sort ~const_idx ~field_idx -> create_const_func sort ~const_idx |> ZFunc.sort_of_domain ~idx:field_idx
+
 
   let create : ZSort.t -> const_idx:int -> expr_list:ZExpr.t list -> ZExpr.t
-  =fun sort ~const_idx ~expr_list -> (sort |> create_const_func ~const_idx:const_idx) |> ZFunc.apply ~params:expr_list
+  = fun sort ~const_idx ~expr_list -> create_const_func sort ~const_idx |> ZFunc.apply ~params:expr_list
+
   let read : ZExpr.t -> const_idx:int -> field_idx:int -> ZExpr.t
-  =fun e ~const_idx ~field_idx -> e |> ZExpr.read_sort |> create_access_func ~const_idx:const_idx ~field_idx:field_idx |> ZFunc.apply ~params:[e]
+  = fun e ~const_idx ~field_idx -> create_access_func (ZExpr.read_sort e) ~const_idx ~field_idx |> ZFunc.apply ~params:[e]
+
 
   let is_field : ZExpr.t -> const_idx:int -> ZExpr.t
-  =fun e ~const_idx -> e |> ZExpr.read_sort |> create_recog_func ~const_idx:const_idx |> ZFunc.apply ~params:[e]
+  = fun e ~const_idx -> create_recog_func (ZExpr.read_sort e) ~const_idx |> ZFunc.apply ~params:[e]
+
+  (****************************************************************************)
+  (* Pre-defined Datatypes and Its Sort                                       *)
+  (****************************************************************************)
+
+  module PMap = Core.Map.Poly
+
+  type typ =
+    | Key
+    | KeyHash_str
+    | KeyHash_key
+    | Option_none
+    | Option_some       of ZSort.t
+    | Pair              of ZSort.t * ZSort.t
+    | Bytes_nil
+    | Bytes_str
+    | Bytes_concat
+    | Bytes_blake2b
+    | Bytes_sha256
+    | Bytes_sha512
+    | Signature_str
+    | Signature_signed
+    | Address
+    | Or_left           of ZSort.t
+    | Or_right          of ZSort.t
+    | List_nil
+    | List_cons         of ZSort.t
+
+  type _typ_map = (ZCtx.t, (typ, const) PMap.t) PMap.t Stdlib.ref
+
+  let _const_map : _typ_map
+  = Stdlib.ref PMap.empty
+
+  let _read_x_const : _typ_map -> ZCtx.t -> typ -> cst:(ZCtx.t -> const) -> const
+  = fun cmap ctx typ ~cst -> begin
+    match PMap.find !cmap ctx with
+    | None -> (
+      let (new_const) : const = cst ctx in
+      let _ = cmap := (PMap.add_exn !cmap ~key:ctx ~data:(PMap.singleton typ new_const)) in
+      new_const)
+    | Some lmap -> (
+      match PMap.find lmap typ with
+      | None      -> (
+        let (new_const) : const = cst ctx in
+        let _ = cmap := (PMap.set !cmap ~key:ctx ~data:(PMap.add_exn lmap ~key:typ ~data:new_const)) in
+        new_const)
+      | Some lll  -> lll)
+  end (* function _read_x_const end *)
+
+  (* Key Type *****************************************************************)
+  let read_key_const : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_key_keystr
+          ~recog_func_name:CONST._recog_key_keystr
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ (Some (ZSort.read_str_sort c)); ]
+          ~field_sort_refs:[ 1; ]))
+      ctx
+      Key
+  end (* function read_key_const end *)
+
+  let read_key_sort : ZCtx.t -> ZSort.t
+  = fun ctx -> begin
+    ZSort._read_x_sort
+      ~cst:(fun c ->
+        create_sort c
+          ~name:CONST._sort_key
+          ~const_list:[ (read_key_const c); ])
+      ctx
+      CONST._sort_key
+  end (* function read_key_sort end *)
+
+  (* Key Hash Type ************************************************************)
+  let read_keyhash_const_of_str : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_keyhash_str
+          ~recog_func_name:CONST._recog_keyhash_str
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ (Some (ZSort.read_str_sort c)); ]
+          ~field_sort_refs:[ 1; ]))
+      ctx
+      KeyHash_str
+  end (* function read_keyhash_const_of_str end *)
+
+  let read_keyhash_const_of_key : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_keyhash_hashkey
+          ~recog_func_name:CONST._recog_keyhash_hashkey
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ (Some (read_key_sort c)); ]
+          ~field_sort_refs:[ 1; ]))
+      ctx
+      KeyHash_key
+  end (* function read_keyhash_const_of_key end *)
+
+  let read_keyhash_sort : ZCtx.t -> ZSort.t
+  = fun ctx -> begin
+    ZSort._read_x_sort
+      ~cst:(fun c ->
+        create_sort c
+          ~name:CONST._sort_keyhash
+          ~const_list:[ (read_keyhash_const_of_str c);
+                        (read_keyhash_const_of_key c); ])
+      ctx
+      CONST._sort_keyhash
+  end (* function read_keyhash_sort end *)
+
+  (* Option Type **************************************************************)
+  let read_option_const_of_none : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_option_none
+          ~recog_func_name:CONST._recog_option_none
+          ~field_names:[]
+          ~field_sorts:[]
+          ~field_sort_refs:[]))
+      ctx
+      Option_none
+  end (* function read_option_const_of_none end *)
+
+  let read_option_const_of_some : ZCtx.t -> content_sort:ZSort.t -> const
+  = fun ctx ~content_sort -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_option_some
+          ~recog_func_name:CONST._recog_option_some
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ (Some content_sort); ]
+          ~field_sort_refs:[ 1; ]))
+      ctx
+      (Option_some content_sort)
+  end (* function read_option_const_of_some end *)
+
+  let _create_option_sort_name : content_sort:ZSort.t -> string
+  = fun ~content_sort -> Printf.sprintf "%s_(%s)" CONST._sort_option (ZSort.to_string content_sort)
+
+  let read_option_sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
+  = fun ctx ~content_sort -> begin
+    let (sort_name) : string = _create_option_sort_name ~content_sort in
+    ZSort._read_x_sort
+      ~cst:(fun c ->
+        create_sort c
+          ~name:sort_name
+          ~const_list:[ (read_option_const_of_none c);
+                        (read_option_const_of_some c ~content_sort); ])
+      ctx
+      sort_name
+  end (* function read_option_sort end *)
+
+  (* Pair Type ****************************************************************)
+  let read_pair_const : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> const
+  = fun ctx ~fst_sort ~snd_sort -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_pair
+          ~recog_func_name:CONST._recog_pair
+          ~field_names:[ (CONST._field_pair_fst); (CONST._field_pair_snd); ]
+          ~field_sorts:[ (Some fst_sort); (Some snd_sort); ]
+          ~field_sort_refs:[ 1; 2; ]))
+      ctx
+      (Pair (fst_sort, snd_sort))
+  end (* function read_pair_const end *)
+
+  let _create_pair_sort_name : fst_sort:ZSort.t -> snd_sort:ZSort.t -> string
+  = fun ~fst_sort ~snd_sort -> Printf.sprintf "%s_(%s,%s)" CONST._sort_pair (ZSort.to_string fst_sort) (ZSort.to_string snd_sort)
+
+  let read_pair_sort : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZSort.t
+  = fun ctx ~fst_sort ~snd_sort -> begin
+    let (sort_name) : string = _create_pair_sort_name ~fst_sort ~snd_sort in
+    ZSort._read_x_sort
+      ~cst:(fun c ->
+        create_sort c
+          ~name:sort_name
+          ~const_list:[ (read_pair_const c ~fst_sort:fst_sort ~snd_sort:snd_sort); ])
+      ctx
+      sort_name
+  end (* function read_pair_sort end *)
+
+  (* Bytes Type ***************************************************************)
+  let read_bytes_const_of_nil : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_bytes_nil
+          ~recog_func_name:CONST._recog_bytes_bytnil
+          ~field_names:[]
+          ~field_sorts:[]
+          ~field_sort_refs:[]))
+      ctx
+      Bytes_nil
+  end (* function read_bytes_const_of_nil end *)
+
+  let read_bytes_const_of_str : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_bytes_bytstr
+          ~recog_func_name:CONST._recog_bytes_bytstr
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ (Some (ZSort.read_str_sort ctx)); ]
+          ~field_sort_refs:[ 1; ]))
+      ctx
+      Bytes_str
+  end (* function read_bytes_const_of_str end *)
+
+  let read_bytes_const_of_concat : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_bytes_concatenated
+          ~recog_func_name:CONST._recog_bytes_concatenated
+          ~field_names:[ (CONST._field_pair_fst); (CONST._field_pair_snd); ]
+          ~field_sorts:[ None; None; ]
+          ~field_sort_refs:[ 0; 0; ]))
+      ctx
+      Bytes_concat
+  end (* function read_bytes_const_of_concat end *)
+
+  let read_bytes_const_of_blake2b : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_bytes_blake2b
+          ~recog_func_name:CONST._recog_bytes_blake2b
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ None; ]
+          ~field_sort_refs:[ 0; ]))
+      ctx
+      Bytes_str
+  end (* function read_bytes_const_of_blake2b end *)
+
+  let read_bytes_const_of_sha256 : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_bytes_sha256
+          ~recog_func_name:CONST._recog_bytes_sha256
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ None; ]
+          ~field_sort_refs:[ 0; ]))
+      ctx
+      Bytes_sha256
+  end (* function read_bytes_const_of_sha256 end *)
+
+  let read_bytes_const_of_sha512 : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_bytes_sha512
+          ~recog_func_name:CONST._recog_bytes_sha512
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ None; ]
+          ~field_sort_refs:[ 0; ]))
+      ctx
+      Bytes_sha512
+  end (* function read_bytes_const_of_sha512 end *)
+
+  let read_bytes_sort : ZCtx.t -> ZSort.t
+  = fun ctx -> begin
+    ZSort._read_x_sort
+      ~cst:(fun c ->
+        create_sort c
+          ~name:CONST._sort_bytes
+          ~const_list:[ (read_bytes_const_of_str c);
+                        (read_bytes_const_of_concat c);
+                        (read_bytes_const_of_blake2b c);
+                        (read_bytes_const_of_sha256 c);
+                        (read_bytes_const_of_sha512 c); ])
+      ctx
+      CONST._sort_bytes
+  end (* function read_bytes_sort end *)
+
+  (* Signature Type ***********************************************************)
+  let read_sig_const_of_str : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_signature_sigstr
+          ~recog_func_name:CONST._recog_signature_sigstr
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ (Some (ZSort.read_str_sort c)); ]
+          ~field_sort_refs:[ 1; ]))
+      ctx
+      Signature_str
+  end (* function read_sig_const_of_str end *)
+
+  let read_sig_const_of_signed : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_signature_signed
+          ~recog_func_name:CONST._recog_signature_signed
+          ~field_names:[ (CONST._field_pair_fst); (CONST._field_pair_snd); ]
+          ~field_sorts:[ (Some (read_key_sort c)); (Some (read_bytes_sort c)); ]
+          ~field_sort_refs:[ 1; 2; ]))
+      ctx
+      Signature_signed
+  end (* function read_sig_const_of_signed end *)
+
+  let read_sig_sort : ZCtx.t -> ZSort.t
+  = fun ctx -> begin
+    ZSort._read_x_sort
+      ~cst:(fun c ->
+        create_sort c
+          ~name:CONST._sort_signature
+          ~const_list:[ (read_sig_const_of_str c);
+                        (read_sig_const_of_signed c); ])
+      ctx
+      CONST._sort_signature
+  end (* function read_sig_sort end *)
+
+  (* Address Type *************************************************************)
+  let read_addr_const : ZCtx.t -> const
+  = fun ctx -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_address_addrkh
+          ~recog_func_name:CONST._recog_address_addrkh
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ (Some (read_keyhash_sort c)); ]
+          ~field_sort_refs:[ 1; ]))
+      ctx
+      Address
+  end (* function read_addr_const end *)
+
+  let read_addr_sort : ZCtx.t -> ZSort.t
+  = fun ctx -> begin
+    ZSort._read_x_sort
+      ~cst:(fun c ->
+        create_sort c
+          ~name:CONST._sort_address
+          ~const_list:[ (read_addr_const c); ])
+      ctx
+      CONST._sort_signature
+  end (* function read_addr_sort end *)
+
+  (* Or Type ******************************************************************)
+  let read_or_const_of_left : ZCtx.t -> left_sort:ZSort.t -> const
+  = fun ctx ~left_sort -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_or_left
+          ~recog_func_name:CONST._recog_or_left
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ (Some left_sort); ]
+          ~field_sort_refs:[ 1; ]))
+      ctx
+      (Or_left left_sort)
+  end (* function read_or_const_of_left end *)
+
+  let read_or_const_of_right : ZCtx.t -> right_sort:ZSort.t -> const
+  = fun ctx ~right_sort -> begin
+    _read_x_const
+      _const_map
+      ~cst:(fun c -> (
+        create_const c
+          ~name:CONST._const_or_right
+          ~recog_func_name:CONST._recog_or_right
+          ~field_names:[ (CONST._field_content); ]
+          ~field_sorts:[ (Some right_sort); ]
+          ~field_sort_refs:[ 1; ]))
+      ctx
+      (Or_right right_sort)
+  end (* function read_or_const_of_right end *)
+
+  let _create_or_sort_name : left_sort:ZSort.t -> right_sort:ZSort.t -> string
+  = fun ~left_sort ~right_sort -> Printf.sprintf "%s_(%s,%s)" CONST._sort_pair (ZSort.to_string left_sort) (ZSort.to_string right_sort)
+
+  let read_or_sort : ZCtx.t -> left_sort:ZSort.t -> right_sort:ZSort.t -> ZSort.t
+  = fun ctx ~left_sort ~right_sort -> begin
+    let (sort_name) : string = _create_or_sort_name ~left_sort ~right_sort in
+    ZSort._read_x_sort
+      ~cst:(fun c ->
+        create_sort c
+          ~name:sort_name
+          ~const_list:[ (read_or_const_of_left c ~left_sort);
+                        (read_or_const_of_right c ~right_sort); ])
+      ctx
+      sort_name
+  end (* function read_or_sort end *)
+
+  (* List Type ****************************************************************)
+  let _create_list_sort_name : content_sort:ZSort.t -> string
+  = fun ~content_sort -> Printf.sprintf "%s_(%s)" CONST._sort_pair (ZSort.to_string content_sort)
+
+  let read_list_sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
+  = fun ctx ~content_sort -> begin
+    let (sort_name) : string = _create_list_sort_name ~content_sort in
+    ZSort._read_x_sort
+      ~cst:(fun c -> Z3.Z3List.mk_list_s c sort_name content_sort)
+      ctx
+      sort_name
+  end (* function read_list_sort end *)
+
+  (* Map Type *****************************************************************)
+  let _create_map_sort_name : key_sort:ZSort.t -> value_sort:ZSort.t -> string
+  = fun ~key_sort ~value_sort -> Printf.sprintf "%s_(%s,%s)" CONST._sort_map (ZSort.to_string key_sort) (ZSort.to_string value_sort)
+
+  let read_map_sort : ZCtx.t -> key_sort:ZSort.t -> value_sort:ZSort.t -> ZSort.t
+  = fun ctx ~key_sort ~value_sort -> begin
+    let (sort_name) : string = _create_map_sort_name ~key_sort ~value_sort in
+    ZSort._read_x_sort
+      ~cst:(fun c -> Z3.Z3Array.mk_sort c key_sort (read_option_sort c ~content_sort:value_sort))
+      ctx
+      sort_name
+  end
+
+  (* Operation Type ***********************************************************)
+  let read_operation_sort : ZCtx.t -> ZSort.t
+  = fun ctx -> begin
+    ZSort._read_x_sort
+      ~cst:(fun c -> ZSort.create c ~name:CONST._sort_operation)
+      ctx
+      CONST._sort_operation
+  end
+
+  (* Contract Type ************************************************************)
+  let read_contract_sort : ZCtx.t -> ZSort.t
+  = fun ctx -> begin
+    ZSort._read_x_sort
+      ~cst:(fun c -> ZSort.create c ~name:CONST._sort_contract)
+      ctx
+      CONST._sort_contract
+  end
+
+  (* Lambda Type **************************************************************)
+  let read_lambda_sort : ZCtx.t -> ZSort.t
+  = fun ctx -> begin
+    ZSort._read_x_sort
+      ~cst:(fun c -> ZSort.create c ~name:CONST._sort_lambda)
+      ctx
+      CONST._sort_lambda
+  end
 end
 
 
@@ -238,12 +831,14 @@ module ZFormula = struct
   type t = ZExpr.t
 
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> Z3.Boolean.mk_sort ctx
-  
+  = ZSort.read_bool_sort
+
   let true_ : ZCtx.t -> t
-  =fun ctx -> Z3.Boolean.mk_true ctx
+  = fun ctx -> ZExpr.read_bool ctx true
+
   let false_ : ZCtx.t -> t
-  =fun ctx -> Z3.Boolean.mk_false ctx
+  = fun ctx -> ZExpr.read_bool ctx false
+
   let uninterpreted_ : ZCtx.t -> t
   =fun ctx -> Z3.Boolean.mk_const ctx (ZSym.create_dummy ctx)
 
@@ -276,10 +871,10 @@ module ZUnit = struct
   type t = ZExpr.t
 
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> ZSort.create ctx ~name:CONST._name_unit
+  = ZSort.read_unit_sort
 
   let create : ZCtx.t -> t
-  =fun ctx -> sort ctx |> ZExpr.create_var ctx ~name:CONST._sort_unit
+  = ZExpr.read_unit
 end
 
 
@@ -293,22 +888,29 @@ module ZBool = struct
   type t = ZExpr.t
 
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> Z3.Boolean.mk_sort ctx
+  = ZSort.read_bool_sort
+
 
   let of_bool : ZCtx.t -> bool -> t
-  =fun ctx e -> e |> Z3.Boolean.mk_val ctx
+  = ZExpr.read_bool
 
-  let minus_one_ : ZCtx.t -> t
-  =fun ctx -> Z3.Arithmetic.Integer.mk_numeral_i ctx (-1)
-  let zero_ : ZCtx.t -> t
-  =fun ctx -> Z3.Arithmetic.Integer.mk_numeral_i ctx (0)
-  let one_ : ZCtx.t -> t
-  =fun ctx -> Z3.Arithmetic.Integer.mk_numeral_i ctx (1)
+
+  let _minus_one_ : ZCtx.t -> t
+  = fun ctx -> ZExpr.read_int ctx (-1)
+
+  let _zero_ : ZCtx.t -> t
+  = fun ctx -> ZExpr.read_int ctx 0
+
+  let _one_ : ZCtx.t -> t
+  = fun ctx -> ZExpr.read_int ctx 1
   
+
   let true_ : ZCtx.t -> t
-  =fun ctx -> Z3.Boolean.mk_true ctx
+  = fun ctx -> ZExpr.read_bool ctx true
+
   let false_ : ZCtx.t -> t
-  =fun ctx -> Z3.Boolean.mk_false ctx
+  = fun ctx -> ZExpr.read_bool ctx false
+
 
   let create_not : ZCtx.t -> t -> t
   =fun ctx e -> e |> Z3.Boolean.mk_not ctx
@@ -328,11 +930,11 @@ module ZBool = struct
   =fun ctx e1 e2 -> begin
     ZExpr.create_ite ctx
       ~cond:(create_eq ctx e1 e2)
-      ~t:(zero_ ctx)
+      ~t:(_zero_ ctx)
       ~f:(ZExpr.create_ite ctx
             ~cond:(e2)
-            ~t:(minus_one_ ctx)
-            ~f:(one_ ctx))
+            ~t:(_minus_one_ ctx)
+            ~f:(_one_ ctx))
   end
 end
 
@@ -347,22 +949,23 @@ module ZInt = struct
   type t = ZExpr.t
 
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> Z3.Arithmetic.Integer.mk_sort ctx
+  = ZSort.read_int_sort
 
   let of_zarith : ZCtx.t -> Z.t -> t
-  =fun ctx n -> n |> Z.to_string |> Z3.Arithmetic.Integer.mk_numeral_s ctx
+  = ZExpr.read_zint
+
   let of_int : ZCtx.t -> int -> t
-  =fun ctx i -> i |> Z3.Arithmetic.Integer.mk_numeral_i ctx
+  = ZExpr.read_int
 
   let minus_one_ : ZCtx.t -> t
-  =fun ctx -> of_int ctx (-1)
+  = fun ctx -> of_int ctx (-1)
   let zero_ : ZCtx.t -> t
-  =fun ctx -> of_int ctx (0)
+  = fun ctx -> of_int ctx (0)
   let one_ : ZCtx.t -> t
-  =fun ctx -> of_int ctx (1)
+  = fun ctx -> of_int ctx (1)
 
   let mutez_max_ : ZCtx.t -> t
-  =fun ctx -> of_zarith ctx (Z.shift_left Z.one (CONST._bit_mutez) |> Z.pred)
+  = fun ctx -> of_zarith ctx (Z.shift_left Z.one (CONST._bit_mutez) |> Z.pred)
 
   let create_neg : ZCtx.t -> t -> t
   =fun ctx e -> e |> Z3.Arithmetic.mk_unary_minus ctx
@@ -487,7 +1090,7 @@ module ZMutez = struct
   type t = ZExpr.t
 
   let sort : ZCtx.t -> ZSort.t
-  = fun ctx -> ZInt.sort ctx
+  = ZSort.read_int_sort
   (* =fun ctx -> Z3.BitVector.mk_sort ctx (CONST._bit_mutez) *)
 
   let of_zarith : ZCtx.t -> Z.t -> t
@@ -589,10 +1192,10 @@ module ZStr = struct
   type t = ZExpr.t
 
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> Z3.Seq.mk_string_sort ctx
+  = ZSort.read_str_sort
 
   let of_string : ZCtx.t -> string -> t
-  =fun ctx e -> e |> Z3.Seq.mk_string ctx
+  = ZExpr.read_str
 
   let create_concat : ZCtx.t -> t list -> t
   =fun ctx el -> el |> Z3.Seq.mk_seq_concat ctx
@@ -612,7 +1215,7 @@ module ZStr = struct
       ~cond:(create_eq ctx e1 e2)
       ~t:(ZInt.zero_ ctx)
       ~f:(ZExpr.create_ite ctx
-            ~cond:(ZInt.create_lt ctx (create_length ctx e1) (create_length ctx e2)) (* Not completely implemented. *)
+            ~cond:(Z3.Seq.mk_str_lt ctx e1 e2)
             ~t:(ZInt.minus_one_ ctx)
             ~f:(ZInt.one_ ctx))
   end
@@ -628,24 +1231,13 @@ end
 module ZKey = struct
   type t = ZExpr.t
 
-  let _create_const_of_keystr : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_key_keystr
-      ~recog_func_name:CONST._recog_key_keystr
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some (ZStr.sort ctx))]
-      ~field_sort_refs:[1]
-
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> ZDatatype.create_sort ctx
-      ~name:CONST._sort_key
-      ~const_list:[(_create_const_of_keystr ctx)]
+  = ZDatatype.read_key_sort
 
   let of_string : ZCtx.t -> string -> t
   =fun ctx s -> sort ctx |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string ctx s]
   let create_keystr : ZCtx.t -> ZExpr.t -> t
   =fun ctx content -> sort ctx |> ZDatatype.create ~const_idx:0 ~expr_list:[content]
-
 
   let _read_innerstr : t -> ZStr.t
   =fun t -> ZDatatype.read t ~const_idx:0 ~field_idx:0
@@ -666,27 +1258,8 @@ end
 module ZKeyHash = struct
   type t = ZExpr.t
 
-  let _create_const_of_str : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_keyhash_str
-      ~recog_func_name:CONST._recog_keyhash_str
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some (ZStr.sort ctx))]
-      ~field_sort_refs:[1]
-  let _create_const_of_hashkey : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_keyhash_hashkey
-      ~recog_func_name:CONST._recog_keyhash_hashkey
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some (ZKey.sort ctx))]
-      ~field_sort_refs:[1]
-  
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> ZDatatype.create_sort ctx
-      ~name:CONST._sort_keyhash
-      ~const_list:[ (_create_const_of_str ctx);
-                    (_create_const_of_hashkey ctx);
-                  ]
+  = ZDatatype.read_keyhash_sort
 
   let of_string : ZCtx.t -> string -> t
   =fun ctx s -> sort ctx |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string ctx s]
@@ -728,36 +1301,15 @@ end
 module ZOption = struct
   type t = ZExpr.t
 
-  let _create_const_of_none : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_option_none
-      ~recog_func_name:CONST._recog_option_none
-      ~field_names:[]
-      ~field_sorts:[]
-      ~field_sort_refs:[]
-  let _create_const_of_some : ZCtx.t -> content_sort:ZSort.t -> ZDatatype.const
-  =fun ctx ~content_sort -> begin
-    ZDatatype.create_const ctx
-      ~name:CONST._const_option_some
-      ~recog_func_name:CONST._recog_option_some
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some content_sort)]
-      ~field_sort_refs:[1]
-  end
-  let _create_sort_name : content_sort:ZSort.t -> string
-  =fun ~content_sort -> (CONST._sort_option) ^ "(" ^ (ZSort.to_string content_sort) ^ ")"
-
-  let create_sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
-  =fun ctx ~content_sort -> begin
-    ZDatatype.create_sort ctx
-      ~name:(_create_sort_name ~content_sort:content_sort)
-      ~const_list:[(_create_const_of_none ctx); (_create_const_of_some ctx ~content_sort:content_sort)]
-  end
+  let sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
+  = ZDatatype.read_option_sort
 
   let create_none : ZCtx.t -> content_sort:ZSort.t -> t
-  =fun ctx ~content_sort -> create_sort ctx ~content_sort:content_sort |> ZDatatype.create ~const_idx:0 ~expr_list:[]
+  = fun ctx ~content_sort -> sort ctx ~content_sort:content_sort |> ZDatatype.create ~const_idx:0 ~expr_list:[]
+
   let create_some : ZCtx.t -> content:ZExpr.t -> t
-  =fun ctx ~content -> create_sort ctx ~content_sort:(content |> ZExpr.read_sort) |> ZDatatype.create ~const_idx:1 ~expr_list:[content]
+  = fun ctx ~content -> sort ctx ~content_sort:(content |> ZExpr.read_sort) |> ZDatatype.create ~const_idx:1 ~expr_list:[content]
+
   let read : t -> ZExpr.t
   =ZDatatype.read ~const_idx:1 ~field_idx:0
 
@@ -782,31 +1334,13 @@ end
 module ZPair = struct
   type t = ZExpr.t
 
-  let _create_const_of_pair : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZDatatype.const
-  =fun ctx ~fst_sort ~snd_sort -> begin
-    ZDatatype.create_const ctx
-      ~name:CONST._const_pair
-      ~recog_func_name:CONST._recog_pair
-      ~field_names:[(CONST._field_pair_fst); (CONST._field_pair_snd)]
-      ~field_sorts:[(Some fst_sort); (Some snd_sort)]
-      ~field_sort_refs:[1; 2]
-  end
-  let _create_sort_name : fst_sort:ZSort.t -> snd_sort:ZSort.t -> string
-  =fun ~fst_sort ~snd_sort -> (CONST._sort_pair) ^ "(" ^ (ZSort.to_string fst_sort) ^ ", " ^ (ZSort.to_string snd_sort) ^ ")"
-
-  let create_sort : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZSort.t
-  =fun ctx ~fst_sort ~snd_sort -> begin
-    ZDatatype.create_sort ctx
-      ~name:(_create_sort_name ~fst_sort:fst_sort ~snd_sort:snd_sort)
-      ~const_list:[(_create_const_of_pair ctx ~fst_sort:fst_sort ~snd_sort:snd_sort)]
-  end
+  let sort : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZSort.t
+  = ZDatatype.read_pair_sort
 
   let create : ZCtx.t -> fst:ZExpr.t -> snd:ZExpr.t -> t
   =fun ctx ~fst ~snd -> begin
-    (create_sort ctx
-      ~fst_sort:(fst |> ZExpr.read_sort)
-      ~snd_sort:(snd |> ZExpr.read_sort)) |>
-    ZDatatype.create ~const_idx:0 ~expr_list:[fst; snd]
+    sort ctx ~fst_sort:(fst |> ZExpr.read_sort) ~snd_sort:(snd |> ZExpr.read_sort)
+    |> ZDatatype.create ~const_idx:0 ~expr_list:[fst; snd]
   end
   let read_fst : t -> ZExpr.t
   =ZDatatype.read ~const_idx:0 ~field_idx:0
@@ -829,58 +1363,8 @@ end
 module ZBytes = struct
   type t = ZExpr.t
 
-  let _create_const_of_bytnil : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:"TODO: BYTENIL"
-      ~recog_func_name:"TODO: RECOG_BYTENIL"
-      ~field_names:[]
-      ~field_sorts:[]
-      ~field_sort_refs:[]
-  let _create_const_of_bytstr : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_bytes_bytstr
-      ~recog_func_name:CONST._recog_bytes_bytstr
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some (ZStr.sort ctx))]
-      ~field_sort_refs:[1]
-  let _create_const_of_concatenated : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_bytes_concatenated
-      ~recog_func_name:CONST._recog_bytes_concatenated
-      ~field_names:[(CONST._field_pair_fst); (CONST._field_pair_snd)]
-      ~field_sorts:[None; None]
-      ~field_sort_refs:[0; 0]
-  let _create_const_of_blake2b : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_bytes_blake2b
-      ~recog_func_name:CONST._recog_bytes_blake2b
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[None]
-      ~field_sort_refs:[0]
-  let _create_const_of_sha256 : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_bytes_sha256
-      ~recog_func_name:CONST._recog_bytes_sha256
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[None]
-      ~field_sort_refs:[0]
-  let _create_const_of_sha512 : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_bytes_sha512
-      ~recog_func_name:CONST._recog_bytes_sha512
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[None]
-      ~field_sort_refs:[0]
-
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> ZDatatype.create_sort ctx
-    ~name:CONST._sort_bytes
-    ~const_list:[ (_create_const_of_bytstr ctx);
-                  (_create_const_of_concatenated ctx);
-                  (_create_const_of_blake2b ctx);
-                  (_create_const_of_sha256 ctx);
-                  (_create_const_of_sha512 ctx);
-                ]
+  = ZDatatype.read_bytes_sort
  
   (* let bytnil : ZCtx.t -> t
   =fun ctx -> sort ctx |> ZDatatype.create ~const_idx:0 ~expr_list:[] *)
@@ -917,27 +1401,8 @@ end
 module ZSignature = struct
   type t = ZExpr.t
 
-  let _create_const_of_sigstr : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_signature_sigstr
-      ~recog_func_name:CONST._recog_signature_sigstr
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some (ZStr.sort ctx))]
-      ~field_sort_refs:[1]
-  let _create_const_of_signed : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_signature_signed
-      ~recog_func_name:CONST._recog_signature_signed
-      ~field_names:[(CONST._field_pair_fst); (CONST._field_pair_snd)]
-      ~field_sorts:[(Some (ZKey.sort ctx)); (Some (ZBytes.sort ctx))]
-      ~field_sort_refs:[1; 2]
-
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> ZDatatype.create_sort ctx
-    ~name:CONST._sort_signature
-    ~const_list:[ (_create_const_of_sigstr ctx);
-                  (_create_const_of_signed ctx);
-                ]
+  = ZDatatype.read_sig_sort
 
   let of_string : ZCtx.t -> string -> t
   =fun ctx s -> sort ctx |> ZDatatype.create ~const_idx:0 ~expr_list:[ZStr.of_string ctx s]
@@ -967,19 +1432,8 @@ end
 module ZAddress = struct
   type t = ZExpr.t
 
-  let _create_const_of_addrkh : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_address_addrkh
-      ~recog_func_name:CONST._recog_address_addrkh
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some (ZKeyHash.sort ctx))]
-      ~field_sort_refs:[1]
-
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> ZDatatype.create_sort ctx
-    ~name:CONST._sort_address
-    ~const_list:[ (_create_const_of_addrkh ctx);
-                ]
+  = ZDatatype.read_addr_sort
 
   let of_string : ZCtx.t -> string -> t
   =fun ctx s -> sort ctx |> ZDatatype.create ~const_idx:0 ~expr_list:[ZKeyHash.of_string ctx s]
@@ -1008,44 +1462,19 @@ end
 module ZOr = struct
   type t = ZExpr.t
 
-  let _create_const_of_left : ZCtx.t -> left_sort:ZSort.t -> ZDatatype.const
-  =fun ctx ~left_sort -> begin
-    ZDatatype.create_const ctx
-      ~name:CONST._const_or_left
-      ~recog_func_name:CONST._recog_or_left
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some left_sort)]
-      ~field_sort_refs:[1]
-  end
-  let _create_const_of_right : ZCtx.t -> right_sort:ZSort.t -> ZDatatype.const
-  =fun ctx ~right_sort -> begin
-    ZDatatype.create_const ctx
-      ~name:CONST._const_or_right
-      ~recog_func_name:CONST._recog_or_right
-      ~field_names:[(CONST._field_content)]
-      ~field_sorts:[(Some right_sort)]
-      ~field_sort_refs:[1]
-  end
-  let _create_sort_name : left_sort:ZSort.t -> right_sort:ZSort.t -> string
-  =fun ~left_sort ~right_sort -> (CONST._sort_or) ^ "(" ^ (ZSort.to_string left_sort) ^ ", " ^ (ZSort.to_string right_sort) ^ ")"
-
-  let create_sort : ZCtx.t -> left_sort:ZSort.t -> right_sort:ZSort.t -> ZSort.t
-  =fun ctx ~left_sort ~right_sort -> begin
-    ZDatatype.create_sort ctx
-      ~name:(_create_sort_name ~left_sort:left_sort ~right_sort:right_sort)
-      ~const_list:[(_create_const_of_left ctx ~left_sort:left_sort); (_create_const_of_right ctx ~right_sort:right_sort)]
-  end
+  let sort : ZCtx.t -> left_sort:ZSort.t -> right_sort:ZSort.t -> ZSort.t
+  = ZDatatype.read_or_sort
 
   let create_left : ZCtx.t -> left_content:ZExpr.t -> right_sort:ZSort.t -> t
   =fun ctx ~left_content ~right_sort -> begin
-    (create_sort ctx
+    (sort ctx
       ~left_sort:(left_content |> ZExpr.read_sort)
       ~right_sort:right_sort) |>
     ZDatatype.create ~const_idx:0 ~expr_list:[left_content]
   end
   let create_right : ZCtx.t -> left_sort:ZSort.t -> right_content:ZExpr.t -> t
   =fun ctx ~left_sort ~right_content -> begin
-    (create_sort ctx
+    (sort ctx
       ~left_sort:left_sort
       ~right_sort:(right_content |> ZExpr.read_sort)) |>
     ZDatatype.create ~const_idx:1 ~expr_list:[right_content]
@@ -1076,50 +1505,30 @@ end
 module ZList = struct
   type t = ZExpr.t
 
-  let _create_const_of_nil : ZCtx.t -> ZDatatype.const
-  =fun ctx -> ZDatatype.create_const ctx
-      ~name:CONST._const_list_nil
-      ~recog_func_name:CONST._recog_list_nil
-      ~field_names:[]
-      ~field_sorts:[]
-      ~field_sort_refs:[]
-  let _create_const_of_cons : ZCtx.t -> content_sort:ZSort.t -> ZDatatype.const
-  =fun ctx ~content_sort -> begin
-    ZDatatype.create_const ctx
-      ~name:CONST._const_list_cons
-      ~recog_func_name:CONST._recog_list_cons
-      ~field_names:[(CONST._field_list_head); (CONST._field_list_tail)]
-      ~field_sorts:[(Some content_sort); None]
-      ~field_sort_refs:[1; 0]
-  end
-  let _create_sort_name : content_sort:ZSort.t -> string
-  =fun ~content_sort -> (CONST._sort_list) ^ "(" ^ (ZSort.to_string content_sort) ^ ")"
-
   let create_sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
-  =fun ctx ~content_sort -> begin
-    ZDatatype.create_sort ctx
-      ~name:(_create_sort_name ~content_sort:content_sort)
-      ~const_list:[(_create_const_of_nil ctx); (_create_const_of_cons ctx ~content_sort:content_sort)]
-  end
+  = ZDatatype.read_list_sort
 
   let create : ZCtx.t -> content_sort:ZSort.t -> t
-  =fun ctx ~content_sort -> create_sort ctx ~content_sort:content_sort |> ZDatatype.create ~const_idx:0 ~expr_list:[]
+  = fun ctx ~content_sort -> Z3.Z3List.nil (create_sort ctx ~content_sort)
+  
   let read_head : t -> ZExpr.t
-  =ZDatatype.read ~const_idx:1 ~field_idx:0
+  = fun e -> Z3.Z3List.get_head_decl (ZExpr.read_sort e) |> ZFunc.apply ~params:[ e; ]
+
   let read_tail : t -> t
-  =ZDatatype.read ~const_idx:1 ~field_idx:1
-  let update : ZCtx.t -> t -> content:ZExpr.t -> t
-  =fun ctx e ~content -> create_sort ctx ~content_sort:(content |> ZExpr.read_sort) |> ZDatatype.create ~const_idx:1 ~expr_list:[content; e]
+  = fun e -> Z3.Z3List.get_tail_decl (ZExpr.read_sort e) |> ZFunc.apply ~params:[ e; ]
+
+  let update : t -> content:ZExpr.t -> t
+  = fun e ~content -> Z3.Z3List.get_cons_decl (ZExpr.read_sort e) |> ZFunc.apply ~params:[ content; e; ]
 
   let create_eq : ZCtx.t -> t -> t -> ZBool.t
-  =ZBool.create_eq
+  = ZBool.create_eq
   let create_neq : ZCtx.t -> t -> t -> ZBool.t
-  =ZBool.create_neq
+  = ZBool.create_neq
 
   let is_nil : t -> ZBool.t
-  =ZDatatype.is_field ~const_idx:0
+  = fun e -> Z3.Z3List.get_is_nil_decl (ZExpr.read_sort e) |> ZFunc.apply ~params:[ e; ]
   let is_cons : t -> ZBool.t
-  =ZDatatype.is_field ~const_idx:1
+  = fun e -> Z3.Z3List.get_is_cons_decl (ZExpr.read_sort e) |> ZFunc.apply ~params:[ e; ]
 end
 
 
@@ -1132,18 +1541,8 @@ end
 module ZMap = struct
   type t = ZExpr.t
   
-  let _count_map : int ref
-  =ref 0
-  let _create_name : key_sort:ZSort.t -> value_sort:ZSort.t -> string
-  =fun ~key_sort ~value_sort -> begin
-    _count_map := !_count_map + 1;
-    (CONST._name_map) ^ (!_count_map |> string_of_int) ^ "(" ^ (ZSort.to_string key_sort) ^ " |-> " ^ (ZSort.to_string value_sort) ^ ")"
-  end
-
   let create_sort : ZCtx.t -> key_sort:ZSort.t -> value_sort:ZSort.t -> ZSort.t
-  =fun ctx ~key_sort ~value_sort -> begin
-    Z3.Z3Array.mk_sort ctx key_sort (ZOption.create_sort ctx ~content_sort:value_sort)
-  end
+  = ZDatatype.read_map_sort
 
   let read_default_value : ZCtx.t -> t -> ZExpr.t
   =fun ctx e -> begin
@@ -1198,7 +1597,7 @@ module ZOperation = struct (* Not completely implemented. *)
   type t = ZExpr.t
   
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> ZSort.create ctx ~name:CONST._sort_operation
+  = ZDatatype.read_operation_sort
 
   let create_eq : ZCtx.t -> t -> t -> ZBool.t
   =ZBool.create_eq
@@ -1217,7 +1616,7 @@ module ZContract = struct (* Not completely implemented. *)
   type t = ZExpr.t
   
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> ZSort.create ctx ~name:CONST._sort_contract
+  = ZDatatype.read_contract_sort
 
   let create_eq : ZCtx.t -> t -> t -> ZBool.t
   =ZBool.create_eq
@@ -1236,7 +1635,7 @@ module ZLambda = struct (* Not completely implemented. *)
   type t = ZExpr.t
   
   let sort : ZCtx.t -> ZSort.t
-  =fun ctx -> ZSort.create ctx ~name:CONST._sort_lambda
+  = ZDatatype.read_lambda_sort
 
   let create_eq : ZCtx.t -> t -> t -> ZBool.t
   =ZBool.create_eq
