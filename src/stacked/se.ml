@@ -259,7 +259,10 @@ and run_inst_i : cache ref -> (mich_i cc) -> sym_state -> state_set
   let mich_int_0 : mich_v cc = MV_lit_int Z.zero |> gen_dummy_cc in
   (* SUGAR - add literals *)
   let ss_add_literal : mich_v cc -> state_set -> state_set
-  = fun v sset -> { sset with literals=(PSet.add sset.literals (Comp.base_comp_from_v v ~loc:0)); } in
+  = fun v sset -> begin
+    let (v') : mich_v cc = gen_dummy_cc v.cc_v in
+    { sset with literals=(PSet.add sset.literals (Comp.base_comp_from_v v' ~loc:0)); }
+  end in (* function ss_add_literal end *)
   (* FUNCTION BEGIN *)
   fun cache inst ss -> begin
   (* DEBUG START *) 
