@@ -480,8 +480,8 @@ module T2S = struct
 
   exception Not_Implemented_f of Tz.mich_f
   exception Not_Implemented_e of (Tz.mich_v Tz.cc)
-  exception SMT_Encode_Error_f of (mich_f * string * int)
-  exception SMT_Encode_Error_e of (mich_v cc * string * int)
+  exception SMT_Encode_Error_f of (mich_f * string * exn)
+  exception SMT_Encode_Error_e of (mich_v cc * string * exn)
 
   let rec cv_mt : ZCtx.t -> mich_t -> ZSort.t = 
     (fun ctx t1 ->
@@ -837,7 +837,7 @@ module T2S = struct
     | MV_sigma_tmplm v1 -> sigma_lm ~l:v1 ~acc:(fun e -> MV_cdr e |> gen_dummy_cc) ~sigma:(fun l -> MV_sigma_tmplm l |> gen_dummy_cc)
     ) (* function cv_mv end *)
 
-  and cv_mvcc : ZCtx.t -> mich_v cc -> ZExpr.t = (fun ctx x -> try cv_mv ctx x.cc_v with | ZError s -> Utils.Log.err (fun m -> m "TzCvt SMT Encoding Error : %s" s); SMT_Encode_Error_e (x, s, Stdlib.__LINE__) |> raise)
+  and cv_mvcc : ZCtx.t -> mich_v cc -> ZExpr.t = (fun ctx x -> try cv_mv ctx x.cc_v with | ZError s as e -> SMT_Encode_Error_e (x, s, e) |> raise)
   let rec cv_mf : ZCtx.t -> mich_f -> ZFormula.t =
     (fun ctx vf -> 
       let make_eq : e1:mich_v cc -> e2:mich_v cc -> ZFormula.t
@@ -897,7 +897,7 @@ module T2S = struct
       | MF_shiftR_nnn_rhs_in_256 (_, e2) -> ZNat.create_le ctx (cv_mvcc ctx e2) (ZNat.of_int ctx 256)
       )
     with
-    | ZError s -> Utils.Log.err (fun m -> m "TzCvt SMT Encoding Error : %s" s); SMT_Encode_Error_f (vf, s, Stdlib.__LINE__) |> raise
+    | ZError s as e -> SMT_Encode_Error_f (vf, s, e) |> raise
     ) (* function cv_mf end *)
 end (* module T2S end *)
 

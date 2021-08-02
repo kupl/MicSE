@@ -121,17 +121,6 @@ module ZSort : sig
   val create : ZCtx.t -> name:string -> t
 
   val to_string : t -> string
-
-  (****************************************************************************)
-  (* Sort of Types                                                            *)
-  (****************************************************************************)
-  val sort_map : (ZCtx.t, (string, t) Core.Map.Poly.t) Core.Map.Poly.t Stdlib.ref
-  val _read_x_sort : ZCtx.t -> string -> cst:(ZCtx.t -> t) -> t
-
-  val read_unit_sort : ZCtx.t -> t
-  val read_bool_sort : ZCtx.t -> t
-  val read_int_sort : ZCtx.t -> t
-  val read_str_sort : ZCtx.t -> t
 end
 
 
@@ -152,30 +141,6 @@ module ZExpr : sig
   val read_sort : t -> ZSort.t
 
   val to_string : t -> string
-
-  (****************************************************************************)
-  (* Expression of Literals                                                   *)
-  (****************************************************************************)
-  type 'a _lit_map = (ZCtx.t, ('a, t) Core.Map.Poly.t) Core.Map.Poly.t Stdlib.ref
-  
-  val _read_x_lit : 'a _lit_map -> ZCtx.t -> 'a -> cst:(ZCtx.t -> t) -> t
-
-  (* Unit Literals ************************************************************)
-  val _unit_lit_map : unit _lit_map
-  val read_unit : ZCtx.t -> t
-
-  (* Boolean Literals *********************************************************)
-  val _bool_lit_map : bool _lit_map
-  val read_bool : ZCtx.t -> bool -> t
-
-  (* Integer Literals *********************************************************)
-  val _int_lit_map : Z.t _lit_map
-  val read_int : ZCtx.t -> int -> t
-  val read_zint : ZCtx.t -> Z.t -> t
-
-  (* String Literals **********************************************************)
-  val _str_lit_map : string _lit_map
-  val read_str : ZCtx.t -> string -> t
 end
 
 
@@ -218,9 +183,24 @@ module ZDatatype : sig
   val read : ZExpr.t -> const_idx:int -> field_idx:int -> ZExpr.t
 
   val is_field : ZExpr.t -> const_idx:int -> ZExpr.t
+end
+
+
+(******************************************************************************)
+(******************************************************************************)
+(* Sort of Types                                                              *)
+(******************************************************************************)
+(******************************************************************************)
+
+module ZSoT : sig
+  (****************************************************************************)
+  (* Sorts                                                                    *)
+  (****************************************************************************)
+  val _sort_map : (ZCtx.t, (string, ZSort.t) Core.Map.Poly.t) Core.Map.Poly.t Stdlib.ref
+  val _read_x_sort : ZCtx.t -> string -> cst:(ZCtx.t -> ZSort.t) -> ZSort.t
 
   (****************************************************************************)
-  (* Pre-defined Datatypes and Its Sort                                       *)
+  (* Data Type Constructors                                                   *)
   (****************************************************************************)
   type typ =
     | Key
@@ -243,52 +223,64 @@ module ZDatatype : sig
     | List_nil
     | List_cons         of ZSort.t
 
-  type _typ_map = (ZCtx.t, (typ, const) Core.Map.Poly.t) Core.Map.Poly.t Stdlib.ref
+  type _typ_map = (ZCtx.t, (typ, ZDatatype.const) Core.Map.Poly.t) Core.Map.Poly.t Stdlib.ref
 
   val _const_map : _typ_map
-  val _read_x_const : _typ_map -> ZCtx.t -> typ -> cst:(ZCtx.t -> const) -> const
+  val _read_x_const : ZCtx.t -> typ -> cst:(ZCtx.t -> ZDatatype.const) -> ZDatatype.const
+
+  (* Unit Type ****************************************************************)
+  val read_unit_sort : ZCtx.t -> ZSort.t
+
+  (* Boolean Type *************************************************************)
+  val read_bool_sort : ZCtx.t -> ZSort.t
+
+  (* Integer Type *************************************************************)
+  val read_int_sort : ZCtx.t -> ZSort.t
+
+  (* String Type **************************************************************)
+  val read_str_sort : ZCtx.t -> ZSort.t
 
   (* Key Type *****************************************************************)
-  val read_key_const : ZCtx.t -> const
+  val _read_key_const : ZCtx.t -> ZDatatype.const
   val read_key_sort : ZCtx.t -> ZSort.t
 
   (* Key Hash Type ************************************************************)
-  val read_keyhash_const_of_str : ZCtx.t -> const
-  val read_keyhash_const_of_key : ZCtx.t -> const
+  val _read_keyhash_const_of_str : ZCtx.t -> ZDatatype.const
+  val _read_keyhash_const_of_key : ZCtx.t -> ZDatatype.const
   val read_keyhash_sort : ZCtx.t -> ZSort.t
 
   (* Option Type **************************************************************)
-  val read_option_const_of_none : ZCtx.t -> const
-  val read_option_const_of_some : ZCtx.t -> content_sort:ZSort.t -> const
+  val _read_option_const_of_none : ZCtx.t -> ZDatatype.const
+  val _read_option_const_of_some : ZCtx.t -> content_sort:ZSort.t -> ZDatatype.const
   val _create_option_sort_name : content_sort:ZSort.t -> string
   val read_option_sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
 
   (* Pair Type ****************************************************************)
-  val read_pair_const : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> const
+  val _read_pair_const : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZDatatype.const
   val _create_pair_sort_name : fst_sort:ZSort.t -> snd_sort:ZSort.t -> string
   val read_pair_sort : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZSort.t
 
   (* Bytes Type ***************************************************************)
-  val read_bytes_const_of_nil : ZCtx.t -> const
-  val read_bytes_const_of_str : ZCtx.t -> const
-  val read_bytes_const_of_concat : ZCtx.t -> const
-  val read_bytes_const_of_blake2b : ZCtx.t -> const
-  val read_bytes_const_of_sha256 : ZCtx.t -> const
-  val read_bytes_const_of_sha512 : ZCtx.t -> const
+  val _read_bytes_const_of_nil : ZCtx.t -> ZDatatype.const
+  val _read_bytes_const_of_str : ZCtx.t -> ZDatatype.const
+  val _read_bytes_const_of_concat : ZCtx.t -> ZDatatype.const
+  val _read_bytes_const_of_blake2b : ZCtx.t -> ZDatatype.const
+  val _read_bytes_const_of_sha256 : ZCtx.t -> ZDatatype.const
+  val _read_bytes_const_of_sha512 : ZCtx.t -> ZDatatype.const
   val read_bytes_sort : ZCtx.t -> ZSort.t
 
   (* Signature Type ***********************************************************)
-  val read_sig_const_of_str : ZCtx.t -> const
-  val read_sig_const_of_signed : ZCtx.t -> const
+  val _read_sig_const_of_str : ZCtx.t -> ZDatatype.const
+  val _read_sig_const_of_signed : ZCtx.t -> ZDatatype.const
   val read_sig_sort : ZCtx.t -> ZSort.t
 
   (* Address Type *************************************************************)
-  val read_addr_const : ZCtx.t -> const
+  val _read_addr_const : ZCtx.t -> ZDatatype.const
   val read_addr_sort : ZCtx.t -> ZSort.t
 
   (* Or Type ******************************************************************)
-  val read_or_const_of_left : ZCtx.t -> left_sort:ZSort.t -> const
-  val read_or_const_of_right : ZCtx.t -> right_sort:ZSort.t -> const
+  val _read_or_const_of_left : ZCtx.t -> left_sort:ZSort.t -> ZDatatype.const
+  val _read_or_const_of_right : ZCtx.t -> right_sort:ZSort.t -> ZDatatype.const
   val _create_or_sort_name : left_sort:ZSort.t -> right_sort:ZSort.t -> string
   val read_or_sort : ZCtx.t -> left_sort:ZSort.t -> right_sort:ZSort.t -> ZSort.t
 
@@ -308,6 +300,36 @@ module ZDatatype : sig
 
   (* Lambda Type **************************************************************)
   val read_lambda_sort : ZCtx.t -> ZSort.t
+end
+
+
+(******************************************************************************)
+(******************************************************************************)
+(* Expressions of Literals                                                    *)
+(******************************************************************************)
+(******************************************************************************)
+
+module ZEoL : sig
+  type 'a _lit_map = (ZCtx.t, ('a, ZExpr.t) Core.Map.Poly.t) Core.Map.Poly.t Stdlib.ref
+  
+  val _read_x_lit : 'a _lit_map -> ZCtx.t -> 'a -> cst:(ZCtx.t -> ZExpr.t) -> ZExpr.t
+
+  (* Unit Literals ************************************************************)
+  val _unit_lit_map : unit _lit_map
+  val read_unit : ZCtx.t -> ZExpr.t
+
+  (* Boolean Literals *********************************************************)
+  val _bool_lit_map : bool _lit_map
+  val read_bool : ZCtx.t -> bool -> ZExpr.t
+
+  (* Integer Literals *********************************************************)
+  val _int_lit_map : Z.t _lit_map
+  val read_int : ZCtx.t -> int -> ZExpr.t
+  val read_zint : ZCtx.t -> Z.t -> ZExpr.t
+
+  (* String Literals **********************************************************)
+  val _str_lit_map : string _lit_map
+  val read_str : ZCtx.t -> string -> ZExpr.t
 end
 
 
@@ -671,20 +693,18 @@ end
 (******************************************************************************)
 
 module ZOr : sig
-  type t = ZExpr.t
-
   val sort : ZCtx.t -> left_sort:ZSort.t -> right_sort:ZSort.t -> ZSort.t
 
-  val create_left : ZCtx.t -> left_content:ZExpr.t -> right_sort:ZSort.t -> t
-  val create_right : ZCtx.t -> left_sort:ZSort.t -> right_content:ZExpr.t -> t
-  val read_left : t -> ZExpr.t
-  val read_right : t -> ZExpr.t
+  val create_left : ZCtx.t -> left_content:ZExpr.t -> right_sort:ZSort.t -> ZExpr.t
+  val create_right : ZCtx.t -> left_sort:ZSort.t -> right_content:ZExpr.t -> ZExpr.t
+  val read_left : ZExpr.t -> ZExpr.t
+  val read_right : ZExpr.t -> ZExpr.t
 
-  val create_eq : ZCtx.t -> t -> t -> ZBool.t
-  val create_neq : ZCtx.t -> t -> t -> ZBool.t
+  val create_eq : ZCtx.t -> ZExpr.t -> ZExpr.t -> ZExpr.t
+  val create_neq : ZCtx.t -> ZExpr.t -> ZExpr.t -> ZExpr.t
 
-  val is_left : t -> ZBool.t
-  val is_right : t -> ZBool.t
+  val is_left : ZExpr.t -> ZExpr.t
+  val is_right : ZExpr.t -> ZExpr.t
 end
 
 
