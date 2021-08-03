@@ -56,15 +56,9 @@ let f_show_trueinv_solving : unit -> unit
         sset.queries
         (Stacked.Se.true_invmap_of_blocked_sset sset.Stacked.Se.blocked)
       |> Stacked.Prove.f_print_query_solved_result_simple_pretty *)
-    with 
-    | Stacked.TzCvt.T2S.SMT_Encode_Error_f (vf, _, line) ->
-      Stacked.TzCvt.T2Jnocc.cv_mf vf
-      |> Yojson.Safe.pretty_to_string |> print_endline
-      ; Stdlib.failwith ("Stacked.TzCvt.T2S.SMT_Encode_Error_f : " ^ (Stdlib.string_of_int line))
-    | Stacked.TzCvt.T2S.SMT_Encode_Error_e (vv, _, line) ->
-      Stacked.TzCvt.T2Jnocc.cv_mvcc vv
-      |> Yojson.Safe.pretty_to_string |> print_endline
-      ; Stdlib.failwith ("Stacked.TzCvt.T2S.SMT_Encode_Error_e : " ^ (Stdlib.string_of_int line))
+    with
+    | Stacked.TzCvt.T2S.Not_Implemented_f f as e -> Utils.Log.err (fun m -> m "TzCvt : T2S : Not Implemented Smt Encoding for Formula\n\tFormula: %s\n\tBack Traces:\n%s" (f |> Stacked.TzCvt.T2Jnocc.cv_mf |> Yojson.Safe.to_string) (Printexc.get_backtrace ())); Stdlib.raise e
+    | Stacked.TzCvt.T2S.Not_Implemented_e v as e -> Utils.Log.err (fun m -> m "TzCvt : T2S : Not Implemented Smt Encoding for Value\n\tFormula: %s\n\tBack Traces:\n%s" (v |> Stacked.TzCvt.T2Jnocc.cv_mvcc |> Yojson.Safe.to_string) (Printexc.get_backtrace ())); Stdlib.raise e
   )
 end (* function f_show_trueinv_solving *)
 
