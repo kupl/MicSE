@@ -837,7 +837,7 @@ module T2S = struct
     | MV_sigma_tmplm v1 -> sigma_lm ~l:v1 ~acc:(fun e -> MV_cdr e |> gen_dummy_cc) ~sigma:(fun l -> MV_sigma_tmplm l |> gen_dummy_cc)
     ) (* function cv_mv end *)
 
-  and cv_mvcc : ZCtx.t -> mich_v cc -> ZExpr.t = (fun ctx x -> try cv_mv ctx x.cc_v with | ZError s as e -> SMT_Encode_Error_e (x, s, e) |> raise)
+  and cv_mvcc : ZCtx.t -> mich_v cc -> ZExpr.t = (fun ctx x -> try cv_mv ctx x.cc_v with | ZError s as e -> (Utils.Log.err (fun m -> m "Z3 Error Trace:\n%s" (Printexc.get_backtrace ()))); SMT_Encode_Error_e (x, s, e) |> raise)
   let rec cv_mf : ZCtx.t -> mich_f -> ZFormula.t =
     (fun ctx vf -> 
       let make_eq : e1:mich_v cc -> e2:mich_v cc -> ZFormula.t
@@ -897,7 +897,7 @@ module T2S = struct
       | MF_shiftR_nnn_rhs_in_256 (_, e2) -> ZNat.create_le ctx (cv_mvcc ctx e2) (ZNat.of_int ctx 256)
       )
     with
-    | ZError s as e -> SMT_Encode_Error_f (vf, s, e) |> raise
+    | ZError s as e -> (Utils.Log.err (fun m -> m "Z3 Error Trace:\n%s" (Printexc.get_backtrace ()))); SMT_Encode_Error_f (vf, s, e) |> raise
     ) (* function cv_mf end *)
 end (* module T2S end *)
 

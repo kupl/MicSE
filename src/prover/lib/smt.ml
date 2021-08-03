@@ -144,10 +144,13 @@ module ZSort = struct
   = fun ctx -> Z3.Sort.mk_uninterpreted ctx (ZSym.create_dummy ctx)
 
   let create : ZCtx.t -> name:string -> t
-  = fun ctx ~name -> Z3.Sort.mk_uninterpreted ctx (ZSym.create ctx name)
+  = fun ctx ~name -> Z3.Sort.mk_uninterpreted_s ctx name
 
   let to_string : t -> string
-  = Z3.Sort.to_string
+  = fun s -> begin
+    Z3.Sort.to_string s
+    |> Core.String.substr_replace_all ~pattern:"|" ~with_:""
+  end (* function to_string end *)
 end
 
 
@@ -164,7 +167,7 @@ module ZExpr = struct
   = fun ctx sort -> Z3.Expr.mk_const ctx (ZSym.create_dummy ctx) sort
 
   let create_var : ZCtx.t -> ZSort.t -> name:string -> t
-  = fun ctx sort ~name -> Z3.Expr.mk_const ctx (ZSym.create ctx name) sort
+  = fun ctx sort ~name -> Z3.Expr.mk_const_s ctx name sort
 
   let create_ite : ZCtx.t -> cond:t -> t:t -> f:t -> t
   = fun ctx ~cond ~t ~f -> Z3.Boolean.mk_ite ctx cond t f
@@ -219,9 +222,9 @@ module ZDatatype = struct
 
   let create_const : ZCtx.t -> name:string -> recog_func_name:string -> field_names:string list -> field_sorts:Z3.Sort.sort option list -> field_sort_refs:int list -> const
   = fun ctx ~name ~recog_func_name ~field_names ~field_sorts ~field_sort_refs -> begin
-    Z3.Datatype.mk_constructor
+    Z3.Datatype.mk_constructor_s
       ctx
-      (ZSym.create ctx name)
+      name
       (ZSym.create ctx recog_func_name)
       (Core.List.map field_names ~f:(ZSym.create ctx))
       field_sorts
@@ -229,7 +232,7 @@ module ZDatatype = struct
   end (* function create_const *)
 
   let create_sort : ZCtx.t -> name:string -> const_list:const list -> ZSort.t
-  = fun ctx ~name ~const_list -> Z3.Datatype.mk_sort ctx (ZSym.create ctx name) const_list
+  = fun ctx ~name ~const_list -> Z3.Datatype.mk_sort_s ctx name const_list
 
   let create_const_func : ZSort.t -> const_idx:int -> ZFunc.t
   = fun sort ~const_idx -> get_idx (Z3.Datatype.get_constructors sort) ~idx:const_idx
@@ -448,7 +451,7 @@ module ZSoT = struct
   end (* function read_option_const_of_some end *)
 
   let _create_option_sort_name : content_sort:ZSort.t -> string
-  = fun ~content_sort -> Printf.sprintf "%s_(%s)" CONST._sort_option (ZSort.to_string content_sort)
+  = fun ~content_sort -> Printf.sprintf "(%s %s)" CONST._sort_option (ZSort.to_string content_sort)
 
   let read_option_sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
   = fun ctx ~content_sort -> begin
@@ -473,7 +476,7 @@ module ZSoT = struct
   end (* function read_pair_const end *)
 
   let _create_pair_sort_name : fst_sort:ZSort.t -> snd_sort:ZSort.t -> string
-  = fun ~fst_sort ~snd_sort -> Printf.sprintf "%s_(%s,%s)" CONST._sort_pair (ZSort.to_string fst_sort) (ZSort.to_string snd_sort)
+  = fun ~fst_sort ~snd_sort -> Printf.sprintf "(%s %s %s)" CONST._sort_pair (ZSort.to_string fst_sort) (ZSort.to_string snd_sort)
 
   let read_pair_sort : ZCtx.t -> fst_sort:ZSort.t -> snd_sort:ZSort.t -> ZSort.t
   = fun ctx ~fst_sort ~snd_sort -> begin
@@ -646,7 +649,7 @@ module ZSoT = struct
   end (* function read_or_const_of_right end *)
 
   let _create_or_sort_name : left_sort:ZSort.t -> right_sort:ZSort.t -> string
-  = fun ~left_sort ~right_sort -> Printf.sprintf "%s_(%s,%s)" CONST._sort_pair (ZSort.to_string left_sort) (ZSort.to_string right_sort)
+  = fun ~left_sort ~right_sort -> Printf.sprintf "(%s %s %s)" CONST._sort_or (ZSort.to_string left_sort) (ZSort.to_string right_sort)
 
   let read_or_sort : ZCtx.t -> left_sort:ZSort.t -> right_sort:ZSort.t -> ZSort.t
   = fun ctx ~left_sort ~right_sort -> begin
@@ -659,7 +662,7 @@ module ZSoT = struct
 
   (* List Type ****************************************************************)
   let _create_list_sort_name : content_sort:ZSort.t -> string
-  = fun ~content_sort -> Printf.sprintf "%s_(%s)" CONST._sort_pair (ZSort.to_string content_sort)
+  = fun ~content_sort -> Printf.sprintf "(%s %s)" CONST._sort_list (ZSort.to_string content_sort)
 
   let read_list_sort : ZCtx.t -> content_sort:ZSort.t -> ZSort.t
   = fun ctx ~content_sort -> begin
@@ -670,7 +673,7 @@ module ZSoT = struct
 
   (* Map Type *****************************************************************)
   let _create_map_sort_name : key_sort:ZSort.t -> value_sort:ZSort.t -> string
-  = fun ~key_sort ~value_sort -> Printf.sprintf "%s_(%s,%s)" CONST._sort_map (ZSort.to_string key_sort) (ZSort.to_string value_sort)
+  = fun ~key_sort ~value_sort -> Printf.sprintf "(%s %s %s)" CONST._sort_map (ZSort.to_string key_sort) (ZSort.to_string value_sort)
 
   let read_map_sort : ZCtx.t -> key_sort:ZSort.t -> value_sort:ZSort.t -> ZSort.t
   = fun ctx ~key_sort ~value_sort -> begin
