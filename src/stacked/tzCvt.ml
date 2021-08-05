@@ -735,7 +735,11 @@ module T2S = struct
     | MV_slice_nnbo _ -> err eee
     | MV_unpack _ -> err eee
     | MV_contract_of_address _ -> err eee
-    | MV_isnat _ -> err eee
+    | MV_isnat e1 -> (
+      let (e1') : ZExpr.t = cv_mvcc ctx e1 in
+      let (some) : ZExpr.t = ZOption.create_some ctx ~content:e1' in
+      let (none) : ZExpr.t = ZOption.create_none ctx ~content_sort:(ZExpr.read_sort e1') in
+      ZExpr.create_ite ctx ~cond:(ZMutez.create_ge ctx (e1') (ZInt.zero_ ctx)) ~t:some ~f:none)
   
     (*************************************************************************)
     (* List                                                                  *)
