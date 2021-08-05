@@ -1220,7 +1220,7 @@ let optimize_v : mich_v cc -> mich_v cc
       let vvv' : mich_v cc = ov v2 in
       (match vvv'.cc_v with
       | MV_update_xomm (k, v_opt, _) -> (
-        if k = v1 then v_opt.cc_v else MV_get_xmoy ((ov v1), (vvv')))
+        if k.cc_v = v1.cc_v then v_opt.cc_v else MV_get_xmoy ((ov v1), (vvv')))
       | _ -> MV_get_xmoy ((ov v1), (vvv'))))
     (* | MV_get_xmoy  (v1, v2)           -> MV_get_xmoy ((ov v1), (ov v2)) *)
     | MV_get_xbmo  (v1, v2)           -> MV_get_xbmo ((ov v1), (ov v2))
