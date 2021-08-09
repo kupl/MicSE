@@ -1217,13 +1217,19 @@ let optimize_v : mich_v cc -> mich_v cc
     | MV_ediv_mnmm (v1, v2)           -> MV_ediv_mnmm ((ov v1), (ov v2))
     | MV_ediv_mmnm (v1, v2)           -> MV_ediv_mmnm ((ov v1), (ov v2))
     | MV_get_xmoy  (v1, v2)           -> (
-      let vvv' : mich_v cc = ov v2 in
-      (match vvv'.cc_v with
+      let (kkk') : mich_v cc = ov v1 in
+      let (mmm') : mich_v cc = ov v2 in
+      (match mmm'.cc_v with
       | MV_update_xomm (k, v_opt, _) -> (
-        if k.cc_v = v1.cc_v then v_opt.cc_v else MV_get_xmoy ((ov v1), (vvv')))
-      | _ -> MV_get_xmoy ((ov v1), (vvv'))))
-    (* | MV_get_xmoy  (v1, v2)           -> MV_get_xmoy ((ov v1), (ov v2)) *)
-    | MV_get_xbmo  (v1, v2)           -> MV_get_xbmo ((ov v1), (ov v2))
+        if k.cc_v = kkk'.cc_v then v_opt.cc_v else MV_get_xmoy (kkk', mmm'))
+      | _ -> MV_get_xmoy (kkk', mmm')))
+    | MV_get_xbmo  (v1, v2)           -> (
+      let (kkk') : mich_v cc = ov v1 in
+      let (mmm') : mich_v cc = ov v2 in
+      (match mmm'.cc_v with
+      | MV_update_xobmbm (k, v_opt, _) -> (
+        if k.cc_v = kkk'.cc_v then v_opt.cc_v else MV_get_xbmo (kkk', mmm'))
+      | _ -> MV_get_xbmo (kkk', mmm')))
     | MV_slice_nnso (v1, v2, v3)      -> MV_slice_nnso ((ov v1), (ov v2), (ov v3))
     | MV_slice_nnbo (v1, v2, v3)      -> MV_slice_nnbo ((ov v1), (ov v2), (ov v3))
     | MV_unpack (t1, v2)              -> MV_unpack (t1, (ov v2))
@@ -1280,13 +1286,25 @@ let optimize_v : mich_v cc -> mich_v cc
     (*************************************************************************)
     | MV_lit_map (t1, t2, vm3)    -> MV_lit_map (t1, t2, (vm3 |> CPMap.map ~f:ov))
     | MV_empty_map _              -> vvv.cc_v
-    | MV_update_xomm (v1, v2, v3) -> MV_update_xomm ((ov v1), (ov v2), (ov v3))
+    | MV_update_xomm (v1, v2, v3) -> (
+      let (kkk') : mich_v cc = ov v1 in
+      let (mmm') : mich_v cc = ov v3 in
+      (match mmm'.cc_v with
+      | MV_update_xomm (k, _, m) -> (
+        if k.cc_v = kkk'.cc_v then MV_update_xomm (kkk', (ov v2), m) else MV_update_xomm (kkk', (ov v2), mmm'))
+      | _ -> MV_update_xomm (kkk', (ov v2), mmm')))
     (*************************************************************************)
     (* Big Map                                                               *)
     (*************************************************************************)
-    | MV_lit_big_map (t1, t2, vm3)  -> MV_lit_map (t1, t2, (vm3 |> CPMap.map ~f:ov))
+    | MV_lit_big_map (t1, t2, vm3)  -> MV_lit_big_map (t1, t2, (vm3 |> CPMap.map ~f:ov))
     | MV_empty_big_map _            -> vvv.cc_v
-    | MV_update_xobmbm (v1, v2, v3) -> MV_update_xomm ((ov v1), (ov v2), (ov v3))
+    | MV_update_xobmbm (v1, v2, v3) -> (
+      let (kkk') : mich_v cc = ov v1 in
+      let (mmm') : mich_v cc = ov v3 in
+      (match mmm'.cc_v with
+      | MV_update_xobmbm (k, _, m) -> (
+        if k.cc_v = kkk'.cc_v then MV_update_xobmbm (kkk', (ov v2), m) else MV_update_xobmbm (kkk', (ov v2), mmm'))
+      | _ -> MV_update_xobmbm (kkk', (ov v2), mmm')))
     (*************************************************************************)
     (* Chain Id                                                              *)
     (*************************************************************************)
