@@ -2,5 +2,9 @@
   (name utils)
   (public_name micse.utils)
   (libraries
-    unix
+    core
+    logs
+    logs.threaded
+    mtime
+    mtime.clock.os
     ))

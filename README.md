@@ -41,7 +41,9 @@ MicSE can verify the absence of runtime failures of Michelson programs, e.g., no
 - Batteries
 - Core (v0.14.0)
 - Dune (v2.4.0): We use Dune to manage build system of OCaml project.
+- Logs
 - Menhir
+- Mtime
 - Ptime
 - Ocamlgraph
 - Yojson

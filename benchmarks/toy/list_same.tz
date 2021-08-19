@@ -1,0 +1,76 @@
+parameter (or (mutez %addElem) (unit %retElem));
+storage   (pair (list %lst mutez) (mutez %total));
+code
+  {
+    DUP;        # pair @parameter @storage : pair @parameter @storage
+    CDR;        # @storage : pair @parameter @storage
+    SWAP;       # pair @parameter @storage : @storage
+    CAR;        # @parameter : @storage
+    IF_LEFT
+      {
+        SWAP;       # @storage : @parameter%addElem
+        # == addElem ==
+        # sp.verify(params.value <= (sp.mutez(9223372036854775807) - self.data.total)) # @storage : @parameter%addElem
+        DUP;        # @storage : @storage : @parameter%addElem
+        DUG 2;      # @storage : @parameter%addElem : @storage
+        CDR;        # mutez : @parameter%addElem : @storage
+        PUSH mutez 9223372036854775807; # mutez : mutez : @parameter%addElem : @storage
+        SUB;        # mutez : @parameter%addElem : @storage
+        SWAP;       # @parameter%addElem : mutez : @storage
+        DUP;        # @parameter%addElem : @parameter%addElem : mutez : @storage
+        DUG 2;      # @parameter%addElem : mutez : @parameter%addElem : @storage
+        COMPARE;    # int : @parameter%addElem : @storage
+        LE;         # bool : @parameter%addElem : @storage
+        IF
+          {}
+          {
+            PUSH string "WrongCondition: params.value <= (sp.mutez(9223372036854775807) - self.data.total)"; # string : @parameter%addElem : @storage
+            FAILWITH;   # FAILED
+          }; # @parameter%addElem : @storage
+        SWAP;       # @storage : @parameter%addElem
+        # self.data.total += params.value # @storage : @parameter%addElem
+        DUP;        # @storage : @storage : @parameter%addElem
+        CAR;        # list mutez : @storage : @parameter%addElem
+        SWAP;       # @storage : list mutez : @parameter%addElem
+        CDR;        # mutez : list mutez : @parameter%addElem
+        DIG 2;      # @parameter%addElem : mutez : list mutez
+        DUP;        # @parameter%addElem : @parameter%addElem : mutez : list mutez
+        DUG 3;      # @parameter%addElem : mutez : list mutez : @parameter%addElem
+        ADD;        # mutez : list mutez : @parameter%addElem
+        SWAP;       # list mutez : mutez : @parameter%addElem
+        PAIR;       # pair (list mutez) mutez : @parameter%addElem
+        # self.data.lst.push(params.value) # pair (list mutez) mutez : @parameter%addElem
+        DUP;        # pair (list mutez) mutez : pair (list mutez) mutez : @parameter%addElem
+        CDR;        # mutez : pair (list mutez) mutez : @parameter%addElem
+        SWAP;       # pair (list mutez) mutez : mutez : @parameter%addElem
+        CAR;        # list mutez : mutez : @parameter%addElem
+        DIG 2;      # @parameter%addElem : list mutez : mutez
+        CONS;       # list mutez : mutez
+        PAIR;       # pair (list mutez) mutez
+      }
+      {
+        SWAP;       # @storage : @parameter%retElem
+        # == retElem ==
+        # with sp.match_cons(self.data.lst) as match_cons_18: # @storage : @parameter%retElem
+        DUP;        # @storage : @storage : @parameter%retElem
+        DUG 2;      # @storage : @parameter%retElem : @storage
+        CAR;        # list mutez : @parameter%retElem : @storage
+        IF_CONS
+          {
+            DIG 2;      # @parameter%retElem : mutez : list mutez : @storage
+            DROP;       # mutez : list mutez : @storage
+            # self.data.total -= match_cons_18.head # mutez : list mutez : @storage
+            DIG 2;      # @storage : mutez : list mutez
+            CDR;        # mutez : mutez : list mutez
+            SUB;        # mutez : list mutez
+            SWAP;       # list mutez : mutez
+            # self.data.lst = match_cons_18.tail # list mutez : mutez
+            PAIR;       # pair (list mutez) mutez
+          }
+          {
+            DROP;       # @storage
+          }; # pair (list mutez) mutez
+      }; # pair (list mutez) mutez
+    NIL operation; # list operation : pair (list mutez) mutez
+    PAIR;       # pair (list operation) (pair (list mutez) mutez)
+  };

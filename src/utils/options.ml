@@ -18,6 +18,12 @@ let json_output_flag : bool ref
 let initial_storage_file : string ref
 =ref ""
 
+(* FLAGS - Log *)
+let flag_verbose : bool ref
+=ref false (* print log level info *)
+let flag_debug : bool ref
+=ref false (* print log level info and debug *)
+
 (* FLAGS - Control Flow Graph *)
 let flag_cfgopt_rsv : bool ref
 =ref false (* remove-skip-vertices *)
@@ -55,10 +61,22 @@ let z3_time_budget : int ref
 =ref 30 (* z3 time budgets in seconds *)
 let prover_time_budget : int ref
 =ref 180 (* prover time budgets in seconds *)
+let refuter_time_budget : int ref
+=ref 180 (* refuter time budgets in seconds *)
 let refuter_total_time_budget : int ref
 =ref 180 (* refuter time budgets in seconds *)
 let refuter_sub_time_budget : int ref
 =ref 180 (* Time budget for each "Refuter.main" function call. *)
+let queryid_time_budget : int ref
+=ref 180 (* Time budget for each Query-Id prove or refuting *)
+let total_time_budget : int ref
+=ref 360 (* Time budget for total program execution. Used for special cases *)
+let total_time_budget_set_flag : bool ref
+=ref false (* Flag for checking total time budget is set *)
+
+(* INT - Memory Budgets *)
+let memory_budget : int ref
+=ref 5 (* memory budget in gigabytes *)
 
 (* INT - Cfg Unrolling *)
 let loop_unroll_num : int ref
@@ -69,6 +87,21 @@ let transaction_unroll_num : int ref
 (* FLAGS - Refuter *)
 let refuter_sub_time_budget_manually_set : bool ref
 =ref false  (* If the user set the "refuter_sub_time_budget" option, then set it true. This is used to automatically calculate "refuter_sub_time_budget" if it not set manually. *)
+
+(* FLAGS - MicSE Mode *)
+let micse_baseline_mode : bool ref
+= ref false (* If the user set the "baseline_mode" option, then set it true. Othercase, MicSE run on synergetic mode. *)
+let micse_legacy_mode : bool ref
+= ref false (* If the user set the "legacy_mode" option, then set it true. Othercase, MicSE run depend on baseline_mode flag. *)
+let micse_sequential_mode : bool ref
+= ref false (* If the user set the "sequential" option, then it will be set true. Othercase MicSE run on sequential mode. *)
+let micse_manager : int ref
+= ref 0
+
+(* INT - Query Filtering (for dev) *)
+let target_query_line : int ref
+= ref (-1)
+
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -85,10 +118,19 @@ let set_all_cfg_opt : unit -> unit
   )
 end
 
+let set_timeout : queries:int -> unit
+= (* funciton set_timeout start *)
+  fun ~queries -> begin
+  if !total_time_budget_set_flag then (
+    if !queryid_time_budget > (!total_time_budget / queries) then (queryid_time_budget := !total_time_budget / queries)
+    else ())
+  else total_time_budget := !queryid_time_budget * queries * 11 / 10
+end (* function set_timeout end *)
+
 let activate_detector : string -> unit
 =fun s -> begin
   match s with
-  | _ -> invalid_arg "invalid option"
+  | _ -> invalid_arg ("invalid option : " ^ s)
 end
 
 let options : (Arg.key * Arg.spec * Arg.doc) list
@@ -96,6 +138,8 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("--input", (Arg.String (fun s -> input_file := s)), "File path for input michelson program.");
     ("--json-out", (Arg.String (fun s -> (json_output_flag := true; json_output_file := s))), "File path for output json file.");
     ("--inst-count", (Arg.Set flag_inst_count_print), "Print count of instruction in Michelson file.");
+    ("--verbose", (Arg.Set flag_verbose), "Print log level info.");
+    ("--debug", (Arg.Set flag_debug), "Print log level info and debug.");
     ("--adt-print", (Arg.Set flag_adt_print), "Print parsed Michelson file.");
     ("--cfgopt", (Arg.Set flag_cfgopt_all), "Set all cfg optimization options");
     ("--cfgopt-rsv", (Arg.Set flag_cfgopt_rsv), "Remove all trivial skip vertices in control flow graph. WARNING: It does not remove any vertex-information in Cfg");
@@ -110,10 +154,19 @@ let options : (Arg.key * Arg.spec * Arg.doc) list
     ("--initial-storage", (Arg.String (fun s -> initial_storage_file := s)), "File path for initial storage of input michelson program");
     ("--z3-timeout", (Arg.Int (fun i -> z3_time_budget := i)), "Time budget for z3 solver in seconds. (default: 30s)");
     ("--prover-timeout", (Arg.Int (fun i -> prover_time_budget := i)), "Time budget for prover in seconds. (default: 180s)");
+    ("--refuter_timeout", (Arg.Int (fun i -> refuter_time_budget := i)), "Time budget for refuter in seconds. (default: 180s)");
     ("--refuter-timeout-t", (Arg.Int (fun i -> refuter_total_time_budget := i)), "Timebudget for refuter total-time in seconds. (default: 180s)");
     ("--refuter-timeout-s", (Arg.Int (fun i -> refuter_sub_time_budget_manually_set := true; refuter_sub_time_budget := i)), "Timebudget for \"Refuter.main\" function in seconds. If not set, it'll be automatically calculated. (default: 180s)");
+    ("--queryid_timeout", (Arg.Int (fun i -> queryid_time_budget := i)), "Time budget for query-id prove/refute in seconds. (default: 180s)");
+    ("--total_timeout", (Arg.Int (fun i -> total_time_budget := i; total_time_budget_set_flag := true)), "Time budget for entire program execution in seconds (in special case only). (default: 360s)");
     ("--unroll-l", (Arg.Int (fun i -> loop_unroll_num := i)), "Set the number of loop unrolling. (default 1)");
     ("--unroll-t", (Arg.Int (fun i -> transaction_unroll_num := i)), "Set the maximum number of transaction scenario length to find. (default 1)");
+    ("--sequential", (Arg.Set micse_sequential_mode), "Set the MicSE run as a sequential mode. (default: false)");
+    ("--baseline", (Arg.Set micse_baseline_mode), "Set the MicSE run as a baseline mode. (default: false)");
+    ("--legacy", (Arg.Set micse_legacy_mode), "Set the MicSE run as a legacy mode. (default: false)");
+    ("--manager", (Arg.Int (fun i -> micse_manager := i)), "Set the MicSE manager. (REQUIRED)");
+    ("--target", (Arg.Int (fun i -> target_query_line := i)), "DEV - Filter all queries if query line is not same with target line when this parameter is set.");
+    ("--memory", (Arg.Int (fun i -> memory_budget := i)), "Set the memory budget in gigabytes. (default: 5GB)");
   ]
 
 let create_options : unit -> unit

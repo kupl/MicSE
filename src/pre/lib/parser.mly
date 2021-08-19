@@ -68,7 +68,7 @@
 
 
 %start <Mich.program> start
-%start <Mich.data Mich.t> data
+%start <Mich.data Mich.t> data_entry
 
 
 
@@ -106,7 +106,7 @@ parameter:
   | s=PERCENT_ANNOT   { A_fld s }
 
 annots:
-  |  { [] }
+  | { [] }
   | hd=annot tl=annots { hd :: tl }
 
 (*****************************************************************************)
@@ -290,12 +290,15 @@ macro_t_i:
 
 
 int:
-    n=NUM { n }
+  | n=NUM { n }
   | MINUS n=NUM { Z.neg n }
 
 data:
   | LP d=data RP {d}
   | t=data_t { {t with pos=get_pos($loc(t));} }
+
+data_entry:
+  | d=data EOF { d } 
 
 data_t:
   | d=data_t_dt_noreq a=annots { gen_t_a a d }

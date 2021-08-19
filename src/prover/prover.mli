@@ -16,7 +16,7 @@ type run_ret = {
 type run_env = {
   worklist : ProverLib.Inv.t Core.Set.Poly.t;
   invs_collected : ProverLib.Inv.t Core.Set.Poly.t;
-  timer : Utils.Timer.t ref;
+  timer : Utils.Timer.t;
   igi : ProverLib.Inv.invgen_info;  (* information for invariant generation process *)
   vcl : (ProverLib.Inv.t -> VcGen.v_cond) list; (* the list of verification condition *)
   isc : ProverLib.Inv.t -> ProverLib.Vlang.t; (* initial-storage condition *)

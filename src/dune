@@ -1,10 +1,11 @@
 (executables
-  (names main)
-  (public_names micse)
+  (names main stackmain)
+  (public_names micse mstack)
   (libraries
     micse.utils
     micse.pre
     micse.prover
     micse.refuter
+    micse.stacked
   )
   (package micse))

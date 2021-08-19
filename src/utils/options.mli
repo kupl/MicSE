@@ -13,6 +13,10 @@ val json_output_flag : bool ref
 (* STRING - Initial Storage Value *)
 val initial_storage_file : string ref
 
+(* FLAGS - Log *)
+val flag_verbose : bool ref (* print log level info *)
+val flag_debug : bool ref (* print log level info and debug *)
+
 (* FLAGS - Control Flow Graph *)
 val flag_cfgopt_rsv : bool ref (* remove-skip-vertices *)
 val flag_cfgopt_rfv : bool ref (* remove-fail-vertices *)
@@ -36,8 +40,14 @@ val flag_vc_print : bool ref
 (* INT - Time Budgets *)
 val z3_time_budget : int ref
 val prover_time_budget : int ref
+val refuter_time_budget : int ref
 val refuter_total_time_budget : int ref
 val refuter_sub_time_budget : int ref
+val queryid_time_budget : int ref
+val total_time_budget : int ref
+
+(* INT - Memory Budgets *)
+val memory_budget : int ref
 
 (* INT - Cfg Unrolling *)
 val loop_unroll_num : int ref
@@ -46,6 +56,15 @@ val transaction_unroll_num : int ref
 (* FLAGS - Refuter *)
 val refuter_sub_time_budget_manually_set : bool ref
 
+(* FLAGS - MicSE  Mode *)
+val micse_baseline_mode : bool ref
+val micse_legacy_mode : bool ref
+val micse_sequential_mode : bool ref
+val micse_manager : int ref
+
+(* INT - Query Filtering (for dev) *)
+val target_query_line : int ref
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Option Settings                                                           *)
@@ -53,6 +72,7 @@ val refuter_sub_time_budget_manually_set : bool ref
 (*****************************************************************************)
 
 val set_all_cfg_opt : unit -> unit
+val set_timeout : queries:int -> unit
 
 val activate_detector : string -> unit
 

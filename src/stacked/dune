@@ -1,0 +1,15 @@
+(library
+  (name stacked)
+  (public_name micse.stacked)
+  (libraries
+    core
+    micse.prover
+    yojson
+    zarith
+    ))
+
+(menhir
+    (modules parser)
+    (flags --explain))
+    
+(ocamllex lexer)

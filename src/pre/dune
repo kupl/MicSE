@@ -2,7 +2,6 @@
   (name pre)
   (public_name micse.pre)
   (libraries
-    batteries
     ocamlgraph
     core
     micse.pre.lib

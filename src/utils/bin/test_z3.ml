@@ -1,4 +1,4 @@
-let open ProverLib.Smt in
+let open ProverLib.Smt_deprecated in
 
 (* Sort Generation *)
 let str_sort = ZStr.sort () in

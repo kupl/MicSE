@@ -4,8 +4,9 @@ _build
 /bin
 
 # Etc
-DS_Store
+.DS_Store
 .vscode
+.vagrant
 tmp/
 
 # Benchmark
