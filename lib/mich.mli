@@ -1,4 +1,5 @@
-(* Mich : Start from the copy of PreLib.Mich, but more supports such as I_apply instruction *)
+(* Mich : Michelson Frontend Target Datatype. MicSE's Michelson representation
+   is defined in Tz module *)
 
 (*****************************************************************************)
 (*****************************************************************************)

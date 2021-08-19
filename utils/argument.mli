@@ -14,6 +14,8 @@ module Setting : sig
 
   val input_file : string t
 
+  val input_storage_file : string t
+
   val verbose_mode : bool t
 
   val debug_mode : bool t
@@ -36,6 +38,8 @@ end
 val create : unit -> unit
 
 val input_file : string Stdlib.ref
+
+val input_storage_file : string Stdlib.ref
 
 val verbose_mode : bool Stdlib.ref
 

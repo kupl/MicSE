@@ -1,10 +1,10 @@
 (library
  (name lib)
  (public_name micse.lib)
- (libraries core yojson zarith))
+ (libraries core utils yojson zarith))
 
 (menhir
- (modules parser)
+ (modules michParser)
  (flags --explain))
 
-(ocamllex lexer)
+(ocamllex michLexer)

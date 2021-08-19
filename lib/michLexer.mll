@@ -1,5 +1,5 @@
 {
-  open Parser
+  open MichParser
   open Lexing
 
   exception Lexing_error of string
