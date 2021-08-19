@@ -1,7 +1,7 @@
-((library
-  (name lib)
-  (public_name micse.lib)
-  (libraries core yojson zarith)))
+(library
+ (name lib)
+ (public_name micse.lib)
+ (libraries core yojson zarith))
 
 (menhir
  (modules parser)

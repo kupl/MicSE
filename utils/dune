@@ -1,4 +1,4 @@
-((library
-  (name utils)
-  (public_name micse.utils)
-  (libraries core logs mtime mtime.clock.os)))
+(library
+ (name utils)
+ (public_name micse.utils)
+ (libraries core logs logs.threaded mtime mtime.clock.os))

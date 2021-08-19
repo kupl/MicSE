@@ -1,5 +1,5 @@
-((executables
+(executables
  (names main)
  (public_names micse)
- (libraries )
- (package micse)))
+ (libraries core utils)
+ (package micse))

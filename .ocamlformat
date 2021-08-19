@@ -1,4 +1,4 @@
-version=0.18.0
+version=0.19.0
 
 align-cases
 align-constructors-decl
@@ -46,7 +46,6 @@ module-item-spacing=sparse
 parens-ite=true
 parens-tuple=always
 parens-tuple-patterns=always
-
 
 sequence-blank-line=compact
 sequence-style=terminator
