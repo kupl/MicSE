@@ -1,7 +1,7 @@
 # Build directories
 _build
 .merlin
-#bin/
+/bin
 
 # Etc
 .DS_Store
@@ -9,5 +9,9 @@ _build
 .vagrant
 tmp/
 
-# Benchmark outputs
+# Benchmark
 /scripts/output/
+/scripts/.env
+
+# Vagrant Configurations
+.vagrant/

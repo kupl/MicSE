@@ -1,0 +1,6 @@
+parameter mutez;
+storage   mutez;
+code {
+  # storage = parameter + 1
+  CAR; PUSH mutez 1; ADD;
+  NIL operation; PAIR; };

@@ -5,10 +5,18 @@ module Analyzer = Analyzer
 
 module Translator = Translator
 
-let pre_process : string -> ((Cfg.t * PreLib.Cfg.cfgcon_ctr) * (Mich.data Mich.t option))
+type pre_ret = {
+  cfg : PreLib.Cfg.t;
+  cfgcon_counter : PreLib.Cfg.cfgcon_ctr;
+  init_stg_opt : Mich.data Mich.t option;
+  number_of_inst : int;
+}
+
+let pre_process : string -> pre_ret
 =fun filepath -> begin
   (* Parse Michelson File *)
   let adt = Adt.parse filepath |> Mich.subst_standard_macro_all_pgm |> Mich.optm_all_pgm |> Mich.fill_position_all_pgm ~update_loc:false in
+  let number_of_inst = adt |> Mich.count_inst_pgm in
 
   (* FLAGS - Parsed Michelson File *)
   let _ : unit = (if (!Utils.Options.flag_adt_print) then (Mich.string_of_pgm_ol adt |> Stdlib.print_endline) else ()) in
@@ -23,7 +31,12 @@ let pre_process : string -> ((Cfg.t * PreLib.Cfg.cfgcon_ctr) * (Mich.data Mich.t
   let cfg_rfv_optimized = (if (!Utils.Options.flag_cfgopt_rfv) then (CfgUtil.remove_meaningless_fail_vertices_fixpoint cfg_rsv_optimized) else (cfg_rsv_optimized)) in
   let cfg_optimized = cfg_rfv_optimized in
   
-  let _ : unit = (if (!Utils.Options.flag_cfg_print_dot) then print_endline (CfgUtil.cfg_to_dotformat cfg_optimized) else ()) in
+  let _ : unit = (if (!Utils.Options.flag_cfg_print_dot) then print_endline (cfg_optimized |> CfgUtil.Dot.of_cfg |> CfgUtil.Dot.to_string) else ()) in
 
-  ((cfg_optimized, cfgcon_counter), init_stg_opt)
+  {
+    cfg=cfg_optimized;
+    cfgcon_counter=cfgcon_counter;
+    init_stg_opt=init_stg_opt;
+    number_of_inst=number_of_inst;
+  }
 end

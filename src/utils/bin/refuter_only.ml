@@ -12,12 +12,11 @@ let unroll_NUM = 1
 let transaction_seq_NUM = 2
 
 let main : unit -> unit
-= let open PreLib in
-  fun () -> begin
+= fun () -> begin
   (* 1. Cfg Construction *)
-  let ((cfg, cfgcon_counter), init_stg_opt) : (Cfg.t * Cfg.cfgcon_ctr) * (Adt.data option) = Pre.pre_process (!Utils.Options.input_file) in
+  let pre_ret : Pre.pre_ret = Pre.pre_process (!Utils.Options.input_file) in
   (* 2. Run Refuter *)
-  let _ = Refuter.main (cfg, cfgcon_counter) init_stg_opt transaction_seq_NUM unroll_NUM in
+  let _ = Refuter.main (pre_ret.cfg, pre_ret.cfgcon_counter) pre_ret.init_stg_opt transaction_seq_NUM unroll_NUM in
   ()
 end
 

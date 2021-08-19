@@ -27,12 +27,12 @@ let _ =
   let cfg_rsv_optimized = (if (!Utils.Options.flag_cfgopt_rsv) then (CfgUtil.remove_meaningless_skip_vertices_fixpoint cfg_rssov_optimized) else (cfg_rssov_optimized)) in
   let cfg_rfv_optimized = (if (!Utils.Options.flag_cfgopt_rfv) then (CfgUtil.remove_meaningless_fail_vertices_fixpoint cfg_rsv_optimized) else (cfg_rsv_optimized)) in
   let cfg_optimized = cfg_rfv_optimized in
-  let _ : unit = (if (!Utils.Options.flag_cfg_print_dot) then print_endline (CfgUtil.cfg_to_dotformat cfg_optimized) else ()) in
+  let _ : unit = (if (!Utils.Options.flag_cfg_print_dot) then print_endline (cfg_optimized |> CfgUtil.Dot.of_cfg |> CfgUtil.Dot.to_string) else ()) in
 
   let (cfg_unrolled, _) : Cfg.t * Cfg.cfgcon_ctr = CfgUtil.LoopUnrolling.run (cfg_optimized, ctr, unroll_NUM) in
   let cfg_ur_rsv_optimized = (if (!Utils.Options.flag_cfgopt_rsv) then (CfgUtil.remove_meaningless_skip_vertices_fixpoint cfg_unrolled) else (cfg_unrolled)) in
   let cfg_ur_optimized = cfg_ur_rsv_optimized in
-  let _ : unit = print_endline (CfgUtil.cfg_to_dotformat cfg_ur_optimized) in
+  let _ : unit = print_endline (cfg_ur_optimized |> CfgUtil.Dot.of_cfg |> CfgUtil.Dot.to_string) in
 
   (*let _ = Pre.pre_process (!Utils.Options.input_file) in*)
   Stdlib.exit 0

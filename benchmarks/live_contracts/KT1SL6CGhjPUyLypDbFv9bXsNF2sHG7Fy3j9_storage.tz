@@ -1,0 +1,8 @@
+(Pair 
+  { Elt "tz1NMfZdAFgojChrfPh9owpax1ykpgoxtncR" 7475000000; Elt "tz1PwiRzT46gPsfJkxNMjsECDDqxmxPZvWTJ" 2975000000; Elt "tz1TNcFeYjEbHDjYsvxBtrdMCo6q6bX5fYFf" 25000000000; Elt "tz1UwTYasQk2n5JHVD1WuMkAn6UwByemv3CZ" 3106490000; Elt "tz1X56upKugsvwQPZGqpKjGR2m4UnRSDzN5T" 2500000000; Elt "tz1cmvCZfa8qXTM8fRn8W7Bt8rBU5pG6WUbh" 4950000000; Elt "tz1dvPNi272gkDCigfYjPKugt5vYRbSb9Tvt" 3064000000; Elt "tz1eqCJ7S4ffHvT5PjjFdRXPDKbePXqeaEgg" 75972000000; Elt "tz1er9zBo3p2K6fY5qo8wE5C7MQMpWmLU5cS" 5000000000; Elt "tz1fh4GLE2o87vjVQW5Ynvj2L6pee2MjPEgX" 3067000000; Elt "tz1h1L8z2iKvrzYeJeMEzsC6BKKFFiuA3DQR" 4497940000 } 
+  (Pair "tz1T4H8uQerqskAVxCx6CHXsADvKqr88kyh2" 
+        (Pair 100000000 
+              (Pair 1000 
+                    (Pair 250000 
+                          (Pair 137607430000 
+                                (Pair 137607430000 (Pair 11 "tz1iDu3tHhf7H4jyXk6rGV4FNUsMqQmRkwLp"))))))))

@@ -61,9 +61,15 @@ let validate : (Utils.Timer.t * ProverLib.Inv.t * (ProverLib.Inv.t -> VcGen.v_co
   in
   *)
   (* (* deprecated, since "isc" deprecated above*) let indt_vc : Vlang.t = Vlang.Formula.VF_and (isc :: (List.map (fun x -> x.VcGen.path_vc) vcl)) in *)
-  let indt_vc : Vlang.t = Vlang.Formula.VF_and (List.map (fun x -> x.VcGen.path_vc) vcl) in
+  let indt_validity = vcl |> Core.List.fold ~init:true ~f:(fun acc indt_vc -> 
+    if Stdlib.not acc then acc 
+    else begin
+      let (indt_validity_i, _) = Verifier.verify indt_vc.VcGen.path_vc in
+      indt_validity_i |> is_valid
+    end) in
+  (* let indt_vc : Vlang.t = Vlang.Formula.VF_and (List.map (fun x -> x.VcGen.path_vc) vcl) in
   let (indt_validity_i, _) = Verifier.verify indt_vc in
-  let indt_validity = indt_validity_i |> is_valid in
+  let indt_validity = indt_validity_i |> is_valid in *)
   if Stdlib.not indt_validity then ({inductive=false; p=CPSet.empty; u=CPSet.empty; allq=CPSet.empty}) else
   (* Validate Query *)
   (* debug *) let _ = print_endline "DEBUG" in

@@ -346,4 +346,4 @@ val optm_all_pgm : program -> program
 
 val count_inst_pgm : program -> int
 
-val count_inst_pgm_i : inst t -> int 
+val count_inst_pgm_i : inst t -> int

@@ -33,11 +33,23 @@ val appeared_varlst_stmt : Cfg.stmt -> string list
 
 (*****************************************************************************)
 (*****************************************************************************)
-(* Print                                                                     *)
+(* Dot Graph                                                                 *)
 (*****************************************************************************)
 (*****************************************************************************)
 
-val cfg_to_dotformat : Cfg.t -> string
+module Dot : sig
+  type t = {
+    flow: string list;
+    vi: string list;
+  }
+
+  val concat : ?sep:string -> string list -> string
+  val make_label : ?style:string -> ?shape:string -> string -> string
+  val fold_flow : Cfg.G.E.t -> string list -> string list
+  val fold_vi : Cfg.t -> Cfg.G.V.t -> string list -> string list
+  val of_cfg : Cfg.t -> t
+  val to_string : t -> string
+end
 
 
 (*****************************************************************************)

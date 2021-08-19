@@ -1,0 +1,10 @@
+parameter mutez;
+storage   mutez;
+code {
+  UNPAIR;
+  # if parameter >= 9223372036854775807 then fail
+  DUP; PUSH mutez 9223372036854775807; COMPARE; GT;
+  IF { SWAP; DROP; } { PUSH string "param < 9223372036854775807"; FAILWITH; };
+  # storage = parameter + 1
+  PUSH mutez 1; ADD;
+  NIL operation; PAIR; };

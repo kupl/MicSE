@@ -429,6 +429,7 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt_deprecated.ZFormula.t
           | _ -> SMT_Encode_Error_f (vf, "Wrong IS_CONS checking") |> raise
         end
       (* NOT USED. belows are not constructed from Prover.converter *)
+      | VF_mutez_bound e -> Smt_deprecated.ZMutez.create_bound (e |> soe)
       | VF_mich_loop e -> Smt_deprecated.ZBool.create_eq (e |> soe) (Smt_deprecated.ZBool.true_ ())
       | VF_mich_loop_left e -> Smt_deprecated.ZOr.is_left (e |> soe)
       | VF_mich_map_l e -> Smt_deprecated.ZOption.is_none (e |> soe)
@@ -474,8 +475,8 @@ let rec smtexpr_of_vlangformula : Vlang.t -> Smt_deprecated.ZFormula.t
           Smt_deprecated.ZFormula.create_or [e1_is_zero; e2_is_zero; e1_is_not_zero] (* (e1 = 0) \/ (e1 != 0 /\ ((e1 * e2) / e1) = e2) *)
           (* Smt_deprecated.ZMutez.check_mul_no_overflow (e1 |> soe |> Smt_deprecated.ZInt.to_zmutez) (e2 |> soe) *)
         end
-      | VF_shiftL_nnn_rhs_in_256 _ -> err vf
-      | VF_shiftR_nnn_rhs_in_256 _ -> err vf
+      | VF_shiftL_nnn_rhs_in_256 (_, e2) -> Smt_deprecated.ZNat.create_le (e2 |> soe) (256 |> Smt_deprecated.ZNat.of_int)
+      | VF_shiftR_nnn_rhs_in_256 (_, e2) -> Smt_deprecated.ZNat.create_le (e2 |> soe) (256 |> Smt_deprecated.ZNat.of_int)
       (* Custom Domain Formula for Invariant Generation *)
       | VF_sigma_equal (_, _) -> Smt_deprecated.ZBool.true_ () (* TODO *)
       | VF_mtzmap_partial_sum_equal (e1, el2, e3, rvar) -> 

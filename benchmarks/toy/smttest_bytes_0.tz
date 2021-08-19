@@ -1,8 +1,0 @@
-parameter bytes;
-storage bytes;
-code {
-    UNPAIR;
-    CONCAT;
-    NIL operation;
-    PAIR;
-}

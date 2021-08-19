@@ -6,6 +6,10 @@
 
 val input_file : string ref
 
+(* STRING - Output *)
+val json_output_file : string ref
+val json_output_flag : bool ref
+
 (* STRING - Initial Storage Value *)
 val initial_storage_file : string ref
 

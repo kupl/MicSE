@@ -28,8 +28,8 @@ let string_of_analyzer_result : (int, Pre.Analyzer.AvailVar.abs_set * Pre.Analyz
 let _ =
   let _ = Utils.Options.create_options () in
   let _ = Printexc.record_backtrace false in
-  let ((cfg, _), _) = Pre.pre_process (!Utils.Options.input_file) in
-  let retv = Pre.Analyzer.AvailVar.run cfg in
+  let pre_ret = Pre.pre_process (!Utils.Options.input_file) in
+  let retv = Pre.Analyzer.AvailVar.run pre_ret.cfg in
   Stdlib.print_endline (string_of_analyzer_result retv);
   Stdlib.exit 0
 

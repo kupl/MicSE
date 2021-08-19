@@ -5,6 +5,7 @@
 - [MicSE (in development)](#micse-in-development)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
+  - [Documents](#documents)
   - [Development](#development)
     - [Prerequisite](#prerequisite)
       - [System packages](#system-packages)
@@ -14,12 +15,17 @@
 
 ## Introduction
 
-MicSE, Michelson Symbolic vErifier, is the tool for verifying and testing the integrity of smart contracts written in Michelson. Michelson is the smart-contract-programming language used in [Tezos Blockchain](https://tezos.foundation).
+MicSE is a tool for verifying and testing Tezos smart contracts written in Michelson. Michelson is a native smart contract language of the [Tezos Blockchain](https://tezos.foundation).
 
-MicSE provides two tools, Prover and Tester for Michelson.
+MicSE can verify the absence of runtime failures of Michelson programs, e.g., no arithmetic overflow. Also, MicSE supports verification of user-provided assertions. 
 
 - *Prover* (=verifier)
-- *Refuter* (=tester)
+- *Refuter* (=tester, will be provided)
+
+## Documents
+
+- [Installation](./doc/INSTALLATION.md)
+- [Usage](./doc/USAGE.md)
 
 ## Development
 
@@ -34,13 +40,14 @@ MicSE provides two tools, Prover and Tester for Michelson.
 
 - Batteries
 - Core (v0.14.0)
-- Dune (v2.2.0): We use Dune to manage build system of OCaml project.
+- Dune (v2.4.0): We use Dune to manage build system of OCaml project.
 - Logs
 - Menhir
 - Mtime
 - Ptime
 - Ocamlgraph
-- Z3
+- Yojson
+- Z3 (v4.8.9)
 - Zarith
 
 ### Git Commit Guidelines
@@ -48,6 +55,8 @@ MicSE provides two tools, Prover and Tester for Michelson.
 We are following [Angular's commitizen rules](https://github.com/angular/angular.js/blob/master/DEVELOPERS.md#-git-commit-guidelines) for formatting git commit message. This allows you to read messages that are easy to understand when looking for project history. It also uses the git commit message to generate our [CHANGELOG](/CHANGELOG.md) file.
 
 ## About
+
+This project is funded by Tezos Foundation: [Verification and Testing Infrastructure for Tezos Contracts](https://tezos.foundation/fourth-cohort-grants/).
 
 Authored and maintained by **Jisuk Byun**, **Heewoong Jang**
 

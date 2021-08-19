@@ -1,0 +1,10 @@
+(executables
+  (names micse_prover)
+  (modules micse_prover)
+  (public_names micse_prover)
+  (libraries
+    micse.utils
+    micse.pre
+    micse.prover
+  )
+  (package micse))

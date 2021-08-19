@@ -24,61 +24,58 @@ type v_cond_ingr = ProverLib.Inv.t -> v_cond  (* path-vc and query_vcs will be c
 
 
 module NameEnv = struct
-  type t = (string, string) CPMap.t
+  type t = (string, string) CPMap.t ref
 
   let new_var : string -> string = fun x -> x ^ "#"
 
-  let initial_value : t =
+  let initial_value : unit -> t =
+    fun () -> 
     let open ProverLib.GlVar.Env in
     let e = t_for_single_contract_verification in
-    CPMap.of_alist_exn [
+    ref (CPMap.of_alist_exn [
       e.gv_param, e.gv_param;
       e.gv_storage, e.gv_storage;
       e.gv_amount, e.gv_amount;
       e.gv_balance, e.gv_balance;
       e.gv_sender, e.gv_sender;
       e.gv_source, e.gv_source;
-    ]
+    ])
+
+  let update : t -> string -> t
+  =fun env v -> begin
+    env := (CPMap.update !env v ~f:(function | None -> v | Some vv -> new_var vv));
+    env
+  end
 
   let get : t -> string -> string
   =fun env v -> begin
     try
-      PreLib.Cfg.t_map_find ~errtrace:("VcGen.NameEnv.get : " ^ v) env v
+      PreLib.Cfg.t_map_find ~errtrace:("VcGen.NameEnv.get : " ^ v) !env v
     with
-    | Stdlib.Failure _ -> v
+    | _ -> (update env v |> Stdlib.ignore; v)
   end
 
-  let update : t -> string -> t
-  =fun env v -> begin
-    CPMap.update env v ~f:(function | None -> v | Some vv -> new_var vv)
-  end
-  
+  let is_var : ProverLib.Vlang.Expr.t -> bool = (function | ProverLib.Vlang.Expr.V_var _ -> true | _ -> false)
+
   (* For convenience, "rename_expr" iterates for all variable entries in environment,
     which is inefficient. One easy implementation to deal with this problem is
     finding all variable in expression/formula and iterates only for found variables,
     but writing a long match-with expression to deal with Vlang.Expr.t is too boring
     task than enduring current inefficient implementation's performance. [TODO]
+    =======>>> THIS MENTION IS DEPRECATED DUE TO FURTHER UPDATES
   *)
   let rename_fmla : t -> ProverLib.Vlang.t -> ProverLib.Vlang.t
   = let open ProverLib.Vlang in
     fun env fmla -> begin
-    CPMap.fold 
-      env 
-      ~init:fmla 
-      ~f:(fun ~key ~data fmla_acc -> 
-        Renaming.var_in_expr_formula key data fmla_acc
-      )
+    let rename_var : Expr.t -> Expr.t = (fun e -> match e with | Expr.V_var (t, s) -> Expr.V_var (t, get env s) | _ -> e) in
+    RecursiveMappingExprTemplate.map_formula_outer is_var rename_var fmla
   end
 
   let rename_expr : t -> ProverLib.Vlang.Expr.t -> ProverLib.Vlang.Expr.t
   = let open ProverLib.Vlang in
     fun env expr -> begin
-      CPMap.fold
-        env
-        ~init:expr
-        ~f:(fun ~key ~data expr_acc ->
-          Renaming.var_in_expr key data expr_acc
-        )
+      let rename_var : Expr.t -> Expr.t = (fun e -> match e with | Expr.V_var (t, s) -> Expr.V_var (t, get env s) | _ -> e) in
+      RecursiveMappingExprTemplate.map_expr_outer is_var rename_var expr
   end
 
 end (* module NameEnv end *)
@@ -88,7 +85,7 @@ type pp_cond = (ProverLib.Vlang.t * ProverLib.Vlang.t) (* precondition & postcon
 
 
 type sp_fold_acc = {
-  sfa_name_env : (string, string) CPMap.t;  (* name environment to introduce new variable name *)
+  sfa_name_env : NameEnv.t;  (* name environment to introduce new variable name *)
   sfa_str_post : ProverLib.Vlang.t; (* strongest postcondition *)
   sfa_queries : (pp_cond * ProverLib.Bp.query_category * PreLib.Cfg.vertex) list; (* query list *)
 }
@@ -112,7 +109,9 @@ let sp : sp_fold_acc -> ProverLib.Bp.basic_node -> sp_fold_acc
       let new_nenv = NameEnv.update sfa_name_env v in
       let v' = NameEnv.get new_nenv v in
       let newfml = Formula.VF_eq (V_var (t, v'), e') in
-      {sfa_name_env=new_nenv; sfa_str_post=(VF_and [sfa_str_post; newfml]); sfa_queries}
+      let f = match t with T_mutez -> Formula.VF_mutez_bound (V_var (t, v')) | _ -> Formula.VF_true in
+      {sfa_name_env=new_nenv; sfa_str_post=(VF_and [sfa_str_post; newfml; f]); sfa_queries}
+      (* {sfa_name_env=new_nenv; sfa_str_post=(VF_and [sfa_str_post; newfml]); sfa_queries} *)
     )
   | BI_skip -> {sfa_name_env=sfa_name_env; sfa_str_post=sfa_str_post; sfa_queries=sfa_queries;} (* Nothing happen *)
 end (* function sp end *)
@@ -148,7 +147,7 @@ let construct_verifier_vc : PreLib.Cfg.t -> ProverLib.Bp.t -> PreLib.Adt.data op
           - it should be converted to ((entry-inv /\ precond) -> postcond) using invariant later.
     *)
     let initv : sp_fold_acc = {
-      sfa_name_env = NameEnv.initial_value;
+      sfa_name_env = NameEnv.initial_value ();
       sfa_str_post = Formula.VF_true;
       sfa_queries = [];
     } in

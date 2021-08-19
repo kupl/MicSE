@@ -4,10 +4,10 @@ version: "0.0.0"
 synopsis:
   "the Michelson Symbolic vErifier, for verifying and testing the integrity of smart contracts in the Tezos blockchain"
 maintainer: [
-  "Jisuk Byun <grayplc@korea.ac.kr>" "Heewoong Jang <jormal@korea.ac.kr>"
+  "Jisuk Byun <jisukbyun@korea.ac.kr>" "Heewoong Jang <jormal@korea.ac.kr>"
 ]
 authors: [
-  "Jisuk Byun <grayplc@korea.ac.kr>" "Heewoong Jang <jormal@korea.ac.kr>"
+  "Jisuk Byun <jisukbyun@korea.ac.kr>" "Heewoong Jang <jormal@korea.ac.kr>"
 ]
 license: "MIT"
 homepage: "https://github.com/kupl/MicSE"

@@ -60,6 +60,8 @@ let combination_self_two_diff_rf_set : 'a CPSet.t -> ('a * 'a) CPSet.t
   |> CPSet.of_list
 end (* function combination_self_two_diff_rf_set end *)
 
+let imply_reducer = (function (Vlang.Formula.VF_imply (VF_and [], x)) -> x | _ as f -> f)
+
 
 (* "formula_mutez_equal" : every component should be mutez type. *)
 let mutez_equal : Vlang.Component.t -> Vlang.Formula.t CPSet.t
@@ -67,7 +69,7 @@ let mutez_equal : Vlang.Component.t -> Vlang.Formula.t CPSet.t
   let open Formula in
   fun compset -> begin
   let cb : (Component.comp * Component.comp) CPSet.t = combination_self_two_diff (CPSet.to_list compset) |> CPSet.of_list in
-  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_eq (c1.body, c2.body)))
+  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_eq (c1.body, c2.body)) |> imply_reducer)
 end (* function formula_mutez_equal end *)
 
 (* "mutez_ge" : every component should be mutez type. *)
@@ -76,7 +78,7 @@ let mutez_ge : Vlang.Component.t -> Vlang.Formula.t CPSet.t
   let open Formula in
   fun compset -> begin
   let cb : (Component.comp * Component.comp) CPSet.t = combination compset compset in
-  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_sub_mmm_no_underflow (c1.body, c2.body)))
+  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_sub_mmm_no_underflow (c1.body, c2.body)) |> imply_reducer)
 end (* function mutez_ge end *)
 
 (* WARNING : "remain_var_gen" has internal side-effects. *)
@@ -105,7 +107,9 @@ let mtzmap_partial_sum : Vlang.Component.t -> Vlang.Component.t -> Vlang.Compone
       in
       (* generate formula *)
       let k_slist = CPSet.fold k_sset ~init:[] ~f:(fun accl x -> x.body :: accl) in
-      VF_imply (fold_precond prec_lst, VF_mtzmap_partial_sum_equal(km.body, k_slist, m.body, remain_var_gen km.body k_slist))
+      let remain_var = remain_var_gen km.body k_slist in
+      VF_imply (fold_precond prec_lst, VF_and [VF_mutez_bound (V_var (Ty.T_mutez, remain_var)); VF_mtzmap_partial_sum_equal(km.body, k_slist, m.body, remain_var)])
+      (* VF_imply (fold_precond prec_lst, VF_mtzmap_partial_sum_equal(km.body, k_slist, m.body, remain_var_gen km.body k_slist)) *)
     )
 end (* function mtzmap_partial_sum end *)
 
@@ -116,7 +120,7 @@ let int_ge : Vlang.Component.t -> Vlang.Formula.t CPSet.t
   let open Formula in
   fun compset -> begin
   let cb : (Component.comp * Component.comp) CPSet.t = combination_self_two_diff_rf_set compset in
-  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_mich_if (V_geq_ib (V_sub_iii (c1.body, c2.body)))))
+  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_mich_if (V_geq_ib (V_sub_iii (c1.body, c2.body)))) |> imply_reducer)
 end (* function int_ge end *)
 
 (* "nat_ge" : every component should be natural type. *)
@@ -125,7 +129,7 @@ let nat_ge : Vlang.Component.t -> Vlang.Formula.t CPSet.t
   let open Formula in
   fun compset -> begin
   let cb : (Component.comp * Component.comp) CPSet.t = combination_self_two_diff_rf_set compset in
-  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_mich_if (V_geq_ib (V_sub_nni (c1.body, c2.body)))))
+  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_mich_if (V_geq_ib (V_sub_nni (c1.body, c2.body)))) |> imply_reducer)
 end (* function nat_ge end *)
 
 
@@ -134,5 +138,5 @@ let all_equal : Vlang.Component.t -> Vlang.Formula.t CPSet.t
   let open Formula in
   fun compset -> begin
   let cb : (Component.comp * Component.comp) CPSet.t = combination_self_two_diff (CPSet.to_list compset) |> List.filter (fun (c1, c2) -> c1.Component.typ = c2.Component.typ) |> CPSet.of_list in
-  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_eq (c1.body, c2.body)))
+  CPSet.map cb ~f:(fun (c1, c2) -> VF_imply (Component.fold_preconds [c1;c2], VF_eq (c1.body, c2.body)) |> imply_reducer)
 end (* function all_equal end *)
