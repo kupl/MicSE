@@ -2,11 +2,11 @@
 
 open Core
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Code Component                                                            *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Code Component                                                             *)
+(******************************************************************************)
+(******************************************************************************)
 
 type ccp_pos = {
   col : int;
@@ -39,11 +39,11 @@ type 'a cc = {
 let gen_dummy_cc : 'a -> 'a cc =
   (fun x -> { cc_loc = CCLOC_Unknown; cc_anl = []; cc_v = x })
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Tezos Types                                                               *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Tezos Types                                                                *)
+(******************************************************************************)
+(******************************************************************************)
 
 type mich_t =
   | MT_key
@@ -70,11 +70,11 @@ type mich_t =
   | MT_timestamp
   | MT_address
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Michelson Values & Instructions                                           *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Michelson Values & Instructions                                            *)
+(******************************************************************************)
+(******************************************************************************)
 and mich_v =
   (* Michelson Value *)
 
@@ -382,11 +382,139 @@ and mich_i =
 [@@deriving sexp, compare, equal]
 (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Michelson to Tz                                                           *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Formula                                                                    *)
+(******************************************************************************)
+(******************************************************************************)
+
+type mich_f =
+  (* Logical Formula *)
+  | MF_true
+  | MF_false
+  | MF_not                   of mich_f
+  | MF_and                   of mich_f list
+  | MF_or                    of mich_f list
+  | MF_eq                    of mich_v cc * mich_v cc (* 'a * 'a -> formula *)
+  | MF_imply                 of mich_f * mich_f
+  (* MicSE Branch *)
+  | MF_is_true               of mich_v cc (* bool -> formula *)
+  | MF_is_none               of mich_v cc (* 'a option -> formula *)
+  | MF_is_left               of mich_v cc (* ('a, 'b) or -> formula *)
+  | MF_is_cons               of mich_v cc (* 'a list -> formula *)
+  (* MicSE Datatype Constraint *)
+  | MF_mutez_bound           of mich_v cc (* (integer arithmetic) 'a -> formula *)
+  | MF_nat_bound             of mich_v cc (* (integer arithmetic) 'a -> formula *)
+  (* Custom Formula for verifiying *)
+  | MF_add_mmm_no_overflow   of (mich_v cc * mich_v cc)
+  | MF_sub_mmm_no_underflow  of (mich_v cc * mich_v cc)
+  | MF_mul_mnm_no_overflow   of (mich_v cc * mich_v cc)
+  | MF_mul_nmm_no_overflow   of (mich_v cc * mich_v cc)
+  | MF_shiftL_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
+  | MF_shiftR_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
+[@@deriving sexp, compare, equal]
+
+(******************************************************************************)
+(******************************************************************************)
+(* Symbolic State                                                             *)
+(******************************************************************************)
+(******************************************************************************)
+
+type mich_cut_category =
+  | MCC_trx_entry
+  | MCC_trx_exit
+  | MCC_ln_loop (* non-body of the loop location *)
+  | MCC_ln_loopleft (* non-body of the loop location *)
+  | MCC_ln_map (* non-body of the loop location *)
+  | MCC_ln_iter (* non-body of the loop location *)
+  | MCC_lb_loop (* body of the loop *)
+  | MCC_lb_loopleft (* body of the loop *)
+  | MCC_lb_map (* body of the loop *)
+  | MCC_lb_iter (* body of the loop *)
+  | MCC_query
+[@@deriving sexp, compare, equal]
+
+(* reduced mich_cut_category *)
+type r_mich_cut_category =
+  | RMCC_trx
+  | RMCC_loop
+  | RMCC_loopleft
+  | RMCC_map
+  | RMCC_iter
+  | RMCC_query
+[@@deriving sexp, compare, equal]
+
+type mich_cut_info = {
+  mci_loc : ccp_loc;
+  mci_cutcat : mich_cut_category;
+}
+[@@deriving sexp, compare, equal]
+
+(* reduced mich_cut_info *)
+type r_mich_cut_info = {
+  rmci_loc : ccp_loc;
+  rmci_cutcat : r_mich_cut_category;
+}
+[@@deriving sexp, compare, equal]
+
+(* Transaction parameter value container *)
+type trx_image = {
+  (* THIS CONTRACT (not address, since SELF instruction returns contract, not address. *)
+  ti_contract : mich_v cc;
+  (* transaction source & sender (addresses) *)
+  ti_source : mich_v cc;
+  ti_sender : mich_v cc;
+  (* smart contract parameter value *)
+  ti_param : mich_v cc;
+  (* amount value *)
+  ti_amount : mich_v cc;
+  (* timestamp value *)
+  ti_time : mich_v cc;
+}
+[@@deriving sexp, compare, equal]
+
+(* symbolic moment snapshot (for single contract verifciation) *)
+type sym_image = {
+  (* michelson main stack *)
+  si_mich : mich_v cc list;
+  (* DIP instruction stack *)
+  si_dip : mich_v cc list;
+  (* container stack for MAP instruction - Entry & Exit *)
+  si_map_entry : mich_v cc list;
+  si_map_exit : mich_v cc list;
+  (* container stack for ITER instruction *)
+  si_iter : mich_v cc list;
+  (* contract balance snapshot *)
+  si_balance : mich_v cc;
+  (* blockchain's balance (excluding tp_amount & si_balance) *)
+  si_bc_balance : mich_v cc;
+  (* parameter used in this image *)
+  si_param : trx_image;
+}
+[@@deriving sexp, compare, equal]
+
+(* entire blockchain symbolic state - designed for single contract verification *)
+type sym_state = {
+  (* location and category where and when the state starts/blocked a symbolic execution *)
+  ss_start_mci : mich_cut_info;
+  ss_block_mci : mich_cut_info;
+  (* symbolic stack image where the state starts/blocked *)
+  ss_start_si : sym_image;
+  ss_block_si : sym_image;
+  (* parameter & amount & timestamp history between start/blocked
+     - information duplicated with sym_image's si_param
+  *)
+  ss_param_history : trx_image list;
+  (* AND-connected logical formula to constrain this state *)
+  ss_constraints : mich_f list;
+}
+[@@deriving sexp, compare, equal]
+
+(******************************************************************************)
+(******************************************************************************)
+(* Michelson to Tz                                                            *)
+(******************************************************************************)
+(******************************************************************************)
 
 module M2T = struct
   open Mich
