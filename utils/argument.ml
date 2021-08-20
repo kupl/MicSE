@@ -86,7 +86,7 @@ module Setting = struct
      { value; arg_lst = create_arg_lst [ "--z3-timeout"; "-Z" ] spec doc }
 
   (****************************************************************************)
-  (* Debug Mode                                                               *)
+  (* Dev Mode                                                                 *)
   (****************************************************************************)
 
   let debug_mode : bool t =
