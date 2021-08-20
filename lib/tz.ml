@@ -1,5 +1,7 @@
 (* Tz : MicSE's Michelson representation *)
 
+open Core
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Code Component                                                            *)
@@ -10,10 +12,12 @@ type ccp_pos = {
   col : int;
   lin : int;
 }
+[@@deriving sexp, compare, equal]
 
 type ccp_loc =
   | CCLOC_Unknown
   | CCLOC_Pos     of ccp_pos * ccp_pos
+[@@deriving sexp, compare, equal]
 
 type ccp_annot =
   (* :type_annot  *)
@@ -22,13 +26,15 @@ type ccp_annot =
   | CCA_var of string
   (* %field_annot *)
   | CCA_fld of string
+[@@deriving sexp, compare, equal]
 
 type 'a cc = {
   (* code component *)
-  cc_loc : ccp_loc;
-  cc_anl : ccp_annot list;
+  cc_loc : (ccp_loc[@sexp.opaque]);
+  cc_anl : (ccp_annot list[@sexp.opaque]);
   cc_v : 'a;
 }
+[@@deriving sexp, compare, equal]
 
 let gen_dummy_cc : 'a -> 'a cc =
   (fun x -> { cc_loc = CCLOC_Unknown; cc_anl = []; cc_v = x })
@@ -85,7 +91,7 @@ and mich_v =
   (*************************************************************************)
   (* Integer                                                               *)
   (*************************************************************************)
-  | MV_lit_int              of Z.t
+  | MV_lit_int              of Bigint.t
   | MV_neg_ni               of mich_v cc (* nat -> int *)
   | MV_neg_ii               of mich_v cc (* int -> int *)
   | MV_not_ni               of mich_v cc (* nat -> int *)
@@ -106,7 +112,7 @@ and mich_v =
   (*************************************************************************)
   (* Natural Number                                                        *)
   (*************************************************************************)
-  | MV_lit_nat              of Z.t
+  | MV_lit_nat              of Bigint.t
   | MV_abs_in               of mich_v cc (* int -> nat *)
   | MV_add_nnn              of mich_v cc * mich_v cc (* nat * nat -> nat *)
   | MV_mul_nnn              of mich_v cc * mich_v cc (* nat * nat -> nat *)
@@ -140,7 +146,7 @@ and mich_v =
   (*************************************************************************)
   (* Mutez                                                                 *)
   (*************************************************************************)
-  | MV_lit_mutez            of Z.t
+  | MV_lit_mutez            of Bigint.t
   | MV_add_mmm              of mich_v cc * mich_v cc (* mutez * mutez -> mutez *)
   | MV_sub_mmm              of mich_v cc * mich_v cc (* mutez * mutez -> mutez *)
   | MV_mul_mnm              of mich_v cc * mich_v cc (* mutez * nat -> mutez *)
@@ -172,7 +178,7 @@ and mich_v =
   (* Timestamp                                                             *)
   (*************************************************************************)
   | MV_lit_timestamp_str    of string
-  | MV_lit_timestamp_sec    of Z.t
+  | MV_lit_timestamp_sec    of Bigint.t
   | MV_add_tit              of mich_v cc * mich_v cc (* timestamp * int -> timestamp *)
   | MV_add_itt              of mich_v cc * mich_v cc (* int * timestamp -> timestamp *)
   | MV_sub_tit              of mich_v cc * mich_v cc (* timestamp * int -> timestamp *)
@@ -222,7 +228,7 @@ and mich_v =
   (*************************************************************************)
   (* Set                                                                   *)
   (*************************************************************************)
-  | MV_lit_set              of mich_t cc * mich_v cc list (* ('a) * set-literal (list) -> 'a set *)
+  | MV_lit_set              of mich_t cc * mich_v cc Core.List.t (* ('a) * set-literal (list) -> 'a set *)
   | MV_empty_set            of mich_t cc (* ('a) -> 'a set *)
   | MV_update_xbss          of mich_v cc * mich_v cc * mich_v cc (* 'a * bool * 'a set -> 'a set *)
   (*************************************************************************)
@@ -287,11 +293,11 @@ and mich_v =
 and mich_i =
   (* Michelson Instruction *)
   | MI_seq              of mich_i cc * mich_i cc
-  | MI_drop             of Z.t
-  | MI_dup              of Z.t
+  | MI_drop             of Bigint.t
+  | MI_dup              of Bigint.t
   | MI_swap
-  | MI_dig              of Z.t
-  | MI_dug              of Z.t
+  | MI_dig              of Bigint.t
+  | MI_dug              of Bigint.t
   | MI_push             of mich_t cc * mich_v cc
   | MI_some
   | MI_none             of mich_t cc
@@ -321,7 +327,7 @@ and mich_i =
   | MI_lambda           of mich_t cc * mich_t cc * mich_i cc
   | MI_exec
   | MI_apply
-  | MI_dip_n            of Z.t * mich_i cc
+  | MI_dip_n            of Bigint.t * mich_i cc
   | MI_failwith
   | MI_cast             of mich_t cc
   | MI_rename
@@ -373,6 +379,7 @@ and mich_i =
   | MI_unpair
   (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
   | MI_micse_check      of mich_i cc
+[@@deriving sexp, compare, equal]
 (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
 (*****************************************************************************)
@@ -400,7 +407,7 @@ module M2T = struct
 
   let cv_t : 'a Mich.t -> 'a cc =
     fun { pos; ann; d } ->
-    { cc_loc = cv_loc pos; cc_anl = List.map cv_annot ann; cc_v = d }
+    { cc_loc = cv_loc pos; cc_anl = List.map ann ~f:cv_annot; cc_v = d }
 
   let rec cv_typ : Mich.typ -> mich_t = function
   | T_key              -> MT_key
@@ -431,9 +438,9 @@ module M2T = struct
 
   let rec cv_inst : inst -> mich_i = function
   | I_seq (i1, i2) -> MI_seq (cv_instt i1, cv_instt i2)
-  | I_drop -> MI_drop Z.one
+  | I_drop -> MI_drop Bigint.one
   | I_drop_n zn -> MI_drop zn
-  | I_dup -> MI_dup Z.one
+  | I_dup -> MI_dup Bigint.one
   | I_swap -> MI_swap
   | I_dig zn -> MI_dig zn
   | I_dug zn -> MI_dug zn
@@ -466,7 +473,7 @@ module M2T = struct
   | I_lambda (t1, t2, i) -> MI_lambda (cv_typt t1, cv_typt t2, cv_instt i)
   | I_exec -> MI_exec
   | I_apply -> MI_apply
-  | I_dip i -> MI_dip_n (Z.one, cv_instt i)
+  | I_dip i -> MI_dip_n (Bigint.one, cv_instt i)
   | I_dip_n (zn, i) -> MI_dip_n (zn, cv_instt i)
   | I_failwith -> MI_failwith
   | I_cast t -> MI_cast (cv_typt t)
@@ -520,7 +527,7 @@ module M2T = struct
   | I_chain_id -> MI_chain_id
   | I_unpair -> MI_unpair
   (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
-  | I_noop -> MI_drop (Z.of_int 0)
+  | I_noop -> MI_drop (Bigint.of_int 0)
   | I_micse_check i -> MI_micse_check (cv_instt i)
   (* Error case - Macros & Undefined *)
   (* | _ as inst -> Error ("cv_inst : " ^ (PreLib.Mich.string_of_instt_ol (PreLib.Mich.gen_t inst))) |> raise *)
@@ -536,8 +543,8 @@ module M2T = struct
     | (T_signature, D_string s) -> MV_lit_signature_str s
     | (T_option t, D_none) -> MV_none (cv_typt t)
     | (T_option t, D_some d) -> MV_some (cv_datat t d)
-    | (T_list t, D_list d) -> MV_lit_list (cv_typt t, List.map (cv_datat t) d)
-    | (T_set t, D_list d) -> MV_lit_set (cv_typt t, List.map (cv_datat t) d)
+    | (T_list t, D_list d) -> MV_lit_list (cv_typt t, List.map ~f:(cv_datat t) d)
+    | (T_set t, D_list d) -> MV_lit_set (cv_typt t, List.map ~f:(cv_datat t) d)
     | (T_pair (t1, t2), D_pair (d1, d2)) ->
       MV_pair (cv_datat t1 d1, cv_datat t2 d2)
     | (T_pair (t1, t2), D_list (d1 :: d2)) ->
@@ -549,7 +556,7 @@ module M2T = struct
     | (T_map (t1, t2), D_list d) ->
       let m : (mich_v cc, mich_v cc) Core.Map.Poly.t =
          List.fold_left
-           (fun acc ddd ->
+           ~f:(fun acc ddd ->
              match ddd.d with
              | D_elt (d1, d2) -> (
                Core.Map.Poly.add acc ~key:(cv_datat t1 d1) ~data:(cv_datat t2 d2)
@@ -560,13 +567,13 @@ module M2T = struct
              )
              | _              ->
                Error "cv_data : (T_map, D_list) : not-Elt" |> raise)
-           Core.Map.Poly.empty d
+           ~init:Core.Map.Poly.empty d
       in
       MV_lit_map (cv_typt t1, cv_typt t2, Core.Map.Poly.to_alist m)
     | (T_big_map (t1, t2), D_list d) ->
       let m : (mich_v cc, mich_v cc) Core.Map.Poly.t =
          List.fold_left
-           (fun acc ddd ->
+           ~f:(fun acc ddd ->
              match ddd.d with
              | D_elt (d1, d2) -> (
                Core.Map.Poly.add acc ~key:(cv_datat t1 d1) ~data:(cv_datat t2 d2)
@@ -577,7 +584,7 @@ module M2T = struct
              )
              | _              ->
                Error "cv_data : (T_big_map, D_list) : not-Elt" |> raise)
-           Core.Map.Poly.empty d
+           ~init:Core.Map.Poly.empty d
       in
       MV_lit_big_map (cv_typt t1, cv_typt t2, Core.Map.Poly.to_alist m)
     | (T_big_map (t1, t2), D_int _) ->
@@ -604,7 +611,7 @@ module M2T = struct
       MV_lit_address (MV_lit_key_hash s |> gen_dummy_cc)
     | (T_address, D_bytes s) ->
       MV_lit_address (MV_lit_key_hash s |> gen_dummy_cc)
-    | (T_contract t, D_string s) when t.Mich.d = Mich.T_unit ->
+    | (T_contract t, D_string s) when Mich.equal_typ t.Mich.d Mich.T_unit ->
       MV_implicit_account (MV_lit_key_hash s |> gen_dummy_cc)
     | (T_contract t, D_bytes s) ->
       MV_lit_contract

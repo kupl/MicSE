@@ -10,10 +10,12 @@ type ccp_pos = {
   col : int;
   lin : int;
 }
+[@@deriving sexp, compare, equal]
 
 type ccp_loc =
   | CCLOC_Unknown
   | CCLOC_Pos     of ccp_pos * ccp_pos
+[@@deriving sexp, compare, equal]
 
 type ccp_annot =
   (* :type_annot  *)
@@ -22,6 +24,7 @@ type ccp_annot =
   | CCA_var of string
   (* %field_annot *)
   | CCA_fld of string
+[@@deriving sexp, compare, equal]
 
 type 'a cc = {
   (* code component *)
@@ -29,6 +32,7 @@ type 'a cc = {
   cc_anl : ccp_annot list;
   cc_v : 'a;
 }
+[@@deriving sexp, compare, equal]
 
 val gen_dummy_cc : 'a -> 'a cc
 
@@ -84,7 +88,7 @@ and mich_v =
   (*************************************************************************)
   (* Integer                                                               *)
   (*************************************************************************)
-  | MV_lit_int              of Z.t
+  | MV_lit_int              of Bigint.t
   | MV_neg_ni               of mich_v cc (* nat -> int *)
   | MV_neg_ii               of mich_v cc (* int -> int *)
   | MV_not_ni               of mich_v cc (* nat -> int *)
@@ -105,7 +109,7 @@ and mich_v =
   (*************************************************************************)
   (* Natural Number                                                        *)
   (*************************************************************************)
-  | MV_lit_nat              of Z.t
+  | MV_lit_nat              of Bigint.t
   | MV_abs_in               of mich_v cc (* int -> nat *)
   | MV_add_nnn              of mich_v cc * mich_v cc (* nat * nat -> nat *)
   | MV_mul_nnn              of mich_v cc * mich_v cc (* nat * nat -> nat *)
@@ -139,7 +143,7 @@ and mich_v =
   (*************************************************************************)
   (* Mutez                                                                 *)
   (*************************************************************************)
-  | MV_lit_mutez            of Z.t
+  | MV_lit_mutez            of Bigint.t
   | MV_add_mmm              of mich_v cc * mich_v cc (* mutez * mutez -> mutez *)
   | MV_sub_mmm              of mich_v cc * mich_v cc (* mutez * mutez -> mutez *)
   | MV_mul_mnm              of mich_v cc * mich_v cc (* mutez * nat -> mutez *)
@@ -171,7 +175,7 @@ and mich_v =
   (* Timestamp                                                             *)
   (*************************************************************************)
   | MV_lit_timestamp_str    of string
-  | MV_lit_timestamp_sec    of Z.t
+  | MV_lit_timestamp_sec    of Bigint.t
   | MV_add_tit              of mich_v cc * mich_v cc (* timestamp * int -> timestamp *)
   | MV_add_itt              of mich_v cc * mich_v cc (* int * timestamp -> timestamp *)
   | MV_sub_tit              of mich_v cc * mich_v cc (* timestamp * int -> timestamp *)
@@ -286,11 +290,11 @@ and mich_v =
 and mich_i =
   (* Michelson Instruction *)
   | MI_seq              of mich_i cc * mich_i cc
-  | MI_drop             of Z.t
-  | MI_dup              of Z.t
+  | MI_drop             of Bigint.t
+  | MI_dup              of Bigint.t
   | MI_swap
-  | MI_dig              of Z.t
-  | MI_dug              of Z.t
+  | MI_dig              of Bigint.t
+  | MI_dug              of Bigint.t
   | MI_push             of mich_t cc * mich_v cc
   | MI_some
   | MI_none             of mich_t cc
@@ -320,7 +324,7 @@ and mich_i =
   | MI_lambda           of mich_t cc * mich_t cc * mich_i cc
   | MI_exec
   | MI_apply
-  | MI_dip_n            of Z.t * mich_i cc
+  | MI_dip_n            of Bigint.t * mich_i cc
   | MI_failwith
   | MI_cast             of mich_t cc
   | MI_rename
@@ -372,6 +376,7 @@ and mich_i =
   | MI_unpair
   (* Non-Standard Instruction : Special Comment : MicSE user defined safety property *)
   | MI_micse_check      of mich_i cc
+[@@deriving sexp, compare, equal]
 (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
 (*****************************************************************************)

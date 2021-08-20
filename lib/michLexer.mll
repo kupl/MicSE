@@ -64,7 +64,7 @@ rule next_token = parse
   | string as s   { STRING (String.sub s 1 (String.length s - 2)) }
   | ident as s    { id_or_kwd s }
   | hex as s      { HEX s }
-  | number as s   { NUM (Z.of_string s) }
+  | number as s   { NUM (Bigint.of_string s) }
   | ';'           { SEMICOLON }
   | '{'           { LB }
   | '}'           { RB }

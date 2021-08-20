@@ -11,10 +11,12 @@ type pos = {
   col : int;
   lin : int;
 }
+[@@deriving compare, equal]
 
 type loc =
   | Unknown
   | Pos     of pos * pos
+[@@deriving compare, equal]
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -27,6 +29,7 @@ type annot =
   | A_var of string (* @var_annot    *)
   | A_fld of string
 (* %field_annot *)
+[@@deriving compare, equal]
 
 type typ =
   | T_key
@@ -57,11 +60,11 @@ and inst =
   (* Standard Instructions : Michelson-Defined *)
   | I_seq              of inst t * inst t
   | I_drop
-  | I_drop_n           of Z.t
+  | I_drop_n           of Bigint.t
   | I_dup
   | I_swap
-  | I_dig              of Z.t
-  | I_dug              of Z.t
+  | I_dig              of Bigint.t
+  | I_dug              of Bigint.t
   | I_push             of typ t * data t
   | I_some
   | I_none             of typ t
@@ -92,7 +95,7 @@ and inst =
   | I_exec
   | I_apply
   | I_dip              of inst t
-  | I_dip_n            of Z.t * inst t
+  | I_dip_n            of Bigint.t * inst t
   | I_failwith
   | I_cast             of typ t
   | I_rename
@@ -144,7 +147,7 @@ and inst =
   | I_unpair
   (* Standard Macros *)
   | M_plain            of string (* Macros with no following argument. e.g. FAIL *)
-  | M_num              of string * Z.t (* Macros with one number argument. e.g. DUP n *)
+  | M_num              of string * Bigint.t (* Macros with one number argument. e.g. DUP n *)
   | M_code             of string * inst t (* Macros with one code argument. e.g. MAP_CAR *)
   | M_code2            of string * inst t * inst t (* Macros with two code arguments. e.g. IFCMPEQ *)
   (* Non-Standard Instruction : Introduced to resolve parsing issue *)
@@ -154,7 +157,7 @@ and inst =
 (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
 and data =
-  | D_int    of Z.t
+  | D_int    of Bigint.t
   | D_string of string
   | D_bytes  of string
   | D_unit
@@ -179,6 +182,7 @@ and program = {
   storage : typ t;
   code : inst t;
 }
+[@@deriving compare, equal]
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -324,7 +328,7 @@ val resolve_plain_macro : inst t -> string -> inst t
 
 val construct_duup : int -> string
 
-val resolve_num_macro : string -> Z.t -> inst t
+val resolve_num_macro : string -> Bigint.t -> inst t
 
 (*****************************************************************************)
 (* Macros - Macro with a code                                                *)

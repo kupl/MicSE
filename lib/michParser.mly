@@ -31,7 +31,7 @@
 
 
 
-%token <Z.t> NUM
+%token <Bigint.t> NUM
 %token <bool> BOOLEAN
 %token <string> HEX
 %token <string> STRING
@@ -333,7 +333,7 @@ macro_t_i_noreq:
 
 int:
   | n=NUM { n }
-  | MINUS n=NUM { Z.neg n }
+  | MINUS n=NUM { Bigint.neg n }
 
 data:
   | LP d=data RP {d}

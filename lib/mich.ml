@@ -1,6 +1,8 @@
 (* Mich : Michelson Frontend Target Datatype. MicSE's Michelson representation
    is defined in Tz module *)
 
+open Core
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Location in Code                                                          *)
@@ -11,10 +13,12 @@ type pos = {
   col : int;
   lin : int;
 }
+[@@deriving compare, equal]
 
 type loc =
   | Unknown
   | Pos     of pos * pos
+[@@deriving compare, equal]
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -25,8 +29,8 @@ type loc =
 type annot =
   | A_typ of string (* :type_annot   *)
   | A_var of string (* @var_annot    *)
-  | A_fld of string
-(* %field_annot *)
+  | A_fld of string (* %field_annot *)
+[@@deriving compare, equal]
 
 type typ =
   | T_key
@@ -57,11 +61,11 @@ and inst =
   (* Standard Instructions : Michelson-Defined *)
   | I_seq              of inst t * inst t
   | I_drop
-  | I_drop_n           of Z.t
+  | I_drop_n           of Bigint.t
   | I_dup
   | I_swap
-  | I_dig              of Z.t
-  | I_dug              of Z.t
+  | I_dig              of Bigint.t
+  | I_dug              of Bigint.t
   | I_push             of typ t * data t
   | I_some
   | I_none             of typ t
@@ -92,7 +96,7 @@ and inst =
   | I_exec
   | I_apply
   | I_dip              of inst t
-  | I_dip_n            of Z.t * inst t
+  | I_dip_n            of Bigint.t * inst t
   | I_failwith
   | I_cast             of typ t
   | I_rename
@@ -144,7 +148,7 @@ and inst =
   | I_unpair
   (* Standard Macros *)
   | M_plain            of string (* Macros with no following argument. e.g. FAIL *)
-  | M_num              of string * Z.t (* Macros with one number argument. e.g. DUP n *)
+  | M_num              of string * Bigint.t (* Macros with one number argument. e.g. DUP n *)
   | M_code             of string * inst t (* Macros with one code argument. e.g. MAP_CAR *)
   | M_code2            of string * inst t * inst t (* Macros with two code arguments. e.g. IFCMPEQ *)
   (* Non-Standard Instruction : Introduced to resolve parsing issue *)
@@ -154,7 +158,7 @@ and inst =
 (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
 and data =
-  | D_int    of Z.t
+  | D_int    of Bigint.t
   | D_string of string
   | D_bytes  of string
   | D_unit
@@ -179,6 +183,7 @@ and program = {
   storage : typ t;
   code : inst t;
 }
+[@@deriving compare, equal]
 
 (*****************************************************************************)
 (*****************************************************************************)
@@ -200,11 +205,13 @@ let string_of_annot : annot -> string = function
 | A_fld s -> "%" ^ s
 
 let string_of_annots : annot list -> string =
-  (fun al -> al |> List.map string_of_annot |> String.concat " ")
+  (fun al -> al |> List.map ~f:string_of_annot |> String.concat ~sep:" ")
 
 let rec string_of_typt_inner : bool -> typ t -> string =
   fun paren_flag tt ->
-  let annotsstr = if tt.ann = [] then "" else " " ^ string_of_annots tt.ann in
+  let annotsstr =
+     if List.is_empty tt.ann then "" else " " ^ string_of_annots tt.ann
+  in
   let bodystr =
      match tt.d with
      | T_key              -> "key" ^ annotsstr
@@ -297,10 +304,12 @@ let string_of_typt : typ t -> string = string_of_typt_inner false
 (* 'ol' for one-line, means that there are no newline character. - Except for the string of the "I_micse_check" instruction. *)
 let rec string_of_datat_ol_inner : bool -> data t -> string =
   fun paren_flag dd ->
-  let annotstr = if dd.ann = [] then "" else " " ^ string_of_annots dd.ann in
+  let annotstr =
+     if List.is_empty dd.ann then "" else " " ^ string_of_annots dd.ann
+  in
   let bodystr =
      match dd.d with
-     | D_int zn        -> Z.to_string zn ^ annotstr
+     | D_int zn        -> Bigint.to_string zn ^ annotstr
      | D_string s      -> "\\\"" ^ s ^ "\\\"" ^ annotstr
      | D_bytes s       -> "0x" ^ s ^ annotstr
      | D_unit          -> "Unit" ^ annotstr
@@ -322,8 +331,8 @@ let rec string_of_datat_ol_inner : bool -> data t -> string =
      | D_list dlst     ->
        "{"
        ^ (dlst
-         |> List.map (fun x -> string_of_datat_ol_inner true x)
-         |> String.concat "; "
+         |> List.map ~f:(fun x -> string_of_datat_ol_inner true x)
+         |> String.concat ~sep:"; "
          )
        ^ "}"
        ^ annotstr
@@ -354,7 +363,9 @@ and string_of_seq_ol : inst t -> string =
      | I_seq (c1, c2) -> string_of_seq_ol c1 ^ "; " ^ string_of_seq_ol c2
      | _              -> string_of_instt_ol c
   in
-  if c.ann <> [] then "{" ^ bodystr ^ "} " ^ string_of_annots c.ann else bodystr
+  if not (List.is_empty c.ann)
+  then "{" ^ bodystr ^ "} " ^ string_of_annots c.ann
+  else bodystr
 
 and string_of_instt_ol : inst t -> string =
    let sos = string_of_seq_ol in
@@ -364,16 +375,18 @@ and string_of_instt_ol : inst t -> string =
    let sod d = " " ^ string_of_datat_ol d in
    (* FUNCTION BEGIN *)
    fun ii ->
-   let annotstr = if ii.ann = [] then "" else " " ^ string_of_annots ii.ann in
+   let annotstr =
+      if List.is_empty ii.ann then "" else " " ^ string_of_annots ii.ann
+   in
    let bodystr =
       match ii.d with
       | I_seq _ -> sos ii
       | I_drop -> "DROP" ^ annotstr
-      | I_drop_n zn -> "DROP" ^ " " ^ Z.to_string zn ^ annotstr
+      | I_drop_n zn -> "DROP" ^ " " ^ Bigint.to_string zn ^ annotstr
       | I_dup -> "DUP" ^ annotstr
       | I_swap -> "SWAP" ^ annotstr
-      | I_dig zn -> "DIG" ^ " " ^ Z.to_string zn ^ annotstr
-      | I_dug zn -> "DUG" ^ " " ^ Z.to_string zn ^ annotstr
+      | I_dig zn -> "DIG" ^ " " ^ Bigint.to_string zn ^ annotstr
+      | I_dug zn -> "DUG" ^ " " ^ Bigint.to_string zn ^ annotstr
       | I_push (t, d) -> "PUSH" ^ annotstr ^ sot t ^ sod d
       | I_some -> "SOME" ^ annotstr
       | I_none t -> "NONE" ^ sot t ^ annotstr
@@ -404,7 +417,7 @@ and string_of_instt_ol : inst t -> string =
       | I_exec -> "EXEC" ^ annotstr
       | I_apply -> "APPLY" ^ annotstr
       | I_dip i -> "DIP" ^ annotstr ^ sos_br i
-      | I_dip_n (zn, i) -> "DIP" ^ " " ^ Z.to_string zn ^ sos_br i
+      | I_dip_n (zn, i) -> "DIP" ^ " " ^ Bigint.to_string zn ^ sos_br i
       | I_failwith -> "FAILWITH" ^ annotstr
       | I_cast t -> "CAST" ^ annotstr ^ sot t
       | I_rename -> "RENAME" ^ annotstr
@@ -456,7 +469,7 @@ and string_of_instt_ol : inst t -> string =
       | I_unpair -> "UNPAIR" ^ annotstr
       (* Standard Macros *)
       | M_plain s -> s ^ annotstr
-      | M_num (s, zn) -> s ^ " " ^ Z.to_string zn ^ annotstr
+      | M_num (s, zn) -> s ^ " " ^ Bigint.to_string zn ^ annotstr
       | M_code (s, i) -> s ^ annotstr ^ sos_br i
       | M_code2 (s, i1, i2) -> s ^ annotstr ^ sos_br2 i1 i2
       (* Non-Standard Instruction : Introduced to resolve parsing issue *)
@@ -526,7 +539,7 @@ let join_pos : loc -> loc -> loc =
   | (Unknown, Unknown) -> Unknown
 
 let join_pos_lst : loc list -> loc =
-  (fun loclst -> List.fold_left join_pos Unknown loclst)
+  (fun loclst -> List.fold ~f:join_pos ~init:Unknown loclst)
 
 let join_instt_seq : annot list -> inst t -> inst t -> inst t =
   (fun ann i1 i2 -> { pos = join_pos i1.pos i2.pos; ann; d = I_seq (i1, i2) })
@@ -537,15 +550,18 @@ let gen_instseq : annot list -> inst list -> inst t =
   fun annlst instlst ->
   let i_t =
      List.fold_left
-       (fun acc i -> join_instt_seq [] acc { pos = Unknown; ann = []; d = i })
-       empty_instt instlst
+       ~f:(fun acc i ->
+         join_instt_seq [] acc { pos = Unknown; ann = []; d = i })
+       ~init:empty_instt instlst
   in
   { i_t with ann = annlst }
 
 let gen_insttseq : annot list -> inst t list -> inst t =
   fun annlst insttlst ->
   let i_t =
-     List.fold_left (fun acc i -> join_instt_seq [] acc i) empty_instt insttlst
+     List.fold_left
+       ~f:(fun acc i -> join_instt_seq [] acc i)
+       ~init:empty_instt insttlst
   in
   { i_t with ann = annlst }
 (* [A; B; C] -> I_seq ( I_seq (a, b), c ) *)
@@ -560,13 +576,14 @@ exception Not_Macro of string
 
 let nm_fail s = raise (Not_Macro s)
 
-let str_fst s n : string = String.sub s 0 n
+let str_fst s n : string = String.sub s ~pos:0 ~len:n
 (* the first-n characters in the given string-s. *)
 
-let str_lst s n : string = String.sub s (String.length s - n) n
+let str_lst s n : string = String.sub s ~pos:(String.length s - n) ~len:n
 (* the last-n characters in the given string-s. *)
 
-let str_mid s n1 n2 : string = String.sub s n1 (String.length s - (n1 + n2))
+let str_mid s n1 n2 : string =
+   String.sub s ~pos:n1 ~len:(String.length s - (n1 + n2))
 (* exclude first-n1 & last-n2 characters in the given string-s. *)
 
 let m_if : inst -> inst -> inst = (fun i1 i2 -> I_if (gen_t i1, gen_t i2))
@@ -609,12 +626,14 @@ let m_assertcmpop : inst -> inst t =
 
 let parse_duup : string -> bool * inst t option =
   fun s ->
-  if String.length s > 2 && str_fst s 1 = "D" && str_lst s 1 = "P"
+  if String.length s > 2
+     && String.equal (str_fst s 1) "D"
+     && String.equal (str_lst s 1) "P"
   then (
     let (b, n) : bool * int =
        Core.String.foldi (str_mid s 1 1) ~init:(true, 0)
          ~f:(fun _ (acc_b, acc_n) c ->
-           if acc_b && c = 'U' then (true, acc_n + 1) else (false, 0)
+           if acc_b && Char.equal c 'U' then (true, acc_n + 1) else (false, 0)
        )
     in
     let iopt : inst t option =
@@ -625,7 +644,10 @@ let parse_duup : string -> bool * inst t option =
          gen_instseq [] [ I_dip (gen_t I_dup); I_swap ] |> Option.some
        | (true, n)  ->
          gen_instseq []
-           [ I_dip_n (Z.of_int (n - 1), gen_t I_dup); I_dig (Z.of_int n) ]
+           [
+             I_dip_n (Bigint.of_int (n - 1), gen_t I_dup);
+             I_dig (Bigint.of_int n);
+           ]
          |> Option.some
     in
     (b, iopt)
@@ -657,17 +679,21 @@ let parse_ad : string -> bool * bool list =
 
 let parse_cadr : string -> bool * inst t option =
   fun s ->
-  if String.length s > 2 && str_fst s 1 = "C" && str_lst s 1 = "R"
+  if String.length s > 2
+     && String.equal (str_fst s 1) "C"
+     && String.equal (str_lst s 1) "R"
   then (
     let (b, bl) = parse_ad (str_mid s 1 1) in
-    let il : inst list = List.map (fun x -> if x then I_car else I_cdr) bl in
+    let il : inst list = List.map ~f:(fun x -> if x then I_car else I_cdr) bl in
     if b then (true, Some (gen_instseq [] il)) else (false, None)
   )
   else (false, None)
 
 let parse_set_cadr : string -> bool * inst t option =
   fun s ->
-  if str_fst s 5 = "SET_C" && str_lst s 1 = "R" && String.length s > 6
+  if String.equal (str_fst s 5) "SET_C"
+     && String.equal (str_lst s 1) "R"
+     && String.length s > 6
   then (
     let (b, bl) = parse_ad (str_mid s 5 1) in
     let rec f : bool list -> inst t =
@@ -729,7 +755,7 @@ let rec decode_pair_tree : pair_tree -> inst list = function
 
 let parse_pair : string -> bool * inst t option =
   fun s ->
-  if String.length s > 3 && str_lst s 1 = "R"
+  if String.length s > 3 && String.equal (str_lst s 1) "R"
   then (
     try
       let itopt : inst t option =
@@ -761,7 +787,9 @@ let rec decode_unpair_tree : pair_tree -> inst list =
 
 let parse_unpair : string -> bool * inst t option =
   fun s ->
-  if String.length s > 5 && str_fst s 2 = "UN" && str_lst s 1 = "R"
+  if String.length s > 5
+     && String.equal (str_fst s 2) "UN"
+     && String.equal (str_lst s 1) "R"
   then (
     try
       let itopt : inst t option =
@@ -811,23 +839,23 @@ let resolve_plain_macro : inst t -> string -> inst t =
   | _               ->
     let (duup_bool, duup_it) = parse_duup s in
     if duup_bool
-    then Option.get duup_it
+    then Option.value_exn duup_it
     else (
       let (cadr_bool, cadr_it) = parse_cadr s in
       if cadr_bool
-      then Option.get cadr_it
+      then Option.value_exn cadr_it
       else (
         let (set_cadr_bool, set_cadr_it) = parse_set_cadr s in
         if set_cadr_bool
-        then Option.get set_cadr_it
+        then Option.value_exn set_cadr_it
         else (
           let (pair_bool, pair_it) = parse_pair s in
           if pair_bool
-          then Option.get pair_it
+          then Option.value_exn pair_it
           else (
             let (unpair_bool, unpair_it) = parse_unpair s in
             if unpair_bool
-            then Option.get unpair_it
+            then Option.value_exn unpair_it
             else nm_fail ("resolve_plain_macro : every match failed : " ^ s)
           )
         )
@@ -851,7 +879,7 @@ let construct_duup : int -> string = (fun n -> "D" ^ String.make n 'U' ^ "P")
 let parse_get_n : int -> inst t =
   fun n ->
   let last_il = if n mod 2 = 0 then [] else [ I_car ] in
-  gen_instseq [] (List.init (n / 2) (fun _ -> I_cdr) @ last_il)
+  gen_instseq [] (List.init (n / 2) ~f:(fun _ -> I_cdr) @ last_il)
 
 let rec update_n_body : int -> inst t =
   fun n ->
@@ -887,15 +915,18 @@ let rec parse_unpair_n : int -> inst t =
     | _ -> gen_instseq [] [ I_unpair; I_dip (parse_unpair_n (n - 1)) ]
   )
 
-let resolve_num_macro : string -> Z.t -> inst t =
+let resolve_num_macro : string -> Bigint.t -> inst t =
   fun s zn ->
   match s with
   | "DUP"    ->
-    construct_duup (Z.to_int zn) |> parse_duup |> Stdlib.snd |> Option.get
-  | "GET"    -> parse_get_n (Z.to_int zn)
-  | "UPDATE" -> parse_update_n (Z.to_int zn)
-  | "PAIR"   -> parse_pair_n (Z.to_int zn)
-  | "UNPAIR" -> parse_unpair_n (Z.to_int zn)
+    construct_duup (Bigint.to_int_exn zn)
+    |> parse_duup
+    |> snd
+    |> Option.value ~default:(gen_t I_noop)
+  | "GET"    -> parse_get_n (Bigint.to_int_exn zn)
+  | "UPDATE" -> parse_update_n (Bigint.to_int_exn zn)
+  | "PAIR"   -> parse_pair_n (Bigint.to_int_exn zn)
+  | "UNPAIR" -> parse_unpair_n (Bigint.to_int_exn zn)
   | _        -> nm_fail ("resolve_num_macro : every match failed : " ^ s)
 
 (*****************************************************************************)
@@ -908,7 +939,9 @@ let resolve_num_macro : string -> Z.t -> inst t =
 
 let parse_map_cadr : string -> inst t -> bool * inst t option =
   fun s c ->
-  if String.length s > 6 && str_fst s 5 = "MAP_C" && str_lst s 1 = "R"
+  if String.length s > 6
+     && String.equal (str_fst s 5) "MAP_C"
+     && String.equal (str_lst s 1) "R"
   then (
     let (b, bl) = parse_ad (str_mid s 5 1) in
     let rec f : bool list -> inst t =
@@ -939,10 +972,10 @@ let parse_map_cadr : string -> inst t -> bool * inst t option =
 let parse_diip : string -> inst t -> bool * inst t option =
   fun s c ->
   if String.length s > 2
-     && str_fst s 1 = "D"
-     && str_lst s 1 = "P"
-     && str_mid s 1 1 = String.make (String.length s - 2) 'I'
-  then (true, Some (gen_t (I_dip_n (Z.of_int (String.length s - 2), c))))
+     && String.equal (str_fst s 1) "D"
+     && String.equal (str_lst s 1) "P"
+     && String.equal (str_mid s 1 1) (String.make (String.length s - 2) 'I')
+  then (true, Some (gen_t (I_dip_n (Bigint.of_int (String.length s - 2), c))))
   else (false, None)
 
 let resolve_code_macro : string -> inst t -> inst t =
@@ -951,11 +984,11 @@ let resolve_code_macro : string -> inst t -> inst t =
   | _ ->
     let (map_cadr_bool, map_cadr_it) = parse_map_cadr s c in
     if map_cadr_bool
-    then Option.get map_cadr_it
+    then Option.value_exn map_cadr_it
     else (
       let (diip_bool, diip_it) = parse_diip s c in
       if diip_bool
-      then Option.get diip_it
+      then Option.value_exn diip_it
       else nm_fail ("resolve_code_macro : every match failed : " ^ s)
     )
 
@@ -1216,7 +1249,7 @@ and fill_position_all_data ?(update_loc = false) : loc -> data -> loc * data =
     let (loc_d1, d1') = fldtt d1 in
     (loc_d1, D_some d1')
   | D_list dlst ->
-    let (locs, ds) = dlst |> List.map (fun x -> fldtt x) |> List.split in
+    let (locs, ds) = dlst |> List.map ~f:(fun x -> fldtt x) |> List.unzip in
     (join_pos_lst locs, D_list ds)
   | D_elt (d1, d2) ->
     let ((loc_d1, d1'), (loc_d2, d2')) = (fldtt d1, fldtt d2) in

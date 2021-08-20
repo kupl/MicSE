@@ -1,7 +1,9 @@
 (library
  (name lib)
  (public_name micse.lib)
- (libraries core utils yojson zarith))
+ (libraries core utils yojson zarith sexplib bignum)
+ (preprocess
+  (pps ppx_sexp_conv ppx_compare)))
 
 (menhir
  (modules michParser)
