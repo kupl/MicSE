@@ -17,8 +17,11 @@ module Setting = struct
   let required_set : require Core.Set.Poly.t Stdlib.ref =
      Stdlib.ref Core.Set.Poly.empty
 
-  let add_required : require -> unit =
-    (fun rf -> required_set := Core.Set.Poly.add !required_set rf)
+  let add_required : unit -> require =
+    fun () ->
+    let rf : require = Stdlib.ref false in
+    let _ = required_set := Core.Set.Poly.add !required_set rf in
+    rf
 
   let check_required : unit -> bool =
     (fun () -> Core.Set.for_all !required_set ~f:Stdlib.( ! ))
@@ -35,8 +38,7 @@ module Setting = struct
   (****************************************************************************)
 
   let input_file : string t =
-     let (required : require) = Stdlib.ref false in
-     let _ = add_required required in
+     let (required : require) = add_required () in
      let (value : string Stdlib.ref) = Stdlib.ref "" in
      let (spec : Arg.spec) =
         Arg.String
@@ -48,8 +50,14 @@ module Setting = struct
      { value; arg_lst = create_arg_lst [ "--input"; "-I" ] spec doc }
 
   let input_storage_file : string t =
+     let (required : require) = add_required () in
      let (value : string Stdlib.ref) = Stdlib.ref "" in
-     let (spec : Arg.spec) = Arg.Set_string value in
+     let (spec : Arg.spec) =
+        Arg.String
+          (fun s ->
+          required := true;
+          value := s)
+     in
      let (doc : Arg.doc) = "file path for input initial storage information" in
      { value; arg_lst = create_arg_lst [ "--initial-storage"; "-S" ] spec doc }
 

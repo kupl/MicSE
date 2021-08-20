@@ -16,7 +16,7 @@ module Setting : sig
 
   val required_set : require Core.Set.Poly.t Stdlib.ref
 
-  val add_required : require -> unit
+  val add_required : unit -> require
 
   val check_required : unit -> bool
 
