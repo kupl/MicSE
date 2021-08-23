@@ -15,6 +15,7 @@ build:
 	cp -f $(foreach file,$(BIN_LIST),$(BIN_DIR)/$(file)) $(CURRENT_DIR)/bin $(QUIET)
 
 test:
+	dune build
 	dune runtest -f $(QUIET)
 
 install:
