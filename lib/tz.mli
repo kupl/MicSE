@@ -417,6 +417,17 @@ type mich_f =
 (******************************************************************************)
 (******************************************************************************)
 
+type query_category =
+  (* Each of them are indicator of "State -> Formula" function *)
+  | Q_mutez_add_no_overflow
+  | Q_mutez_sub_no_underflow
+  | Q_mutez_mul_mnm_no_overflow
+  | Q_mutez_mul_nmm_no_overflow
+  | Q_shiftleft_safe
+  | Q_shiftright_safe
+  | Q_assertion
+[@@deriving sexp, compare, equal]
+
 type mich_cut_category =
   | MCC_trx_entry
   | MCC_trx_exit
@@ -428,7 +439,7 @@ type mich_cut_category =
   | MCC_lb_loopleft (* body of the loop *)
   | MCC_lb_map (* body of the loop *)
   | MCC_lb_iter (* body of the loop *)
-  | MCC_query
+  | MCC_query       of query_category
 [@@deriving sexp, compare, equal]
 
 (* reduced mich_cut_category *)
@@ -438,7 +449,7 @@ type r_mich_cut_category =
   | RMCC_loopleft
   | RMCC_map
   | RMCC_iter
-  | RMCC_query
+  | RMCC_query    of query_category
 [@@deriving sexp, compare, equal]
 
 type mich_cut_info = {
@@ -506,6 +517,10 @@ type sym_state = {
   ss_constraints : mich_f list;
 }
 [@@deriving sexp, compare, equal]
+
+module MichCutInfo_cmp : Modtyps.Core_CMP
+
+module SymState_cmp : Modtyps.Core_CMP
 
 (******************************************************************************)
 (******************************************************************************)

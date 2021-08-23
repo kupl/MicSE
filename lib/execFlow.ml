@@ -39,6 +39,10 @@ let tz_rep :
   in
   (tz_pgm, tz_init_strg_opt)
 
+let sym_exec :
+    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> Se.se_result =
+   Se.run_inst_entry
+
 (*****************************************************************************)
 (*****************************************************************************)
 (* Execution Flow                                                            *)
@@ -61,3 +65,8 @@ let upto_tz_rep :
   let (mich_pgm, mich_init_strg_opt) = upto_parsing () in
   let (tz_pgm, tz_init_strg_opt) = tz_rep (mich_pgm, mich_init_strg_opt) in
   (tz_pgm, tz_init_strg_opt)
+
+let upto_sym_exec : unit -> Se.se_result =
+  fun () ->
+  let (tz_pgm, _) = upto_tz_rep () in
+  sym_exec tz_pgm

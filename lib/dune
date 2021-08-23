@@ -2,6 +2,7 @@
  (name lib)
  (public_name micse.lib)
  (libraries core utils yojson zarith sexplib bignum)
+ (modules_without_implementation modtyps)
  (preprocess
   (pps ppx_sexp_conv ppx_compare)))
 
