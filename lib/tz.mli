@@ -34,8 +34,6 @@ type 'a cc = {
 }
 [@@deriving sexp, compare, equal]
 
-val gen_dummy_cc : 'a -> 'a cc
-
 (******************************************************************************)
 (******************************************************************************)
 (* Tezos Types                                                                *)
@@ -379,7 +377,9 @@ and mich_i =
 [@@deriving sexp, compare, equal]
 (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
-module MichTCC_cmp : (sig type t [@@deriving compare, sexp] end)
+module MichTCC_cmp : sig
+  type t [@@deriving compare, sexp]
+end
 
 (******************************************************************************)
 (******************************************************************************)
@@ -520,9 +520,42 @@ type sym_state = {
 }
 [@@deriving sexp, compare, equal]
 
-module MichCutInfo_cmp : (sig type t [@@deriving compare, sexp] end)
+module MichCutInfo_cmp : sig
+  type t [@@deriving compare, sexp]
+end
 
-module SymState_cmp : (sig type t [@@deriving compare, sexp] end)
+module SymState_cmp : sig
+  type t [@@deriving compare, sexp]
+end
+
+(******************************************************************************)
+(******************************************************************************)
+(* Utility Functions for Tz                                                   *)
+(******************************************************************************)
+(******************************************************************************)
+
+(******************************************************************************)
+(* Code Component                                                             *)
+(******************************************************************************)
+
+val gen_dummy_cc : 'a -> 'a cc
+
+val gen_custom_cc : 'ccbase cc -> 'a -> 'a cc
+
+(******************************************************************************)
+(* Tezos Type                                                                 *)
+(******************************************************************************)
+
+val typ_of_val : mich_v cc -> mich_t cc
+
+val get_innertyp : mich_t cc -> mich_t cc
+
+val get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc
+
+(******************************************************************************)
+(* Michelson Cut Information                                                  *)
+(******************************************************************************)
+
 
 (******************************************************************************)
 (******************************************************************************)

@@ -1,5 +1,7 @@
 (* Tz : MicSE's Michelson representation *)
 
+exception Error of string
+
 open Core
 
 (******************************************************************************)
@@ -35,9 +37,6 @@ type 'a cc = {
   cc_v : 'a;
 }
 [@@deriving sexp, compare, equal]
-
-let gen_dummy_cc : 'a -> 'a cc =
-  (fun x -> { cc_loc = CCLOC_Unknown; cc_anl = []; cc_v = x })
 
 (******************************************************************************)
 (******************************************************************************)
@@ -78,9 +77,9 @@ type mich_t =
 and mich_v =
   (* Michelson Value *)
 
-  (*************************************************************************)
-  (* Symbol & Polymorphic                                                  *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Symbol & Polymorphic                                                     *)
+  (****************************************************************************)
   | MV_symbol               of (mich_t cc * string)
   | MV_car                  of mich_v cc (* ('a, 'b) pair -> 'a *)
   | MV_cdr                  of mich_v cc (* ('a, 'b) pair -> 'b *)
@@ -88,9 +87,9 @@ and mich_v =
   | MV_unlift_left          of mich_v cc (* ('a, 'b) or -> 'a *)
   | MV_unlift_right         of mich_v cc (* ('a, 'b) or -> 'b *)
   | MV_hd_l                 of mich_v cc (* 'a list -> 'a *)
-  (*************************************************************************)
-  (* Integer                                                               *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Integer                                                                  *)
+  (****************************************************************************)
   | MV_lit_int              of Bigint.t
   | MV_neg_ni               of mich_v cc (* nat -> int *)
   | MV_neg_ii               of mich_v cc (* int -> int *)
@@ -109,9 +108,9 @@ and mich_v =
   | MV_mul_iii              of mich_v cc * mich_v cc (* int * int -> int *)
   | MV_compare              of mich_v cc * mich_v cc (* 'a * 'a -> int *)
   | MV_int_of_nat           of mich_v cc (* nat -> int *)
-  (*************************************************************************)
-  (* Natural Number                                                        *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Natural Number                                                           *)
+  (****************************************************************************)
   | MV_lit_nat              of Bigint.t
   | MV_abs_in               of mich_v cc (* int -> nat *)
   | MV_add_nnn              of mich_v cc * mich_v cc (* nat * nat -> nat *)
@@ -127,15 +126,15 @@ and mich_v =
   | MV_size_l               of mich_v cc (* 'a list -> nat *)
   | MV_size_str             of mich_v cc (* string -> nat *)
   | MV_size_b               of mich_v cc (* bytes -> nat *)
-  (*************************************************************************)
-  (* String                                                                *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* String                                                                   *)
+  (****************************************************************************)
   | MV_lit_string           of string
   | MV_concat_sss           of mich_v cc * mich_v cc (* string * string -> string *)
   | MV_concat_list_s        of mich_v cc (* string list -> string *)
-  (*************************************************************************)
-  (* Bytes                                                                 *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Bytes                                                                    *)
+  (****************************************************************************)
   | MV_lit_bytes            of string
   | MV_concat_bbb           of mich_v cc * mich_v cc (* bytes * bytes -> bytes *)
   | MV_concat_list_b        of mich_v cc (* bytes list -> bytes *)
@@ -143,17 +142,17 @@ and mich_v =
   | MV_blake2b              of mich_v cc (* bytes -> bytes *)
   | MV_sha256               of mich_v cc (* bytes -> bytes *)
   | MV_sha512               of mich_v cc (* bytes -> bytes *)
-  (*************************************************************************)
-  (* Mutez                                                                 *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Mutez                                                                    *)
+  (****************************************************************************)
   | MV_lit_mutez            of Bigint.t
   | MV_add_mmm              of mich_v cc * mich_v cc (* mutez * mutez -> mutez *)
   | MV_sub_mmm              of mich_v cc * mich_v cc (* mutez * mutez -> mutez *)
   | MV_mul_mnm              of mich_v cc * mich_v cc (* mutez * nat -> mutez *)
   | MV_mul_nmm              of mich_v cc * mich_v cc (* nat * mutez -> mutez *)
-  (*************************************************************************)
-  (* Bool                                                                  *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Bool                                                                     *)
+  (****************************************************************************)
   | MV_lit_bool             of bool
   | MV_not_bb               of mich_v cc (* bool -> bool *)
   | MV_and_bbb              of mich_v cc * mich_v cc (* bool * bool -> bool *)
@@ -169,40 +168,40 @@ and mich_v =
   | MV_mem_xmb              of mich_v cc * mich_v cc (* 'k * ('k, 'v) map -> bool *)
   | MV_mem_xbmb             of mich_v cc * mich_v cc (* 'k * ('k, 'v) big_map -> bool *)
   | MV_check_signature      of mich_v cc * mich_v cc * mich_v cc (* key * signature * bytes -> bool *)
-  (*************************************************************************)
-  (* Key Hash                                                              *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Key Hash                                                                 *)
+  (****************************************************************************)
   | MV_lit_key_hash         of string
   | MV_hash_key             of mich_v cc (* key -> key_hash *)
-  (*************************************************************************)
-  (* Timestamp                                                             *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Timestamp                                                                *)
+  (****************************************************************************)
   | MV_lit_timestamp_str    of string
   | MV_lit_timestamp_sec    of Bigint.t
   | MV_add_tit              of mich_v cc * mich_v cc (* timestamp * int -> timestamp *)
   | MV_add_itt              of mich_v cc * mich_v cc (* int * timestamp -> timestamp *)
   | MV_sub_tit              of mich_v cc * mich_v cc (* timestamp * int -> timestamp *)
-  (*************************************************************************)
-  (* Address                                                               *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Address                                                                  *)
+  (****************************************************************************)
   | MV_lit_address          of mich_v cc (* key_hash -> address *)
   | MV_address_of_contract  of mich_v cc (* 'a contract -> address *)
-  (*************************************************************************)
-  (* Key                                                                   *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Key                                                                      *)
+  (****************************************************************************)
   | MV_lit_key              of string
-  (*************************************************************************)
-  (* Unit                                                                  *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Unit                                                                     *)
+  (****************************************************************************)
   | MV_unit
-  (*************************************************************************)
-  (* Signature                                                             *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Signature                                                                *)
+  (****************************************************************************)
   | MV_lit_signature_str    of string
   | MV_lit_signature_signed of mich_v cc * mich_v cc (* key * bytes -> signature *)
-  (*************************************************************************)
-  (* Option                                                                *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Option                                                                   *)
+  (****************************************************************************)
   | MV_some                 of mich_v cc (* 'a -> 'a option *)
   | MV_none                 of mich_t cc (* ('a) -> 'a option *)
   | MV_ediv_nnnn            of mich_v cc * mich_v cc (* nat * nat -> (nat, nat) pair option *)
@@ -218,22 +217,22 @@ and mich_v =
   | MV_unpack               of mich_t cc * mich_v cc (* ('a) * bytes -> 'a option *)
   | MV_contract_of_address  of mich_t cc * mich_v cc (* ('a) -> address -> 'a contract option *)
   | MV_isnat                of mich_v cc (* int -> nat option *)
-  (*************************************************************************)
-  (* List                                                                  *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* List                                                                     *)
+  (****************************************************************************)
   | MV_lit_list             of mich_t cc * mich_v cc list (* ('a) * list-literal -> 'a list *)
   | MV_nil                  of mich_t cc (* ('a) -> 'a list *)
   | MV_cons                 of mich_v cc * mich_v cc (* 'a * 'a list -> 'a list *)
   | MV_tl_l                 of mich_v cc (* 'a list -> 'a list *)
-  (*************************************************************************)
-  (* Set                                                                   *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Set                                                                      *)
+  (****************************************************************************)
   | MV_lit_set              of mich_t cc * mich_v cc Core.List.t (* ('a) * set-literal (list) -> 'a set *)
   | MV_empty_set            of mich_t cc (* ('a) -> 'a set *)
   | MV_update_xbss          of mich_v cc * mich_v cc * mich_v cc (* 'a * bool * 'a set -> 'a set *)
-  (*************************************************************************)
-  (* Operation                                                             *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Operation                                                                *)
+  (****************************************************************************)
   | MV_create_contract      of
       mich_t cc
       * mich_t cc
@@ -244,49 +243,49 @@ and mich_v =
       * mich_v cc (* ('param) * ('strg) * (('param, 'strg) pair, (operation list, 'strg) pair) lambda * key_hash option * mutez * 'strg * address -> operation *)
   | MV_transfer_tokens      of mich_v cc * mich_v cc * mich_v cc (* 'a * mutez * 'a contract -> operation *)
   | MV_set_delegate         of mich_v cc (* key_hash option -> operation *)
-  (*************************************************************************)
-  (* Contract                                                              *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Contract                                                                 *)
+  (****************************************************************************)
   | MV_lit_contract         of mich_t cc * mich_v cc (* ('a) * address -> 'a contract *)
   | MV_self                 of mich_t cc (* 'a -> 'a contract *)
   | MV_implicit_account     of mich_v cc (* key_hash -> unit contract *)
-  (*************************************************************************)
-  (* Pair                                                                  *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Pair                                                                     *)
+  (****************************************************************************)
   | MV_pair                 of mich_v cc * mich_v cc (* 'a * 'b -> ('a, 'b) pair *)
-  (*************************************************************************)
-  (* Or                                                                    *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Or                                                                       *)
+  (****************************************************************************)
   | MV_left                 of mich_t cc * mich_v cc (* (('a, 'b) or) * 'a -> ('a, 'b) or *)
   | MV_right                of mich_t cc * mich_v cc (* (('a, 'b) or) * 'b -> ('a, 'b) or *)
-  (*************************************************************************)
-  (* Lambda                                                                *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Lambda                                                                   *)
+  (****************************************************************************)
   | MV_lit_lambda           of mich_t cc * mich_t cc * mich_i cc (* ('param) * ('ret) * ('param, 'ret) Mich.inst Mich.t -> ('param, 'ret) lambda *)
   (* embedded code with LAMBDA Michelson-instruction should be expressed with V_lambda_id, not V_lit_lambda *)
   | MV_lambda_unknown       of mich_t cc * mich_t cc (* ('param) * ('ret) -> ('param, 'ret) lambda *)
   | MV_lambda_closure       of mich_v cc * mich_v cc (* (('p1, 'p2) pair, 'ret) lambda * 'p1 -> ('p2, 'ret) lambda *)
-  (*************************************************************************)
-  (* Map                                                                   *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Map                                                                      *)
+  (****************************************************************************)
   | MV_lit_map              of
       mich_t cc * mich_t cc * (mich_v cc * mich_v cc) list (* ('k) * ('v) * map-literal(alist) -> ('k, 'v) map *)
   | MV_empty_map            of mich_t cc * mich_t cc (* ('k) * ('v) -> ('k, 'v) map *)
   | MV_update_xomm          of mich_v cc * mich_v cc * mich_v cc (* 'k * 'v option * ('k, 'v) map -> ('k, 'v) map *)
-  (*************************************************************************)
-  (* Big Map                                                               *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Big Map                                                                  *)
+  (****************************************************************************)
   | MV_lit_big_map          of
       mich_t cc * mich_t cc * (mich_v cc * mich_v cc) list (* ('k) * ('v) * map-literal -> ('k, 'v) big_map *)
   | MV_empty_big_map        of mich_t cc * mich_t cc (* ('k) * ('v) -> ('k, 'v) big_map *)
   | MV_update_xobmbm        of mich_v cc * mich_v cc * mich_v cc (* 'k * 'v option * ('k, 'v) big_map -> ('k, 'v) big_map *)
-  (*************************************************************************)
-  (* Chain Id                                                              *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Chain Id                                                                 *)
+  (****************************************************************************)
   | MV_lit_chain_id         of string
-  (*************************************************************************)
-  (* Custom Domain Value for Invariant Synthesis                           *)
-  (*************************************************************************)
+  (****************************************************************************)
+  (* Custom Domain Value for Invariant Synthesis                              *)
+  (****************************************************************************)
   | MV_sigma_tmplm          of mich_v cc
 (* (timestamp * mutez) list -> mutez *)
 
@@ -550,6 +549,514 @@ module SymState_cmp = struct
 
   let sexp_of_t = sexp_of_sym_state
 end
+
+(******************************************************************************)
+(******************************************************************************)
+(* Utility Functions for Tz                                                   *)
+(******************************************************************************)
+(******************************************************************************)
+
+(******************************************************************************)
+(* Code Component                                                             *)
+(******************************************************************************)
+
+let gen_dummy_cc : 'a -> 'a cc =
+  (fun x -> { cc_loc = CCLOC_Unknown; cc_anl = []; cc_v = x })
+
+let gen_custom_cc : 'ccbase cc -> 'a -> 'a cc =
+  (fun base x -> { base with cc_v = x })
+
+(******************************************************************************)
+(* Tezos Type                                                                 *)
+(******************************************************************************)
+
+let typ_of_val : mich_v cc -> mich_t cc =
+   let rec typ_of_val_i : mich_v cc -> mich_t cc =
+     fun v ->
+     let err : unit -> 'a =
+       fun () ->
+       Stdlib.raise
+         (Error
+            ("typ_of_val : typ_of_val_i : "
+            ^ Sexp.to_string (sexp_of_cc sexp_of_mich_v v)
+            )
+         )
+     in
+     let gen_cc : mich_t -> mich_t cc = (fun t -> gen_custom_cc v t) in
+     match v.cc_v with
+     (**************************************************************************)
+     (* Symbol & Polymorphic                                                   *)
+     (**************************************************************************)
+     | MV_symbol (t, _) -> t
+     | MV_car v1 -> (
+       (typ_of_val_i v1).cc_v
+       |> function
+       | MT_pair (t1, _) -> t1
+       | _               -> err ()
+     )
+     | MV_cdr v1 -> (
+       (typ_of_val_i v1).cc_v
+       |> function
+       | MT_pair (_, t2) -> t2
+       | _               -> err ()
+     )
+     | MV_unlift_option v1 -> (
+       (typ_of_val_i v1).cc_v
+       |> function
+       | MT_pair (_, t2) -> t2
+       | _               -> err ()
+     )
+     | MV_unlift_left v1 -> (
+       (typ_of_val_i v1).cc_v
+       |> function
+       | MT_option t1 -> t1
+       | _            -> err ()
+     )
+     | MV_unlift_right v1 -> (
+       (typ_of_val_i v1).cc_v
+       |> function
+       | MT_or (t1, _) -> t1
+       | _             -> err ()
+     )
+     | MV_hd_l v1 -> (
+       (typ_of_val_i v1).cc_v
+       |> function
+       | MT_or (_, t2) -> t2
+       | _             -> err ()
+     )
+     (****************************************************************************)
+     (* Integer                                                                  *)
+     (****************************************************************************)
+     | MV_lit_int _
+     | MV_neg_ni _
+     | MV_neg_ii _
+     | MV_not_ni _
+     | MV_not_ii _
+     | MV_add_nii _
+     | MV_add_ini _
+     | MV_add_iii _
+     | MV_sub_nni _
+     | MV_sub_nii _
+     | MV_sub_ini _
+     | MV_sub_iii _
+     | MV_sub_tti _
+     | MV_mul_nii _
+     | MV_mul_ini _
+     | MV_mul_iii _
+     | MV_compare _
+     | MV_int_of_nat _ ->
+       gen_cc MT_int
+     (****************************************************************************)
+     (* Natural Number                                                           *)
+     (****************************************************************************)
+     | MV_lit_nat _
+     | MV_abs_in _
+     | MV_add_nnn _
+     | MV_mul_nnn _
+     | MV_shiftL_nnn _
+     | MV_shiftR_nnn _
+     | MV_and_nnn _
+     | MV_and_inn _
+     | MV_or_nnn _
+     | MV_xor_nnn _
+     | MV_size_s _
+     | MV_size_m _
+     | MV_size_l _
+     | MV_size_str _
+     | MV_size_b _ ->
+       gen_cc MT_nat
+     (****************************************************************************)
+     (* String                                                                   *)
+     (****************************************************************************)
+     | MV_lit_string _
+     | MV_concat_sss _
+     | MV_concat_list_s _ ->
+       gen_cc MT_string
+     (****************************************************************************)
+     (* Bytes                                                                    *)
+     (****************************************************************************)
+     | MV_lit_bytes _
+     | MV_concat_bbb _
+     | MV_concat_list_b _
+     | MV_pack _
+     | MV_blake2b _
+     | MV_sha256 _
+     | MV_sha512 _ ->
+       gen_cc MT_bytes
+     (****************************************************************************)
+     (* Mutez                                                                    *)
+     (****************************************************************************)
+     | MV_lit_mutez _
+     | MV_add_mmm _
+     | MV_sub_mmm _
+     | MV_mul_mnm _
+     | MV_mul_nmm _ ->
+       gen_cc MT_mutez
+     (****************************************************************************)
+     (* Bool                                                                     *)
+     (****************************************************************************)
+     | MV_lit_bool _
+     | MV_not_bb _
+     | MV_and_bbb _
+     | MV_or_bbb _
+     | MV_xor_bbb _
+     | MV_eq_ib _
+     | MV_neq_ib _
+     | MV_lt_ib _
+     | MV_gt_ib _
+     | MV_leq_ib _
+     | MV_geq_ib _
+     | MV_mem_xsb _
+     | MV_mem_xmb _
+     | MV_mem_xbmb _
+     | MV_check_signature _ ->
+       gen_cc MT_bool
+     (****************************************************************************)
+     (* Key Hash                                                                 *)
+     (****************************************************************************)
+     | MV_lit_key_hash _
+     | MV_hash_key _ ->
+       gen_cc MT_key_hash
+     (****************************************************************************)
+     (* Timestamp                                                                *)
+     (****************************************************************************)
+     | MV_lit_timestamp_str _
+     | MV_lit_timestamp_sec _
+     | MV_add_tit _
+     | MV_add_itt _
+     | MV_sub_tit _ ->
+       gen_cc MT_timestamp
+     (****************************************************************************)
+     (* Address                                                                  *)
+     (****************************************************************************)
+     | MV_lit_address _
+     | MV_address_of_contract _ ->
+       gen_cc MT_address
+     (****************************************************************************)
+     (* Key                                                                      *)
+     (****************************************************************************)
+     | MV_lit_key _ -> gen_cc MT_key
+     (****************************************************************************)
+     (* Unit                                                                     *)
+     (****************************************************************************)
+     | MV_unit -> gen_cc MT_unit
+     (****************************************************************************)
+     (* Signature                                                                *)
+     (****************************************************************************)
+     | MV_lit_signature_str _
+     | MV_lit_signature_signed _ ->
+       gen_cc MT_signature
+     (****************************************************************************)
+     (* Option                                                                   *)
+     (****************************************************************************)
+     | MV_some v1 -> gen_cc (MT_option (typ_of_val_i v1))
+     | MV_none t1 -> gen_cc (MT_option t1)
+     | MV_ediv_nnnn _ ->
+       gen_cc (MT_option (gen_cc (MT_pair (gen_cc MT_nat, gen_cc MT_nat))))
+     | MV_ediv_niin _ ->
+       gen_cc (MT_option (gen_cc (MT_pair (gen_cc MT_int, gen_cc MT_nat))))
+     | MV_ediv_inin _ ->
+       gen_cc (MT_option (gen_cc (MT_pair (gen_cc MT_int, gen_cc MT_nat))))
+     | MV_ediv_iiin _ ->
+       gen_cc (MT_option (gen_cc (MT_pair (gen_cc MT_int, gen_cc MT_nat))))
+     | MV_ediv_mnmm _ ->
+       gen_cc (MT_option (gen_cc (MT_pair (gen_cc MT_mutez, gen_cc MT_mutez))))
+     | MV_ediv_mmnm _ ->
+       gen_cc (MT_option (gen_cc (MT_pair (gen_cc MT_nat, gen_cc MT_mutez))))
+     | MV_get_xmoy (_, v2) -> (
+       (typ_of_val_i v2).cc_v
+       |> function
+       | MT_map (_, t2) -> gen_cc (MT_option t2)
+       | _              -> err ()
+     )
+     | MV_get_xbmo (_, v2) -> (
+       (typ_of_val_i v2).cc_v
+       |> function
+       | MT_big_map (_, t2) -> gen_cc (MT_option t2)
+       | _                  -> err ()
+     )
+     | MV_slice_nnso _ -> gen_cc (MT_option (gen_cc MT_string))
+     | MV_slice_nnbo _ -> gen_cc (MT_option (gen_cc MT_bytes))
+     | MV_unpack (t1, _) -> gen_cc (MT_option t1)
+     | MV_contract_of_address (t1, _) ->
+       gen_cc (MT_option (gen_cc (MT_contract t1)))
+     | MV_isnat _ -> gen_cc (MT_option (gen_cc MT_nat))
+     (****************************************************************************)
+     (* List                                                                     *)
+     (****************************************************************************)
+     | MV_lit_list (t1, _) -> gen_cc (MT_list t1)
+     | MV_nil t1 -> gen_cc (MT_list t1)
+     | MV_cons (v1, _) -> gen_cc (MT_list (typ_of_val_i v1))
+     | MV_tl_l v1 -> typ_of_val_i v1
+     (****************************************************************************)
+     (* Set                                                                      *)
+     (****************************************************************************)
+     | MV_lit_set (t1, _) -> gen_cc (MT_set t1)
+     | MV_empty_set t1 -> gen_cc (MT_set t1)
+     | MV_update_xbss (v1, _, _) -> gen_cc (MT_set (typ_of_val_i v1))
+     (****************************************************************************)
+     (* Operation                                                                *)
+     (****************************************************************************)
+     | MV_create_contract _
+     | MV_transfer_tokens _
+     | MV_set_delegate _ ->
+       gen_cc MT_operation
+     (****************************************************************************)
+     (* Contract                                                                 *)
+     (****************************************************************************)
+     | MV_lit_contract (t1, _) -> gen_cc (MT_contract t1)
+     | MV_self t1 -> gen_cc (MT_contract t1)
+     | MV_implicit_account _ -> gen_cc (MT_contract (gen_cc MT_unit))
+     (****************************************************************************)
+     (* Pair                                                                     *)
+     (****************************************************************************)
+     | MV_pair (v1, v2) -> gen_cc (MT_pair (typ_of_val_i v1, typ_of_val_i v2))
+     (****************************************************************************)
+     (* Or                                                                       *)
+     (****************************************************************************)
+     | MV_left (t1, _)
+     | MV_right (t1, _) ->
+       t1
+     (****************************************************************************)
+     (* Lambda                                                                   *)
+     (****************************************************************************)
+     | MV_lit_lambda (t1, t2, _) -> gen_cc (MT_lambda (t1, t2))
+     | MV_lambda_unknown (t1, t2) -> gen_cc (MT_lambda (t1, t2))
+     | MV_lambda_closure (v1, _) -> (
+       (typ_of_val_i v1).cc_v
+       |> function
+       | MT_lambda (t1, t2) -> (
+         match t1.cc_v with
+         | MT_pair (_, t12) -> gen_cc (MT_lambda (t12, t2))
+         | _                -> err ()
+       )
+       | _                  -> err ()
+     )
+     (****************************************************************************)
+     (* Map                                                                      *)
+     (****************************************************************************)
+     | MV_lit_map (t1, t2, _) -> gen_cc (MT_map (t1, t2))
+     | MV_empty_map (t1, t2) -> gen_cc (MT_map (t1, t2))
+     | MV_update_xomm (v1, v2, _) -> (
+       (typ_of_val_i v1, (typ_of_val_i v2).cc_v)
+       |> function
+       | (t1, MT_option t2) -> gen_cc (MT_map (t1, t2))
+       | _                  -> err ()
+     )
+     (****************************************************************************)
+     (* Big Map                                                                  *)
+     (****************************************************************************)
+     | MV_lit_big_map (t1, t2, _) -> gen_cc (MT_map (t1, t2))
+     | MV_empty_big_map (t1, t2) -> gen_cc (MT_map (t1, t2))
+     | MV_update_xobmbm (v1, v2, _) -> (
+       (typ_of_val_i v1, (typ_of_val_i v2).cc_v)
+       |> function
+       | (t1, MT_option t2) -> gen_cc (MT_map (t1, t2))
+       | _                  -> err ()
+     )
+     (****************************************************************************)
+     (* Chain Id                                                                 *)
+     (****************************************************************************)
+     | MV_lit_chain_id _ -> gen_cc MT_chain_id
+     (****************************************************************************)
+     (* Custom Domain Value for Invariant Synthesis                              *)
+     (****************************************************************************)
+     | MV_sigma_tmplm _ -> gen_cc MT_mutez
+   in
+   (fun v -> typ_of_val_i v)
+
+let get_innertyp : mich_t cc -> mich_t cc =
+  fun ttt ->
+  match ttt.cc_v with
+  | MT_option t
+  | MT_list t
+  | MT_set t
+  | MT_contract t ->
+    t
+  | _ ->
+    Stdlib.raise
+      (Error ("get_innertyp : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
+      )
+
+let get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc =
+  fun ttt ->
+  match ttt.cc_v with
+  | MT_pair (t1, t2)
+  | MT_or (t1, t2)
+  | MT_lambda (t1, t2)
+  | MT_map (t1, t2)
+  | MT_big_map (t1, t2) ->
+    (t1, t2)
+  | _ ->
+    Stdlib.raise
+      (Error
+         ("get_innertyp2 : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
+      )
+
+(******************************************************************************)
+(* Michelson Cut Information                                                  *)
+(******************************************************************************)
+
+let lb_of_ln_mci : mich_cut_info -> mich_cut_info option =
+  fun mci ->
+  let (lb_mcc, flag) : mich_cut_category * bool =
+     match mci.mci_cutcat with
+     | MCC_ln_loop     -> (MCC_lb_loop, true)
+     | MCC_ln_loopleft -> (MCC_lb_loopleft, true)
+     | MCC_ln_map      -> (MCC_lb_map, true)
+     | MCC_ln_iter     -> (MCC_lb_iter, true)
+     | _ as m          -> (m, false)
+  in
+  if flag then Some { mci with mci_cutcat = lb_mcc } else None
+
+let lb_of_ln_exn : mich_cut_info -> mich_cut_info =
+  fun mci ->
+  lb_of_ln_mci mci
+  |> function
+  | Some bbb -> bbb
+  | None     -> Stdlib.raise (Error "lb_of_ln_exn")
+
+let is_ln_mcc : mich_cut_category -> bool = function
+| MCC_trx_entry -> false
+| MCC_trx_exit -> false
+| MCC_ln_loop
+| MCC_ln_loopleft
+| MCC_ln_map
+| MCC_ln_iter ->
+  true
+| MCC_lb_loop
+| MCC_lb_loopleft
+| MCC_lb_map
+| MCC_lb_iter ->
+  false
+| MCC_query _ -> false
+
+let is_ln_mci : mich_cut_info -> bool = (fun mci -> is_ln_mcc mci.mci_cutcat)
+
+let ln_of_lb_mci : mich_cut_info -> mich_cut_info option =
+  fun mci ->
+  let (ln_mcc, flag) : mich_cut_category * bool =
+     match mci.mci_cutcat with
+     | MCC_lb_loop     -> (MCC_ln_loop, true)
+     | MCC_lb_loopleft -> (MCC_ln_loopleft, true)
+     | MCC_lb_map      -> (MCC_ln_map, true)
+     | MCC_lb_iter     -> (MCC_ln_iter, true)
+     | _ as m          -> (m, false)
+  in
+  if flag then Some { mci with mci_cutcat = ln_mcc } else None
+
+let ln_of_lb_exn : mich_cut_info -> mich_cut_info =
+  fun mci ->
+  ln_of_lb_mci mci
+  |> function
+  | Some nnn -> nnn
+  | None     -> Stdlib.raise (Error "ln_of_lb_exn")
+
+let is_lb_mcc : mich_cut_category -> bool = function
+| MCC_trx_entry -> false
+| MCC_trx_exit -> false
+| MCC_ln_loop
+| MCC_ln_loopleft
+| MCC_ln_map
+| MCC_ln_iter ->
+  false
+| MCC_lb_loop
+| MCC_lb_loopleft
+| MCC_lb_map
+| MCC_lb_iter ->
+  true
+| MCC_query _ -> false
+
+let is_lb_mci : mich_cut_info -> bool = (fun mci -> is_lb_mcc mci.mci_cutcat)
+
+let exit_of_entry_mci : mich_cut_info -> mich_cut_info option =
+  fun mci ->
+  let (exit_mcc, flag) : mich_cut_category * bool =
+     match mci.mci_cutcat with
+     | MCC_trx_entry -> (MCC_trx_exit, true)
+     | _ as m        -> (m, false)
+  in
+  if flag then Some { mci with mci_cutcat = exit_mcc } else None
+
+let exit_of_entry_exn : mich_cut_info -> mich_cut_info =
+  fun mci ->
+  exit_of_entry_mci mci
+  |> function
+  | Some xxx -> xxx
+  | None     -> Stdlib.raise (Error "exit_of_entry_exn")
+
+let is_exit_mcc : mich_cut_category -> bool = function
+| MCC_trx_entry -> false
+| MCC_trx_exit -> true
+| MCC_ln_loop
+| MCC_ln_loopleft
+| MCC_ln_map
+| MCC_ln_iter ->
+  false
+| MCC_lb_loop
+| MCC_lb_loopleft
+| MCC_lb_map
+| MCC_lb_iter ->
+  false
+| MCC_query _ -> false
+
+let is_exit_mci : mich_cut_info -> bool = (fun mci -> is_exit_mcc mci.mci_cutcat)
+
+let entry_of_exit_mci : mich_cut_info -> mich_cut_info option =
+  fun mci ->
+  let (entry_mcc, flag) : mich_cut_category * bool =
+     match mci.mci_cutcat with
+     | MCC_trx_exit -> (MCC_trx_entry, true)
+     | _ as m       -> (m, false)
+  in
+  if flag then Some { mci with mci_cutcat = entry_mcc } else None
+
+let entry_of_exit_exn : mich_cut_info -> mich_cut_info =
+  fun mci ->
+  entry_of_exit_mci mci
+  |> function
+  | Some xxx -> xxx
+  | None     -> Stdlib.raise (Error "entry_of_exit_exn")
+
+let is_entry_mcc : mich_cut_category -> bool = function
+| MCC_trx_entry -> true
+| MCC_trx_exit -> false
+| MCC_ln_loop
+| MCC_ln_loopleft
+| MCC_ln_map
+| MCC_ln_iter ->
+  false
+| MCC_lb_loop
+| MCC_lb_loopleft
+| MCC_lb_map
+| MCC_lb_iter ->
+  false
+| MCC_query _ -> false
+
+let is_entry_mci : mich_cut_info -> bool =
+  (fun mci -> is_entry_mcc mci.mci_cutcat)
+
+let get_reduced_mcc : mich_cut_category -> r_mich_cut_category = function
+| MCC_trx_entry
+| MCC_trx_exit ->
+  RMCC_trx
+| MCC_ln_loop
+| MCC_lb_loop ->
+  RMCC_loop
+| MCC_ln_loopleft
+| MCC_lb_loopleft ->
+  RMCC_loopleft
+| MCC_ln_map
+| MCC_lb_map ->
+  RMCC_map
+| MCC_ln_iter
+| MCC_lb_iter ->
+  RMCC_iter
+| MCC_query qc -> RMCC_query qc
+
+let get_reduced_mci : mich_cut_info -> r_mich_cut_info =
+  fun mci ->
+  { rmci_loc = mci.mci_loc; rmci_cutcat = get_reduced_mcc mci.mci_cutcat }
 
 (******************************************************************************)
 (******************************************************************************)
