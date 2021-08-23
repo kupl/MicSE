@@ -1,11 +1,10 @@
 exception Error of string
 
-let main : unit -> unit =
-  fun () -> ()
+let main : unit -> unit = (fun () -> ())
 
 let _ =
    (* 1. Initialize Input Arguments *)
-   Utils.Argument.create ();
+   Utils.Argument.create None;
    (* 2. Initialize Logger *)
    Utils.Log.create ();
    (* 3. Enable Error Backtrace *)

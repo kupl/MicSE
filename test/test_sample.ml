@@ -56,7 +56,8 @@ module TestSuite2 = struct
       ~cmp:(fun a b ->
         let fourth : string -> char = (fun s -> String.nget s 4) in
         Char.equal (fourth a) (fourth b))
-      "hello" (* Wrong! *) (Sample.hello "")
+      "hello"
+      (* Wrong! *) (Sample.hello "")
 
   let test2 : test_fun =
     fun ctx ->

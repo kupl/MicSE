@@ -1,14 +1,14 @@
 (* ExecFlow provides main execution flow functions for testing. *)
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Execution Flow Components                                                 *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Execution Flow Components                                                  *)
+(******************************************************************************)
+(******************************************************************************)
 
-let initial_system_setting : unit -> unit =
-  fun () ->
-  Utils.Argument.create ();
+let initial_system_setting : string array option -> unit =
+  fun argv_opt ->
+  Utils.Argument.create argv_opt;
   Utils.Log.create ();
   Printexc.record_backtrace true;
   ()
@@ -43,30 +43,32 @@ let sym_exec :
     Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> Se.se_result =
    Se.run_inst_entry
 
-(*****************************************************************************)
-(*****************************************************************************)
-(* Execution Flow                                                            *)
-(*****************************************************************************)
-(*****************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* Execution Flow                                                             *)
+(******************************************************************************)
+(******************************************************************************)
 
-let upto_initial_system_setting : unit -> unit = initial_system_setting
+let upto_initial_system_setting : string array option -> unit =
+   initial_system_setting
 
-let upto_parsing : unit -> Mich.program * Mich.data Mich.t option =
-  fun () ->
-  upto_initial_system_setting ();
+let upto_parsing : string array option -> Mich.program * Mich.data Mich.t option
+    =
+  fun argv_opt ->
+  upto_initial_system_setting argv_opt;
   let (mich_pgm, mich_init_strg_opt) = parsing () in
   (mich_pgm, mich_init_strg_opt)
 
 let upto_tz_rep :
-    unit ->
+    string array option ->
     (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc)
     * Tz.mich_v Tz.cc option =
-  fun () ->
-  let (mich_pgm, mich_init_strg_opt) = upto_parsing () in
+  fun argv_opt ->
+  let (mich_pgm, mich_init_strg_opt) = upto_parsing argv_opt in
   let (tz_pgm, tz_init_strg_opt) = tz_rep (mich_pgm, mich_init_strg_opt) in
   (tz_pgm, tz_init_strg_opt)
 
-let upto_sym_exec : unit -> Se.se_result =
-  fun () ->
-  let (tz_pgm, _) = upto_tz_rep () in
+let upto_sym_exec : string array option -> Se.se_result =
+  fun argv_opt ->
+  let (tz_pgm, _) = upto_tz_rep argv_opt in
   sym_exec tz_pgm

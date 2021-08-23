@@ -130,6 +130,8 @@ module Setting = struct
 
   let finalize_parse : unit -> unit =
     fun () ->
+    (* let _ = print_endline !(input_file.value) in
+       let _ = print_endline !(input_storage_file.value) in *)
     (* 1. check required arguments *)
     if Stdlib.not (check_required ())
     then Stdlib.raise (Arg.Bad "all required argument are not set")
@@ -142,9 +144,18 @@ end
 (******************************************************************************)
 (******************************************************************************)
 
-let create : unit -> unit =
-  fun () ->
-  let _ = Arg.parse Setting.option_list Setting.anon_fun Setting.usage_msg in
+let create : string array option -> unit =
+  fun argv_opt ->
+  let _ =
+     match argv_opt with
+     | None      ->
+       (* Normal Execution Case *)
+       Arg.parse Setting.option_list Setting.anon_fun Setting.usage_msg
+     | Some argv ->
+       (* If argument is given from string, not command line argument *)
+       Arg.parse_argv argv Setting.option_list Setting.anon_fun
+         Setting.usage_msg
+  in
   let _ = Setting.finalize_parse () in
   ()
 
