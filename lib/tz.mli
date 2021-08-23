@@ -405,7 +405,7 @@ and mich_i =
 (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
 module MichTCC_cmp : sig
-  type t [@@deriving compare, sexp]
+  type t = mich_t cc [@@deriving compare, sexp]
 end
 
 (******************************************************************************)
@@ -551,11 +551,11 @@ type sym_state = {
 [@@deriving sexp, compare, equal]
 
 module MichCutInfo_cmp : sig
-  type t [@@deriving compare, sexp]
+  type t = mich_cut_info [@@deriving compare, sexp]
 end
 
 module SymState_cmp : sig
-  type t [@@deriving compare, sexp]
+  type t = sym_state [@@deriving compare, sexp]
 end
 
 (******************************************************************************)
