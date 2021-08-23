@@ -90,7 +90,17 @@ module A_loop_insts : ARG = struct
   let se_bpnum = 6
 end
 
+module A_KT1GALBS : ARG = struct
+  let tz_file_name = "./testcases/KT1GALBSRLbY3iNb1P1Dzbdrx1Phu9d9f4Xv.tz"
+
+  let strg_file_name =
+     "./testcases/KT1GALBSRLbY3iNb1P1Dzbdrx1Phu9d9f4Xv.storage.tz"
+
+  let se_bpnum = 60
+end
+
 let test : OUnit2.test =
    let module TS_1 = MakeTS (A_condition_insts) in
    let module TS_2 = MakeTS (A_loop_insts) in
-   OUnit2.test_list [ TS_1.testsuite; TS_2.testsuite ]
+   let module TS_KT1GALBS = MakeTS (A_KT1GALBS) in
+   OUnit2.test_list [ TS_1.testsuite; TS_2.testsuite; TS_KT1GALBS.testsuite ]
