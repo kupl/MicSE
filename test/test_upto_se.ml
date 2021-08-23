@@ -31,7 +31,12 @@ end
 module MakeTS (A : ARG) : TS = struct
   open OUnit2
 
-  let argv_opt = Some (("micse -I " ^ A.tz_file_name ^ " -S " ^ A.strg_file_name) |> String.split ~on:' ' |> Array.of_list)
+  let argv_opt =
+     Some
+       ("-I " ^ A.tz_file_name ^ " -S " ^ A.strg_file_name
+       |> String.split ~on:' '
+       |> Array.of_list
+       )
 
   let tf_parse_success _ =
      assert_bool
@@ -54,7 +59,7 @@ module MakeTS (A : ARG) : TS = struct
        )
 
   let testsuite =
-     A.tz_file_name ^ "- testsuite"
+     A.tz_file_name ^ " - testsuite"
      >::: [
             "tf_parse_success" >:: tf_parse_success;
             "tf_tzrep_success" >:: tf_tzrep_success;
@@ -77,6 +82,15 @@ module A_condition_insts : ARG = struct
   let se_bpnum = 8
 end
 
+module A_loop_insts : ARG = struct
+  let tz_file_name = "./testcases/loop_insts.tz"
+
+  let strg_file_name = "./testcases/loop_insts.storage.tz"
+
+  let se_bpnum = 6
+end
+
 let test : OUnit2.test =
    let module TS_1 = MakeTS (A_condition_insts) in
-   OUnit2.test_list [ TS_1.testsuite ]
+   let module TS_2 = MakeTS (A_loop_insts) in
+   OUnit2.test_list [ TS_1.testsuite; TS_2.testsuite ]

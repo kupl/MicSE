@@ -155,8 +155,8 @@ let create : string array option -> unit =
        Arg.parse Setting.option_list Setting.anon_fun Setting.usage_msg
      | Some argv ->
        (* If argument is given from string, not command line argument *)
-       Arg.parse_argv ~current:(ref 0) argv Setting.option_list Setting.anon_fun
-         Setting.usage_msg
+       Arg.parse_argv ~current:(ref (-1)) argv Setting.option_list
+         Setting.anon_fun Setting.usage_msg
   in
   let _ = Setting.finalize_parse () in
   ()

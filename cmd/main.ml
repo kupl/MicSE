@@ -1,6 +1,11 @@
 exception Error of string
 
-let main : unit -> unit = (fun () -> ())
+let main : unit -> unit =
+  fun () ->
+  let (mich_pgm, mich_init_strg_opt) = Lib.ExecFlow.parsing () in
+  let (tz_pgm, _) = Lib.ExecFlow.tz_rep (mich_pgm, mich_init_strg_opt) in
+  let _ = Lib.ExecFlow.sym_exec tz_pgm in
+  ()
 
 let _ =
    (* 1. Initialize Input Arguments *)
