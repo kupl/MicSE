@@ -862,8 +862,10 @@ let typ_of_val : mich_v cc -> mich_t cc =
      (* Custom Domain Value for Invariant Synthesis                              *)
      (****************************************************************************)
      | MV_sigma_tmplm _ -> gen_cc MT_mutez
+     (* inner-function typ_of_val_i end *)
    in
    (fun v -> typ_of_val_i v)
+(* function typ_of_val end *)
 
 let get_innertyp : mich_t cc -> mich_t cc =
   fun ttt ->
@@ -877,6 +879,7 @@ let get_innertyp : mich_t cc -> mich_t cc =
     Stdlib.raise
       (Error ("get_innertyp : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
       )
+(* function get_innertyp end *)
 
 let get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc =
   fun ttt ->
@@ -892,6 +895,7 @@ let get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc =
       (Error
          ("get_innertyp2 : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
       )
+(* function get_innertyp2 end *)
 
 (******************************************************************************)
 (* Michelson Cut Information                                                  *)
@@ -908,6 +912,7 @@ let lb_of_ln_mci : mich_cut_info -> mich_cut_info option =
      | _ as m          -> (m, false)
   in
   if flag then Some { mci with mci_cutcat = lb_mcc } else None
+(* function lb_of_ln_mci end *)
 
 let lb_of_ln_exn : mich_cut_info -> mich_cut_info =
   fun mci ->
@@ -915,6 +920,7 @@ let lb_of_ln_exn : mich_cut_info -> mich_cut_info =
   |> function
   | Some bbb -> bbb
   | None     -> Stdlib.raise (Error "lb_of_ln_exn")
+(* function lb_of_ln_exn end *)
 
 let is_ln_mcc : mich_cut_category -> bool = function
 | MCC_trx_entry -> false
@@ -930,6 +936,7 @@ let is_ln_mcc : mich_cut_category -> bool = function
 | MCC_lb_iter ->
   false
 | MCC_query _ -> false
+(* function is_ln_mcc end *)
 
 let is_ln_mci : mich_cut_info -> bool = (fun mci -> is_ln_mcc mci.mci_cutcat)
 
@@ -944,6 +951,7 @@ let ln_of_lb_mci : mich_cut_info -> mich_cut_info option =
      | _ as m          -> (m, false)
   in
   if flag then Some { mci with mci_cutcat = ln_mcc } else None
+(* function ln_of_lb_mci end *)
 
 let ln_of_lb_exn : mich_cut_info -> mich_cut_info =
   fun mci ->
@@ -951,6 +959,7 @@ let ln_of_lb_exn : mich_cut_info -> mich_cut_info =
   |> function
   | Some nnn -> nnn
   | None     -> Stdlib.raise (Error "ln_of_lb_exn")
+(* function ln_of_lb_exn end *)
 
 let is_lb_mcc : mich_cut_category -> bool = function
 | MCC_trx_entry -> false
@@ -966,6 +975,7 @@ let is_lb_mcc : mich_cut_category -> bool = function
 | MCC_lb_iter ->
   true
 | MCC_query _ -> false
+(* function is_lb_mcc end *)
 
 let is_lb_mci : mich_cut_info -> bool = (fun mci -> is_lb_mcc mci.mci_cutcat)
 
@@ -977,6 +987,7 @@ let exit_of_entry_mci : mich_cut_info -> mich_cut_info option =
      | _ as m        -> (m, false)
   in
   if flag then Some { mci with mci_cutcat = exit_mcc } else None
+(* function exit_of_entry_mci end *)
 
 let exit_of_entry_exn : mich_cut_info -> mich_cut_info =
   fun mci ->
@@ -984,6 +995,7 @@ let exit_of_entry_exn : mich_cut_info -> mich_cut_info =
   |> function
   | Some xxx -> xxx
   | None     -> Stdlib.raise (Error "exit_of_entry_exn")
+(* function exit_of_entry_exn end *)
 
 let is_exit_mcc : mich_cut_category -> bool = function
 | MCC_trx_entry -> false
@@ -999,6 +1011,7 @@ let is_exit_mcc : mich_cut_category -> bool = function
 | MCC_lb_iter ->
   false
 | MCC_query _ -> false
+(* function is_exit_mcc end *)
 
 let is_exit_mci : mich_cut_info -> bool = (fun mci -> is_exit_mcc mci.mci_cutcat)
 
@@ -1010,6 +1023,7 @@ let entry_of_exit_mci : mich_cut_info -> mich_cut_info option =
      | _ as m       -> (m, false)
   in
   if flag then Some { mci with mci_cutcat = entry_mcc } else None
+(* function entry_of_exit_mci end *)
 
 let entry_of_exit_exn : mich_cut_info -> mich_cut_info =
   fun mci ->
@@ -1017,6 +1031,7 @@ let entry_of_exit_exn : mich_cut_info -> mich_cut_info =
   |> function
   | Some xxx -> xxx
   | None     -> Stdlib.raise (Error "entry_of_exit_exn")
+(* function entry_of_exit_exn end *)
 
 let is_entry_mcc : mich_cut_category -> bool = function
 | MCC_trx_entry -> true
@@ -1032,6 +1047,7 @@ let is_entry_mcc : mich_cut_category -> bool = function
 | MCC_lb_iter ->
   false
 | MCC_query _ -> false
+(* function is_entry_mcc end *)
 
 let is_entry_mci : mich_cut_info -> bool =
   (fun mci -> is_entry_mcc mci.mci_cutcat)
@@ -1053,6 +1069,7 @@ let get_reduced_mcc : mich_cut_category -> r_mich_cut_category = function
 | MCC_lb_iter ->
   RMCC_iter
 | MCC_query qc -> RMCC_query qc
+(* function get_reduced_mcc end *)
 
 let get_reduced_mci : mich_cut_info -> r_mich_cut_info =
   fun mci ->
