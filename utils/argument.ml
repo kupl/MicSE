@@ -17,6 +17,9 @@ module Setting = struct
   let required_set : require Core.Set.Poly.t Stdlib.ref =
      Stdlib.ref Core.Set.Poly.empty
 
+  let init_required : unit -> unit =
+    (fun () -> Core.Set.Poly.iter !required_set ~f:(fun rf -> rf := false))
+
   let add_required : unit -> require =
     fun () ->
     let rf : require = Stdlib.ref false in
@@ -130,8 +133,6 @@ module Setting = struct
 
   let finalize_parse : unit -> unit =
     fun () ->
-    (* let _ = print_endline !(input_file.value) in
-       let _ = print_endline !(input_storage_file.value) in *)
     (* 1. check required arguments *)
     if Stdlib.not (check_required ())
     then Stdlib.raise (Arg.Bad "all required argument are not set")
@@ -146,6 +147,7 @@ end
 
 let create : string array option -> unit =
   fun argv_opt ->
+  let _ = Setting.init_required () in
   let _ =
      match argv_opt with
      | None      ->
@@ -153,7 +155,7 @@ let create : string array option -> unit =
        Arg.parse Setting.option_list Setting.anon_fun Setting.usage_msg
      | Some argv ->
        (* If argument is given from string, not command line argument *)
-       Arg.parse_argv argv Setting.option_list Setting.anon_fun
+       Arg.parse_argv ~current:(ref 0) argv Setting.option_list Setting.anon_fun
          Setting.usage_msg
   in
   let _ = Setting.finalize_parse () in

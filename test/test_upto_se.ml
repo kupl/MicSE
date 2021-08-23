@@ -31,7 +31,7 @@ end
 module MakeTS (A : ARG) : TS = struct
   open OUnit2
 
-  let argv_opt = Some [| "-I"; A.tz_file_name; "-S"; A.strg_file_name |]
+  let argv_opt = Some (("micse -I " ^ A.tz_file_name ^ " -S " ^ A.strg_file_name) |> String.split ~on:' ' |> Array.of_list)
 
   let tf_parse_success _ =
      assert_bool
@@ -70,9 +70,9 @@ end
 (******************************************************************************)
 
 module A_condition_insts : ARG = struct
-  let tz_file_name = "test/testcases/condition_insts.tz"
+  let tz_file_name = "./testcases/condition_insts.tz"
 
-  let strg_file_name = "test/testcases/condition_insts.storage.tz"
+  let strg_file_name = "./testcases/condition_insts.storage.tz"
 
   let se_bpnum = 8
 end
