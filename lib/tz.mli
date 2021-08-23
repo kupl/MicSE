@@ -87,13 +87,21 @@ and mich_sym_category =
 
 and mich_sym_ctxt = int list
 
+and mich_invsym_category =
+  | MIC_balance
+  | MIC_bc_balance
+  | MIC_iter_cont
+  | MIC_map_entry_cont
+  | MIC_map_exit_cont
+
 and mich_v =
   (* Michelson Value *)
 
   (*************************************************************************)
   (* Symbol & Polymorphic                                                  *)
   (*************************************************************************)
-  | MV_symbol               of (mich_t cc * mich_sym_category * mich_sym_ctxt)
+  | MV_symbol               of
+      (mich_t cc * mich_sym_category * (mich_sym_ctxt[@sexp.opaque]))
   | MV_car                  of mich_v cc (* ('a, 'b) pair -> 'a *)
   | MV_cdr                  of mich_v cc (* ('a, 'b) pair -> 'b *)
   | MV_unlift_option        of mich_v cc (* 'a option -> 'a *)
@@ -163,6 +171,7 @@ and mich_v =
   | MV_sub_mmm              of mich_v cc * mich_v cc (* mutez * mutez -> mutez *)
   | MV_mul_mnm              of mich_v cc * mich_v cc (* mutez * nat -> mutez *)
   | MV_mul_nmm              of mich_v cc * mich_v cc (* nat * mutez -> mutez *)
+  | MV_mtz_of_op_list       of mich_v cc (* operation list -> mutz *)
   (*************************************************************************)
   (* Bool                                                                  *)
   (*************************************************************************)
@@ -299,6 +308,7 @@ and mich_v =
   (*************************************************************************)
   (* Custom Domain Value for Invariant Synthesis                           *)
   (*************************************************************************)
+  | MV_inv_symbol           of (mich_t cc * mich_invsym_category)
   | MV_sigma_tmplm          of mich_v cc
 (* (timestamp * mutez) list -> mutez *)
 
