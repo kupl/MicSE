@@ -382,6 +382,16 @@ and mich_i =
 [@@deriving sexp, compare, equal]
 (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
+module MichTCC_cmp = struct
+  type t = mich_t cc
+
+  let compare = compare_cc compare_mich_t
+
+  let t_of_sexp = cc_of_sexp mich_t_of_sexp
+
+  let sexp_of_t = sexp_of_cc sexp_of_mich_t
+end
+
 (******************************************************************************)
 (******************************************************************************)
 (* Formula                                                                    *)
