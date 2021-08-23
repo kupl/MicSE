@@ -70,13 +70,30 @@ type mich_t =
 (* Michelson Values & Instructions                                            *)
 (******************************************************************************)
 (******************************************************************************)
+and mich_sym_category =
+  | MSC_contract
+  | MSC_source
+  | MSC_sender
+  | MSC_param
+  | MSC_amount
+  | MSC_time
+  | MSC_balance
+  | MSC_bc_balance
+  | MSC_mich_stack      of int
+  | MSC_dip_stack       of int
+  | MSC_map_entry_stack of int
+  | MSC_map_exit_stack  of int
+  | MSC_iter_stack      of int
+
+and mich_sym_ctxt = int list
+
 and mich_v =
   (* Michelson Value *)
 
   (*************************************************************************)
   (* Symbol & Polymorphic                                                  *)
   (*************************************************************************)
-  | MV_symbol               of (mich_t cc * string)
+  | MV_symbol               of (mich_t cc * mich_sym_category * mich_sym_ctxt)
   | MV_car                  of mich_v cc (* ('a, 'b) pair -> 'a *)
   | MV_cdr                  of mich_v cc (* ('a, 'b) pair -> 'b *)
   | MV_unlift_option        of mich_v cc (* 'a option -> 'a *)
@@ -504,7 +521,10 @@ type sym_image = {
 [@@deriving sexp, compare, equal]
 
 (* entire blockchain symbolic state - designed for single contract verification *)
+type sym_state_id = mich_sym_ctxt [@@deriving sexp, compare, equal]
+
 type sym_state = {
+  ss_id : sym_state_id;
   (* location and category where and when the state starts/blocked a symbolic execution *)
   ss_start_mci : mich_cut_info;
   ss_block_mci : mich_cut_info;
