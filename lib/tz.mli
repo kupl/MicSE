@@ -89,12 +89,17 @@ and mich_sym_category =
 
 and mich_sym_ctxt = int list
 
+(* MV_inv_symbol should be replaced to other mich_v expression.
+   If some un-replaced MV_inv_symbol remained formula block in precondition of
+   verification condition, that formula block should be replaced to MF_true.
+   Caution: Free variable should not be allowed in precondition of formula. *)
 and mich_invsym_category =
   | MIC_balance
   | MIC_bc_balance
   | MIC_iter_cont
   | MIC_map_entry_cont
   | MIC_map_exit_cont
+  | MIC_not_implemented
 
 and mich_v =
   (* Michelson Value *)
