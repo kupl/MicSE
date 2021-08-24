@@ -415,6 +415,10 @@ module MichTCC_cmp : sig
   type t = mich_t cc [@@deriving compare, sexp]
 end
 
+module MichVCC_cmp : sig
+  type t = mich_v cc [@@deriving compare, sexp]
+end
+
 (******************************************************************************)
 (******************************************************************************)
 (* Formula                                                                    *)
@@ -500,6 +504,10 @@ type r_mich_cut_info = {
   rmci_cutcat : r_mich_cut_category;
 }
 [@@deriving sexp, compare, equal]
+
+module RMichCutInfo_cmp : sig
+  type t = r_mich_cut_info [@@deriving compare, sexp]
+end
 
 (* Transaction parameter value container *)
 type trx_image = {

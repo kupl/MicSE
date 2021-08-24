@@ -423,6 +423,16 @@ module MichTCC_cmp = struct
   let sexp_of_t = sexp_of_cc sexp_of_mich_t
 end
 
+module MichVCC_cmp = struct
+  type t = mich_v cc
+
+  let compare = compare_cc compare_mich_v
+
+  let t_of_sexp = cc_of_sexp mich_v_of_sexp
+
+  let sexp_of_t = sexp_of_cc sexp_of_mich_v
+end
+
 (******************************************************************************)
 (******************************************************************************)
 (* Formula                                                                    *)
@@ -508,6 +518,16 @@ type r_mich_cut_info = {
   rmci_cutcat : r_mich_cut_category;
 }
 [@@deriving sexp, compare, equal]
+
+module RMichCutInfo_cmp = struct
+  type t = r_mich_cut_info
+
+  let compare = compare_r_mich_cut_info
+
+  let t_of_sexp = r_mich_cut_info_of_sexp
+
+  let sexp_of_t = sexp_of_r_mich_cut_info
+end
 
 (* Transaction parameter value container *)
 type trx_image = {
