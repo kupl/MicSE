@@ -32,8 +32,8 @@ type ccp_annot =
 
 type 'a cc = {
   (* code component *)
-  cc_loc : (ccp_loc[@sexp.opaque]);
-  cc_anl : (ccp_annot list[@sexp.opaque]);
+  cc_loc : (ccp_loc[@sexp.opaque][@ignore]);
+  cc_anl : (ccp_annot list[@sexp.opaque][@ignore]);
   cc_v : 'a;
 }
 [@@deriving sexp, compare, equal]
@@ -105,7 +105,7 @@ and mich_v =
   (* Symbol & Polymorphic                                                     *)
   (****************************************************************************)
   | MV_symbol               of
-      (mich_t cc * mich_sym_category * (mich_sym_ctxt[@sexp.opaque]))
+      (mich_t cc * mich_sym_category * (mich_sym_ctxt[@sexp.opaque][@ignore]))
   | MV_car                  of mich_v cc (* ('a, 'b) pair -> 'a *)
   | MV_cdr                  of mich_v cc (* ('a, 'b) pair -> 'b *)
   | MV_unlift_option        of mich_v cc (* 'a option -> 'a *)
