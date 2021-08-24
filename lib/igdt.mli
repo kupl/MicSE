@@ -44,7 +44,12 @@ end
 (* Set of igdt *)
 module ISet : module type of Core.Set.Make (IGDT_cmp)
 
-type igdt_map = ISet.t MTMap.t RMCIMap.t
+type igdt_delim = {
+  lit : ISet.t;
+  non_lit : ISet.t;
+}
+
+type igdt_map = igdt_delim MTMap.t RMCIMap.t
 
 (******************************************************************************)
 (******************************************************************************)
@@ -54,7 +59,8 @@ type igdt_map = ISet.t MTMap.t RMCIMap.t
 
 val tmap_from_iset : ISet.t -> ISet.t MTMap.t
 
-val tmap_merge : ISet.t MTMap.t -> ISet.t MTMap.t -> ISet.t MTMap.t
+val tmap_merge_with_delim :
+  lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_delim MTMap.t
 
 (******************************************************************************)
 (******************************************************************************)

@@ -52,7 +52,12 @@ end
 (* Set of igdt *)
 module ISet = Core.Set.Make (IGDT_cmp)
 
-type igdt_map = ISet.t MTMap.t RMCIMap.t
+type igdt_delim = {
+  lit : ISet.t;
+  non_lit : ISet.t;
+}
+
+type igdt_map = igdt_delim MTMap.t RMCIMap.t
 
 (******************************************************************************)
 (******************************************************************************)
@@ -79,13 +84,15 @@ let tmap_from_iset : ISet.t -> ISet.t MTMap.t =
      |> raise
 (* function tmap_from_iset end *)
 
-let tmap_merge : ISet.t MTMap.t -> ISet.t MTMap.t -> ISet.t MTMap.t =
-   MTMap.merge ~f:(fun ~key:_ opt ->
-       match opt with
-       | `Both (a', b') -> Some (ISet.union a' b')
-       | `Left a'       -> Some a'
-       | `Right b'      -> Some b'
-   )
+let tmap_merge_with_delim :
+    lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_delim MTMap.t =
+  fun ~lit ~non_lit ->
+  MTMap.merge lit non_lit ~f:(fun ~key:_ opt ->
+      match opt with
+      | `Both (a', b') -> Some { lit = a'; non_lit = b' }
+      | `Left a'       -> Some { lit = a'; non_lit = ISet.empty }
+      | `Right b'      -> Some { lit = ISet.empty; non_lit = b' }
+  )
 (* function tmap_merge end *)
 
 (******************************************************************************)
@@ -285,6 +292,7 @@ let collect_igdt_from_igdt : igdt -> ISet.t =
         | MT_option _ -> collect_igdt_from_option cur_igdt
         | MT_pair _   -> collect_igdt_from_pair cur_igdt
         | MT_or _     -> collect_igdt_from_or cur_igdt
+        | MT_list _   -> collect_igdt_from_list cur_igdt
         | _           -> (ISet.empty, ISet.singleton cur_igdt)
      in
      ISet.fold target_set
@@ -517,15 +525,23 @@ let get_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdt_map =
              let (cur_rmci : r_mich_cut_info) =
                 get_reduced_mci (List.hd_exn p_blocked_slst).ss_start_mci
              in
-             let (igdt_set : ISet.t) =
-                ISet.union_list
-                  (init_strg_igdt_set
-                  :: lit_igdt_set
-                  :: List.map p_blocked_slst ~f:igdt_from_sym_state
-                  )
+             let (non_lit_igdt_set : ISet.t) =
+                ISet.union_list (List.map p_blocked_slst ~f:igdt_from_sym_state)
              in
-             let (igdt_tmap : ISet.t MTMap.t) = tmap_from_iset igdt_set in
-             (cur_rmci, igdt_tmap)
+             let (lit_igdt_set : ISet.t) =
+                ISet.union_list [ init_strg_igdt_set; lit_igdt_set ]
+             in
+             let (non_lit_igdt_tmap : ISet.t MTMap.t) =
+                tmap_from_iset non_lit_igdt_set
+             in
+             let (lit_igdt_tmap : ISet.t MTMap.t) =
+                tmap_from_iset lit_igdt_set
+             in
+             let (merged_tmap : igdt_delim MTMap.t) =
+                tmap_merge_with_delim ~lit:lit_igdt_tmap
+                  ~non_lit:non_lit_igdt_tmap
+             in
+             (cur_rmci, merged_tmap)
          )
       |> RMCIMap.of_alist
       |> function
