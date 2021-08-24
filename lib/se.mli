@@ -21,13 +21,14 @@ type se_result = {
 
 val se_result_empty : se_result
 
-(* val run_inst_initial_sym_image : Tz.sym_image *)
+val run_inst_initial_se_result :
+  Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result
 
 val se_result_pointwise_union : se_result -> se_result -> se_result
-
-val run_inst_entry :
-  Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result
 
 val run_inst : Tz.mich_i Tz.cc -> se_result -> se_result
 
 val run_inst_i : Tz.mich_i Tz.cc -> Tz.sym_state -> se_result
+
+val run_inst_entry :
+  Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result

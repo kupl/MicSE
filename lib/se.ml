@@ -45,31 +45,102 @@ let se_result_pointwise_union : se_result -> se_result -> se_result =
     sr_sid_counter = max r1.sr_sid_counter r2.sr_sid_counter;
   }
 
-(* let run_inst_initial_sym_image : (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc) -> Tz.sym_image =
-     let open Tz in
-     fun (param_t, strg_t) ->
-     let i_sc = 0 in (* initial sid_counter *)
-     let i_scx = [i_sc] in (* initial sym_ctxt *)
-     let initial_ti : trx_image = {
-       ti_contract = MV_symbol (MT_contract param_t, MSC_contract, i_scx);
-       ti_source = MV_symbol ();
-       ti_sender = MV_symbol ();
-       ti_param = MV_symbol ();
-       ti_amount = MV_symbol ();
-       ti_time = MV_symbol ();
-     } in
-     {
-     si_mich
-   } *)
-
-let run_inst_entry :
+let run_inst_initial_se_result :
     Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result =
-  (* fun (param_t, strg_t, code) ->
-     let initial_state : Tz.sym_state = {
-          ss_id =
-        } in
-         run_inst code { se_result_empty with sr_running=(SSet.singleton initial_state);} *)
-  (fun _ -> failwith "run_inst_entry")
+   let open Tz in
+   fun (param_tcc, strg_tcc, code) ->
+   (* sid_counter & sym_ctxt *)
+   let scounter = 0
+   and sctxt = [ 0 ] in
+   (* mich_t cc values *)
+   let cur_contract_tcc = MT_contract param_tcc |> gen_dummy_cc
+   and addr_tcc = MT_address |> gen_dummy_cc
+   and mutez_tcc = MT_mutez |> gen_dummy_cc
+   and time_tcc = MT_timestamp |> gen_dummy_cc
+   and paramstrg_tcc = MT_pair (param_tcc, strg_tcc) |> gen_dummy_cc in
+   (* initial mich_cut_info *)
+   let init_mci = { mci_loc = code.cc_loc; mci_cutcat = MCC_trx_entry } in
+   (* beginning trx-image *)
+   let beginning_ti : trx_image =
+      {
+        ti_contract =
+          MV_symbol (cur_contract_tcc, MSC_contract, sctxt) |> gen_dummy_cc;
+        ti_source = MV_symbol (addr_tcc, MSC_source, sctxt) |> gen_dummy_cc;
+        ti_sender = MV_symbol (addr_tcc, MSC_sender, sctxt) |> gen_dummy_cc;
+        ti_param = MV_symbol (param_tcc, MSC_param, sctxt) |> gen_dummy_cc;
+        ti_amount = MV_symbol (mutez_tcc, MSC_amount, sctxt) |> gen_dummy_cc;
+        ti_time = MV_symbol (time_tcc, MSC_time, sctxt) |> gen_dummy_cc;
+      }
+   in
+   (* beginning sym-image *)
+   let beginning_si : sym_image =
+      {
+        si_mich =
+          [ MV_symbol (paramstrg_tcc, MSC_mich_stack 0, sctxt) |> gen_dummy_cc ];
+        si_dip = [];
+        si_map_entry = [];
+        si_map_exit = [];
+        si_iter = [];
+        si_balance = MV_symbol (mutez_tcc, MSC_balance, sctxt) |> gen_dummy_cc;
+        si_bc_balance =
+          MV_symbol (mutez_tcc, MSC_bc_balance, sctxt) |> gen_dummy_cc;
+        si_param = beginning_ti;
+      }
+   in
+   (* blocking sym-image *)
+   let blocking_si : sym_image =
+      {
+        beginning_si with
+        si_balance =
+          MV_add_mmm (beginning_si.si_balance, beginning_ti.ti_amount)
+          |> gen_dummy_cc;
+      }
+   in
+   let initial_sym_state : sym_state =
+      {
+        ss_id = sctxt;
+        ss_start_mci = init_mci;
+        ss_block_mci = init_mci;
+        ss_start_si = beginning_si;
+        ss_block_si = blocking_si;
+        ss_param_history = [ beginning_ti ];
+        ss_constraints =
+          (let lit_total_mutez_amount =
+              MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc
+           in
+           [
+             (* 1. first stack's CAR is parameter-value *)
+             MF_eq
+               ( beginning_ti.ti_param,
+                 MV_car (List.hd_exn beginning_si.si_mich) |> gen_dummy_cc
+               );
+             (* 2. amount, balance, and bc_balance are mutez values *)
+             MF_mutez_bound beginning_ti.ti_amount;
+             MF_mutez_bound beginning_si.si_balance;
+             MF_mutez_bound beginning_si.si_bc_balance;
+             (* 3. amount is less-or-equal than bc_balance *)
+             MF_is_true
+               (MV_leq_ib (beginning_ti.ti_amount, beginning_si.si_bc_balance)
+               |> gen_dummy_cc
+               );
+             (* 4. (balance + bc_balance) is equal to total-mutez-amount *)
+             MF_eq
+               ( MV_add_mmm (beginning_si.si_balance, beginning_si.si_bc_balance)
+                 |> gen_dummy_cc,
+                 lit_total_mutez_amount
+               );
+           ]
+          );
+      }
+   in
+   let initial_se_result : se_result =
+      {
+        se_result_empty with
+        sr_running = SSet.singleton initial_sym_state;
+        sr_sid_counter = scounter + 1;
+      }
+   in
+   initial_se_result
 
 let rec run_inst : Tz.mich_i Tz.cc -> se_result -> se_result =
   fun inst sr ->
@@ -79,3 +150,7 @@ let rec run_inst : Tz.mich_i Tz.cc -> se_result -> se_result =
 
 and run_inst_i : Tz.mich_i Tz.cc -> Tz.sym_state -> se_result =
   (fun _ -> failwith "run_inst_i")
+
+let run_inst_entry :
+    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result =
+  (fun (pt, st, c) -> run_inst c (run_inst_initial_se_result (pt, st, c)))
