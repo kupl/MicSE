@@ -1,6 +1,6 @@
 (* Tz : MicSE's Michelson representation *)
 
-exception Error of string
+exception TzError of string
 
 open Core
 
@@ -32,8 +32,8 @@ type ccp_annot =
 
 type 'a cc = {
   (* code component *)
-  cc_loc : (ccp_loc[@sexp.opaque][@ignore]);
-  cc_anl : (ccp_annot list[@sexp.opaque][@ignore]);
+  cc_loc : (ccp_loc[@sexp.opaque] [@ignore]);
+  cc_anl : (ccp_annot list[@sexp.opaque] [@ignore]);
   cc_v : 'a;
 }
 [@@deriving sexp, compare, equal]
@@ -105,7 +105,7 @@ and mich_v =
   (* Symbol & Polymorphic                                                     *)
   (****************************************************************************)
   | MV_symbol               of
-      (mich_t cc * mich_sym_category * (mich_sym_ctxt[@sexp.opaque][@ignore]))
+      (mich_t cc * mich_sym_category * (mich_sym_ctxt[@sexp.opaque] [@ignore]))
   | MV_car                  of mich_v cc (* ('a, 'b) pair -> 'a *)
   | MV_cdr                  of mich_v cc (* ('a, 'b) pair -> 'b *)
   | MV_unlift_option        of mich_v cc (* 'a option -> 'a *)
@@ -605,12 +605,11 @@ let typ_of_val : mich_v cc -> mich_t cc =
      fun v ->
      let err : unit -> 'a =
        fun () ->
-       Stdlib.raise
-         (Error
-            ("typ_of_val : typ_of_val_i : "
-            ^ Sexp.to_string (sexp_of_cc sexp_of_mich_v v)
-            )
+       TzError
+         ("typ_of_val : typ_of_val_i : "
+         ^ Sexp.to_string (sexp_of_cc sexp_of_mich_v v)
          )
+       |> Stdlib.raise
      in
      let gen_cc : mich_t -> mich_t cc = (fun t -> gen_custom_cc v t) in
      match v.cc_v with
@@ -908,9 +907,8 @@ let get_innertyp : mich_t cc -> mich_t cc =
   | MT_contract t ->
     t
   | _ ->
-    Stdlib.raise
-      (Error ("get_innertyp : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
-      )
+    TzError ("get_innertyp : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
+    |> Stdlib.raise
 (* function get_innertyp end *)
 
 let get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc =
@@ -923,10 +921,8 @@ let get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc =
   | MT_big_map (t1, t2) ->
     (t1, t2)
   | _ ->
-    Stdlib.raise
-      (Error
-         ("get_innertyp2 : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
-      )
+    TzError ("get_innertyp2 : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
+    |> Stdlib.raise
 (* function get_innertyp2 end *)
 
 (******************************************************************************)
@@ -951,7 +947,7 @@ let lb_of_ln_exn : mich_cut_info -> mich_cut_info =
   lb_of_ln_mci mci
   |> function
   | Some bbb -> bbb
-  | None     -> Stdlib.raise (Error "lb_of_ln_exn")
+  | None     -> TzError "lb_of_ln_exn" |> Stdlib.raise
 (* function lb_of_ln_exn end *)
 
 let is_ln_mcc : mich_cut_category -> bool = function
@@ -990,7 +986,7 @@ let ln_of_lb_exn : mich_cut_info -> mich_cut_info =
   ln_of_lb_mci mci
   |> function
   | Some nnn -> nnn
-  | None     -> Stdlib.raise (Error "ln_of_lb_exn")
+  | None     -> TzError "ln_of_lb_exn" |> Stdlib.raise
 (* function ln_of_lb_exn end *)
 
 let is_lb_mcc : mich_cut_category -> bool = function
@@ -1026,7 +1022,7 @@ let exit_of_entry_exn : mich_cut_info -> mich_cut_info =
   exit_of_entry_mci mci
   |> function
   | Some xxx -> xxx
-  | None     -> Stdlib.raise (Error "exit_of_entry_exn")
+  | None     -> TzError "exit_of_entry_exn" |> Stdlib.raise
 (* function exit_of_entry_exn end *)
 
 let is_exit_mcc : mich_cut_category -> bool = function
@@ -1062,7 +1058,7 @@ let entry_of_exit_exn : mich_cut_info -> mich_cut_info =
   entry_of_exit_mci mci
   |> function
   | Some xxx -> xxx
-  | None     -> Stdlib.raise (Error "entry_of_exit_exn")
+  | None     -> TzError "entry_of_exit_exn" |> Stdlib.raise
 (* function entry_of_exit_exn end *)
 
 let is_entry_mcc : mich_cut_category -> bool = function
