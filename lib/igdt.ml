@@ -11,16 +11,16 @@ open! Core
 (******************************************************************************)
 
 (* Map of Tz.mich_t Tz.cc *)
-module MTMap = Core.Map.Make (Tz.MichTCC_cmp)
+module MTMap = Map.Make (Tz.MichTCC_cmp)
 
 (* Map of Tz.r_mich_cut_info *)
-module RMCIMap = Core.Map.Make (Tz.RMichCutInfo_cmp)
+module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 
 (* Set of Tz.mich_v Tz.cc *)
-module MVSet = Core.Set.Make (Tz.MichVCC_cmp)
+module MVSet = Set.Make (Tz.MichVCC_cmp)
 
-(* Set of Tz.sym_state & Set of Tz.mich_cut_info *)
-module SSet = Core.Set.Make (Tz.SymState_cmp)
+(* Set of Tz.sym_state *)
+module SSet = Set.Make (Tz.SymState_cmp)
 
 (******************************************************************************)
 (******************************************************************************)
