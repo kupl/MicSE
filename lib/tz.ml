@@ -110,7 +110,7 @@ and mich_v =
   (* Symbol & Polymorphic                                                     *)
   (****************************************************************************)
   | MV_symbol               of
-      (mich_t cc * mich_sym_category * (mich_sym_ctxt[@sexp.opaque] [@ignore]))
+      (mich_t cc * mich_sym_category * (mich_sym_ctxt[@ignore]))
   | MV_car                  of mich_v cc (* ('a, 'b) pair -> 'a *)
   | MV_cdr                  of mich_v cc (* ('a, 'b) pair -> 'b *)
   | MV_unlift_option        of mich_v cc (* 'a option -> 'a *)
@@ -632,7 +632,9 @@ let typ_of_val : mich_v cc -> mich_t cc =
        fun () ->
        TzError
          ("typ_of_val : typ_of_val_i : "
-         ^ Sexp.to_string (sexp_of_cc sexp_of_mich_v v)
+         (* ^ Sexp.to_string (sexp_of_cc sexp_of_mich_v v) *)
+         ^ Sexp.to_string
+             (sexp_of_cc sexp_of_mich_v v |> SexpUtil.tz_cc_sexp_form)
          )
        |> Stdlib.raise
      in
