@@ -659,26 +659,26 @@ let typ_of_val : mich_v cc -> mich_t cc =
      | MV_unlift_option v1 -> (
        (typ_of_val_i v1).cc_v
        |> function
-       | MT_pair (_, t2) -> t2
-       | _               -> err ()
+       | MT_option t -> t
+       | _           -> err ()
      )
      | MV_unlift_left v1 -> (
-       (typ_of_val_i v1).cc_v
-       |> function
-       | MT_option t1 -> t1
-       | _            -> err ()
-     )
-     | MV_unlift_right v1 -> (
        (typ_of_val_i v1).cc_v
        |> function
        | MT_or (t1, _) -> t1
        | _             -> err ()
      )
-     | MV_hd_l v1 -> (
+     | MV_unlift_right v1 -> (
        (typ_of_val_i v1).cc_v
        |> function
        | MT_or (_, t2) -> t2
        | _             -> err ()
+     )
+     | MV_hd_l v1 -> (
+       (typ_of_val_i v1).cc_v
+       |> function
+       | MT_list t -> t
+       | _         -> err ()
      )
      (****************************************************************************)
      (* Integer                                                                  *)
