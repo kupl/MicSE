@@ -49,7 +49,9 @@ type igdt_delim = {
   non_lit : ISet.t;
 }
 
-type igdt_map = igdt_delim MTMap.t RMCIMap.t
+type igdt_map = igdt_delim MTMap.t
+
+type rmci_igdt_map = igdt_map RMCIMap.t
 
 (******************************************************************************)
 (******************************************************************************)
@@ -60,7 +62,7 @@ type igdt_map = igdt_delim MTMap.t RMCIMap.t
 val tmap_from_iset : ISet.t -> ISet.t MTMap.t
 
 val tmap_merge_with_delim :
-  lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_delim MTMap.t
+  lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_map
 
 (******************************************************************************)
 (******************************************************************************)
@@ -110,4 +112,4 @@ val igdt_from_sym_state : Tz.sym_state -> ISet.t
 (******************************************************************************)
 (******************************************************************************)
 
-val get_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdt_map
+val get_rmci_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> rmci_igdt_map

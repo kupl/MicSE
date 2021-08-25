@@ -33,9 +33,9 @@ type igdt = {
   ig_value : Tz.mich_v Tz.cc;
   ig_typ : Tz.mich_t Tz.cc;
   (* accessor of component *)
-  ig_precond_lst : Tz.mich_f list; [@sexp.opaque] [@ignore]
+  ig_precond_lst : Tz.mich_f list; [@ignore]
   (* stack status of component *)
-  ig_base_value : Tz.mich_v Tz.cc; [@sexp.opaque] [@ignore]
+  ig_base_value : Tz.mich_v Tz.cc; [@ignore]
 }
 [@@deriving sexp, compare, equal]
 
@@ -57,7 +57,9 @@ type igdt_delim = {
   non_lit : ISet.t;
 }
 
-type igdt_map = igdt_delim MTMap.t RMCIMap.t
+type igdt_map = igdt_delim MTMap.t
+
+type rmci_igdt_map = igdt_map RMCIMap.t
 
 (******************************************************************************)
 (******************************************************************************)
@@ -85,7 +87,7 @@ let tmap_from_iset : ISet.t -> ISet.t MTMap.t =
 (* function tmap_from_iset end *)
 
 let tmap_merge_with_delim :
-    lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_delim MTMap.t =
+    lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_map =
   fun ~lit ~non_lit ->
   MTMap.merge lit non_lit ~f:(fun ~key:_ opt ->
       match opt with
@@ -504,7 +506,7 @@ let igdt_from_sym_state : Tz.sym_state -> ISet.t =
 (******************************************************************************)
 (******************************************************************************)
 
-let get_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdt_map =
+let get_rmci_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> rmci_igdt_map =
    let open Tz in
    fun blocked_sset init_strg lit_set ->
    let (init_strg_igdt_set : ISet.t) = collect_igdt_from_mich_v init_strg in
@@ -512,7 +514,7 @@ let get_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdt_map =
       ISet.union_list
         (MVSet.to_list lit_set |> List.map ~f:collect_igdt_from_mich_v)
    in
-   let (igdt_map : igdt_map) =
+   let (rmci_igdt_map : rmci_igdt_map) =
       SSet.group_by blocked_sset ~equiv:(fun a b ->
           equal_r_mich_cut_info
             (get_reduced_mci a.ss_start_mci)
@@ -537,7 +539,7 @@ let get_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdt_map =
              let (lit_igdt_tmap : ISet.t MTMap.t) =
                 tmap_from_iset lit_igdt_set
              in
-             let (merged_tmap : igdt_delim MTMap.t) =
+             let (merged_tmap : igdt_map) =
                 tmap_merge_with_delim ~lit:lit_igdt_tmap
                   ~non_lit:non_lit_igdt_tmap
              in
@@ -551,5 +553,5 @@ let get_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdt_map =
           ("get_igdt_map : " ^ Sexp.to_string (sexp_of_r_mich_cut_info rrr))
         |> raise
    in
-   igdt_map
+   rmci_igdt_map
 (* function get_igdt_map end *)
