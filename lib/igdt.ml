@@ -50,22 +50,31 @@ module IGDT_cmp = struct
 end
 
 (* Set of igdt *)
-module ISet = Core.Set.Make (IGDT_cmp)
+module ISet = Set.Make (IGDT_cmp)
 
 type igdt_delim = {
   lit : ISet.t;
   non_lit : ISet.t;
 }
+[@@deriving sexp, compare, equal]
 
-type igdt_map = igdt_delim MTMap.t
+type igdt_sets = igdt_delim MTMap.t [@@deriving sexp, compare, equal]
 
-type rmci_igdt_map = igdt_map RMCIMap.t
+type igdts_map = igdt_sets RMCIMap.t [@@deriving sexp, compare, equal]
 
 (******************************************************************************)
 (******************************************************************************)
 (* Utility functions                                                          *)
 (******************************************************************************)
 (******************************************************************************)
+
+let fold_precond_lst : igdt list -> Tz.mich_f =
+   let open Tz in
+   fun igdt_lst ->
+   let (prec_lst : Tz.mich_f list) =
+      List.map igdt_lst ~f:(fun igdt -> igdt.ig_precond_lst) |> List.join
+   in
+   if List.is_empty prec_lst then MF_true else MF_and prec_lst
 
 let tmap_from_iset : ISet.t -> ISet.t MTMap.t =
    let open Tz in
@@ -87,7 +96,7 @@ let tmap_from_iset : ISet.t -> ISet.t MTMap.t =
 (* function tmap_from_iset end *)
 
 let tmap_merge_with_delim :
-    lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_map =
+    lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_sets =
   fun ~lit ~non_lit ->
   MTMap.merge lit non_lit ~f:(fun ~key:_ opt ->
       match opt with
@@ -96,6 +105,13 @@ let tmap_merge_with_delim :
       | `Right b'      -> Some { lit = ISet.empty; non_lit = b' }
   )
 (* function tmap_merge end *)
+
+let find_igdt_sets : igdt_sets -> Tz.mich_t Tz.cc -> igdt_delim =
+  fun igdt_map typ ->
+  Map.find igdt_map typ
+  |> function
+  | Some ddd -> ddd
+  | None     -> { lit = ISet.empty; non_lit = ISet.empty }
 
 (******************************************************************************)
 (******************************************************************************)
@@ -285,17 +301,55 @@ let collect_igdt_from_list : igdt -> ISet.t * ISet.t =
    | _            -> IgdtError "collect_igdt_from_list : _" |> raise
 (* function collect_igdt_from_list end *)
 
+let collect_igdt_from_mutez : igdt -> ISet.t * ISet.t =
+   let open Tz in
+   fun cur_igdt ->
+   let (cur_val : mich_v cc) = cur_igdt.ig_value in
+   let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
+   let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in
+   match cur_typ.cc_v with
+   | MT_mutez ->
+     (* preconditions *)
+     let (prec_mutez : mich_f list) = MF_mutez_bound cur_val :: cur_plst in
+     (* ingredients *)
+     let (igdt_mutez : igdt) = { cur_igdt with ig_precond_lst = prec_mutez } in
+     (ISet.empty, ISet.singleton igdt_mutez)
+   | _        -> IgdtError "collect_igdt_from_mutez : _" |> raise
+(* function collect_igdt_from_mutez end *)
+
+let collect_igdt_from_nat : igdt -> ISet.t * ISet.t =
+   let open Tz in
+   fun cur_igdt ->
+   let (cur_val : mich_v cc) = cur_igdt.ig_value in
+   let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
+   let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in
+   match cur_typ.cc_v with
+   | MT_nat ->
+     (* preconditions *)
+     let (prec_nat : mich_f list) = MF_nat_bound cur_val :: cur_plst in
+     (* ingredients *)
+     let (igdt_nat : igdt) = { cur_igdt with ig_precond_lst = prec_nat } in
+     (ISet.empty, ISet.singleton igdt_nat)
+   | _      -> IgdtError "collect_igdt_from_nat : _" |> raise
+(* function collect_igdt_from_nat end *)
+
 let collect_igdt_from_igdt : igdt -> ISet.t =
    let open Tz in
    let rec collect_from_igdt_i : ISet.t -> igdt -> ISet.t =
      fun acc_set cur_igdt ->
      let (target_set, cur_igdt_set) : ISet.t * ISet.t =
         match cur_igdt.ig_typ.cc_v with
+        (* Container Types *)
         | MT_option _ -> collect_igdt_from_option cur_igdt
-        | MT_pair _   -> collect_igdt_from_pair cur_igdt
-        | MT_or _     -> collect_igdt_from_or cur_igdt
-        | MT_list _   -> collect_igdt_from_list cur_igdt
-        | _           -> (ISet.empty, ISet.singleton cur_igdt)
+        | MT_pair _ -> collect_igdt_from_pair cur_igdt
+        | MT_or _ -> collect_igdt_from_or cur_igdt
+        (* Add Sigma Representation of Each Types *)
+        | MT_list _ -> collect_igdt_from_list cur_igdt
+        (* Add Special Precondition of Each Types *)
+        | MT_mutez -> collect_igdt_from_mutez cur_igdt
+        | MT_nat -> collect_igdt_from_nat cur_igdt
+        (* Other Terminal Types *)
+        | _ -> (ISet.empty, ISet.singleton cur_igdt)
      in
      ISet.fold target_set
        ~init:(ISet.union acc_set cur_igdt_set)
@@ -506,7 +560,7 @@ let igdt_from_sym_state : Tz.sym_state -> ISet.t =
 (******************************************************************************)
 (******************************************************************************)
 
-let get_rmci_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> rmci_igdt_map =
+let get_igdts_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdts_map =
    let open Tz in
    fun blocked_sset init_strg lit_set ->
    let (init_strg_igdt_set : ISet.t) = collect_igdt_from_mich_v init_strg in
@@ -514,7 +568,7 @@ let get_rmci_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> rmci_igdt_map =
       ISet.union_list
         (MVSet.to_list lit_set |> List.map ~f:collect_igdt_from_mich_v)
    in
-   let (rmci_igdt_map : rmci_igdt_map) =
+   let (rmci_igdt_map : igdts_map) =
       SSet.group_by blocked_sset ~equiv:(fun a b ->
           equal_r_mich_cut_info
             (get_reduced_mci a.ss_start_mci)
@@ -539,7 +593,7 @@ let get_rmci_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> rmci_igdt_map =
              let (lit_igdt_tmap : ISet.t MTMap.t) =
                 tmap_from_iset lit_igdt_set
              in
-             let (merged_tmap : igdt_map) =
+             let (merged_tmap : igdt_sets) =
                 tmap_merge_with_delim ~lit:lit_igdt_tmap
                   ~non_lit:non_lit_igdt_tmap
              in

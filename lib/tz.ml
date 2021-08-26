@@ -465,6 +465,16 @@ type mich_f =
   | MF_shiftR_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
 [@@deriving sexp, compare, equal]
 
+module MichF_cmp = struct
+  type t = mich_f
+
+  let compare = compare_mich_f
+
+  let t_of_sexp = mich_f_of_sexp
+
+  let sexp_of_t = sexp_of_mich_f
+end
+
 (******************************************************************************)
 (******************************************************************************)
 (* Symbolic State                                                             *)
@@ -511,6 +521,16 @@ type mich_cut_info = {
   mci_cutcat : mich_cut_category;
 }
 [@@deriving sexp, compare, equal]
+
+module MichCutInfo_cmp = struct
+  type t = mich_cut_info
+
+  let compare = compare_mich_cut_info
+
+  let t_of_sexp = mich_cut_info_of_sexp
+
+  let sexp_of_t = sexp_of_mich_cut_info
+end
 
 (* reduced mich_cut_info *)
 type r_mich_cut_info = {
@@ -584,16 +604,6 @@ type sym_state = {
   ss_constraints : mich_f list;
 }
 [@@deriving sexp, compare, equal]
-
-module MichCutInfo_cmp = struct
-  type t = mich_cut_info
-
-  let compare = compare_mich_cut_info
-
-  let t_of_sexp = mich_cut_info_of_sexp
-
-  let sexp_of_t = sexp_of_mich_cut_info
-end
 
 module SymState_cmp = struct
   type t = sym_state

@@ -48,10 +48,11 @@ type igdt_delim = {
   lit : ISet.t;
   non_lit : ISet.t;
 }
+[@@deriving sexp, compare, equal]
 
-type igdt_map = igdt_delim MTMap.t
+type igdt_sets = igdt_delim MTMap.t [@@deriving sexp, compare, equal]
 
-type rmci_igdt_map = igdt_map RMCIMap.t
+type igdts_map = igdt_sets RMCIMap.t [@@deriving sexp, compare, equal]
 
 (******************************************************************************)
 (******************************************************************************)
@@ -59,10 +60,14 @@ type rmci_igdt_map = igdt_map RMCIMap.t
 (******************************************************************************)
 (******************************************************************************)
 
+val fold_precond_lst : igdt list -> Tz.mich_f
+
 val tmap_from_iset : ISet.t -> ISet.t MTMap.t
 
 val tmap_merge_with_delim :
-  lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_map
+  lit:ISet.t MTMap.t -> non_lit:ISet.t MTMap.t -> igdt_sets
+
+val find_igdt_sets : igdt_sets -> Tz.mich_t Tz.cc -> igdt_delim
 
 (******************************************************************************)
 (******************************************************************************)
@@ -112,4 +117,4 @@ val igdt_from_sym_state : Tz.sym_state -> ISet.t
 (******************************************************************************)
 (******************************************************************************)
 
-val get_rmci_igdt_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> rmci_igdt_map
+val get_igdts_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdts_map
