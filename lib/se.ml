@@ -1437,4 +1437,23 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
 
 let run_inst_entry :
     Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result =
-  (fun (pt, st, c) -> run_inst c (run_inst_initial_se_result (pt, st, c)))
+   let open Tz in
+   fun (pt, st, c) ->
+   let final_blocking : sym_state -> sym_state =
+     fun ss ->
+     {
+       (* If operation-mutez-subtraction policy turned on, we need to add balance-related constraint here. *)
+       ss
+       with
+       ss_block_mci = { mci_loc = c.cc_loc; mci_cutcat = MCC_trx_exit };
+     }
+   in
+   let result_raw = run_inst c (run_inst_initial_se_result (pt, st, c)) in
+   {
+     result_raw with
+     sr_running = SSet.empty;
+     sr_blocked =
+       SSet.union
+         (SSet.map result_raw.sr_blocked ~f:final_blocking)
+         result_raw.sr_blocked;
+   }
