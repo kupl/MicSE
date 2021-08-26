@@ -45,6 +45,70 @@ let se_result_pointwise_union : se_result -> se_result -> se_result =
     sr_sid_counter = max r1.sr_sid_counter r2.sr_sid_counter;
   }
 
+(******************************************************************************)
+(* Utilities : Constraint                                                     *)
+(******************************************************************************)
+
+let add_constraints : c:Tz.mich_f list -> Tz.sym_state -> Tz.sym_state =
+  (fun ~c ss -> { ss with ss_constraints = c @ ss.ss_constraints })
+
+let mtz_constriant_if_it_is_or_true :
+    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+   let open Tz in
+   fun ~tv:(t, v) ->
+   if equal_mich_t t.cc_v MT_mutez then MF_mutez_bound v else MF_true
+
+let add_mtz_constraint_if_it_is :
+    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.sym_state =
+  (fun ~tv ss -> add_constraints ~c:[ mtz_constriant_if_it_is_or_true ~tv ] ss)
+
+let nat_constriant_if_it_is_or_true :
+    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+   let open Tz in
+   fun ~tv:(t, v) ->
+   if equal_mich_t t.cc_v MT_nat then MF_nat_bound v else MF_true
+
+let add_nat_constraint_if_it_is :
+    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.sym_state =
+  (fun ~tv ss -> add_constraints ~c:[ nat_constriant_if_it_is_or_true ~tv ] ss)
+
+let michv_maybe_mtznat_constraints : v:Tz.mich_v Tz.cc -> Tz.mich_f list =
+   let open Tz in
+   fun ~v ->
+   let tv = (typ_of_val v, v) in
+   [ mtz_constriant_if_it_is_or_true ~tv; nat_constriant_if_it_is_or_true ~tv ]
+
+let amount_balance_mutez_constraints :
+    amount_v:Tz.mich_v Tz.cc ->
+    balance_v:Tz.mich_v Tz.cc ->
+    bc_balance_v:Tz.mich_v Tz.cc ->
+    Tz.mich_f list =
+  fun ~amount_v ~balance_v ~bc_balance_v ->
+  let open Tz in
+  [
+    (* 1. amount, balance, and bc_balance are mutez values *)
+    MF_mutez_bound amount_v;
+    MF_mutez_bound balance_v;
+    MF_mutez_bound bc_balance_v;
+    (* 2. amount is less-or-equal than bc_balance *)
+    MF_is_true (MV_leq_ib (amount_v, bc_balance_v) |> gen_dummy_cc);
+    (* 3. (balance + bc_balance) is also mutez value *)
+    MF_mutez_bound (MV_add_mmm (balance_v, bc_balance_v) |> gen_dummy_cc);
+    (* 4. (balance + bc_balance) is equal to total-mutez-amount *)
+    (let lit_total_mutez_amount =
+        MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc
+     in
+     MF_eq
+       ( MV_add_mmm (balance_v, bc_balance_v) |> gen_dummy_cc,
+         lit_total_mutez_amount
+       )
+    );
+  ]
+
+(******************************************************************************)
+(* Symbolic Run Instruction                                                   *)
+(******************************************************************************)
+
 let run_inst_initial_se_result :
     Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result =
    let open Tz in
@@ -61,13 +125,14 @@ let run_inst_initial_se_result :
    (* initial mich_cut_info *)
    let init_mci = { mci_loc = code.cc_loc; mci_cutcat = MCC_trx_entry } in
    (* beginning trx-image *)
+   let param_v = MV_symbol (param_tcc, MSC_param, sctxt) |> gen_dummy_cc in
    let beginning_ti : trx_image =
       {
         ti_contract =
           MV_symbol (cur_contract_tcc, MSC_contract, sctxt) |> gen_dummy_cc;
         ti_source = MV_symbol (addr_tcc, MSC_source, sctxt) |> gen_dummy_cc;
         ti_sender = MV_symbol (addr_tcc, MSC_sender, sctxt) |> gen_dummy_cc;
-        ti_param = MV_symbol (param_tcc, MSC_param, sctxt) |> gen_dummy_cc;
+        ti_param = param_v;
         ti_amount = MV_symbol (mutez_tcc, MSC_amount, sctxt) |> gen_dummy_cc;
         ti_time = MV_symbol (time_tcc, MSC_time, sctxt) |> gen_dummy_cc;
       }
@@ -105,37 +170,17 @@ let run_inst_initial_se_result :
         ss_block_si = blocking_si;
         ss_param_history = [ beginning_ti ];
         ss_constraints =
-          [
-            (* 1. first stack's CAR is parameter-value *)
-            MF_eq
-              ( beginning_ti.ti_param,
-                MV_car (List.hd_exn beginning_si.si_mich) |> gen_dummy_cc
-              );
-            (* 2. amount, balance, and bc_balance are mutez values *)
-            MF_mutez_bound beginning_ti.ti_amount;
-            MF_mutez_bound beginning_si.si_balance;
-            MF_mutez_bound beginning_si.si_bc_balance;
-            (* 3. amount is less-or-equal than bc_balance *)
-            MF_is_true
-              (MV_leq_ib (beginning_ti.ti_amount, beginning_si.si_bc_balance)
-              |> gen_dummy_cc
-              );
-            (* 4. (balance + bc_balance) is also mutez value *)
-            MF_mutez_bound
-              (MV_add_mmm (beginning_si.si_balance, beginning_si.si_bc_balance)
-              |> gen_dummy_cc
-              );
-            (* 5. (balance + bc_balance) is equal to total-mutez-amount *)
-            (* (let lit_total_mutez_amount =
-                   MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc
-                in
-                MF_eq
-                  ( MV_add_mmm (beginning_si.si_balance, beginning_si.si_bc_balance)
-                    |> gen_dummy_cc,
-                    lit_total_mutez_amount
-                  )
-               ); *)
-          ];
+          (* 1. first stack's CAR is parameter-value *)
+          MF_eq
+            ( beginning_ti.ti_param,
+              MV_car (List.hd_exn beginning_si.si_mich) |> gen_dummy_cc
+            )
+          :: (* 2. If parameter value is mutez or nat, add constraints *)
+             michv_maybe_mtznat_constraints ~v:param_v
+          @ (* 3. amount & balance & bc_balance constraints *)
+          amount_balance_mutez_constraints ~amount_v:beginning_ti.ti_amount
+            ~balance_v:beginning_si.si_balance
+            ~bc_balance_v:beginning_si.si_bc_balance;
       }
    in
    let initial_se_result : se_result =
@@ -157,13 +202,15 @@ let rec run_inst : Tz.mich_i Tz.cc -> se_result -> se_result =
 
 and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    let open Tz in
-   let err : mich_i cc -> 'a =
-     fun inst ->
-     failwith ("unexpected : " ^ (sexp_of_mich_i inst.cc_v |> string_of_sexp))
-   in
    (* utilties : bmstack : blocked-mich-stack *)
    let get_bmstack : sym_state -> mich_v cc list =
      (fun ss -> ss.ss_block_si.si_mich)
+   in
+   let get_bmstack_1 : sym_state -> mich_v cc =
+     fun ss ->
+     match get_bmstack ss with
+     | h :: _ -> h
+     | _      -> failwith "get_bmstack_1 : unexpected"
    in
    let get_bmstack_2 : sym_state -> mich_v cc * mich_v cc =
      fun ss ->
@@ -214,15 +261,15 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        ss_constraints = cs;
      }
    in
-   (* let update_top_1_bmstack_and_constraint :
-          f:(mich_v cc -> mich_v cc list * mich_f list) -> sym_state -> sym_state =
-        fun ~f ss ->
-        match get_bmstack ss with
-        | hd :: tl ->
-          let (st, cs) = f hd in
-          set_bmstack_and_constraint ss (st @ tl) (cs @ ss.ss_constraints)
-        | _        -> failwith "update_top_1_bmstack_and_constraint : unexpected"
-      in *)
+   let update_top_1_bmstack_and_constraint :
+       f:(mich_v cc -> mich_v cc list * mich_f list) -> sym_state -> sym_state =
+     fun ~f ss ->
+     match get_bmstack ss with
+     | hd :: tl ->
+       let (st, cs) = f hd in
+       set_bmstack_and_constraint ss (st @ tl) (cs @ ss.ss_constraints)
+     | _        -> failwith "update_top_1_bmstack_and_constraint : unexpected"
+   in
    let update_top_2_bmstack_and_constraint :
        f:(mich_v cc * mich_v cc -> mich_v cc list * mich_f list) ->
        sym_state ->
@@ -247,28 +294,6 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
         | _                    ->
           failwith "update_top_3_bmstack_and_constraint : unexpected"
       in *)
-   (* utilities : constraint *)
-   let add_constraints : c:mich_f list -> sym_state -> sym_state =
-     (fun ~c ss -> { ss with ss_constraints = c @ ss.ss_constraints })
-   in
-   let mtz_constriant_if_it_is_or_true : tv:mich_t cc * mich_v cc -> mich_f =
-     fun ~tv:(t, v) ->
-     if equal_mich_t t.cc_v MT_mutez then MF_mutez_bound v else MF_true
-   in
-   let add_mtz_constraint_if_it_is :
-       tv:mich_t cc * mich_v cc -> sym_state -> sym_state =
-     fun ~tv ss ->
-     add_constraints ~c:[ mtz_constriant_if_it_is_or_true ~tv ] ss
-   in
-   let nat_constriant_if_it_is_or_true : tv:mich_t cc * mich_v cc -> mich_f =
-     fun ~tv:(t, v) ->
-     if equal_mich_t t.cc_v MT_nat then MF_nat_bound v else MF_true
-   in
-   let add_nat_constraint_if_it_is :
-       tv:mich_t cc * mich_v cc -> sym_state -> sym_state =
-     fun ~tv ss ->
-     add_constraints ~c:[ nat_constriant_if_it_is_or_true ~tv ] ss
-   in
    (* utilities : sym_state <-> se_result *)
    let running_ss_to_sr : sym_state -> se_result =
      (fun ss -> { se_result_empty with sr_running = SSet.singleton ss })
@@ -282,7 +307,45 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
          MciSet.union ctxt_sr.sr_entered_loops new_sr.sr_entered_loops;
        sr_entered_lmbds =
          MciSet.union ctxt_sr.sr_entered_lmbds new_sr.sr_entered_lmbds;
+       sr_sid_counter = max ctxt_sr.sr_sid_counter new_sr.sr_sid_counter;
      }
+   in
+   let ctxt_sr_sid_counter_incr : se_result -> se_result =
+     fun ctxt_sr ->
+     { ctxt_sr with sr_sid_counter = ctxt_sr.sr_sid_counter + 1 }
+   in
+   (* utilities : symbolic stack generator *)
+   let generate_symstack :
+       f:(int -> mich_sym_category) ->
+       ctxt:mich_sym_ctxt ->
+       ccmaker:('a -> 'a cc) ->
+       mich_v cc list ->
+       mich_v cc list * mich_f list =
+     fun ~f ~ctxt ~ccmaker st ->
+     let len = List.length st in
+     let vl =
+        List.mapi
+          ~f:(fun i v ->
+            let sc = f (len - i - 1) in
+            MV_symbol (typ_of_val v, sc, ctxt) |> ccmaker)
+          st
+     in
+     let ctl =
+        List.fold vl ~init:[] ~f:(fun accl v ->
+            let tv = (typ_of_val v, v) in
+            mtz_constriant_if_it_is_or_true ~tv
+            :: nat_constriant_if_it_is_or_true ~tv
+            :: accl
+        )
+     in
+     (vl, ctl)
+   in
+   (* utilities : extract paramter type from sym-state *)
+   let param_typ_of_ss : sym_state -> mich_t cc =
+     fun ss ->
+     match (typ_of_val ss.ss_start_si.si_param.ti_contract).cc_v with
+     | MT_contract t -> t
+     | _             -> failwith "run_inst_i : param_typ_of_ss : unexpected"
    in
    (* FUNCTION BEGIN *)
    fun inst (ctxt_sr, ss) ->
@@ -299,21 +362,21 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    | MI_swap ->
      update_bmstack ss ~f:(function
      | h1 :: h2 :: tl -> h2 :: h1 :: tl
-     | _              -> err inst
+     | _              -> failwith "run_inst_i : MI_swap : unexpected"
      )
      |> running_ss_to_sr
    | MI_dig zn ->
      update_bmstack ss ~f:(fun x ->
          match List.split_n x (Bigint.to_int_exn zn) with
          | (hdlst, tlhd :: tltl) -> (tlhd :: hdlst) @ tltl
-         | _                     -> err inst
+         | _                     -> failwith "run_inst_i : MI_dig : unexpected"
      )
      |> running_ss_to_sr
    | MI_dug zn ->
      update_bmstack ss ~f:(fun x ->
          match List.split_n x (Bigint.to_int_exn zn + 1) with
          | (hdhd :: hdtl, tl) -> hdtl @ (hdhd :: tl)
-         | _                  -> err inst
+         | _                  -> failwith "run_inst_i : MI_dug : unexpected"
      )
      |> running_ss_to_sr
    | MI_push (t, v) ->
@@ -329,7 +392,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    | MI_unit ->
      push_bmstack ss ~v:(MV_unit |> gen_custom_cc inst) |> running_ss_to_sr
    | MI_if_none (i1, i2) ->
-     let cond_value : mich_v cc = List.hd_exn (get_bmstack ss) in
+     let cond_value : mich_v cc = get_bmstack_1 ss in
      let cond_constraint : mich_f = MF_is_none cond_value in
      (* then branch *)
      let then_br_sr : se_result =
@@ -359,15 +422,23 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        ss
      |> running_ss_to_sr
    | MI_car ->
-     update_top_1_bmstack ~f:(fun x -> [ MV_car x |> gen_custom_cc inst ]) ss
+     update_top_1_bmstack_and_constraint
+       ~f:(fun x ->
+         let nv = MV_car x |> gen_custom_cc inst in
+         ([ nv ], michv_maybe_mtznat_constraints ~v:nv))
+       ss
      |> running_ss_to_sr
    | MI_cdr ->
-     update_top_1_bmstack ~f:(fun x -> [ MV_cdr x |> gen_custom_cc inst ]) ss
+     update_top_1_bmstack_and_constraint
+       ~f:(fun x ->
+         let nv = MV_cdr x |> gen_custom_cc inst in
+         ([ nv ], michv_maybe_mtznat_constraints ~v:nv))
+       ss
      |> running_ss_to_sr
    (* | MI_left t -> TODO *)
    (* | MI_right t -> TODO *)
    | MI_if_left (i1, i2) ->
-     let cond_value : mich_v cc = List.hd_exn (get_bmstack ss) in
+     let cond_value : mich_v cc = get_bmstack_1 ss in
      let cond_constraint : mich_f = MF_is_left cond_value in
      (* then branch *)
      let then_br_sr : se_result =
@@ -407,7 +478,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
      |> running_ss_to_sr
    | MI_if_cons (i1, i2) ->
      (* IF_CONS receives list-container only *)
-     let cond_value : mich_v cc = List.hd_exn (get_bmstack ss) in
+     let cond_value : mich_v cc = get_bmstack_1 ss in
      let cond_constraint : mich_f = MF_is_cons cond_value in
      (* then branch *)
      let then_br_sr : se_result =
@@ -436,7 +507,271 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    (* | MI_empty_set t -> TODO *)
    (* | MI_empty_map (t1, t2) -> TODO *)
    (* | MI_empty_big_map (t1, t2) -> TODO *)
-   (* | MI_map i -> TODO *)
+   | MI_map i ->
+     let (outer_cutcat, inner_cutcat) = (MCC_ln_map, MCC_lb_map) in
+     let (blocked_mci, thenbr_mci, elsebr_mci) =
+        ( { mci_loc = inst.cc_loc; mci_cutcat = outer_cutcat },
+          { mci_loc = inst.cc_loc; mci_cutcat = inner_cutcat },
+          { mci_loc = inst.cc_loc; mci_cutcat = outer_cutcat }
+        )
+     in
+     let container_v = get_bmstack_1 ss in
+     let container_t : mich_t cc = typ_of_val container_v in
+     let elem_t : mich_t cc =
+        match container_t.cc_v with
+        | MT_list e       -> e
+        | MT_map (kt, vt) -> MT_pair (kt, vt) |> gen_custom_cc container_v
+        | _               -> failwith "run_inst_i : MI_map : elem_t"
+     in
+     let rest_stack = List.tl_exn (get_bmstack ss) in
+     let out_elem_t =
+        List.hd_exn
+          (Te.typ_run_inst ~param_t:(param_typ_of_ss ss) i
+             (elem_t :: List.map ~f:typ_of_val rest_stack)
+          )
+     in
+     let out_container_t : mich_t cc =
+        match container_t.cc_v with
+        | MT_list _      -> MT_list out_elem_t |> gen_custom_cc inst
+        | MT_map (kt, _) -> MT_map (kt, out_elem_t) |> gen_custom_cc inst
+        | _              -> failwith "run_inst_i : MI_map : out_container_t"
+     in
+     (* 1. Construct blocked-state *)
+     let blocked_state : sym_state = { ss with ss_block_mci = blocked_mci } in
+     (* 2. If this MAP-instruction is the instruction already met before, return only blocked-state. *)
+     if MciSet.mem ctxt_sr.sr_entered_loops blocked_mci
+     then { ctxt_sr with sr_blocked = SSet.singleton blocked_state }
+     else (
+       (* 2. +. update ctxt_sr - add entered-loop *)
+       let ctxt_sr : se_result =
+          {
+            ctxt_sr with
+            sr_entered_loops = MciSet.add ctxt_sr.sr_entered_loops blocked_mci;
+          }
+       in
+       (* 3. run-instruction inside MAP instruction *)
+       let tb_result : se_result =
+          let tb_ss_id = [ ctxt_sr.sr_sid_counter ] in
+          (* 3.1. construct entry sym-state *)
+          let tb_entry_ss : sym_state =
+             let tb_trx_image : trx_image =
+                symbol_trx_image_context_swap tb_ss_id
+                  blocked_state.ss_block_si.si_param
+             in
+             let (tb_entry_si, tb_entry_constraints) : sym_image * mich_f list =
+                let bsi = blocked_state.ss_block_si in
+                let ctxt = tb_ss_id in
+                let ccmaker = gen_custom_cc inst in
+                let (michst, michct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_mich_stack x)
+                     ~ctxt ~ccmaker (List.tl_exn bsi.si_mich)
+                in
+                let (dipst, dipct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_dip_stack x)
+                     ~ctxt ~ccmaker bsi.si_dip
+                in
+                let (mapentryst, mapentryct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_map_entry_stack x)
+                     ~ctxt ~ccmaker bsi.si_map_entry
+                in
+                let (mapexitst, mapexitct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_map_exit_stack x)
+                     ~ctxt ~ccmaker bsi.si_map_exit
+                in
+                let (iterst, iterct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_iter_stack x)
+                     ~ctxt ~ccmaker bsi.si_iter
+                in
+                let balance_v : mich_v cc =
+                   symbol_context_swap tb_ss_id
+                     blocked_state.ss_block_si.si_balance
+                in
+                let bc_balance_v : mich_v cc =
+                   symbol_context_swap tb_ss_id
+                     blocked_state.ss_block_si.si_bc_balance
+                in
+                let constraints_abp =
+                   michv_maybe_mtznat_constraints ~v:tb_trx_image.ti_param
+                   @ amount_balance_mutez_constraints
+                       ~amount_v:tb_trx_image.ti_amount ~balance_v ~bc_balance_v
+                in
+                let elem_v =
+                   MV_symbol (elem_t, MSC_mich_stack (List.length michst), ctxt)
+                   |> gen_custom_cc inst
+                in
+                let elem_ct = michv_maybe_mtznat_constraints ~v:elem_v in
+                (* no need to check & add constraints of tb_container_v or tb_out_container_v *)
+                let tb_container_v =
+                   MV_symbol
+                     ( container_t,
+                       MSC_map_entry_stack (List.length mapentryst),
+                       ctxt
+                     )
+                   |> gen_custom_cc inst
+                in
+                let tb_out_container_v =
+                   MV_symbol
+                     ( out_container_t,
+                       MSC_map_exit_stack (List.length mapexitst),
+                       ctxt
+                     )
+                   |> gen_custom_cc inst
+                in
+                ( {
+                    si_mich = elem_v :: michst;
+                    si_dip = dipst;
+                    si_map_entry = tb_container_v :: mapentryst;
+                    si_map_exit = tb_out_container_v :: mapexitst;
+                    si_iter = iterst;
+                    si_balance = balance_v;
+                    si_bc_balance = bc_balance_v;
+                    si_param = tb_trx_image;
+                  },
+                  michct
+                  @ dipct
+                  @ mapentryct
+                  @ mapexitct
+                  @ iterct
+                  @ elem_ct
+                  @ constraints_abp
+                )
+             in
+             {
+               ss_id = tb_ss_id;
+               ss_start_mci = thenbr_mci;
+               ss_block_mci = thenbr_mci;
+               ss_start_si = tb_entry_si;
+               ss_block_si = tb_entry_si;
+               ss_param_history = blocked_state.ss_param_history;
+               ss_constraints = tb_entry_constraints;
+             }
+          in
+          (* be aware - between "after tb_symstate construction" and "before run-inst",
+               update ctxt_sr (increase sid-counter)
+               - becuase new sym-state constructed before.
+          *)
+          let ctxt_sr = ctxt_sr_sid_counter_incr ctxt_sr in
+          (* 3.2. run_inst_i recursive call *)
+          let tb_sr_result_raw : se_result =
+             run_inst_i i (ctxt_sr, tb_entry_ss)
+          in
+          (* 3.3. transform running states to blocked states *)
+          {
+            tb_sr_result_raw with
+            sr_running = SSet.empty;
+            sr_blocked =
+              SSet.union
+                (SSet.map tb_sr_result_raw.sr_running ~f:(fun rss ->
+                     { rss with ss_block_mci = thenbr_mci }
+                 )
+                )
+                tb_sr_result_raw.sr_blocked;
+          }
+       in
+       (* 3. +. update ctxt_sr - override it using tb_result
+          - it is okay to override since tb_result uses previous ctxt_sr in recursive call.
+       *)
+       let ctxt_sr : se_result = tb_result in
+       (* 4. construct MAP instruction escaping sym-state (else-branch) *)
+       let eb_symstate : sym_state =
+          let eb_ss_id = [ ctxt_sr.sr_sid_counter ] in
+          let eb_trx_image : trx_image =
+             symbol_trx_image_context_swap eb_ss_id
+               blocked_state.ss_block_si.si_param
+          in
+          let (eb_entry_si, eb_entry_constraints) : sym_image * mich_f list =
+             let bsi = blocked_state.ss_block_si in
+             let ctxt = eb_ss_id in
+             let ccmaker = gen_custom_cc inst in
+             let (michst, michct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_mich_stack x)
+                  ~ctxt ~ccmaker (List.tl_exn bsi.si_mich)
+             in
+             let (dipst, dipct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_dip_stack x)
+                  ~ctxt ~ccmaker bsi.si_dip
+             in
+             let (mapentryst, mapentryct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_map_entry_stack x)
+                  ~ctxt ~ccmaker bsi.si_map_entry
+             in
+             let (mapexitst, mapexitct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_map_exit_stack x)
+                  ~ctxt ~ccmaker bsi.si_map_exit
+             in
+             let (iterst, iterct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_iter_stack x)
+                  ~ctxt ~ccmaker bsi.si_iter
+             in
+             let balance_v : mich_v cc =
+                symbol_context_swap eb_ss_id
+                  blocked_state.ss_block_si.si_balance
+             in
+             let bc_balance_v : mich_v cc =
+                symbol_context_swap eb_ss_id
+                  blocked_state.ss_block_si.si_bc_balance
+             in
+             let constraints_abp =
+                michv_maybe_mtznat_constraints ~v:eb_trx_image.ti_param
+                @ amount_balance_mutez_constraints
+                    ~amount_v:eb_trx_image.ti_amount ~balance_v ~bc_balance_v
+             in
+             (* no need to check & add constraints of eb_container_v or eb_out_container_v *)
+             let eb_out_container_v =
+                MV_symbol
+                  (out_container_t, MSC_mich_stack (List.length michst), ctxt)
+                |> gen_custom_cc inst
+             in
+             ( {
+                 si_mich = eb_out_container_v :: michst;
+                 si_dip = dipst;
+                 si_map_entry = mapentryst;
+                 si_map_exit = mapexitst;
+                 si_iter = iterst;
+                 si_balance = balance_v;
+                 si_bc_balance = bc_balance_v;
+                 si_param = eb_trx_image;
+               },
+               michct
+               @ dipct
+               @ mapentryct
+               @ mapexitct
+               @ iterct
+               @ constraints_abp
+             )
+          in
+          {
+            ss_id = eb_ss_id;
+            ss_start_mci = elsebr_mci;
+            ss_block_mci = elsebr_mci;
+            ss_start_si = eb_entry_si;
+            ss_block_si = eb_entry_si;
+            ss_param_history = blocked_state.ss_param_history;
+            ss_constraints = eb_entry_constraints;
+          }
+       in
+       (* 4. +. update ctxt_sr - increase sid-counter
+          - becuase new sym-state constructed before.
+       *)
+       let ctxt_sr : se_result = ctxt_sr_sid_counter_incr ctxt_sr in
+       (* RETURN *)
+       {
+         (* remember - current ctxt_sr contains tb_result in "3. +." *)
+         ctxt_sr with
+         sr_running = SSet.singleton eb_symstate;
+         sr_blocked = SSet.add ctxt_sr.sr_blocked blocked_state;
+       }
+     )
    (* | MI_iter -> TODO *)
    | MI_mem ->
      update_top_2_bmstack
@@ -505,7 +840,37 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
         |> (fun ssss -> run_inst_i i2 (ctxt_sr, ssss))
      in
      se_result_pointwise_union then_br_sr else_br_sr
-   (* | MI_loop i -> TODO *)
+   (* | MI_loop i -> (
+        let (outer_cutcat, inner_cutcat) = (MCC_ln_loop, MCC_lb_loop) in
+        let blocked_mci = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
+        let thenbr_mci = {mci_loc=inst.cc_loc; mci_cutcat=inner_cutcat} in
+        let elsebr_mci = blocked_mci in
+        (* refer *)
+
+      ) *)
+   (* let (outer_cutcat, inner_cutcat) : (mich_cut_category * mich_cut_category) = (MCC_ln_loop, MCC_lb_loop) in
+      let blocked_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=outer_cutcat} in
+      let thenbr_mci : mich_cut_info = {mci_loc=inst.cc_loc; mci_cutcat=inner_cutcat} in
+      let elsebr_mci : mich_cut_info = blocked_mci in
+      (* refer MI_map case for detailed explanation *)
+      let blocked_state : sym_state = update_block_mci blocked_mci ss in
+      let entered_flag : bool = is_entered_loop cache blocked_mci in
+      let _ = if entered_flag then () else (List.iter (add_entered_loop cache) [blocked_mci; thenbr_mci; elsebr_mci]) in
+      let thenbr_sset : state_set =
+        if entered_flag then empty_sset else
+        (gen_newvar_symstack_vs (CList.tl_exn ss_symstack))
+        |> new_ss_for_loopinst ss thenbr_mci
+        |> run_inst_i cache i
+        |> move_running_to_blocked thenbr_mci
+      in
+      (* symstack for MI_iter's elsebr_ss is different from MI_map's symstack for else-branch *)
+      let elsebr_sset : state_set =
+        if entered_flag then empty_sset else
+        (gen_newvar_symstack_vs (CList.tl_exn ss_symstack))
+        |> new_ss_for_loopinst ss elsebr_mci
+        |> ss_to_srset
+      in
+      sset_union_pointwise {thenbr_sset with blocked=(PSet.add thenbr_sset.blocked blocked_state)} elsebr_sset *)
    (* | MI_loop_left i -> TODO *)
    (* | MI_lambda (t1, t2, i) -> TODO *)
    (* | MI_exec -> TODO *)
@@ -536,9 +901,6 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
          ss
        |> running_ss_to_sr
      in
-     (* let gen_vlfl : mich_v -> mich_v cc list * mich_f list =
-          (fun mv -> ([ mv |> gen_custom_cc inst ], []))
-        in *)
      let (h, h2) = get_bmstack_2 ss in
      match ((typ_of_val h).cc_v, (typ_of_val h2).cc_v) with
      | (MT_nat, MT_int)       -> add_gen_sr (MV_add_nii (h, h2), [])
@@ -571,10 +933,279 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        { (running_ss_to_sr rstate) with sr_queries = SSet.singleton qstate }
      | _                      -> failwith "run_inst_i : MI_add : unexpected"
    )
+   | MI_sub -> (
+     let sub_gen_sr : mich_v -> se_result =
+       fun mv ->
+       update_top_2_bmstack_and_constraint
+         ~f:(fun _ -> ([ mv |> gen_custom_cc inst ], []))
+         ss
+       |> running_ss_to_sr
+     in
+     let (h, h2) = get_bmstack_2 ss in
+     match ((typ_of_val h).cc_v, (typ_of_val h2).cc_v) with
+     | (MT_nat, MT_nat) -> MV_sub_nni (h, h2) |> sub_gen_sr
+     | (MT_nat, MT_int) -> MV_sub_nii (h, h2) |> sub_gen_sr
+     | (MT_int, MT_nat) -> MV_sub_ini (h, h2) |> sub_gen_sr
+     | (MT_int, MT_int) -> MV_sub_iii (h, h2) |> sub_gen_sr
+     | (MT_timestamp, MT_timestamp) -> MV_sub_tti (h, h2) |> sub_gen_sr
+     | (MT_timestamp, MT_int) -> MV_sub_tit (h, h2) |> sub_gen_sr
+     | (MT_mutez, MT_mutez) ->
+       let nv = MV_sub_mmm (h, h2) |> gen_custom_cc inst in
+       let qstate : sym_state =
+          {
+            ss with
+            ss_block_mci =
+              {
+                mci_loc = inst.cc_loc;
+                mci_cutcat = MCC_query Q_mutez_sub_no_underflow;
+              };
+          }
+       in
+       let rstate : sym_state =
+          update_top_2_bmstack_and_constraint
+            ~f:(fun _ -> ([ nv ], [ MF_mutez_bound nv ]))
+            ss
+       in
+       { (running_ss_to_sr rstate) with sr_queries = SSet.singleton qstate }
+     | _ -> failwith "run_inst_i : MI_sub : unexpected"
+   )
+   | MI_mul -> (
+     let mul_gen_sr : mich_v * mich_f list -> se_result =
+       fun (mv, csl) ->
+       update_top_2_bmstack_and_constraint
+         ~f:(fun _ -> ([ mv |> gen_custom_cc inst ], csl))
+         ss
+       |> running_ss_to_sr
+     in
+     let (h, h2) = get_bmstack_2 ss in
+     match ((typ_of_val h).cc_v, (typ_of_val h2).cc_v) with
+     | (MT_nat, MT_nat)   ->
+       mul_gen_sr
+         ( MV_mul_nnn (h, h2),
+           [ MF_mutez_bound (MV_mul_nnn (h, h2) |> gen_custom_cc inst) ]
+         )
+     | (MT_nat, MT_int)   -> mul_gen_sr (MV_mul_nii (h, h2), [])
+     | (MT_int, MT_nat)   -> mul_gen_sr (MV_mul_ini (h, h2), [])
+     | (MT_int, MT_int)   -> mul_gen_sr (MV_mul_iii (h, h2), [])
+     | (MT_mutez, MT_nat) ->
+       let nv = MV_mul_mnm (h, h2) |> gen_custom_cc inst in
+       let qstate : sym_state =
+          {
+            ss with
+            ss_block_mci =
+              {
+                mci_loc = inst.cc_loc;
+                mci_cutcat = MCC_query Q_mutez_mul_mnm_no_overflow;
+              };
+          }
+       in
+       let rstate : sym_state =
+          update_top_2_bmstack_and_constraint
+            ~f:(fun _ -> ([ nv ], [ MF_mutez_bound nv ]))
+            ss
+       in
+       { (running_ss_to_sr rstate) with sr_queries = SSet.singleton qstate }
+     | (MT_nat, MT_mutez) ->
+       let nv = MV_mul_nmm (h, h2) |> gen_custom_cc inst in
+       let qstate : sym_state =
+          {
+            ss with
+            ss_block_mci =
+              {
+                mci_loc = inst.cc_loc;
+                mci_cutcat = MCC_query Q_mutez_mul_nmm_no_overflow;
+              };
+          }
+       in
+       let rstate : sym_state =
+          update_top_2_bmstack_and_constraint
+            ~f:(fun _ -> ([ nv ], [ MF_mutez_bound nv ]))
+            ss
+       in
+       { (running_ss_to_sr rstate) with sr_queries = SSet.singleton qstate }
+     | _                  -> failwith "run_inst_i : MI_mul : unexpected"
+   )
+   | MI_ediv -> (
+     let ediv_gen_sr : mich_v -> se_result =
+       fun mv ->
+       update_top_2_bmstack_and_constraint
+         ~f:(fun _ -> ([ mv |> gen_custom_cc inst ], []))
+         ss
+       |> running_ss_to_sr
+     in
+     let (h, h2) = get_bmstack_2 ss in
+     match ((typ_of_val h).cc_v, (typ_of_val h2).cc_v) with
+     | (MT_nat, MT_nat)     -> MV_ediv_nnnn (h, h2) |> ediv_gen_sr
+     | (MT_nat, MT_int)     -> MV_ediv_niin (h, h2) |> ediv_gen_sr
+     | (MT_int, MT_nat)     -> MV_ediv_inin (h, h2) |> ediv_gen_sr
+     | (MT_int, MT_int)     -> MV_ediv_iiin (h, h2) |> ediv_gen_sr
+     | (MT_mutez, MT_nat)   -> MV_ediv_mnmm (h, h2) |> ediv_gen_sr
+     | (MT_mutez, MT_mutez) -> MV_ediv_mmnm (h, h2) |> ediv_gen_sr
+     | _                    -> failwith "run_inst_i : MI_ediv : unexpected"
+   )
+   (* | MI_abs -> TODO *)
+   | MI_isnat ->
+     update_top_1_bmstack ~f:(fun x -> [ MV_isnat x |> gen_custom_cc inst ]) ss
+     |> running_ss_to_sr
+   (* | MI_int -> TODO *)
+   (* | MI_neg -> TODO *)
+   (* | MI_lsl -> TODO *)
+   (* | MI_lsr -> TODO *)
+   (* | MI_or -> TODO *)
+   (* | MI_and -> TODO *)
+   (* | MI_xor -> TODO *)
+   (* | MI_not -> TODO *)
+   | MI_compare ->
+     update_top_2_bmstack
+       ~f:(fun (x, y) -> [ MV_compare (x, y) |> gen_custom_cc inst ])
+       ss
+     |> running_ss_to_sr
+   | MI_eq ->
+     update_top_1_bmstack
+       ~f:(fun x ->
+         [
+           MV_eq_ib (x, MV_lit_int Bigint.zero |> gen_custom_cc inst)
+           |> gen_custom_cc inst;
+         ])
+       ss
+     |> running_ss_to_sr
+   | MI_neq ->
+     update_top_1_bmstack
+       ~f:(fun x ->
+         [
+           MV_neq_ib (x, MV_lit_int Bigint.zero |> gen_custom_cc inst)
+           |> gen_custom_cc inst;
+         ])
+       ss
+     |> running_ss_to_sr
+   | MI_lt ->
+     update_top_1_bmstack
+       ~f:(fun x ->
+         [
+           MV_lt_ib (x, MV_lit_int Bigint.zero |> gen_custom_cc inst)
+           |> gen_custom_cc inst;
+         ])
+       ss
+     |> running_ss_to_sr
+   | MI_gt ->
+     update_top_1_bmstack
+       ~f:(fun x ->
+         [
+           MV_gt_ib (x, MV_lit_int Bigint.zero |> gen_custom_cc inst)
+           |> gen_custom_cc inst;
+         ])
+       ss
+     |> running_ss_to_sr
+   | MI_le ->
+     update_top_1_bmstack
+       ~f:(fun x ->
+         [
+           MV_leq_ib (x, MV_lit_int Bigint.zero |> gen_custom_cc inst)
+           |> gen_custom_cc inst;
+         ])
+       ss
+     |> running_ss_to_sr
+   | MI_ge ->
+     update_top_1_bmstack
+       ~f:(fun x ->
+         [
+           MV_geq_ib (x, MV_lit_int Bigint.zero |> gen_custom_cc inst)
+           |> gen_custom_cc inst;
+         ])
+       ss
+     |> running_ss_to_sr
+   (* | MI_self -> TODO *)
+   | MI_contract t ->
+     update_top_1_bmstack
+       ~f:(fun x -> [ MV_contract_of_address (t, x) |> gen_custom_cc inst ])
+       ss
+     |> running_ss_to_sr
+   | MI_transfer_tokens ->
+     update_top_3_bmstack
+       ~f:(fun (x, y, z) ->
+         [ MV_transfer_tokens (x, y, z) |> gen_custom_cc inst ])
+       ss
+     |> running_ss_to_sr
+   | MI_set_delegate ->
+     update_top_1_bmstack
+       ~f:(fun x -> [ MV_set_delegate x |> gen_custom_cc inst ])
+       ss
+     |> running_ss_to_sr
+   (* | MI_create_account -> TODO *)
+   (* | MI_create_contract (t1, t2, i) -> TODO *)
+   (* | MI_implicit_account -> TODO *)
+   (* | MI_now -> TODO *)
+   | MI_amount ->
+     let amount_v = ss.ss_block_si.si_param.ti_amount in
+     push_bmstack ss ~v:amount_v
+     |> add_mtz_constraint_if_it_is ~tv:(MT_mutez |> gen_dummy_cc, amount_v)
+     |> running_ss_to_sr
+   | MI_balance ->
+     let balance_v = ss.ss_block_si.si_balance in
+     push_bmstack ss ~v:balance_v
+     |> add_mtz_constraint_if_it_is ~tv:(MT_mutez |> gen_dummy_cc, balance_v)
+     |> running_ss_to_sr
+   (* | MI_check_signature -> TODO *)
+   (* | MI_blake2b -> TODO *)
+   (* | MI_sha256 -> TODO *)
+   (* | MI_sha512 -> TODO *)
+   (* | MI_hash_key -> TODO *)
+   (* | MI_steps_to_quota -> TODO *)
+   | MI_source ->
+     let source_v = ss.ss_block_si.si_param.ti_source in
+     push_bmstack ss ~v:source_v |> running_ss_to_sr
+   | MI_sender ->
+     let sender_v = ss.ss_block_si.si_param.ti_sender in
+     push_bmstack ss ~v:sender_v |> running_ss_to_sr
+   (* | MI_address -> TODO *)
+   (* | MI_chain_id -> TODO *)
+   | MI_unpair ->
+     update_top_1_bmstack_and_constraint
+       ~f:(fun x ->
+         let a_v = MV_car x |> gen_custom_cc inst in
+         let d_v = MV_cdr x |> gen_custom_cc inst in
+         let a_tv = (typ_of_val a_v, a_v) in
+         let d_tv = (typ_of_val d_v, d_v) in
+         ( [ a_v; d_v ],
+           [
+             mtz_constriant_if_it_is_or_true ~tv:a_tv;
+             nat_constriant_if_it_is_or_true ~tv:a_tv;
+             mtz_constriant_if_it_is_or_true ~tv:d_tv;
+             nat_constriant_if_it_is_or_true ~tv:d_tv;
+           ]
+         ))
+       ss
+     |> running_ss_to_sr
+   | MI_micse_check i ->
+     (* dealing with micse-check
+         - bring running states from the result of "i", and convert them to queries.
+         - se_result might be go wrong when any loop-like instructions
+           (LOOP, LOOP_LEFT, ITER, MAP) are inserted in micse-check instruction.
+     *)
+     let micse_check_se_result : se_result = run_inst_i i (ctxt_sr, ss) in
+     (* IMPORTANT: ctxt_sr name shadowing *)
+     let ctxt_sr = ctxt_sr_update ctxt_sr micse_check_se_result in
+     {
+       ctxt_sr with
+       sr_running = SSet.singleton ss;
+       (* If MI_micse_check allows loop-like instructions, it should be
+          considered to add blocked-states in micse_check_se_result in return value.
+       *)
+       sr_blocked = SSet.empty;
+       sr_queries =
+         SSet.map micse_check_se_result.sr_running ~f:(fun rs ->
+             {
+               rs with
+               ss_block_mci =
+                 { mci_loc = inst.cc_loc; mci_cutcat = MCC_query Q_assertion };
+             }
+         );
+       sr_terminated = SSet.empty;
+     }
    | _ ->
      failwith
        ("run_inst_i : wildcard match triggered : "
-       ^ (sexp_of_mich_i inst.cc_v |> string_of_sexp)
+       ^ (sexp_of_mich_i inst.cc_v |> SexpUtil.tz_cc_sexp_form |> Sexp.to_string)
        )
 (* function run_inst_i end *)
 

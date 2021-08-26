@@ -632,6 +632,32 @@ let gen_custom_cc : 'ccbase cc -> 'a -> 'a cc =
   (fun base x -> { base with cc_v = x })
 
 (******************************************************************************)
+(* MV_symbol context swap                                                     *)
+(******************************************************************************)
+
+let symbol_context_swap_i : mich_sym_ctxt -> mich_v -> mich_v =
+  fun ctxt mv ->
+  match mv with
+  | MV_symbol (t, symcat, _) -> MV_symbol (t, symcat, ctxt)
+  | _                        ->
+    failwith ("Tz.symbol_context_swap_i : " ^ __LOC__)
+
+let symbol_context_swap : mich_sym_ctxt -> mich_v cc -> mich_v cc =
+  (fun ctxt x -> symbol_context_swap_i ctxt x.cc_v |> gen_custom_cc x)
+
+(* Warning: input trx_image must contain MV_symbol values only. *)
+let symbol_trx_image_context_swap : mich_sym_ctxt -> trx_image -> trx_image =
+  fun ctxt ti ->
+  {
+    ti_contract = symbol_context_swap ctxt ti.ti_contract;
+    ti_source = symbol_context_swap ctxt ti.ti_source;
+    ti_sender = symbol_context_swap ctxt ti.ti_sender;
+    ti_param = symbol_context_swap ctxt ti.ti_param;
+    ti_amount = symbol_context_swap ctxt ti.ti_amount;
+    ti_time = symbol_context_swap ctxt ti.ti_time;
+  }
+
+(******************************************************************************)
 (* Tezos Type                                                                 *)
 (******************************************************************************)
 

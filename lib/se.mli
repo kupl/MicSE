@@ -21,10 +21,40 @@ type se_result = {
 
 val se_result_empty : se_result
 
+val se_result_pointwise_union : se_result -> se_result -> se_result
+
+(******************************************************************************)
+(* Utilities : Constraint                                                     *)
+(******************************************************************************)
+
+val add_constraints : c:Tz.mich_f list -> Tz.sym_state -> Tz.sym_state
+
+val mtz_constriant_if_it_is_or_true :
+  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
+
+val add_mtz_constraint_if_it_is :
+  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.sym_state
+
+val nat_constriant_if_it_is_or_true :
+  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
+
+val add_nat_constraint_if_it_is :
+  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.sym_state
+
+val michv_maybe_mtznat_constraints : v:Tz.mich_v Tz.cc -> Tz.mich_f list
+
+val amount_balance_mutez_constraints :
+  amount_v:Tz.mich_v Tz.cc ->
+  balance_v:Tz.mich_v Tz.cc ->
+  bc_balance_v:Tz.mich_v Tz.cc ->
+  Tz.mich_f list
+
+(******************************************************************************)
+(* Symbolic Run Instruction                                                   *)
+(******************************************************************************)
+
 val run_inst_initial_se_result :
   Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result
-
-val se_result_pointwise_union : se_result -> se_result -> se_result
 
 val run_inst : Tz.mich_i Tz.cc -> se_result -> se_result
 

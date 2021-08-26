@@ -592,6 +592,16 @@ val gen_dummy_cc : 'a -> 'a cc
 val gen_custom_cc : 'ccbase cc -> 'a -> 'a cc
 
 (******************************************************************************)
+(* MV_symbol context swap                                                     *)
+(******************************************************************************)
+
+val symbol_context_swap_i : mich_sym_ctxt -> mich_v -> mich_v
+
+val symbol_context_swap : mich_sym_ctxt -> mich_v cc -> mich_v cc
+
+val symbol_trx_image_context_swap : mich_sym_ctxt -> trx_image -> trx_image
+
+(******************************************************************************)
 (* Tezos Type                                                                 *)
 (******************************************************************************)
 
