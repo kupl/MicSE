@@ -90,20 +90,47 @@ let amount_balance_mutez_constraints :
     MF_mutez_bound amount_v;
     MF_mutez_bound balance_v;
     MF_mutez_bound bc_balance_v;
-    (* 2. amount is less-or-equal than bc_balance *)
-    MF_is_true (MV_leq_ib (amount_v, bc_balance_v) |> gen_dummy_cc);
-    (* 3. (balance + bc_balance) is also mutez value *)
+    (* 2. (balance + bc_balance) is also mutez value *)
     MF_mutez_bound (MV_add_mmm (balance_v, bc_balance_v) |> gen_dummy_cc);
-    (* 4. (balance + bc_balance) is equal to total-mutez-amount *)
-    (let lit_total_mutez_amount =
-        MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc
-     in
-     MF_eq
-       ( MV_add_mmm (balance_v, bc_balance_v) |> gen_dummy_cc,
-         lit_total_mutez_amount
-       )
-    );
   ]
+
+let mtz_comes_from_constraint :
+    mtz_v:Tz.mich_v Tz.cc -> from_v:Tz.mich_v Tz.cc -> Tz.mich_f =
+  fun ~mtz_v ~from_v ->
+  let open Tz in
+  MF_is_true (MV_leq_ib (mtz_v, from_v) |> gen_dummy_cc)
+
+let lt_2_63_constraint : Tz.mich_v Tz.cc -> Tz.mich_f =
+   let open Tz in
+   fun mv ->
+   MF_eq (mv, MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc)
+
+(* let amount_balance_mutez_constraints :
+     amount_v:Tz.mich_v Tz.cc ->
+     balance_v:Tz.mich_v Tz.cc ->
+     bc_balance_v:Tz.mich_v Tz.cc ->
+     Tz.mich_f list =
+   fun ~amount_v ~balance_v ~bc_balance_v ->
+   let open Tz in
+   [
+     (* 1. amount, balance, and bc_balance are mutez values *)
+     MF_mutez_bound amount_v;
+     MF_mutez_bound balance_v;
+     MF_mutez_bound bc_balance_v;
+     (* 2. amount is less-or-equal than bc_balance *)
+     MF_is_true (MV_leq_ib (amount_v, bc_balance_v) |> gen_dummy_cc);
+     (* 3. (balance + bc_balance) is also mutez value *)
+     MF_mutez_bound (MV_add_mmm (balance_v, bc_balance_v) |> gen_dummy_cc);
+     (* 4. (balance + bc_balance) is equal to total-mutez-amount *)
+     (let lit_total_mutez_amount =
+         MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc
+      in
+      MF_eq
+        ( MV_add_mmm (balance_v, bc_balance_v) |> gen_dummy_cc,
+          lit_total_mutez_amount
+        )
+     );
+   ] *)
 
 let ge_balance_amount_in_non_trx_entry_constraint :
     amount_v:Tz.mich_v Tz.cc -> balance_v:Tz.mich_v Tz.cc -> Tz.mich_f =
@@ -165,6 +192,9 @@ let run_inst_initial_se_result :
         si_balance =
           MV_add_mmm (beginning_si.si_balance, beginning_ti.ti_amount)
           |> gen_dummy_cc;
+        si_bc_balance =
+          MV_sub_mmm (beginning_si.si_bc_balance, beginning_ti.ti_amount)
+          |> gen_dummy_cc;
       }
    in
    let initial_sym_state : sym_state =
@@ -183,7 +213,12 @@ let run_inst_initial_se_result :
             )
           :: (* 2. If parameter value is mutez or nat, add constraints *)
              michv_maybe_mtznat_constraints ~v:param_v
-          @ (* 3. amount & balance & bc_balance constraints *)
+          @ [
+              (* 3. Amount comes from Bc-Balance *)
+              mtz_comes_from_constraint ~mtz_v:beginning_ti.ti_amount
+                ~from_v:beginning_si.si_bc_balance;
+            ]
+          @ (* 4. amount & balance & bc_balance constraints *)
           amount_balance_mutez_constraints ~amount_v:beginning_ti.ti_amount
             ~balance_v:beginning_si.si_balance
             ~bc_balance_v:beginning_si.si_bc_balance;
@@ -638,13 +673,18 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                    |> gen_custom_cc inst
                 in
                 let bc_balance_v : mich_v cc =
-                   symbol_context_swap tb_ss_id
-                     blocked_state.ss_block_si.si_bc_balance
+                   MV_symbol
+                     (MT_mutez |> gen_custom_cc inst, MSC_bc_balance, ctxt)
+                   |> gen_custom_cc inst
                 in
                 let constraints_abp =
                    ge_balance_amount_in_non_trx_entry_constraint
                      ~amount_v:tb_trx_image.ti_amount ~balance_v
                    :: michv_maybe_mtznat_constraints ~v:tb_trx_image.ti_param
+                   @ [
+                       mtz_comes_from_constraint ~mtz_v:tb_trx_image.ti_amount
+                         ~from_v:balance_v;
+                     ]
                    @ amount_balance_mutez_constraints
                        ~amount_v:tb_trx_image.ti_amount ~balance_v ~bc_balance_v
                 in
@@ -766,13 +806,17 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                 |> gen_custom_cc inst
              in
              let bc_balance_v : mich_v cc =
-                symbol_context_swap eb_ss_id
-                  blocked_state.ss_block_si.si_bc_balance
+                MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_bc_balance, ctxt)
+                |> gen_custom_cc inst
              in
              let constraints_abp =
                 ge_balance_amount_in_non_trx_entry_constraint
                   ~amount_v:eb_trx_image.ti_amount ~balance_v
                 :: michv_maybe_mtznat_constraints ~v:eb_trx_image.ti_param
+                @ [
+                    mtz_comes_from_constraint ~mtz_v:eb_trx_image.ti_amount
+                      ~from_v:balance_v;
+                  ]
                 @ amount_balance_mutez_constraints
                     ~amount_v:eb_trx_image.ti_amount ~balance_v ~bc_balance_v
              in
@@ -963,13 +1007,18 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                    |> gen_custom_cc inst
                 in
                 let bc_balance_v : mich_v cc =
-                   symbol_context_swap tb_ss_id
-                     blocked_state.ss_block_si.si_bc_balance
+                   MV_symbol
+                     (MT_mutez |> gen_custom_cc inst, MSC_bc_balance, ctxt)
+                   |> gen_custom_cc inst
                 in
                 let constraints_abp =
                    ge_balance_amount_in_non_trx_entry_constraint
                      ~amount_v:tb_trx_image.ti_amount ~balance_v
                    :: michv_maybe_mtznat_constraints ~v:tb_trx_image.ti_param
+                   @ [
+                       mtz_comes_from_constraint ~mtz_v:tb_trx_image.ti_amount
+                         ~from_v:balance_v;
+                     ]
                    @ amount_balance_mutez_constraints
                        ~amount_v:tb_trx_image.ti_amount ~balance_v ~bc_balance_v
                 in
@@ -1068,13 +1117,17 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                 |> gen_custom_cc inst
              in
              let bc_balance_v : mich_v cc =
-                symbol_context_swap eb_ss_id
-                  blocked_state.ss_block_si.si_bc_balance
+                MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_bc_balance, ctxt)
+                |> gen_custom_cc inst
              in
              let constraints_abp =
                 ge_balance_amount_in_non_trx_entry_constraint
                   ~amount_v:eb_trx_image.ti_amount ~balance_v
                 :: michv_maybe_mtznat_constraints ~v:eb_trx_image.ti_param
+                @ [
+                    mtz_comes_from_constraint ~mtz_v:eb_trx_image.ti_amount
+                      ~from_v:balance_v;
+                  ]
                 @ amount_balance_mutez_constraints
                     ~amount_v:eb_trx_image.ti_amount ~balance_v ~bc_balance_v
              in
@@ -1475,11 +1528,34 @@ let run_inst_entry :
    fun (pt, st, c) ->
    let final_blocking : sym_state -> sym_state =
      fun ss ->
+     let op_mtz_v : mich_v cc =
+        MV_mtz_of_op_list
+          (MV_car (List.hd_exn ss.ss_block_si.si_mich) |> gen_custom_cc c)
+        |> gen_custom_cc c
+     in
+     let new_balance : mich_v cc =
+        MV_sub_mmm (ss.ss_block_si.si_balance, op_mtz_v) |> gen_custom_cc c
+     in
+     let new_bc_balance : mich_v cc =
+        MV_add_mmm (ss.ss_block_si.si_bc_balance, op_mtz_v) |> gen_custom_cc c
+     in
      {
        (* If operation-mutez-subtraction policy turned on, we need to add balance-related constraint here. *)
        ss
        with
        ss_block_mci = { mci_loc = c.cc_loc; mci_cutcat = MCC_trx_exit };
+       ss_block_si =
+         {
+           ss.ss_block_si with
+           si_balance = new_balance;
+           si_bc_balance = new_bc_balance;
+         };
+       ss_constraints =
+         mtz_comes_from_constraint ~mtz_v:op_mtz_v
+           ~from_v:ss.ss_block_si.si_balance
+         :: amount_balance_mutez_constraints ~amount_v:op_mtz_v
+              ~balance_v:new_balance ~bc_balance_v:new_bc_balance
+         @ ss.ss_constraints;
      }
    in
    let result_raw = run_inst c (run_inst_initial_se_result (pt, st, c)) in

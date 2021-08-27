@@ -49,8 +49,13 @@ val amount_balance_mutez_constraints :
   bc_balance_v:Tz.mich_v Tz.cc ->
   Tz.mich_f list
 
-val ge_balance_amount_in_non_trx_entry_constraint :
-  amount_v:Tz.mich_v Tz.cc -> balance_v:Tz.mich_v Tz.cc -> Tz.mich_f
+val mtz_comes_from_constraint :
+  mtz_v:Tz.mich_v Tz.cc -> from_v:Tz.mich_v Tz.cc -> Tz.mich_f
+
+val lt_2_63_constraint : Tz.mich_v Tz.cc -> Tz.mich_f
+
+(* val ge_balance_amount_in_non_trx_entry_constraint :
+   amount_v:Tz.mich_v Tz.cc -> balance_v:Tz.mich_v Tz.cc -> Tz.mich_f *)
 
 (******************************************************************************)
 (* Symbolic Run Instruction                                                   *)
