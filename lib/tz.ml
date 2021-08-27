@@ -414,23 +414,11 @@ and mich_i =
 (* WARNING: I_check instruction is not in Michelson standard. It is for MicSE formatted-comment *)
 
 module MichTCC_cmp = struct
-  type t = mich_t cc
-
-  let compare = compare_cc compare_mich_t
-
-  let t_of_sexp = cc_of_sexp mich_t_of_sexp
-
-  let sexp_of_t = sexp_of_cc sexp_of_mich_t
+  type t = mich_t cc [@@deriving sexp, compare]
 end
 
 module MichVCC_cmp = struct
-  type t = mich_v cc
-
-  let compare = compare_cc compare_mich_v
-
-  let t_of_sexp = cc_of_sexp mich_v_of_sexp
-
-  let sexp_of_t = sexp_of_cc sexp_of_mich_v
+  type t = mich_v cc [@@deriving sexp, compare]
 end
 
 (******************************************************************************)
@@ -466,13 +454,7 @@ type mich_f =
 [@@deriving sexp, compare, equal]
 
 module MichF_cmp = struct
-  type t = mich_f
-
-  let compare = compare_mich_f
-
-  let t_of_sexp = mich_f_of_sexp
-
-  let sexp_of_t = sexp_of_mich_f
+  type t = mich_f [@@deriving sexp, compare]
 end
 
 (******************************************************************************)
@@ -523,13 +505,7 @@ type mich_cut_info = {
 [@@deriving sexp, compare, equal]
 
 module MichCutInfo_cmp = struct
-  type t = mich_cut_info
-
-  let compare = compare_mich_cut_info
-
-  let t_of_sexp = mich_cut_info_of_sexp
-
-  let sexp_of_t = sexp_of_mich_cut_info
+  type t = mich_cut_info [@@deriving sexp, compare]
 end
 
 (* reduced mich_cut_info *)
@@ -540,13 +516,7 @@ type r_mich_cut_info = {
 [@@deriving sexp, compare, equal]
 
 module RMichCutInfo_cmp = struct
-  type t = r_mich_cut_info
-
-  let compare = compare_r_mich_cut_info
-
-  let t_of_sexp = r_mich_cut_info_of_sexp
-
-  let sexp_of_t = sexp_of_r_mich_cut_info
+  type t = r_mich_cut_info [@@deriving sexp, compare]
 end
 
 (* Transaction parameter value container *)
@@ -606,13 +576,7 @@ type sym_state = {
 [@@deriving sexp, compare, equal]
 
 module SymState_cmp = struct
-  type t = sym_state
-
-  let compare = compare_sym_state
-
-  let t_of_sexp = sym_state_of_sexp
-
-  let sexp_of_t = sexp_of_sym_state
+  type t = sym_state [@@deriving sexp, compare]
 end
 
 (******************************************************************************)

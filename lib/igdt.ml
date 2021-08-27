@@ -40,13 +40,7 @@ type igdt = {
 [@@deriving sexp, compare, equal]
 
 module IGDT_cmp = struct
-  type t = igdt
-
-  let compare = compare_igdt
-
-  let t_of_sexp = igdt_of_sexp
-
-  let sexp_of_t = sexp_of_igdt
+  type t = igdt [@@deriving sexp, compare]
 end
 
 (* Set of igdt *)

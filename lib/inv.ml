@@ -58,13 +58,7 @@ type cand_map = MFSSet.t RMCIMap.t [@@deriving sexp, compare, equal]
 (******************************************************************************)
 
 module IGDTL_cmp = struct
-  type t = Igdt.igdt list
-
-  let compare = compare_list Igdt.compare_igdt
-
-  let t_of_sexp = list_of_sexp Igdt.igdt_of_sexp
-
-  let sexp_of_t = sexp_of_list Igdt.sexp_of_igdt
+  type t = Igdt.igdt list [@@deriving sexp, compare]
 end
 
 module ILSet = Set.Make (IGDTL_cmp)
@@ -88,13 +82,7 @@ let combination_self : ISet.t -> size:int -> ILSet.t =
 (* function combination_self end *)
 
 module MFOPT_cmp = struct
-  type t = Tz.mich_f option
-
-  let compare = compare_option Tz.compare_mich_f
-
-  let t_of_sexp = option_of_sexp Tz.mich_f_of_sexp
-
-  let sexp_of_t = sexp_of_option Tz.sexp_of_mich_f
+  type t = Tz.mich_f option [@@deriving sexp, compare]
 end
 
 module MFOSet = Set.Make (MFOPT_cmp)
@@ -341,7 +329,7 @@ let gen_true_inv_map : Se.se_result -> inv_map =
 (* function gen_true_inv_map end *)
 
 let gen_initial_inv_map : Se.se_result -> inv_map =
-   (fun se_res -> gen_true_inv_map se_res)
+  (fun se_res -> gen_true_inv_map se_res)
 (* function gen_initial_inv_map end *)
 
 let find_cand_map_by_rmci : cand_map -> Tz.r_mich_cut_info -> MFSSet.t =
