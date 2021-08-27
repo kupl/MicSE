@@ -105,6 +105,12 @@ let amount_balance_mutez_constraints :
     );
   ]
 
+let ge_balance_amount_in_non_trx_entry_constraint :
+    amount_v:Tz.mich_v Tz.cc -> balance_v:Tz.mich_v Tz.cc -> Tz.mich_f =
+   let open Tz in
+   fun ~amount_v ~balance_v ->
+   MF_is_true (MV_geq_ib (balance_v, amount_v) |> gen_dummy_cc)
+
 (******************************************************************************)
 (* Symbolic Run Instruction                                                   *)
 (******************************************************************************)
@@ -300,6 +306,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    in
    (* utilities : context-se_result update *)
    let ctxt_sr_update : se_result -> se_result -> se_result =
+     (* (fun ctxt_sr new_sr -> se_result_pointwise_union new_sr ctxt_sr) *)
      fun ctxt_sr new_sr ->
      {
        ctxt_sr with
@@ -349,11 +356,29 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    in
    (* FUNCTION BEGIN *)
    fun inst (ctxt_sr, ss) ->
+   (* let _ =
+         (* DEBUG *)
+         print_endline ("HIHI " ^ (ctxt_sr.sr_sid_counter |> string_of_int))
+      in *)
+   (* let _ =
+         (* DEBUG *)
+         print_endline
+           ("Current Mci : "
+           ^ (inst.cc_loc |> sexp_of_ccp_loc |> Sexp.to_string)
+           ^ "\nMichStack Length : "
+           ^ (List.length ss.ss_block_si.si_mich |> string_of_int)
+           )
+      in *)
    match inst.cc_v with
    | MI_seq (i1, i2) -> run_inst_i i1 (ctxt_sr, ss) |> run_inst i2
    | MI_drop zn ->
-     update_bmstack ss ~f:(fun x -> List.split_n x (Bigint.to_int_exn zn) |> snd)
-     |> running_ss_to_sr ctxt_sr
+     if Bigint.equal zn Bigint.zero
+     then running_ss_to_sr ctxt_sr ss
+     else
+       update_bmstack ss ~f:(fun x ->
+           List.split_n x (Bigint.to_int_exn zn) |> snd
+       )
+       |> running_ss_to_sr ctxt_sr
    | MI_dup zn ->
      update_bmstack ss ~f:(fun x ->
          List.nth_exn x (Bigint.to_int_exn zn - 1) :: x
@@ -609,15 +634,17 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      ~ctxt ~ccmaker bsi.si_iter
                 in
                 let balance_v : mich_v cc =
-                   symbol_context_swap tb_ss_id
-                     blocked_state.ss_block_si.si_balance
+                   MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_balance, ctxt)
+                   |> gen_custom_cc inst
                 in
                 let bc_balance_v : mich_v cc =
                    symbol_context_swap tb_ss_id
                      blocked_state.ss_block_si.si_bc_balance
                 in
                 let constraints_abp =
-                   michv_maybe_mtznat_constraints ~v:tb_trx_image.ti_param
+                   ge_balance_amount_in_non_trx_entry_constraint
+                     ~amount_v:tb_trx_image.ti_amount ~balance_v
+                   :: michv_maybe_mtznat_constraints ~v:tb_trx_image.ti_param
                    @ amount_balance_mutez_constraints
                        ~amount_v:tb_trx_image.ti_amount ~balance_v ~bc_balance_v
                 in
@@ -735,15 +762,17 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   ~ctxt ~ccmaker bsi.si_iter
              in
              let balance_v : mich_v cc =
-                symbol_context_swap eb_ss_id
-                  blocked_state.ss_block_si.si_balance
+                MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_balance, ctxt)
+                |> gen_custom_cc inst
              in
              let bc_balance_v : mich_v cc =
                 symbol_context_swap eb_ss_id
                   blocked_state.ss_block_si.si_bc_balance
              in
              let constraints_abp =
-                michv_maybe_mtznat_constraints ~v:eb_trx_image.ti_param
+                ge_balance_amount_in_non_trx_entry_constraint
+                  ~amount_v:eb_trx_image.ti_amount ~balance_v
+                :: michv_maybe_mtznat_constraints ~v:eb_trx_image.ti_param
                 @ amount_balance_mutez_constraints
                     ~amount_v:eb_trx_image.ti_amount ~balance_v ~bc_balance_v
              in
@@ -930,15 +959,17 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      ~ctxt ~ccmaker bsi.si_iter
                 in
                 let balance_v : mich_v cc =
-                   symbol_context_swap tb_ss_id
-                     blocked_state.ss_block_si.si_balance
+                   MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_balance, ctxt)
+                   |> gen_custom_cc inst
                 in
                 let bc_balance_v : mich_v cc =
                    symbol_context_swap tb_ss_id
                      blocked_state.ss_block_si.si_bc_balance
                 in
                 let constraints_abp =
-                   michv_maybe_mtznat_constraints ~v:tb_trx_image.ti_param
+                   ge_balance_amount_in_non_trx_entry_constraint
+                     ~amount_v:tb_trx_image.ti_amount ~balance_v
+                   :: michv_maybe_mtznat_constraints ~v:tb_trx_image.ti_param
                    @ amount_balance_mutez_constraints
                        ~amount_v:tb_trx_image.ti_amount ~balance_v ~bc_balance_v
                 in
@@ -1033,15 +1064,17 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   ~ctxt ~ccmaker bsi.si_iter
              in
              let balance_v : mich_v cc =
-                symbol_context_swap eb_ss_id
-                  blocked_state.ss_block_si.si_balance
+                MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_balance, ctxt)
+                |> gen_custom_cc inst
              in
              let bc_balance_v : mich_v cc =
                 symbol_context_swap eb_ss_id
                   blocked_state.ss_block_si.si_bc_balance
              in
              let constraints_abp =
-                michv_maybe_mtznat_constraints ~v:eb_trx_image.ti_param
+                ge_balance_amount_in_non_trx_entry_constraint
+                  ~amount_v:eb_trx_image.ti_amount ~balance_v
+                :: michv_maybe_mtznat_constraints ~v:eb_trx_image.ti_param
                 @ amount_balance_mutez_constraints
                     ~amount_v:eb_trx_image.ti_amount ~balance_v ~bc_balance_v
              in
@@ -1092,12 +1125,12 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    (* | MI_dip_n (zn, i) -> TODO *)
    | MI_failwith ->
      (* 1. set block_mci
-        2. enroll this sym_state to sr_blocked
+        2. enroll this sym_state to sr_terminated
      *)
      let bmci = { mci_loc = inst.cc_loc; mci_cutcat = MCC_trx_exit } in
      {
        se_result_empty with
-       sr_blocked = SSet.singleton { ss with ss_block_mci = bmci };
+       sr_terminated = SSet.singleton { ss with ss_block_mci = bmci };
      }
    (* | MI_cast t -> TODO *)
    | MI_rename ->
@@ -1386,6 +1419,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    (* | MI_address -> TODO *)
    (* | MI_chain_id -> TODO *)
    | MI_unpair ->
+     (* let _ = (* DEBUG *) print_endline "unpair enter" in *)
      update_top_1_bmstack_and_constraint
        ~f:(fun x ->
          let a_v = MV_car x |> gen_custom_cc inst in
@@ -1449,11 +1483,20 @@ let run_inst_entry :
      }
    in
    let result_raw = run_inst c (run_inst_initial_se_result (pt, st, c)) in
+   (* let _ =
+         (* DEBUG *)
+         print_endline
+           ("result_raw running = "
+           ^ (SSet.length result_raw.sr_running |> string_of_int)
+           ^ ", blocked = "
+           ^ (SSet.length result_raw.sr_blocked |> string_of_int)
+           )
+      in *)
    {
      result_raw with
      sr_running = SSet.empty;
      sr_blocked =
        SSet.union
          (SSet.map result_raw.sr_blocked ~f:final_blocking)
-         result_raw.sr_blocked;
+         result_raw.sr_running;
    }
