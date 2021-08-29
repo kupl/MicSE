@@ -439,6 +439,26 @@ module Formula = struct
     (fun ctx expr1 expr2 -> Z3.Arithmetic.mk_ge (Ctx.read ctx) expr1 expr2)
   (* function create_int_ge end *)
 
+  let create_str_lt : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t =
+    (* Sort of input expressions are string sort *)
+    (fun ctx expr1 expr2 -> Z3.Seq.mk_str_lt (Ctx.read ctx) expr1 expr2)
+  (* function create_str_lt end *)
+
+  let create_str_le : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t =
+    (* Sort of input expressions are string sort *)
+    (fun ctx expr1 expr2 -> Z3.Seq.mk_str_le (Ctx.read ctx) expr1 expr2)
+  (* function create_str_le end *)
+
+  let create_str_gt : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t =
+    (* Sort of input expressions are string sort *)
+    (fun ctx expr1 expr2 -> create_not ctx (create_str_le ctx expr1 expr2))
+  (* function create_str_gt end *)
+
+  let create_str_ge : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t =
+    (* Sort of input expressions are string sort *)
+    (fun ctx expr1 expr2 -> create_not ctx (create_str_lt ctx expr1 expr2))
+  (* function create_str_ge end *)
+
   let create_convertable_to_finite_bv : Ctx.t -> Z3.Expr.expr -> t =
      let (max_int2bv : Bigint.t) =
         Bigint.pow (Bigint.of_int 2) (Bigint.of_int Constant._int2bv_precision)
@@ -508,6 +528,7 @@ module Formula = struct
      let (mv_max_mtz : Tz.mich_v Tz.cc) =
         Tz.MV_lit_mutez max_mtz |> Tz.gen_dummy_cc
      in
+     (* Sort of input expressions are integer sort (mutez type) *)
      fun ctx expr1 expr2 ->
      let (add : Z3.Expr.expr) =
         Z3.Arithmetic.mk_add (Ctx.read ctx) [ expr1; expr2 ]
@@ -528,6 +549,7 @@ module Formula = struct
      let (mv_max_mtz : Tz.mich_v Tz.cc) =
         Tz.MV_lit_mutez max_mtz |> Tz.gen_dummy_cc
      in
+     (* Sort of input expressions are integer sort (mutez type) *)
      fun ctx expr1 expr2 ->
      let (mul : Z3.Expr.expr) =
         Z3.Arithmetic.mk_mul (Ctx.read ctx) [ expr1; expr2 ]
@@ -546,6 +568,7 @@ module Formula = struct
      let (mv_min_mtz : Tz.mich_v Tz.cc) =
         Tz.MV_lit_mutez min_mtz |> Tz.gen_dummy_cc
      in
+     (* Sort of input expressions are integer sort (mutez type) *)
      fun ctx expr1 expr2 ->
      let (sub : Z3.Expr.expr) =
         Z3.Arithmetic.mk_sub (Ctx.read ctx) [ expr1; expr2 ]
@@ -952,7 +975,7 @@ struct
   (* function create_cmp end *)
 end
 
-module Integer = struct
+module ZInt = struct
   module Typ = struct
     let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_int
 
@@ -974,7 +997,7 @@ module Integer = struct
   (* function create_not end *)
 end
 
-module NaturalNumber = struct
+module ZNat = struct
   module Typ = struct
     let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_nat
 
@@ -1061,7 +1084,7 @@ module NaturalNumber = struct
   (* function create_xor end *)
 end
 
-module Mutez = struct
+module ZMutez = struct
   module Typ = struct
     let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_mutez
 
@@ -1075,33 +1098,116 @@ end
 
 (* Boolean ********************************************************************)
 
-module Boolean = struct
-  (* type elt = bool *)
+module ZBool = struct
+  type elt = bool
 
-  (* let (mt_bool_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_bool *)
+  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_bool
 
-  (* let (mv_unit_cc : Tz.mich_v Tz.cc) = Tz.gen_dummy_cc Tz.MV_unit *)
+  let gen_mv_cc : bool -> Tz.mich_v Tz.cc =
+    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_bool value))
+  (* function gen_mv_cc end *)
 
-  (* let create_sort : Ctx.t -> Sort.t =
-     fun ctx ->
-     let (const : DataConst.t) = create_const ctx in
-     Ctx.read_sort ctx mt_unit_cc ~f:(fun () ->
-         DataType.create_sort ctx ~name:Constant._sort_unit [ const ]
-     ) *)
+  let create_sort : Ctx.t -> Sort.t =
+    fun ctx ->
+    Ctx.read_sort ctx mt_cc ~f:(fun () -> Z3.Boolean.mk_sort (Ctx.read ctx))
   (* function create_sort end *)
 
-  (* let create_expr : Ctx.t -> Expr.t =
-     fun ctx ->
-     let (sort : Sort.t) = create_sort ctx in
-     Ctx.read_expr ctx mv_unit_cc ~f:(fun () ->
-         DataType.create_expr sort ~const_idx:0 []
-     ) *)
+  let create_expr : Ctx.t -> bool -> Expr.t =
+    fun ctx value ->
+    let (mv_bool_cc : Tz.mich_v Tz.cc) = gen_mv_cc value in
+    Ctx.read_expr ctx mv_bool_cc ~f:(fun () ->
+        Z3.Boolean.mk_val (Ctx.read ctx) value
+    )
   (* function create_expr end *)
+
+  let create_not : Ctx.t -> Expr.t -> Expr.t =
+    (fun ctx expr1 -> Z3.Boolean.mk_not (Ctx.read ctx) expr1)
+  (* function create_not end *)
+
+  let create_and : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    (fun ctx expr1 expr2 -> Z3.Boolean.mk_and (Ctx.read ctx) [ expr1; expr2 ])
+  (* function create_and end *)
+
+  let create_or : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    (fun ctx expr1 expr2 -> Z3.Boolean.mk_or (Ctx.read ctx) [ expr1; expr2 ])
+  (* function create_or end *)
+
+  let create_xor : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    (fun ctx expr1 expr2 -> Z3.Boolean.mk_xor (Ctx.read ctx) expr1 expr2)
+  (* function create_xor end *)
+
+  let create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    (* Sort of output expression is integer sort *)
+    fun ctx expr1 expr2 ->
+    Expr.if_then_else ctx
+      ~if_:(Formula.create_eq ctx expr1 expr2)
+      ~then_:(ZInt.create_expr ctx 0)
+      ~else_:
+        (Expr.if_then_else ctx ~if_:expr2
+           ~then_:(ZInt.create_expr ctx (-1))
+           ~else_:(ZInt.create_expr ctx 1)
+        )
+  (* function create_cmp end *)
+end
+
+(* String *********************************************************************)
+
+module ZStr = struct
+  type elt = string
+
+  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_string
+
+  let gen_mv_cc : string -> Tz.mich_v Tz.cc =
+    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_string value))
+  (* function gen_mv_cc end *)
+
+  let create_sort : Ctx.t -> Sort.t =
+    fun ctx ->
+    Ctx.read_sort ctx mt_cc ~f:(fun () -> Z3.Seq.mk_string_sort (Ctx.read ctx))
+  (* function create_sort end *)
+
+  let create_expr : Ctx.t -> string -> Expr.t =
+    fun ctx value ->
+    let (mv_bool_cc : Tz.mich_v Tz.cc) = gen_mv_cc value in
+    Ctx.read_expr ctx mv_bool_cc ~f:(fun () ->
+        Z3.Seq.mk_string (Ctx.read ctx) value
+    )
+  (* function create_expr end *)
+
+  let create_concat : Ctx.t -> Expr.t list -> Expr.t =
+    (fun ctx expr_lst -> Z3.Seq.mk_seq_concat (Ctx.read ctx) expr_lst)
+  (* function create_concat end *)
+
+  let create_slice : Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t =
+    (* Sort of input expressions expr_offset and expr_len are integer sort *)
+    fun ctx expr_offset expr_len expr1 ->
+    Z3.Seq.mk_seq_extract (Ctx.read ctx) expr1 expr_offset
+      (ZInt.create_add ctx expr_offset expr_len)
+  (* function create_slice end *)
+
+  let create_size : Ctx.t -> Expr.t -> Expr.t =
+    (* Sort of output expression is integer sort *)
+    (fun ctx expr1 -> Z3.Seq.mk_seq_length (Ctx.read ctx) expr1)
+  (* function create_size end *)
+
+  let create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    (* Sort of output expression is integer sort *)
+    fun ctx expr1 expr2 ->
+    Expr.if_then_else ctx
+      ~if_:(Formula.create_eq ctx expr1 expr2)
+      ~then_:(ZInt.create_expr ctx 0)
+      ~else_:
+        (Expr.if_then_else ctx
+           ~if_:(Formula.create_str_lt ctx expr1 expr2)
+           ~then_:(ZInt.create_expr ctx (-1))
+           ~else_:(ZInt.create_expr ctx 1)
+        )
+  (* function create_cmp end *)
 end
 
 (* Unit ***********************************************************************)
 
-module Unit = struct
+module ZUnit = struct
   let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_unit
 
   let (mv_cc : Tz.mich_v Tz.cc) = Tz.gen_dummy_cc Tz.MV_unit

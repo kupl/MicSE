@@ -181,6 +181,14 @@ module Formula : sig
 
   val create_int_ge : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
 
+  val create_str_lt : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
+
+  val create_str_le : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
+
+  val create_str_gt : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
+
+  val create_str_ge : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
+
   val create_convertable_to_finite_bv : Ctx.t -> Z3.Expr.expr -> t
 
   val create_nat_bound : Ctx.t -> Z3.Expr.expr -> t
@@ -399,7 +407,7 @@ end) : sig
   val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
-module Integer : sig
+module ZInt : sig
   module Typ : sig
     val mt_cc : Tz.mich_t Tz.cc
 
@@ -415,7 +423,7 @@ module Integer : sig
   val create_not : Ctx.t -> Expr.t -> Expr.t
 end
 
-module NaturalNumber : sig
+module ZNat : sig
   module Typ : sig
     val mt_cc : Tz.mich_t Tz.cc
 
@@ -441,7 +449,7 @@ module NaturalNumber : sig
   val create_xor : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
-module Mutez : sig
+module ZMutez : sig
   module Typ : sig
     val mt_cc : Tz.mich_t Tz.cc
 
@@ -453,13 +461,45 @@ end
 
 (* Boolean ********************************************************************)
 
-module Boolean : sig
-  (* include BuiltInDataExpr *)
+module ZBool : sig
+  include BuiltInDataExpr
+
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val gen_mv_cc : bool -> Tz.mich_v Tz.cc
+
+  val create_not : Ctx.t -> Expr.t -> Expr.t
+
+  val create_and : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_or : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_xor : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+end
+
+(* String *********************************************************************)
+
+module ZStr : sig
+  include BuiltInDataExpr
+
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val gen_mv_cc : string -> Tz.mich_v Tz.cc
+
+  val create_concat : Ctx.t -> Expr.t list -> Expr.t
+
+  val create_slice : Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_size : Ctx.t -> Expr.t -> Expr.t
+
+  val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
 (* Unit ***********************************************************************)
 
-module Unit : sig
+module ZUnit : sig
   include CustomDataExpr
 end
 
