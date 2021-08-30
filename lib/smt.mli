@@ -28,11 +28,13 @@ type constructor =
   | CST_bytes_blake2b
   | CST_bytes_sha256
   | CST_bytes_sha512
+  | CST_bytes_pack
+  | CST_bytes_sliced
   | CST_signature_str
   | CST_signature_signed
   | CST_address
-  | CST_or_left          of Tz.mich_t Tz.cc
-  | CST_or_right         of Tz.mich_t Tz.cc
+  | CST_or_left          of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
+  | CST_or_right         of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
   | CST_operation
   | CST_contract
   | CST_lambda
@@ -127,90 +129,6 @@ module Sort : sig
 end
 
 (******************************************************************************)
-(* Formula                                                                    *)
-(******************************************************************************)
-
-module Formula : sig
-  type t = private Z3.Expr.expr
-
-  val sort : Ctx.t -> Sort.t
-
-  val create_true : Ctx.t -> t
-
-  val create_false : Ctx.t -> t
-
-  val create_uninterpreted : Ctx.t -> t
-
-  val create_not : Ctx.t -> t -> t
-
-  val create_and : Ctx.t -> t list -> t
-
-  val create_or : Ctx.t -> t list -> t
-
-  val create_xor : Ctx.t -> t -> t -> t
-
-  val create_imply : Ctx.t -> t -> t -> t
-
-  val create_iff : Ctx.t -> t -> t -> t
-
-  val create_eq : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_neq : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_is_true : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_is_false : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_is_none : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_is_some : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_is_left : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_is_right : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_is_nil : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_is_cons : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_int_lt : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_int_le : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_int_gt : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_int_ge : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_str_lt : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_str_le : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_str_gt : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_str_ge : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_convertable_to_finite_bv : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_nat_bound : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_mutez_bound : Ctx.t -> Z3.Expr.expr -> t
-
-  val create_add_no_overflow : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_mul_no_overflow : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val create_sub_no_underflow : Ctx.t -> Z3.Expr.expr -> Z3.Expr.expr -> t
-
-  val to_sat_check : Ctx.t -> t -> Z3.Expr.expr list
-
-  val to_val_check : Ctx.t -> t -> Z3.Expr.expr list
-
-  val compare : t -> t -> int
-
-  val equal : t -> t -> bool
-end
-
-(******************************************************************************)
 (* Expression                                                                 *)
 (******************************************************************************)
 
@@ -225,77 +143,9 @@ module Expr : sig
 
   val to_string : t -> string
 
-  val if_then_else : Ctx.t -> if_:t -> then_:t -> else_:t -> t
-
   val compare : t -> t -> int
 
   val equal : t -> t -> bool
-end
-
-(******************************************************************************)
-(* Model & Solver                                                             *)
-(******************************************************************************)
-
-(* Model **********************************************************************)
-
-module Model : sig
-  type t = (Z3.Model.model[@sexp.opaque]) [@@deriving sexp]
-
-  val eval : t -> Expr.t -> Expr.t option
-
-  val to_string : t -> string
-
-  val compare : t -> t -> int
-
-  val equal : t -> t -> bool
-end
-
-(* Solver *********************************************************************)
-
-module Solver : sig
-  type t = private {
-    id : int;
-    solver : (Z3.Solver.solver[@sexp.opaque] [@ignore]);
-  }
-  [@@deriving sexp, compare, equal]
-
-  type validity =
-    | VAL
-    | INVAL
-    | UNKNOWN
-  [@@deriving sexp, compare, equal]
-
-  type satisfiability =
-    | SAT
-    | UNSAT
-    | UNKNOWN
-  [@@deriving sexp, compare, equal]
-
-  val create : Ctx.t -> t
-
-  val read : t -> Z3.Solver.solver
-
-  val read_id : t -> int
-
-  val check_sat : t -> Ctx.t -> Formula.t -> satisfiability * Model.t option
-
-  val check_val : t -> Ctx.t -> Formula.t -> validity * Model.t option
-
-  val is_sat_unknown : satisfiability -> bool
-
-  val is_sat : satisfiability -> bool
-
-  val is_unsat : satisfiability -> bool
-
-  val is_val_unknown : validity -> bool
-
-  val is_val : validity -> bool
-
-  val is_inval : validity -> bool
-
-  val string_of_sat : satisfiability -> string
-
-  val string_of_val : validity -> string
 end
 
 (******************************************************************************)
@@ -380,21 +230,23 @@ module Arithmetic (Typ : sig
 
   val gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc
 end) : sig
+  include module type of Typ
+
   val create_sort : Ctx.t -> Sort.t
 
   val create_expr : Ctx.t -> Typ.elt -> Expr.t
 
   val create_expr_of_bigint : Ctx.t -> Bigint.t -> Expr.t
 
-  val to_finite_bv : Ctx.t -> Expr.t -> Expr.t
-
   val create_add : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_sub : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 
   val create_mul : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 
   val create_div : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 
-  val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+  val create_mod : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
 module ZInt : sig
@@ -412,8 +264,6 @@ module ZInt : sig
 
   val create_neg : Ctx.t -> Expr.t -> Expr.t
 
-  val create_sub : Ctx.t -> Expr.t -> Expr.t -> Expr.t
-
   val create_not : Ctx.t -> Expr.t -> Expr.t
 end
 
@@ -430,9 +280,11 @@ module ZNat : sig
 
   include module type of Arithmetic (Typ)
 
-  val create_abs : Ctx.t -> Expr.t -> Expr.t
+  val to_finite_bv : Ctx.t -> Expr.t -> Expr.t
 
-  val create_mod : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+  val create_convertable_to_finite_bv : Ctx.t -> Expr.t -> Expr.t
+
+  val create_abs : Ctx.t -> Expr.t -> Expr.t
 
   val create_power : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 
@@ -448,6 +300,20 @@ module ZNat : sig
 end
 
 module ZMutez : sig
+  module Typ : sig
+    type elt = int
+
+    val mt_cc : Tz.mich_t Tz.cc
+
+    val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+    val gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc
+  end
+
+  include module type of Arithmetic (Typ)
+end
+
+module ZTimestamp : sig
   module Typ : sig
     type elt = int
 
@@ -481,8 +347,6 @@ module ZBool : sig
   val create_or : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 
   val create_xor : Ctx.t -> Expr.t -> Expr.t -> Expr.t
-
-  val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
 (* String *********************************************************************)
@@ -503,8 +367,6 @@ module ZStr : sig
   val create_slice : Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t
 
   val create_size : Ctx.t -> Expr.t -> Expr.t
-
-  val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
 (* Unit ***********************************************************************)
@@ -539,8 +401,6 @@ module ZKey : sig
   val create_expr : Ctx.t -> elt -> Expr.t
 
   val read_content : Expr.t -> Expr.t
-
-  val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
 (* Key Hash *******************************************************************)
@@ -563,8 +423,351 @@ module ZKeyHash : sig
   val read_content_str : Expr.t -> Expr.t
 
   val read_content_key : Expr.t -> Expr.t
+end
 
-  val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+(* Option *********************************************************************)
+
+module ZOption : sig
+  val gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
+
+  val gen_mv_none_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
+
+  val gen_mv_some_cc : Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc
+
+  val create_const : Ctx.t -> Tz.mich_t Tz.cc -> DataConst.t list
+
+  val create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
+
+  val create_expr_none : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t
+
+  val create_expr_some :
+    Ctx.t -> content_value:Tz.mich_v Tz.cc -> Expr.t -> Expr.t
+
+  val read_content : Expr.t -> Expr.t
+end
+
+(* Pair ***********************************************************************)
+
+module ZPair : sig
+  val gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
+
+  val create_const :
+    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> DataConst.t list
+
+  val create_sort :
+    Ctx.t -> content_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Sort.t
+
+  val create_expr :
+    Ctx.t ->
+    content_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc ->
+    Expr.t * Expr.t ->
+    Expr.t
+
+  val read_content_fst : Expr.t -> Expr.t
+
+  val read_content_snd : Expr.t -> Expr.t
+end
+
+(* Bytes **********************************************************************)
+
+module ZBytes : sig
+  type elt = string
+
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+  val create_const : Ctx.t -> DataConst.t list
+
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr : Ctx.t -> elt -> Expr.t
+
+  val create_concat : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_blake2b : Ctx.t -> Expr.t -> Expr.t
+
+  val create_sha256 : Ctx.t -> Expr.t -> Expr.t
+
+  val create_sha512 : Ctx.t -> Expr.t -> Expr.t
+
+  val create_pack : Ctx.t -> int -> Expr.t
+
+  val create_slice : Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t
+
+  val read_str : Expr.t -> Expr.t
+
+  val read_content_blake2b : Expr.t -> Expr.t
+
+  val read_content_sha256 : Expr.t -> Expr.t
+
+  val read_content_sha512 : Expr.t -> Expr.t
+
+  val read_content_packed : Expr.t -> Expr.t
+
+  val read_content_sliced : Expr.t -> Expr.t
+
+  val read_offset_sliced : Expr.t -> Expr.t
+
+  val read_length_sliced : Expr.t -> Expr.t
+end
+
+(* Signature **********************************************************************)
+
+module ZSig : sig
+  type elt = string
+
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+  val create_const : Ctx.t -> DataConst.t list
+
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr : Ctx.t -> elt -> Expr.t
+
+  val create_signed : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val read_str : Expr.t -> Expr.t
+
+  val read_key_signed : Expr.t -> Expr.t
+
+  val read_bytes_sliced : Expr.t -> Expr.t
+end
+
+(* Address ********************************************************************)
+
+module ZAddr : sig
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val create_const : Ctx.t -> DataConst.t list
+
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr : Ctx.t -> Expr.t -> Expr.t
+
+  val read_content : Expr.t -> Expr.t
+end
+
+(* Or *************************************************************************)
+
+module ZOr : sig
+  val gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
+
+  val gen_mv_left_cc :
+    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc
+
+  val gen_mv_right_cc :
+    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc
+
+  val create_const :
+    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> DataConst.t list
+
+  val create_sort :
+    Ctx.t -> content_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Sort.t
+
+  val create_expr_left :
+    Ctx.t ->
+    left_value:Tz.mich_v Tz.cc ->
+    right_typ:Tz.mich_t Tz.cc ->
+    Expr.t ->
+    Expr.t
+
+  val create_expr_right :
+    Ctx.t ->
+    left_typ:Tz.mich_t Tz.cc ->
+    right_value:Tz.mich_v Tz.cc ->
+    Expr.t ->
+    Expr.t
+
+  val read_content_left : Expr.t -> Expr.t
+
+  val read_content_right : Expr.t -> Expr.t
+end
+
+(******************************************************************************)
+(* Formula                                                                    *)
+(******************************************************************************)
+
+module Formula : sig
+  type t = private Z3.Expr.expr
+
+  val sort : Ctx.t -> Sort.t
+
+  val if_then_else : Ctx.t -> if_:t -> then_:Expr.t -> else_:Expr.t -> Expr.t
+
+  val create_true : Ctx.t -> t
+
+  val create_false : Ctx.t -> t
+
+  val create_uninterpreted : Ctx.t -> t
+
+  val create_not : Ctx.t -> t -> t
+
+  val create_and : Ctx.t -> t list -> t
+
+  val create_or : Ctx.t -> t list -> t
+
+  val create_xor : Ctx.t -> t -> t -> t
+
+  val create_imply : Ctx.t -> t -> t -> t
+
+  val create_iff : Ctx.t -> t -> t -> t
+
+  val create_eq : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_neq : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_is_true : Ctx.t -> Expr.t -> t
+
+  val create_is_false : Ctx.t -> Expr.t -> t
+
+  val create_is_unit : Ctx.t -> Expr.t -> t
+
+  val create_is_key : Ctx.t -> Expr.t -> t
+
+  val create_is_keyhash_str : Ctx.t -> Expr.t -> t
+
+  val create_is_keyhash_key : Ctx.t -> Expr.t -> t
+
+  val create_is_option_none : Ctx.t -> Tz.mich_t Tz.cc -> Expr.t -> t
+
+  val create_is_option_some : Ctx.t -> Tz.mich_t Tz.cc -> Expr.t -> t
+
+  val create_is_pair : Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
+
+  val create_is_bytes_nil : Ctx.t -> Expr.t -> t
+
+  val create_is_bytes_str : Ctx.t -> Expr.t -> t
+
+  val create_is_bytes_concat : Ctx.t -> Expr.t -> t
+
+  val create_is_bytes_blake2b : Ctx.t -> Expr.t -> t
+
+  val create_is_bytes_sha256 : Ctx.t -> Expr.t -> t
+
+  val create_is_bytes_sha512 : Ctx.t -> Expr.t -> t
+
+  val create_is_bytes_pack : Ctx.t -> Expr.t -> t
+
+  val create_is_bytes_sliced : Ctx.t -> Expr.t -> t
+
+  val create_is_signature_str : Ctx.t -> Expr.t -> t
+
+  val create_is_signature_signed : Ctx.t -> Expr.t -> t
+
+  val create_is_address : Ctx.t -> Expr.t -> t
+
+  val create_is_or_left :
+    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
+
+  val create_is_or_right :
+    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
+
+  val create_is_list_nil : Ctx.t -> Expr.t -> t
+
+  val create_is_list_cons : Ctx.t -> Expr.t -> t
+
+  val create_int_lt : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_int_le : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_int_gt : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_int_ge : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_str_lt : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_str_le : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_str_gt : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_str_ge : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_nat_bound : Ctx.t -> Expr.t -> t
+
+  val create_mutez_bound : Ctx.t -> Expr.t -> t
+
+  val create_add_no_overflow : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_mul_no_overflow : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_sub_no_underflow : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val to_sat_check : Ctx.t -> t -> Expr.t list
+
+  val to_val_check : Ctx.t -> t -> Expr.t list
+
+  val compare : t -> t -> int
+
+  val equal : t -> t -> bool
+end
+
+(******************************************************************************)
+(* Model & Solver                                                             *)
+(******************************************************************************)
+
+(* Model **********************************************************************)
+
+module Model : sig
+  type t = (Z3.Model.model[@sexp.opaque]) [@@deriving sexp]
+
+  val eval : t -> Expr.t -> Expr.t option
+
+  val to_string : t -> string
+
+  val compare : t -> t -> int
+
+  val equal : t -> t -> bool
+end
+
+(* Solver *********************************************************************)
+
+module Solver : sig
+  type t = private {
+    id : int;
+    solver : (Z3.Solver.solver[@sexp.opaque] [@ignore]);
+  }
+  [@@deriving sexp, compare, equal]
+
+  type validity =
+    | VAL
+    | INVAL
+    | UNKNOWN
+  [@@deriving sexp, compare, equal]
+
+  type satisfiability =
+    | SAT
+    | UNSAT
+    | UNKNOWN
+  [@@deriving sexp, compare, equal]
+
+  val create : Ctx.t -> t
+
+  val read : t -> Z3.Solver.solver
+
+  val read_id : t -> int
+
+  val check_sat : t -> Ctx.t -> Formula.t -> satisfiability * Model.t option
+
+  val check_val : t -> Ctx.t -> Formula.t -> validity * Model.t option
+
+  val is_sat_unknown : satisfiability -> bool
+
+  val is_sat : satisfiability -> bool
+
+  val is_unsat : satisfiability -> bool
+
+  val is_val_unknown : validity -> bool
+
+  val is_val : validity -> bool
+
+  val is_inval : validity -> bool
+
+  val string_of_sat : satisfiability -> string
+
+  val string_of_val : validity -> string
 end
 
 (******************************************************************************)
