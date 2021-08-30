@@ -2,8 +2,6 @@
 
 exception SmtError = Z3.Error
 
-exception NotImplemented
-
 open! Core
 
 (******************************************************************************)
@@ -83,6 +81,10 @@ module Constant = struct
   let _sort_address : string = "Address"
 
   let _sort_or : string = "Or"
+
+  let _sort_list : string = "List"
+
+  let _sort_map : string = "Map"
 
   let _sort_operation : string = "Operation"
 
@@ -1784,6 +1786,185 @@ module ZOr = struct
   (* function read_content_right end *)
 end
 
+(* List ***********************************************************************)
+
+module ZList = struct
+  let gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
+    (fun typ -> Tz.gen_dummy_cc (Tz.MT_list typ))
+  (* function gen_mt_cc end *)
+
+  let gen_mv_nil_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc =
+    (fun typ -> Tz.gen_dummy_cc (Tz.MV_nil typ))
+  (* function gen_mv_nil_cc end *)
+
+  let create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t =
+    fun ctx ~content_typ ->
+    Ctx.read_sort ctx (gen_mt_cc content_typ) ~f:(fun () ->
+        let (content_sort : Sort.t) =
+           Ctx.read_sort ctx content_typ ~f:(fun () ->
+               SmtError "ZList : create_sort : sort of content type not defined"
+               |> raise
+           )
+        in
+        let (name : string) =
+           "(" ^ Constant._sort_list ^ " " ^ Sort.to_string content_sort ^ ")"
+        in
+        Z3.Z3List.mk_list_s (Ctx.read ctx) name content_sort
+    )
+  (* function create_sort end *)
+
+  let create_expr_nil : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t =
+    fun ctx ~content_typ ->
+    let (mv_nil_cc : Tz.mich_v Tz.cc) = gen_mv_nil_cc content_typ in
+    Ctx.read_expr ctx mv_nil_cc ~f:(fun () ->
+        let (sort : Sort.t) = create_sort ctx ~content_typ in
+        Z3.Z3List.nil sort
+    )
+  (* function create_expr_nil end *)
+
+  let create_cons : Expr.t -> Expr.t -> Expr.t =
+    fun expr_content expr1 ->
+    Z3.Z3List.get_cons_decl (Expr.read_sort expr1)
+    |> Func.apply ~params:[ expr_content; expr1 ]
+  (* function create_cons end *)
+
+  let read_head : Expr.t -> Expr.t =
+    fun expr1 ->
+    Z3.Z3List.get_head_decl (Expr.read_sort expr1)
+    |> Func.apply ~params:[ expr1 ]
+  (* function read_head end *)
+
+  let read_tail : Expr.t -> Expr.t =
+    fun expr1 ->
+    Z3.Z3List.get_tail_decl (Expr.read_sort expr1)
+    |> Func.apply ~params:[ expr1 ]
+  (* function read_tail end *)
+end
+
+(* Map ************************************************************************)
+
+module ZMap = struct
+  let gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
+    (fun (typ1, typ2) -> Tz.gen_dummy_cc (Tz.MT_map (typ1, typ2)))
+  (* function gen_mt_cc end *)
+
+  let gen_mv_empty_map_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
+      =
+    (fun (typ1, typ2) -> Tz.gen_dummy_cc (Tz.MV_empty_map (typ1, typ2)))
+  (* function gen_mv_empty_map_cc end *)
+
+  let create_sort :
+      Ctx.t -> key_typ:Tz.mich_t Tz.cc -> data_typ:Tz.mich_t Tz.cc -> Sort.t =
+    fun ctx ~key_typ ~data_typ ->
+    Ctx.read_sort ctx
+      (gen_mt_cc (key_typ, data_typ))
+      ~f:(fun () ->
+        let (key_sort : Sort.t) =
+           Ctx.read_sort ctx key_typ ~f:(fun () ->
+               SmtError "ZMap : create_sort : sort of key type not defined"
+               |> raise
+           )
+        in
+        let (data_sort : Sort.t) =
+           ZOption.create_sort ctx ~content_typ:data_typ
+        in
+        Z3.Z3Array.mk_sort (Ctx.read ctx) key_sort data_sort)
+  (* function create_sort end *)
+
+  let create_expr_empty_map :
+      Ctx.t -> key_typ:Tz.mich_t Tz.cc -> data_typ:Tz.mich_t Tz.cc -> Expr.t =
+    fun ctx ~key_typ ~data_typ ->
+    let (mv_empty_map_cc : Tz.mich_v Tz.cc) =
+       gen_mv_empty_map_cc (key_typ, data_typ)
+    in
+    Ctx.read_expr ctx mv_empty_map_cc ~f:(fun () ->
+        let (key_sort : Sort.t) =
+           Ctx.read_sort ctx key_typ ~f:(fun () ->
+               SmtError
+                 "ZMap : create_expr_empty_map : sort of key type not defined"
+               |> raise
+           )
+        in
+        let (default_value : Expr.t) =
+           ZOption.create_expr_none ctx ~content_typ:data_typ
+        in
+        Z3.Z3Array.mk_const_array (Ctx.read ctx) key_sort default_value
+    )
+  (* function create_expr_empty_map end *)
+
+  let read_value : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    fun ctx expr_key expr1 ->
+    Z3.Z3Array.mk_select (Ctx.read ctx) expr1 expr_key
+  (* function read_value end *)
+
+  let read_default_value : Ctx.t -> Expr.t -> Expr.t =
+    (fun ctx expr1 -> Z3.Z3Array.mk_term_array (Ctx.read ctx) expr1)
+  (* function read_default_value end *)
+
+  let update : Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t =
+    fun ctx expr_key expr_value expr1 ->
+    Z3.Z3Array.mk_store (Ctx.read ctx) expr1 expr_key expr_value
+  (* function update end *)
+end
+
+(* Set ************************************************************************)
+
+module ZSet = struct
+  let gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
+    (fun typ -> Tz.gen_dummy_cc (Tz.MT_set typ))
+  (* function gen_mt_cc end *)
+
+  let gen_mv_empty_set_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc =
+    (fun typ -> Tz.gen_dummy_cc (Tz.MV_empty_set typ))
+  (* function gen_mv_empty_map_cc end *)
+
+  let create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t =
+    fun ctx ~content_typ ->
+    Ctx.read_sort ctx (gen_mt_cc content_typ) ~f:(fun () ->
+        let (content_sort : Sort.t) =
+           Ctx.read_sort ctx content_typ ~f:(fun () ->
+               SmtError "ZSet : create_sort : sort of content type not defined"
+               |> raise
+           )
+        in
+        Z3.Z3Array.mk_sort (Ctx.read ctx) content_sort (ZBool.create_sort ctx)
+    )
+  (* function create_sort end *)
+
+  let create_expr_empty_set : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t =
+    fun ctx ~content_typ ->
+    let (mv_empty_set_cc : Tz.mich_v Tz.cc) = gen_mv_empty_set_cc content_typ in
+    Ctx.read_expr ctx mv_empty_set_cc ~f:(fun () ->
+        let (content_sort : Sort.t) =
+           Ctx.read_sort ctx content_typ ~f:(fun () ->
+               SmtError "ZSet : create_sort : sort of content type not defined"
+               |> raise
+           )
+        in
+        let (default_value : Expr.t) = ZBool.create_expr ctx false in
+        Z3.Z3Array.mk_const_array (Ctx.read ctx) content_sort default_value
+    )
+  (* function create_expr_empty_set end *)
+
+  let update : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    fun ctx expr_content expr1 ->
+    Z3.Z3Array.mk_store (Ctx.read ctx) expr1 expr_content
+      (ZBool.create_expr ctx true)
+  (* function update end *)
+end
+
+(* Operation ******************************************************************)
+
+module ZOperation = struct end
+
+(* Contract *******************************************************************)
+
+module ZContract = struct end
+
+(* Lambda *********************************************************************)
+
+module ZLambda = struct end
+
 (******************************************************************************)
 (* Formula                                                                    *)
 (******************************************************************************)
@@ -2000,29 +2181,48 @@ module Formula = struct
 
   let create_is_or_left :
       Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t =
-    (fun ctx typ expr1 -> 
-      ZOr.create_const ctx typ
-      |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_or_left)
-      |> DataConst.recog_func_for_constructor
-      |> Func.apply ~params:[ expr1 ])
+    fun ctx typ expr1 ->
+    ZOr.create_const ctx typ
+    |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_or_left)
+    |> DataConst.recog_func_for_constructor
+    |> Func.apply ~params:[ expr1 ]
   (* function create_is_left end *)
 
   let create_is_or_right :
       Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t =
-      (fun ctx typ expr1 -> 
-        ZOr.create_const ctx typ
-        |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_or_right)
-        |> DataConst.recog_func_for_constructor
-        |> Func.apply ~params:[ expr1 ])
+    fun ctx typ expr1 ->
+    ZOr.create_const ctx typ
+    |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_or_right)
+    |> DataConst.recog_func_for_constructor
+    |> Func.apply ~params:[ expr1 ]
   (* function create_is_right end *)
 
-  let create_is_list_nil : Ctx.t -> Expr.t -> t =
-    (fun _ _ -> raise NotImplemented)
+  let create_is_list_nil : Expr.t -> t =
+    fun expr1 ->
+    Z3.Z3List.get_is_nil_decl (Expr.read_sort expr1)
+    |> Func.apply ~params:[ expr1 ]
   (* function create_is_nil end *)
 
-  let create_is_list_cons : Ctx.t -> Expr.t -> t =
-    (fun _ _ -> raise NotImplemented)
+  let create_is_list_cons : Expr.t -> t =
+    fun expr1 ->
+    Z3.Z3List.get_is_cons_decl (Expr.read_sort expr1)
+    |> Func.apply ~params:[ expr1 ]
   (* function create_is_cons end *)
+
+  let create_is_data_in_map : Ctx.t -> Expr.t -> Expr.t -> t =
+    fun ctx expr_key expr1 ->
+    if_then_else ctx
+      ~if_:
+        (ZMap.read_value ctx expr_key expr1
+        |> DataType.read_expr_is_const
+             ~const_idx:Constant._idx_const_option_some
+        )
+      ~then_:(create_true ctx) ~else_:(create_false ctx)
+  (* function create_is_data_in_map end *)
+
+  let create_is_data_in_set : Ctx.t -> Expr.t -> Expr.t -> t =
+    (fun ctx expr_key expr1 -> ZMap.read_value ctx expr_key expr1)
+  (* function create_is_data_in_set end *)
 
   let create_int_lt : Ctx.t -> Expr.t -> Expr.t -> t =
     (* Sort of input expressions are integer sort *)

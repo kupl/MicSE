@@ -586,6 +586,65 @@ module ZOr : sig
   val read_content_right : Expr.t -> Expr.t
 end
 
+(* List ***********************************************************************)
+
+module ZList : sig
+  val gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
+
+  val gen_mv_nil_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
+
+  val create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
+
+  val create_expr_nil : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t
+
+  val create_cons : Expr.t -> Expr.t -> Expr.t
+
+  val read_head : Expr.t -> Expr.t
+
+  val read_tail : Expr.t -> Expr.t
+end
+
+(* Map ************************************************************************)
+
+module ZMap : sig
+  val gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
+
+  val gen_mv_empty_map_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
+
+  val create_sort :
+    Ctx.t -> key_typ:Tz.mich_t Tz.cc -> data_typ:Tz.mich_t Tz.cc -> Sort.t
+
+  val create_expr_empty_map :
+    Ctx.t -> key_typ:Tz.mich_t Tz.cc -> data_typ:Tz.mich_t Tz.cc -> Expr.t
+
+  val read_value : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val read_default_value : Ctx.t -> Expr.t -> Expr.t
+
+  val update : Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t
+end
+
+(* Set ************************************************************************)
+
+module ZSet : sig
+  val gen_mt_cc : Tz.mich_t Tz.cc  -> Tz.mich_t Tz.cc
+
+  val gen_mv_empty_set_cc : Tz.mich_t Tz.cc-> Tz.mich_v Tz.cc
+
+  val create_sort :
+    Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
+
+  val create_expr_empty_set :
+    Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t
+
+  val update : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+end
+
+(* Contract *******************************************************************)
+
+module ZContract :sig
+end
+
 (******************************************************************************)
 (* Formula                                                                    *)
 (******************************************************************************)
@@ -665,9 +724,13 @@ module Formula : sig
   val create_is_or_right :
     Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
 
-  val create_is_list_nil : Ctx.t -> Expr.t -> t
+  val create_is_list_nil : Expr.t -> t
 
-  val create_is_list_cons : Ctx.t -> Expr.t -> t
+  val create_is_list_cons : Expr.t -> t
+  
+  val create_is_data_in_map : Ctx.t -> Expr.t -> Expr.t -> t
+  
+  val create_is_data_in_set : Ctx.t -> Expr.t -> Expr.t -> t
 
   val create_int_lt : Ctx.t -> Expr.t -> Expr.t -> t
 
