@@ -5,8 +5,6 @@ open! Core
 (* Set of Tz.sym_state & Set of Tz.mich_cut_info *)
 module SSet = Core.Set.Make (Tz.SymState_cmp)
 module MciSet = Core.Set.Make (Tz.MichCutInfo_cmp)
-(* module SSet = Core.Set.Make(struct type t = Tz.sym_state [@@deriving sexp, compare, equal] end)
-   module MciSet = Core.Set.Make(struct type t = Tz.mich_cut_info [@@deriving sexp, compare, equal] end) *)
 
 type se_result = {
   (* symbolic states *)
@@ -44,6 +42,117 @@ let se_result_pointwise_union : se_result -> se_result -> se_result =
     sr_entered_lmbds = MciSet.union r1.sr_entered_lmbds r2.sr_entered_lmbds;
     sr_sid_counter = max r1.sr_sid_counter r2.sr_sid_counter;
   }
+
+(******************************************************************************)
+(* SymState as Graph                                                          *)
+(******************************************************************************)
+
+module SidMap = Core.Map.Make (Int)
+
+let construct_sid_checkmap : SSet.t -> Tz.sym_state SidMap.t =
+  fun sset ->
+  SSet.fold sset ~init:SidMap.empty ~f:(fun accmap ss ->
+      SidMap.add_exn accmap ~key:(List.hd_exn ss.ss_id) ~data:ss
+  )
+
+module SSGraph = struct
+  (* SSGraph's vertex is Tz.mich_cut_info, and the edge is sym-id (Tz.sym_state's id) *)
+  open Tz
+  module MciMap = Core.Map.Make (MichCutInfo_cmp)
+
+  type conn = {
+    (* connection information *)
+    trx : SSet.t;
+    ln : SSet.t;
+    lb : SSet.t;
+  }
+
+  type 'f conn_f = {
+    cf_trx : 'f;
+    cf_ln : 'f;
+    cf_lb : 'f;
+  }
+
+  type csc_conn_f = (conn -> sym_state -> conn) conn_f
+
+  type 'a ps_pair = {
+    pred : 'a;
+    succ : 'a;
+  }
+
+  type mci_view = conn ps_pair MciMap.t
+
+  let conn_empty : conn = { trx = SSet.empty; ln = SSet.empty; lb = SSet.empty }
+
+  let ps_pair_empty : empty:'a -> 'a ps_pair =
+    (fun ~empty -> { pred = empty; succ = empty })
+
+  let conn_csc_f_template : f:(SSet.t -> sym_state -> SSet.t) -> csc_conn_f =
+    fun ~f ->
+    {
+      cf_trx = (fun c ss -> { c with trx = f c.trx ss });
+      cf_ln = (fun c ss -> { c with lb = f c.ln ss });
+      cf_lb = (fun c ss -> { c with ln = f c.lb ss });
+    }
+
+  let conn_add : csc_conn_f = conn_csc_f_template ~f:SSet.add
+
+  let conn_mcc_match :
+      mcc:mich_cut_category -> ccf:csc_conn_f -> conn -> sym_state -> conn =
+    fun ~mcc ~ccf cnn ss ->
+    match mcc with
+    | MCC_trx_entry
+    | MCC_trx_exit ->
+      ccf.cf_trx cnn ss
+    | MCC_ln_loop
+    | MCC_ln_loopleft
+    | MCC_ln_map
+    | MCC_ln_iter ->
+      ccf.cf_ln cnn ss
+    | MCC_lb_loop
+    | MCC_lb_loopleft
+    | MCC_lb_map
+    | MCC_lb_iter ->
+      ccf.cf_lb cnn ss
+    | MCC_query _ -> failwith "SSGraph.conn_mcc_match : unexpected"
+
+  let construct_mci_view : basic_blocks:SSet.t -> mci_view =
+    fun ~basic_blocks ->
+    let empty_cp : conn ps_pair = ps_pair_empty ~empty:conn_empty in
+    SSet.fold basic_blocks ~init:MciMap.empty ~f:(fun accm ss ->
+        let (start_mcc, block_mcc) =
+           (ss.ss_start_mci.mci_cutcat, ss.ss_block_mci.mci_cutcat)
+        in
+        accm
+        |> (* 1 : use symstate's start-mci - symstate is start-mci's successor *)
+        (fun m ->
+          MciMap.update m ss.ss_start_mci ~f:(function
+          | None    -> empty_cp
+          | Some pp ->
+            {
+              pp with
+              succ = conn_mcc_match ~mcc:start_mcc ~ccf:conn_add pp.succ ss;
+            }
+          ))
+        |> (* 2 : use symstate's block-mci - symstate is block-mci's predecessor *)
+        fun m ->
+        MciMap.update m ss.ss_block_mci ~f:(function
+        | None    -> empty_cp
+        | Some pp ->
+          {
+            pp with
+            pred = conn_mcc_match ~mcc:block_mcc ~ccf:conn_add pp.pred ss;
+          }
+        )
+    )
+
+  let ss_view_pred : m_view:mci_view -> sym_state -> conn =
+    (fun ~m_view ss -> (MciMap.find_exn m_view ss.ss_start_mci).pred)
+
+  let ss_view_succ : m_view:mci_view -> sym_state -> conn =
+    (fun ~m_view ss -> (MciMap.find_exn m_view ss.ss_block_mci).succ)
+end
+(* module SSGraph end *)
 
 (******************************************************************************)
 (* Utilities : Constraint                                                     *)
@@ -1576,3 +1685,4 @@ let run_inst_entry :
          (SSet.map result_raw.sr_blocked ~f:final_blocking)
          result_raw.sr_running;
    }
+(* function run_inst_entry end *)

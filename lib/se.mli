@@ -24,6 +24,49 @@ val se_result_empty : se_result
 val se_result_pointwise_union : se_result -> se_result -> se_result
 
 (******************************************************************************)
+(* SymState as Graph                                                          *)
+(******************************************************************************)
+
+module SidMap : module type of Core.Map.Make (Core.Int)
+
+val construct_sid_checkmap : SSet.t -> Tz.sym_state SidMap.t
+
+module SSGraph : sig
+  module MciMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
+
+  type conn = {
+    (* connection information *)
+    trx : SSet.t;
+    ln : SSet.t;
+    lb : SSet.t;
+  }
+
+  type 'f conn_f = {
+    cf_trx : 'f;
+    cf_ln : 'f;
+    cf_lb : 'f;
+  }
+
+  type csc_conn_f = (conn -> Tz.sym_state -> conn) conn_f
+
+  type 'a ps_pair = {
+    pred : 'a;
+    succ : 'a;
+  }
+
+  type mci_view = conn ps_pair MciMap.t
+
+  val conn_mcc_match :
+    mcc:Tz.mich_cut_category -> ccf:csc_conn_f -> conn -> Tz.sym_state -> conn
+
+  val construct_mci_view : basic_blocks:SSet.t -> mci_view
+
+  val ss_view_pred : m_view:mci_view -> Tz.sym_state -> conn
+
+  val ss_view_succ : m_view:mci_view -> Tz.sym_state -> conn
+end
+
+(******************************************************************************)
 (* Utilities : Constraint                                                     *)
 (******************************************************************************)
 
