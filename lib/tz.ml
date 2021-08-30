@@ -1132,6 +1132,227 @@ let get_reduced_mci : mich_cut_info -> r_mich_cut_info =
 
 (******************************************************************************)
 (******************************************************************************)
+(* InnerFirst Mapping                                                         *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* WARNING : It does not map any mich_v in functions (e.g., values in LAMBDA) *)
+let rec mvcc_map_innerfst : mapf:(mich_v -> mich_v) -> mich_v cc -> mich_v cc =
+  fun ~mapf mvcc ->
+  let r : mich_v cc -> mich_v cc = mvcc_map_innerfst ~mapf in
+  let gcc : 'a -> 'a cc = gen_custom_cc mvcc in
+  let fc : mich_v -> mich_v cc = (fun x -> mapf x |> gcc) in
+  let argv = mvcc.cc_v in
+  match argv with
+  | MV_symbol _ -> fc argv
+  | MV_car v -> MV_car (r v) |> fc
+  | MV_cdr v -> MV_cdr (r v) |> fc
+  | MV_unlift_option v -> MV_unlift_option (r v) |> fc
+  | MV_unlift_left v -> MV_unlift_left (r v) |> fc
+  | MV_unlift_right v -> MV_unlift_right (r v) |> fc
+  | MV_hd_l v -> MV_hd_l (r v) |> fc
+  (*************************************************************************)
+  (* Integer                                                               *)
+  (*************************************************************************)
+  | MV_lit_int _ -> fc argv
+  | MV_neg_ni v -> MV_neg_ni (r v) |> fc
+  | MV_neg_ii v -> MV_neg_ii (r v) |> fc
+  | MV_not_ni v -> MV_not_ni (r v) |> fc
+  | MV_not_ii v -> MV_not_ii (r v) |> fc
+  | MV_add_nii (v1, v2) -> MV_add_nii (r v1, r v2) |> fc
+  | MV_add_ini (v1, v2) -> MV_add_ini (r v1, r v2) |> fc
+  | MV_add_iii (v1, v2) -> MV_add_iii (r v1, r v2) |> fc
+  | MV_sub_nni (v1, v2) -> MV_sub_nni (r v1, r v2) |> fc
+  | MV_sub_nii (v1, v2) -> MV_sub_nii (r v1, r v2) |> fc
+  | MV_sub_ini (v1, v2) -> MV_sub_ini (r v1, r v2) |> fc
+  | MV_sub_iii (v1, v2) -> MV_sub_iii (r v1, r v2) |> fc
+  | MV_sub_tti (v1, v2) -> MV_sub_tti (r v1, r v2) |> fc
+  | MV_mul_nii (v1, v2) -> MV_mul_nii (r v1, r v2) |> fc
+  | MV_mul_ini (v1, v2) -> MV_mul_ini (r v1, r v2) |> fc
+  | MV_mul_iii (v1, v2) -> MV_mul_iii (r v1, r v2) |> fc
+  | MV_compare (v1, v2) -> MV_compare (r v1, r v2) |> fc
+  | MV_int_of_nat v -> MV_int_of_nat (r v) |> fc
+  (*************************************************************************)
+  (* Natural Number                                                        *)
+  (*************************************************************************)
+  | MV_lit_nat _ -> fc argv
+  | MV_abs_in v -> MV_abs_in (r v) |> fc
+  | MV_add_nnn (v1, v2) -> MV_add_nnn (r v1, r v2) |> fc
+  | MV_mul_nnn (v1, v2) -> MV_mul_nnn (r v1, r v2) |> fc
+  | MV_shiftL_nnn (v1, v2) -> MV_shiftL_nnn (r v1, r v2) |> fc
+  | MV_shiftR_nnn (v1, v2) -> MV_shiftR_nnn (r v1, r v2) |> fc
+  | MV_and_nnn (v1, v2) -> MV_and_nnn (r v1, r v2) |> fc
+  | MV_and_inn (v1, v2) -> MV_and_inn (r v1, r v2) |> fc
+  | MV_or_nnn (v1, v2) -> MV_or_nnn (r v1, r v2) |> fc
+  | MV_xor_nnn (v1, v2) -> MV_xor_nnn (r v1, r v2) |> fc
+  | MV_size_s v -> MV_size_s (r v) |> fc
+  | MV_size_m v -> MV_size_m (r v) |> fc
+  | MV_size_l v -> MV_size_l (r v) |> fc
+  | MV_size_str v -> MV_size_str (r v) |> fc
+  | MV_size_b v -> MV_size_b (r v) |> fc
+  (*************************************************************************)
+  (* String                                                                *)
+  (*************************************************************************)
+  | MV_lit_string _ -> fc argv
+  | MV_concat_sss (v1, v2) -> MV_concat_sss (r v1, r v2) |> fc
+  | MV_concat_list_s v -> MV_concat_list_s (r v) |> fc
+  (*************************************************************************)
+  (* Bytes                                                                 *)
+  (*************************************************************************)
+  | MV_lit_bytes _ -> fc argv
+  | MV_concat_bbb (v1, v2) -> MV_concat_bbb (r v1, r v2) |> fc
+  | MV_concat_list_b v -> MV_concat_list_b (r v) |> fc
+  | MV_pack v -> MV_pack (r v) |> fc
+  | MV_blake2b v -> MV_blake2b (r v) |> fc
+  | MV_sha256 v -> MV_sha256 (r v) |> fc
+  | MV_sha512 v -> MV_sha256 (r v) |> fc
+  (*************************************************************************)
+  (* Mutez                                                                 *)
+  (*************************************************************************)
+  | MV_lit_mutez _ -> fc argv
+  | MV_add_mmm (v1, v2) -> MV_add_mmm (r v1, r v2) |> fc
+  | MV_sub_mmm (v1, v2) -> MV_sub_mmm (r v1, r v2) |> fc
+  | MV_mul_mnm (v1, v2) -> MV_mul_mnm (r v1, r v2) |> fc
+  | MV_mul_nmm (v1, v2) -> MV_mul_nmm (r v1, r v2) |> fc
+  | MV_mtz_of_op_list v -> MV_mtz_of_op_list (r v) |> fc
+  (*************************************************************************)
+  (* Bool                                                                  *)
+  (*************************************************************************)
+  | MV_lit_bool _ -> fc argv
+  | MV_not_bb v -> MV_not_bb (r v) |> fc
+  | MV_and_bbb (v1, v2) -> MV_and_bbb (r v1, r v2) |> fc
+  | MV_or_bbb (v1, v2) -> MV_or_bbb (r v1, r v2) |> fc
+  | MV_xor_bbb (v1, v2) -> MV_xor_bbb (r v1, r v2) |> fc
+  | MV_eq_ib (v1, v2) -> MV_eq_ib (r v1, r v2) |> fc
+  | MV_neq_ib (v1, v2) -> MV_neq_ib (r v1, r v2) |> fc
+  | MV_lt_ib (v1, v2) -> MV_lt_ib (r v1, r v2) |> fc
+  | MV_gt_ib (v1, v2) -> MV_gt_ib (r v1, r v2) |> fc
+  | MV_leq_ib (v1, v2) -> MV_leq_ib (r v1, r v2) |> fc
+  | MV_geq_ib (v1, v2) -> MV_geq_ib (r v1, r v2) |> fc
+  | MV_mem_xsb (v1, v2) -> MV_mem_xsb (r v1, r v2) |> fc
+  | MV_mem_xmb (v1, v2) -> MV_mem_xmb (r v1, r v2) |> fc
+  | MV_mem_xbmb (v1, v2) -> MV_mem_xbmb (r v1, r v2) |> fc
+  | MV_check_signature (v1, v2, v3) ->
+    MV_check_signature (r v1, r v2, r v3) |> fc
+  (*************************************************************************)
+  (* Key Hash                                                              *)
+  (*************************************************************************)
+  | MV_lit_key_hash _ -> fc argv
+  | MV_hash_key v -> MV_hash_key (r v) |> fc
+  (*************************************************************************)
+  (* Timestamp                                                             *)
+  (*************************************************************************)
+  | MV_lit_timestamp_str _ -> fc argv
+  | MV_lit_timestamp_sec _ -> fc argv
+  | MV_add_tit (v1, v2) -> MV_add_tit (r v1, r v2) |> fc
+  | MV_add_itt (v1, v2) -> MV_add_itt (r v1, r v2) |> fc
+  | MV_sub_tit (v1, v2) -> MV_sub_tit (r v1, r v2) |> fc
+  (*************************************************************************)
+  (* Address                                                               *)
+  (*************************************************************************)
+  | MV_lit_address v -> MV_lit_address (r v) |> fc
+  | MV_address_of_contract v -> MV_address_of_contract (r v) |> fc
+  (*************************************************************************)
+  (* Key                                                                   *)
+  (*************************************************************************)
+  | MV_lit_key _ -> fc argv
+  (*************************************************************************)
+  (* Unit                                                                  *)
+  (*************************************************************************)
+  | MV_unit -> fc argv
+  (*************************************************************************)
+  (* Signature                                                             *)
+  (*************************************************************************)
+  | MV_lit_signature_str _ -> fc argv
+  | MV_lit_signature_signed (v1, v2) ->
+    MV_lit_signature_signed (r v1, r v2) |> fc
+  (*************************************************************************)
+  (* Option                                                                *)
+  (*************************************************************************)
+  | MV_some v -> MV_some (r v) |> fc
+  | MV_none _ -> fc argv
+  | MV_ediv_nnnn (v1, v2) -> MV_ediv_nnnn (r v1, r v2) |> fc
+  | MV_ediv_niin (v1, v2) -> MV_ediv_niin (r v1, r v2) |> fc
+  | MV_ediv_inin (v1, v2) -> MV_ediv_inin (r v1, r v2) |> fc
+  | MV_ediv_iiin (v1, v2) -> MV_ediv_iiin (r v1, r v2) |> fc
+  | MV_ediv_mnmm (v1, v2) -> MV_ediv_mnmm (r v1, r v2) |> fc
+  | MV_ediv_mmnm (v1, v2) -> MV_ediv_mmnm (r v1, r v2) |> fc
+  | MV_get_xmoy (v1, v2) -> MV_get_xmoy (r v1, r v2) |> fc
+  | MV_get_xbmo (v1, v2) -> MV_get_xbmo (r v1, r v2) |> fc
+  | MV_slice_nnso (v1, v2, v3) -> MV_slice_nnso (r v1, r v2, r v3) |> fc
+  | MV_slice_nnbo (v1, v2, v3) -> MV_slice_nnbo (r v1, r v2, r v3) |> fc
+  | MV_unpack (t, v) -> MV_unpack (t, r v) |> fc
+  | MV_contract_of_address (t, v) -> MV_contract_of_address (t, r v) |> fc
+  | MV_isnat v -> MV_isnat (r v) |> fc
+  (*************************************************************************)
+  (* List                                                                  *)
+  (*************************************************************************)
+  | MV_lit_list (t, vl) -> MV_lit_list (t, List.map vl ~f:r) |> fc
+  | MV_nil _ -> fc argv
+  | MV_cons (v1, v2) -> MV_cons (r v1, r v2) |> fc
+  | MV_tl_l v -> MV_tl_l (r v) |> fc
+  (*************************************************************************)
+  (* Set                                                                   *)
+  (*************************************************************************)
+  | MV_lit_set (t, vl) -> MV_lit_set (t, List.map vl ~f:r) |> fc
+  | MV_empty_set _ -> fc argv
+  | MV_update_xbss (v1, v2, v3) -> MV_update_xbss (r v1, r v2, r v3) |> fc
+  (*************************************************************************)
+  (* Operation                                                             *)
+  (*************************************************************************)
+  | MV_create_contract (t1, t2, v1, v2, v3, v4, v5) ->
+    MV_create_contract (t1, t2, r v1, r v2, r v3, r v4, r v5) |> fc
+  | MV_transfer_tokens (v1, v2, v3) ->
+    MV_transfer_tokens (r v1, r v2, r v3) |> fc
+  | MV_set_delegate v -> MV_set_delegate (r v) |> fc
+  (*************************************************************************)
+  (* Contract                                                              *)
+  (*************************************************************************)
+  | MV_lit_contract (t, v) -> MV_lit_contract (t, r v) |> fc
+  | MV_self _ -> fc argv
+  | MV_implicit_account v -> MV_implicit_account (r v) |> fc
+  (*************************************************************************)
+  (* Pair                                                                  *)
+  (*************************************************************************)
+  | MV_pair (v1, v2) -> MV_pair (r v1, r v2) |> fc
+  (*************************************************************************)
+  (* Or                                                                    *)
+  (*************************************************************************)
+  | MV_left (t, v) -> MV_left (t, r v) |> fc
+  | MV_right (t, v) -> MV_right (t, r v) |> fc
+  (*************************************************************************)
+  (* Lambda                                                                *)
+  (*************************************************************************)
+  | MV_lit_lambda _ -> fc argv
+  (* embedded code with LAMBDA Michelson-instruction should be expressed with V_lambda_id, not V_lit_lambda *)
+  | MV_lambda_unknown _ -> fc argv
+  | MV_lambda_closure (v1, v2) -> MV_lambda_closure (r v1, r v2) |> fc
+  (*************************************************************************)
+  (* Map                                                                   *)
+  (*************************************************************************)
+  | MV_lit_map (t1, t2, vvl) ->
+    MV_lit_map (t1, t2, List.map ~f:(fun (x, y) -> (r x, r y)) vvl) |> fc
+  | MV_empty_map _ -> fc argv
+  | MV_update_xomm (v1, v2, v3) -> MV_update_xomm (r v1, r v2, r v3) |> fc
+  (*************************************************************************)
+  (* Big Map                                                               *)
+  (*************************************************************************)
+  | MV_lit_big_map (t1, t2, vvl) ->
+    MV_lit_big_map (t1, t2, List.map ~f:(fun (x, y) -> (r x, r y)) vvl) |> fc
+  | MV_empty_big_map _ -> fc argv
+  | MV_update_xobmbm (v1, v2, v3) -> MV_update_xobmbm (r v1, r v2, r v3) |> fc
+  (*************************************************************************)
+  (* Chain Id                                                              *)
+  (*************************************************************************)
+  | MV_lit_chain_id _ -> fc argv
+  (*************************************************************************)
+  (* Custom Domain Value for Invariant Synthesis                           *)
+  (*************************************************************************)
+  | MV_inv_symbol _ -> fc argv
+  | MV_sigma_tmplm v -> MV_sigma_tmplm (r v) |> fc
+
+(******************************************************************************)
+(******************************************************************************)
 (* Michelson to Tz                                                            *)
 (******************************************************************************)
 (******************************************************************************)
