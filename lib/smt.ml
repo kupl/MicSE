@@ -885,32 +885,18 @@ end
 (* Data Expressions                                                           *)
 (******************************************************************************)
 
-module type BuiltInDataExpr = sig
-  type elt
-
-  val create_sort : Ctx.t -> Sort.t
-
-  val create_expr : Ctx.t -> elt -> Expr.t
-end
-
-module type CustomDataExpr = sig
-  val create_const : Ctx.t -> DataConst.t
-
-  val create_sort : Ctx.t -> Sort.t
-
-  val create_expr : Ctx.t -> Expr.t
-end
-
 (* Arithmetic *****************************************************************)
 
 module Arithmetic (Typ : sig
-  val mt_cc : Tz.mich_t Tz.cc
-
-  val gen_mv_cc : Bigint.t -> Tz.mich_v Tz.cc
-end) =
-struct
   type elt = int
 
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+  val gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc
+end) =
+struct
   let create_sort : Ctx.t -> Sort.t =
     fun ctx ->
     Ctx.read_sort ctx Typ.mt_cc ~f:(fun () ->
@@ -920,7 +906,7 @@ struct
 
   let create_expr : Ctx.t -> int -> Expr.t =
     fun ctx value ->
-    let (mv_int_cc : Tz.mich_v Tz.cc) = Typ.gen_mv_cc (Bigint.of_int value) in
+    let (mv_int_cc : Tz.mich_v Tz.cc) = Typ.gen_mv_lit_cc value in
     Ctx.read_expr ctx mv_int_cc ~f:(fun () ->
         Z3.Arithmetic.Integer.mk_numeral_i (Ctx.read ctx) value
     )
@@ -928,7 +914,7 @@ struct
 
   let create_expr_of_bigint : Ctx.t -> Bigint.t -> Expr.t =
     fun ctx value ->
-    let (mv_int_cc : Tz.mich_v Tz.cc) = Typ.gen_mv_cc value in
+    let (mv_int_cc : Tz.mich_v Tz.cc) = Typ.gen_mv_lit_cc_of_bigint value in
     Ctx.read_expr ctx mv_int_cc ~f:(fun () ->
         Z3.Arithmetic.Integer.mk_numeral_s (Ctx.read ctx)
           (Bigint.to_string value)
@@ -977,11 +963,17 @@ end
 
 module ZInt = struct
   module Typ = struct
+    type elt = int
+
     let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_int
 
-    let gen_mv_cc : Bigint.t -> Tz.mich_v Tz.cc =
+    let gen_mv_lit_cc : int -> Tz.mich_v Tz.cc =
+      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_int (Bigint.of_int value)))
+    (* function gen_mv_lit_cc end *)
+
+    let gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc =
       (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_int value))
-    (* function gen_mv_cc end *)
+    (* function gen_mv_lit_cc_of_bigint end *)
   end
 
   include Arithmetic (Typ)
@@ -999,11 +991,17 @@ end
 
 module ZNat = struct
   module Typ = struct
+    type elt = int
+
     let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_nat
 
-    let gen_mv_cc : Bigint.t -> Tz.mich_v Tz.cc =
+    let gen_mv_lit_cc : int -> Tz.mich_v Tz.cc =
+      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_nat (Bigint.of_int value)))
+    (* function gen_mv_lit_cc end *)
+
+    let gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc =
       (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_nat value))
-    (* function gen_mv_cc end *)
+    (* function gen_mv_lit_cc_of_bigint end *)
   end
 
   include Arithmetic (Typ)
@@ -1086,11 +1084,17 @@ end
 
 module ZMutez = struct
   module Typ = struct
+    type elt = int
+
     let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_mutez
 
-    let gen_mv_cc : Bigint.t -> Tz.mich_v Tz.cc =
+    let gen_mv_lit_cc : int -> Tz.mich_v Tz.cc =
+      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_mutez (Bigint.of_int value)))
+    (* function gen_mv_lit_cc end *)
+
+    let gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc =
       (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_mutez value))
-    (* function gen_mv_cc end *)
+    (* function gen_mv_lit_cc_of_bigint end *)
   end
 
   include Arithmetic (Typ)
@@ -1103,18 +1107,18 @@ module ZBool = struct
 
   let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_bool
 
-  let gen_mv_cc : bool -> Tz.mich_v Tz.cc =
+  let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
     (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_bool value))
-  (* function gen_mv_cc end *)
+  (* function gen_mv_lit_cc end *)
 
   let create_sort : Ctx.t -> Sort.t =
     fun ctx ->
     Ctx.read_sort ctx mt_cc ~f:(fun () -> Z3.Boolean.mk_sort (Ctx.read ctx))
   (* function create_sort end *)
 
-  let create_expr : Ctx.t -> bool -> Expr.t =
+  let create_expr : Ctx.t -> elt -> Expr.t =
     fun ctx value ->
-    let (mv_bool_cc : Tz.mich_v Tz.cc) = gen_mv_cc value in
+    let (mv_bool_cc : Tz.mich_v Tz.cc) = gen_mv_lit_cc value in
     Ctx.read_expr ctx mv_bool_cc ~f:(fun () ->
         Z3.Boolean.mk_val (Ctx.read ctx) value
     )
@@ -1157,18 +1161,18 @@ module ZStr = struct
 
   let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_string
 
-  let gen_mv_cc : string -> Tz.mich_v Tz.cc =
+  let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
     (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_string value))
-  (* function gen_mv_cc end *)
+  (* function gen_mv_lit_cc end *)
 
   let create_sort : Ctx.t -> Sort.t =
     fun ctx ->
     Ctx.read_sort ctx mt_cc ~f:(fun () -> Z3.Seq.mk_string_sort (Ctx.read ctx))
   (* function create_sort end *)
 
-  let create_expr : Ctx.t -> string -> Expr.t =
+  let create_expr : Ctx.t -> elt -> Expr.t =
     fun ctx value ->
-    let (mv_bool_cc : Tz.mich_v Tz.cc) = gen_mv_cc value in
+    let (mv_bool_cc : Tz.mich_v Tz.cc) = gen_mv_lit_cc value in
     Ctx.read_expr ctx mv_bool_cc ~f:(fun () ->
         Z3.Seq.mk_string (Ctx.read ctx) value
     )
@@ -1208,37 +1212,194 @@ end
 (* Unit ***********************************************************************)
 
 module ZUnit = struct
+  type elt = unit
+
   let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_unit
 
-  let (mv_cc : Tz.mich_v Tz.cc) = Tz.gen_dummy_cc Tz.MV_unit
+  let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
+    (fun () -> Tz.gen_dummy_cc Tz.MV_unit)
 
-  let create_const : Ctx.t -> DataConst.t =
+  let create_const : Ctx.t -> DataConst.t list =
     fun ctx ->
-    Ctx.read_const ctx CST_unit ~f:(fun () ->
-        DataConst.create_constructor ctx
-          {
-            name = Constant._const_unit;
-            recog_func_name = Constant._recog_unit;
-            field = [];
-          }
-    )
+    let (const_unit : DataConst.t) =
+       Ctx.read_const ctx CST_unit ~f:(fun () ->
+           DataConst.create_constructor ctx
+             {
+               name = Constant._const_unit;
+               recog_func_name = Constant._recog_unit;
+               field = [];
+             }
+       )
+    in
+    [ const_unit ]
   (* function create_const end *)
 
   let create_sort : Ctx.t -> Sort.t =
     fun ctx ->
     Ctx.read_sort ctx mt_cc ~f:(fun () ->
-        let (const : DataConst.t) = create_const ctx in
-        DataType.create_sort ctx ~name:Constant._sort_unit [ const ]
+        let (const_lst : DataConst.t list) = create_const ctx in
+        DataType.create_sort ctx ~name:Constant._sort_unit const_lst
     )
   (* function create_sort end *)
 
   let create_expr : Ctx.t -> Expr.t =
     fun ctx ->
-    Ctx.read_expr ctx mv_cc ~f:(fun _ ->
+    let (mv_unit_cc : Tz.mich_v Tz.cc) = gen_mv_lit_cc () in
+    Ctx.read_expr ctx mv_unit_cc ~f:(fun _ ->
         let (sort : Sort.t) = create_sort ctx in
         DataType.create_expr sort ~const_idx:0 []
     )
   (* function create_expr end *)
+end
+
+(* Key ************************************************************************)
+
+module ZKey = struct
+  type elt = string
+
+  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_key
+
+  let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
+    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_key value))
+
+  let create_const : Ctx.t -> DataConst.t list =
+    fun ctx ->
+    let (const_key : DataConst.t) =
+       Ctx.read_const ctx CST_key ~f:(fun () ->
+           DataConst.create_constructor ctx
+             {
+               name = Constant._const_key;
+               recog_func_name = Constant._recog_key;
+               field =
+                 [ (Constant._field_content, Some (ZStr.create_sort ctx)) ];
+             }
+       )
+    in
+    [ const_key ]
+  (* function create_const end *)
+
+  let create_sort : Ctx.t -> Sort.t =
+    fun ctx ->
+    Ctx.read_sort ctx mt_cc ~f:(fun () ->
+        let (const_lst : DataConst.t list) = create_const ctx in
+        DataType.create_sort ctx ~name:Constant._sort_key const_lst
+    )
+  (* function create_sort end *)
+
+  let create_expr : Ctx.t -> elt -> Expr.t =
+    fun ctx value ->
+    let (mv_key_cc : Tz.mich_v Tz.cc) = gen_mv_lit_cc value in
+    let (expr_value : Expr.t) = ZStr.create_expr ctx value in
+    Ctx.read_expr ctx mv_key_cc ~f:(fun _ ->
+        let (sort : Sort.t) = create_sort ctx in
+        DataType.create_expr sort ~const_idx:0 [ expr_value ]
+    )
+  (* function create_expr end *)
+
+  let read_content : Expr.t -> Expr.t =
+    (fun expr1 -> DataType.read_expr_of_field expr1 ~const_idx:0 ~field_idx:0)
+  (* function read_content end *)
+
+  let create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    (* Sort of output expression is integer sort *)
+    fun ctx expr1 expr2 ->
+    ZStr.create_cmp ctx (read_content expr1) (read_content expr2)
+  (* function create_cmp end *)
+end
+
+(* Key Hash *******************************************************************)
+
+module ZKeyHash = struct
+  type elt = string
+
+  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_key_hash
+
+  let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
+    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_key_hash value))
+
+  let create_const : Ctx.t -> DataConst.t list =
+    fun ctx ->
+    let (const_keyhash_str : DataConst.t) =
+       Ctx.read_const ctx CST_keyhash_str ~f:(fun () ->
+           DataConst.create_constructor ctx
+             {
+               name = Constant._const_keyhash_str;
+               recog_func_name = Constant._recog_keyhash_str;
+               field =
+                 [ (Constant._field_content, Some (ZStr.create_sort ctx)) ];
+             }
+       )
+    in
+    let (const_keyhash_key : DataConst.t) =
+       Ctx.read_const ctx CST_keyhash_key ~f:(fun () ->
+           DataConst.create_constructor ctx
+             {
+               name = Constant._const_keyhash_key;
+               recog_func_name = Constant._recog_keyhash_key;
+               field =
+                 [ (Constant._field_content, Some (ZKey.create_sort ctx)) ];
+             }
+       )
+    in
+    [ const_keyhash_str; const_keyhash_key ]
+  (* function create_const end *)
+
+  let create_sort : Ctx.t -> Sort.t =
+    fun ctx ->
+    Ctx.read_sort ctx mt_cc ~f:(fun () ->
+        let (const_lst : DataConst.t list) = create_const ctx in
+        DataType.create_sort ctx ~name:Constant._sort_keyhash const_lst
+    )
+  (* function create_sort end *)
+
+  let create_expr : Ctx.t -> elt -> Expr.t =
+    fun ctx value ->
+    let (mv_keyhash_cc : Tz.mich_v Tz.cc) = gen_mv_lit_cc value in
+    let (expr_value : Expr.t) = ZStr.create_expr ctx value in
+    Ctx.read_expr ctx mv_keyhash_cc ~f:(fun _ ->
+        let (sort : Sort.t) = create_sort ctx in
+        DataType.create_expr sort ~const_idx:0 [ expr_value ]
+    )
+  (* function create_expr end *)
+
+  let create_hashkey : Ctx.t -> Expr.t -> Expr.t =
+    fun ctx expr1 ->
+    let (sort : Sort.t) = create_sort ctx in
+    DataType.create_expr sort ~const_idx:1 [ expr1 ]
+  (* function create_hashkey end *)
+
+  let read_content_str : Expr.t -> Expr.t =
+    (fun expr1 -> DataType.read_expr_of_field expr1 ~const_idx:0 ~field_idx:0)
+  (* function read_content_str end *)
+
+  let read_content_key : Expr.t -> Expr.t =
+    (fun expr1 -> DataType.read_expr_of_field expr1 ~const_idx:1 ~field_idx:0)
+  (* function read_content_key end *)
+
+  let create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    (* Sort of output expression is integer sort *)
+    fun ctx expr1 expr2 ->
+    Expr.if_then_else ctx
+      ~if_:(DataType.read_expr_is_const expr1 ~const_idx:0)
+      ~then_:
+        (Expr.if_then_else ctx
+           ~if_:(DataType.read_expr_is_const expr2 ~const_idx:0)
+           ~then_:
+             (ZStr.create_cmp ctx (read_content_str expr1)
+                (read_content_str expr2)
+             )
+           ~else_:(Expr.create_dummy ctx (ZInt.create_sort ctx))
+        )
+      ~else_:
+        (Expr.if_then_else ctx
+           ~if_:(DataType.read_expr_is_const expr2 ~const_idx:1)
+           ~then_:
+             (ZKey.create_cmp ctx (read_content_key expr1)
+                (read_content_key expr2)
+             )
+           ~else_:(Expr.create_dummy ctx (ZInt.create_sort ctx))
+        )
+  (* function create_cmp end *)
 end
 
 (******************************************************************************)

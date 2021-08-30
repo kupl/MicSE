@@ -369,30 +369,20 @@ end
 (* Data Expressions                                                           *)
 (******************************************************************************)
 
-module type BuiltInDataExpr = sig
-  type elt
-
-  val create_sort : Ctx.t -> Sort.t
-
-  val create_expr : Ctx.t -> elt -> Expr.t
-end
-
-module type CustomDataExpr = sig
-  val create_const : Ctx.t -> DataConst.t
-
-  val create_sort : Ctx.t -> Sort.t
-
-  val create_expr : Ctx.t -> Expr.t
-end
-
 (* Arithmetic *****************************************************************)
 
 module Arithmetic (Typ : sig
+  type elt = int
+
   val mt_cc : Tz.mich_t Tz.cc
 
-  val gen_mv_cc : Bigint.t -> Tz.mich_v Tz.cc
+  val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+  val gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc
 end) : sig
-  include BuiltInDataExpr
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr : Ctx.t -> Typ.elt -> Expr.t
 
   val create_expr_of_bigint : Ctx.t -> Bigint.t -> Expr.t
 
@@ -409,9 +399,13 @@ end
 
 module ZInt : sig
   module Typ : sig
+    type elt = int
+
     val mt_cc : Tz.mich_t Tz.cc
 
-    val gen_mv_cc : Bigint.t -> Tz.mich_v Tz.cc
+    val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+    val gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc
   end
 
   include module type of Arithmetic (Typ)
@@ -425,9 +419,13 @@ end
 
 module ZNat : sig
   module Typ : sig
+    type elt = int
+
     val mt_cc : Tz.mich_t Tz.cc
 
-    val gen_mv_cc : Bigint.t -> Tz.mich_v Tz.cc
+    val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+    val gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc
   end
 
   include module type of Arithmetic (Typ)
@@ -451,9 +449,13 @@ end
 
 module ZMutez : sig
   module Typ : sig
+    type elt = int
+
     val mt_cc : Tz.mich_t Tz.cc
 
-    val gen_mv_cc : Bigint.t -> Tz.mich_v Tz.cc
+    val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+    val gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc
   end
 
   include module type of Arithmetic (Typ)
@@ -462,11 +464,15 @@ end
 (* Boolean ********************************************************************)
 
 module ZBool : sig
-  include BuiltInDataExpr
+  type elt = bool
 
   val mt_cc : Tz.mich_t Tz.cc
 
-  val gen_mv_cc : bool -> Tz.mich_v Tz.cc
+  val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr : Ctx.t -> elt -> Expr.t
 
   val create_not : Ctx.t -> Expr.t -> Expr.t
 
@@ -482,11 +488,15 @@ end
 (* String *********************************************************************)
 
 module ZStr : sig
-  include BuiltInDataExpr
+  type elt = string
 
   val mt_cc : Tz.mich_t Tz.cc
 
-  val gen_mv_cc : string -> Tz.mich_v Tz.cc
+  val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr : Ctx.t -> elt -> Expr.t
 
   val create_concat : Ctx.t -> Expr.t list -> Expr.t
 
@@ -500,7 +510,61 @@ end
 (* Unit ***********************************************************************)
 
 module ZUnit : sig
-  include CustomDataExpr
+  type elt = unit
+
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+  val create_const : Ctx.t -> DataConst.t list
+
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr : Ctx.t -> Expr.t
+end
+
+(* Key ************************************************************************)
+
+module ZKey : sig
+  type elt = string
+
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+  val create_const : Ctx.t -> DataConst.t list
+
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr : Ctx.t -> elt -> Expr.t
+
+  val read_content : Expr.t -> Expr.t
+
+  val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+end
+
+(* Key Hash *******************************************************************)
+
+module ZKeyHash : sig
+  type elt = string
+
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
+
+  val create_const : Ctx.t -> DataConst.t list
+
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr : Ctx.t -> elt -> Expr.t
+
+  val create_hashkey : Ctx.t -> Expr.t -> Expr.t
+
+  val read_content_str : Expr.t -> Expr.t
+
+  val read_content_key : Expr.t -> Expr.t
+
+  val create_cmp : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
 (******************************************************************************)
