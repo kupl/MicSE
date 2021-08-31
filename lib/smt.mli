@@ -535,7 +535,7 @@ module ZSig : sig
 
   val read_key_signed : Expr.t -> Expr.t
 
-  val read_bytes_sliced : Expr.t -> Expr.t
+  val read_bytes_signed : Expr.t -> Expr.t
 end
 
 (* Address ********************************************************************)
@@ -814,13 +814,13 @@ module Formula : sig
 
   val create_is_expr_lambda_domain : Ctx.t -> Expr.t -> Expr.t -> t
 
-  val create_int_lt : Ctx.t -> Expr.t -> Expr.t -> t
+  val create_arith_lt : Ctx.t -> Expr.t -> Expr.t -> t
 
-  val create_int_le : Ctx.t -> Expr.t -> Expr.t -> t
+  val create_arith_le : Ctx.t -> Expr.t -> Expr.t -> t
 
-  val create_int_gt : Ctx.t -> Expr.t -> Expr.t -> t
+  val create_arith_gt : Ctx.t -> Expr.t -> Expr.t -> t
 
-  val create_int_ge : Ctx.t -> Expr.t -> Expr.t -> t
+  val create_arith_ge : Ctx.t -> Expr.t -> Expr.t -> t
 
   val create_str_lt : Ctx.t -> Expr.t -> Expr.t -> t
 

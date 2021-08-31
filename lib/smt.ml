@@ -1672,13 +1672,13 @@ module ZSig = struct
       ~field_idx:Constant._idx_field_fst
 
   (* function read_key_signed end *)
-  let read_bytes_sliced : Expr.t -> Expr.t =
+  let read_bytes_signed : Expr.t -> Expr.t =
     (* Sort of output expression is bytes sort *)
     fun expr1 ->
     DataType.read_expr_of_field expr1
       ~const_idx:Constant._idx_const_signature_signed
       ~field_idx:Constant._idx_field_snd
-  (* function read_bytes_sliced end *)
+  (* function read_bytes_signed end *)
 end
 
 (* Address ********************************************************************)
@@ -2774,25 +2774,25 @@ module Formula = struct
     create_eq ctx expr_domain (ZLambda.read_expr_domain expr1)
   (* function create_is_lambda end *)
 
-  let create_int_lt : Ctx.t -> Expr.t -> Expr.t -> t =
+  let create_arith_lt : Ctx.t -> Expr.t -> Expr.t -> t =
     (* Sort of input expressions are integer sort *)
     (fun ctx expr1 expr2 -> Z3.Arithmetic.mk_lt (Ctx.read ctx) expr1 expr2)
-  (* function create_int_lt end *)
+  (* function create_arith_lt end *)
 
-  let create_int_le : Ctx.t -> Expr.t -> Expr.t -> t =
+  let create_arith_le : Ctx.t -> Expr.t -> Expr.t -> t =
     (* Sort of input expressions are integer sort *)
     (fun ctx expr1 expr2 -> Z3.Arithmetic.mk_le (Ctx.read ctx) expr1 expr2)
-  (* function create_int_le end *)
+  (* function create_arith_le end *)
 
-  let create_int_gt : Ctx.t -> Expr.t -> Expr.t -> t =
+  let create_arith_gt : Ctx.t -> Expr.t -> Expr.t -> t =
     (* Sort of input expressions are integer sort *)
     (fun ctx expr1 expr2 -> Z3.Arithmetic.mk_gt (Ctx.read ctx) expr1 expr2)
-  (* function create_int_gt end *)
+  (* function create_arith_gt end *)
 
-  let create_int_ge : Ctx.t -> Expr.t -> Expr.t -> t =
+  let create_arith_ge : Ctx.t -> Expr.t -> Expr.t -> t =
     (* Sort of input expressions are integer sort *)
     (fun ctx expr1 expr2 -> Z3.Arithmetic.mk_ge (Ctx.read ctx) expr1 expr2)
-  (* function create_int_ge end *)
+  (* function create_arith_ge end *)
 
   let create_str_lt : Ctx.t -> Expr.t -> Expr.t -> t =
     (* Sort of input expressions are string sort *)
@@ -2818,7 +2818,7 @@ module Formula = struct
     (* Sort of input expression is integer sort (natural number type) *)
     fun ctx expr1 ->
     let (min : Expr.t) = ZNat.create_expr ctx 0 in
-    create_int_le ctx min expr1
+    create_arith_le ctx min expr1
   (* function create_nat_bound end *)
 
   let create_mutez_bound : Ctx.t -> Expr.t -> t =
@@ -2829,7 +2829,7 @@ module Formula = struct
      fun ctx expr1 ->
      let (min : Expr.t) = ZMutez.create_expr ctx 0 in
      let (max : Expr.t) = ZMutez.create_expr_of_bigint ctx max_mtz in
-     create_and ctx [ create_int_le ctx min expr1; create_int_lt ctx expr1 max ]
+     create_and ctx [ create_arith_le ctx min expr1; create_arith_lt ctx expr1 max ]
   (* function create_mutez_bound end *)
 
   let create_add_no_overflow : Ctx.t -> Expr.t -> Expr.t -> t =
@@ -2842,7 +2842,7 @@ module Formula = struct
         Z3.Arithmetic.mk_add (Ctx.read ctx) [ expr1; expr2 ]
      in
      let (max : Expr.t) = ZMutez.create_expr_of_bigint ctx max_mtz in
-     create_int_lt ctx add max
+     create_arith_lt ctx add max
   (* function create_add_no_overflow end *)
 
   let create_mul_no_overflow : Ctx.t -> Expr.t -> Expr.t -> t =
@@ -2855,7 +2855,7 @@ module Formula = struct
         Z3.Arithmetic.mk_mul (Ctx.read ctx) [ expr1; expr2 ]
      in
      let (max : Expr.t) = ZMutez.create_expr_of_bigint ctx max_mtz in
-     create_int_lt ctx mul max
+     create_arith_lt ctx mul max
   (* function create_mul_no_overflow end *)
 
   let create_sub_no_underflow : Ctx.t -> Expr.t -> Expr.t -> t =
@@ -2863,7 +2863,7 @@ module Formula = struct
     fun ctx expr1 expr2 ->
     let (sub : Expr.t) = Z3.Arithmetic.mk_sub (Ctx.read ctx) [ expr1; expr2 ] in
     let (min : Expr.t) = ZMutez.create_expr ctx 0 in
-    create_int_le ctx min sub
+    create_arith_le ctx min sub
   (* function create_sub_no_underflow end *)
 
   let to_sat_check : Ctx.t -> t -> Expr.t list = (fun _ fmla -> [ fmla ])
