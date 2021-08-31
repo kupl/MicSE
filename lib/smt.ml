@@ -22,8 +22,8 @@ type constructor =
   | CST_keyhash_str
   | CST_keyhash_key
   | CST_option_none
-  | CST_option_some      of Tz.mich_t Tz.cc
-  | CST_pair             of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
+  | CST_option_some               of Tz.mich_t Tz.cc
+  | CST_pair                      of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
   | CST_bytes_nil
   | CST_bytes_str
   | CST_bytes_concat
@@ -35,11 +35,13 @@ type constructor =
   | CST_signature_str
   | CST_signature_signed
   | CST_address
-  | CST_or_left          of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
-  | CST_or_right         of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
-  | CST_operation
-  | CST_contract
-  | CST_lambda
+  | CST_or_left                   of Tz.mich_t Tz.cc
+  | CST_or_right                  of Tz.mich_t Tz.cc
+  | CST_operation_create_contract
+  | CST_operation_transfer_tokens
+  | CST_operation_set_delegate
+  | CST_contract                  of Tz.mich_t Tz.cc
+  | CST_lambda                    of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
 [@@deriving sexp, compare, equal]
 
 module CST_cmp = struct
@@ -56,6 +58,8 @@ module CSTMap = Map.Make (CST_cmp)
 
 module Constant = struct
   (* Name of Expression *)
+  let _name_lambda_domain_sym : string = "LAMBDA_DOMAIN"
+
   let _name_dummy_sym : string = "DUMMY_SYM"
 
   let _name_dummy_sort : string = "DUMMY_SORT"
@@ -134,7 +138,11 @@ module Constant = struct
 
   let _idx_const_or_right : int = 1
 
-  let _idx_const_operation : int = 0
+  let _idx_const_operation_create_contract : int = 0
+
+  let _idx_const_operation_transfer_tokens : int = 1
+
+  let _idx_const_operation_set_delegate : int = 2
 
   let _idx_const_contract : int = 0
 
@@ -182,7 +190,13 @@ module Constant = struct
 
   let _const_or_right : string = "const_or_right"
 
-  let _const_operation : string = "const_operation"
+  let _const_operation_create_contract : string =
+     "const_operation_create_contract"
+
+  let _const_operation_transfer_tokens : string =
+     "const_operation_transfer_tokens"
+
+  let _const_operation_set_delegate : string = "const_operation_set_delegate"
 
   let _const_contract : string = "const_contract"
 
@@ -230,7 +244,11 @@ module Constant = struct
 
   let _recog_or_right : string = "is_right"
 
-  let _recog_operation : string = "is_operation"
+  let _recog_operation_create_contract : string = "is_operation_create_contract"
+
+  let _recog_operation_transfer_tokens : string = "is_operation_transfer_tokens"
+
+  let _recog_operation_set_delegate : string = "is_operation_set_delegate"
 
   let _recog_contract : string = "is_contract"
 
@@ -1096,52 +1114,92 @@ module ZOption = struct
   (* function gen_mv_some_cc end *)
 
   let create_const : Ctx.t -> Tz.mich_t Tz.cc -> DataConst.t list =
-    fun ctx content_typ ->
-    let (content_sort : Sort.t) =
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
        Ctx.read_sort ctx content_typ ~f:(fun () ->
-           SmtError "ZOption : create_const : sort of content type not defined"
+           SmtError
+             ("ZOption : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
            |> raise
        )
-    in
-    let (const_option_none : DataConst.t) =
-       Ctx.read_const ctx CST_option_none ~f:(fun () ->
-           DataConst.create_constructor ctx
-             {
-               name = Constant._const_option_none;
-               recog_func_name = Constant._recog_option_none;
-               field = [];
-             }
-       )
-    in
-    let (const_option_some : DataConst.t) =
-       Ctx.read_const ctx (CST_option_some content_typ) ~f:(fun () ->
-           DataConst.create_constructor ctx
-             {
-               name = Constant._const_option_some;
-               recog_func_name = Constant._recog_option_some;
-               field = [ (Constant._field_content, Some content_sort) ];
-             }
-       )
-    in
-    [ const_option_none; const_option_some ]
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_const_name : string -> Sort.t list -> string =
+       fun const_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ const_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_const_name end *)
+     let gen_recog_func_name : string -> Sort.t list -> string =
+       fun recog_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       recog_name ^ "_" ^ field_names
+     in
+     (* inner-function gen_const_name end *)
+     fun ctx content_typ ->
+     let (const_option_none : DataConst.t) =
+        Ctx.read_const ctx CST_option_none ~f:(fun () ->
+            DataConst.create_constructor ctx
+              {
+                name = Constant._const_option_none;
+                recog_func_name = Constant._recog_option_none;
+                field = [];
+              }
+        )
+     in
+     let (const_option_some : DataConst.t) =
+        Ctx.read_const ctx (CST_option_some content_typ) ~f:(fun () ->
+            let (content_sort : Sort.t) =
+               read_sort_of_content ctx content_typ
+            in
+            DataConst.create_constructor ctx
+              {
+                name =
+                  gen_const_name Constant._const_option_some [ content_sort ];
+                recog_func_name =
+                  gen_recog_func_name Constant._recog_option_some
+                    [ content_sort ];
+                field = [ (Constant._field_content, Some content_sort) ];
+              }
+        )
+     in
+     [ const_option_none; const_option_some ]
   (* function create_const end *)
 
   let create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t =
-    fun ctx ~content_typ ->
-    Ctx.read_sort ctx (gen_mt_cc content_typ) ~f:(fun () ->
-        let (content_sort : Sort.t) =
-           Ctx.read_sort ctx content_typ ~f:(fun () ->
-               SmtError
-                 "ZOption : create_sort : sort of content type not defined"
-               |> raise
-           )
-        in
-        let (name : string) =
-           "(" ^ Constant._sort_option ^ " " ^ Sort.to_string content_sort ^ ")"
-        in
-        let (const_lst : DataConst.t list) = create_const ctx content_typ in
-        DataType.create_sort ctx ~name const_lst
-    )
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
+           SmtError
+             ("ZOption : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
+           |> raise
+       )
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_sort_name : string -> Sort.t list -> string =
+       fun sort_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ sort_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_sort_name end *)
+     fun ctx ~content_typ ->
+     Ctx.read_sort ctx (gen_mt_cc content_typ) ~f:(fun () ->
+         let (content_sort : Sort.t) = read_sort_of_content ctx content_typ in
+         let (name : string) =
+            gen_sort_name Constant._sort_option [ content_sort ]
+         in
+         let (const_lst : DataConst.t list) = create_const ctx content_typ in
+         DataType.create_sort ctx ~name const_lst
+     )
   (* function create_sort end *)
 
   let create_expr_none : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t =
@@ -1181,69 +1239,97 @@ module ZPair = struct
 
   let create_const :
       Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> DataConst.t list =
-    fun ctx (content_typ1, content_typ2) ->
-    let (content_sort1 : Sort.t) =
-       Ctx.read_sort ctx content_typ1 ~f:(fun () ->
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
            SmtError
-             "ZPair : create_const : sort of first content type not defined"
+             ("ZPair : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
            |> raise
        )
-    in
-    let (content_sort2 : Sort.t) =
-       Ctx.read_sort ctx content_typ2 ~f:(fun () ->
-           SmtError
-             "ZPair : create_const : sort of second content type not defined"
-           |> raise
-       )
-    in
-    let (const_pair : DataConst.t) =
-       Ctx.read_const ctx
-         (CST_pair (content_typ1, content_typ2))
-         ~f:(fun () ->
-           DataConst.create_constructor ctx
-             {
-               name = Constant._const_pair;
-               recog_func_name = Constant._recog_pair;
-               field =
-                 [
-                   (Constant._field_fst, Some content_sort1);
-                   (Constant._field_snd, Some content_sort2);
-                 ];
-             })
-    in
-    [ const_pair ]
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_const_name : string -> Sort.t list -> string =
+       fun const_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ const_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_const_name end *)
+     let gen_recog_func_name : string -> Sort.t list -> string =
+       fun recog_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       recog_name ^ "_" ^ field_names
+     in
+     (* inner-function gen_const_name end *)
+     fun ctx (content_typ1, content_typ2) ->
+     let (const_pair : DataConst.t) =
+        Ctx.read_const ctx
+          (CST_pair (content_typ1, content_typ2))
+          ~f:(fun () ->
+            let (content_sort1 : Sort.t) =
+               read_sort_of_content ctx content_typ1
+            in
+            let (content_sort2 : Sort.t) =
+               read_sort_of_content ctx content_typ2
+            in
+            DataConst.create_constructor ctx
+              {
+                name =
+                  gen_const_name Constant._const_pair
+                    [ content_sort1; content_sort2 ];
+                recog_func_name =
+                  gen_recog_func_name Constant._recog_pair
+                    [ content_sort1; content_sort2 ];
+                field =
+                  [
+                    (Constant._field_fst, Some content_sort1);
+                    (Constant._field_snd, Some content_sort2);
+                  ];
+              })
+     in
+     [ const_pair ]
   (* function create_const end *)
 
   let create_sort :
       Ctx.t -> content_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Sort.t =
-    fun ctx ~content_typ ->
-    Ctx.read_sort ctx (gen_mt_cc content_typ) ~f:(fun () ->
-        let (content_sort1 : Sort.t) =
-           Ctx.read_sort ctx (fst content_typ) ~f:(fun () ->
-               SmtError
-                 "ZPair : create_sort : sort of first content type not defined"
-               |> raise
-           )
-        in
-        let (content_sort2 : Sort.t) =
-           Ctx.read_sort ctx (snd content_typ) ~f:(fun () ->
-               SmtError
-                 "ZPair : create_sort : sort of second content type not defined"
-               |> raise
-           )
-        in
-        let (name : string) =
-           "("
-           ^ Constant._sort_pair
-           ^ " "
-           ^ Sort.to_string content_sort1
-           ^ " "
-           ^ Sort.to_string content_sort2
-           ^ ")"
-        in
-        let (const_lst : DataConst.t list) = create_const ctx content_typ in
-        DataType.create_sort ctx ~name const_lst
-    )
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
+           SmtError
+             ("ZPair : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
+           |> raise
+       )
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_sort_name : string -> Sort.t list -> string =
+       fun sort_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ sort_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_sort_name end *)
+     fun ctx ~content_typ ->
+     Ctx.read_sort ctx (gen_mt_cc content_typ) ~f:(fun () ->
+         let (content_sort1 : Sort.t) =
+            read_sort_of_content ctx (fst content_typ)
+         in
+         let (content_sort2 : Sort.t) =
+            read_sort_of_content ctx (snd content_typ)
+         in
+         let (name : string) =
+            gen_sort_name Constant._sort_pair [ content_sort1; content_sort2 ]
+         in
+         let (const_lst : DataConst.t list) = create_const ctx content_typ in
+         DataType.create_sort ctx ~name const_lst
+     )
   (* function create_sort end *)
 
   let create_expr :
@@ -1659,76 +1745,96 @@ module ZOr = struct
 
   let create_const :
       Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> DataConst.t list =
-    fun ctx (content_typ1, content_typ2) ->
-    let (content_sort1 : Sort.t) =
-       Ctx.read_sort ctx content_typ1 ~f:(fun () ->
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
            SmtError
-             "ZOr : create_const : sort of first content type not defined"
+             ("ZOr : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
            |> raise
        )
-    in
-    let (content_sort2 : Sort.t) =
-       Ctx.read_sort ctx content_typ2 ~f:(fun () ->
-           SmtError
-             "ZOr : create_const : sort of second content type not defined"
-           |> raise
-       )
-    in
-    let (const_or_left : DataConst.t) =
-       Ctx.read_const ctx
-         (CST_or_left (content_typ1, content_typ2))
-         ~f:(fun () ->
-           DataConst.create_constructor ctx
-             {
-               name = Constant._const_or_left;
-               recog_func_name = Constant._recog_or_left;
-               field = [ (Constant._field_content, Some content_sort1) ];
-             })
-    in
-    let (const_or_right : DataConst.t) =
-       Ctx.read_const ctx
-         (CST_or_right (content_typ1, content_typ2))
-         ~f:(fun () ->
-           DataConst.create_constructor ctx
-             {
-               name = Constant._const_or_right;
-               recog_func_name = Constant._recog_or_right;
-               field = [ (Constant._field_content, Some content_sort2) ];
-             })
-    in
-    [ const_or_left; const_or_right ]
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_const_name : string -> Sort.t list -> string =
+       fun const_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ const_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_const_name end *)
+     let gen_recog_func_name : string -> Sort.t list -> string =
+       fun recog_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       recog_name ^ "_" ^ field_names
+     in
+     (* inner-function gen_const_name end *)
+     fun ctx (content_typ1, content_typ2) ->
+     let (const_or_left : DataConst.t) =
+        let (content_sort1 : Sort.t) = read_sort_of_content ctx content_typ1 in
+        Ctx.read_const ctx (CST_or_left content_typ1) ~f:(fun () ->
+            DataConst.create_constructor ctx
+              {
+                name = gen_const_name Constant._const_or_left [ content_sort1 ];
+                recog_func_name =
+                  gen_recog_func_name Constant._recog_or_left [ content_sort1 ];
+                field = [ (Constant._field_content, Some content_sort1) ];
+              }
+        )
+     in
+     let (const_or_right : DataConst.t) =
+        let (content_sort2 : Sort.t) = read_sort_of_content ctx content_typ2 in
+        Ctx.read_const ctx (CST_or_right content_typ2) ~f:(fun () ->
+            DataConst.create_constructor ctx
+              {
+                name = gen_const_name Constant._const_or_right [ content_sort2 ];
+                recog_func_name =
+                  gen_recog_func_name Constant._recog_or_right [ content_sort2 ];
+                field = [ (Constant._field_content, Some content_sort2) ];
+              }
+        )
+     in
+     [ const_or_left; const_or_right ]
   (* function create_const end *)
 
   let create_sort :
       Ctx.t -> content_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Sort.t =
-    fun ctx ~content_typ ->
-    Ctx.read_sort ctx (gen_mt_cc content_typ) ~f:(fun () ->
-        let (content_sort1 : Sort.t) =
-           Ctx.read_sort ctx (fst content_typ) ~f:(fun () ->
-               SmtError
-                 "ZPair : create_sort : sort of first content type not defined"
-               |> raise
-           )
-        in
-        let (content_sort2 : Sort.t) =
-           Ctx.read_sort ctx (snd content_typ) ~f:(fun () ->
-               SmtError
-                 "ZPair : create_sort : sort of second content type not defined"
-               |> raise
-           )
-        in
-        let (name : string) =
-           "("
-           ^ Constant._sort_or
-           ^ " "
-           ^ Sort.to_string content_sort1
-           ^ " "
-           ^ Sort.to_string content_sort2
-           ^ ")"
-        in
-        let (const_lst : DataConst.t list) = create_const ctx content_typ in
-        DataType.create_sort ctx ~name const_lst
-    )
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
+           SmtError
+             ("ZOr : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
+           |> raise
+       )
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_sort_name : string -> Sort.t list -> string =
+       fun sort_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ sort_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_sort_name end *)
+     fun ctx ~content_typ ->
+     Ctx.read_sort ctx (gen_mt_cc content_typ) ~f:(fun () ->
+         let (content_sort1 : Sort.t) =
+            read_sort_of_content ctx (fst content_typ)
+         in
+         let (content_sort2 : Sort.t) =
+            read_sort_of_content ctx (snd content_typ)
+         in
+         let (name : string) =
+            gen_sort_name Constant._sort_or [ content_sort1; content_sort2 ]
+         in
+         let (const_lst : DataConst.t list) = create_const ctx content_typ in
+         DataType.create_sort ctx ~name const_lst
+     )
   (* function create_sort end *)
 
   let create_expr_left :
@@ -1955,15 +2061,398 @@ end
 
 (* Operation ******************************************************************)
 
-module ZOperation = struct end
+module ZOperation = struct
+  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_operation
+
+  let create_const : Ctx.t -> DataConst.t list =
+     let (mt_keyhash_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_key_hash in
+     fun ctx ->
+     let (const_operation_create_contract : DataConst.t) =
+        Ctx.read_const ctx CST_operation_create_contract ~f:(fun () ->
+            DataConst.create_constructor ctx
+              {
+                name = Constant._const_operation_create_contract;
+                recog_func_name = Constant._recog_operation_create_contract;
+                field =
+                  [
+                    ( Constant._field_fst,
+                      Some (ZOption.create_sort ctx ~content_typ:mt_keyhash_cc)
+                    );
+                    (Constant._field_snd, Some (ZMutez.create_sort ctx));
+                  ];
+              }
+        )
+     in
+     let (const_operation_transfer_tokens : DataConst.t) =
+        Ctx.read_const ctx CST_operation_transfer_tokens ~f:(fun () ->
+            DataConst.create_constructor ctx
+              {
+                name = Constant._const_operation_transfer_tokens;
+                recog_func_name = Constant._recog_operation_transfer_tokens;
+                field =
+                  [ (Constant._field_content, Some (ZMutez.create_sort ctx)) ];
+              }
+        )
+     in
+     let (const_operation_set_delegate : DataConst.t) =
+        Ctx.read_const ctx CST_operation_set_delegate ~f:(fun () ->
+            DataConst.create_constructor ctx
+              {
+                name = Constant._const_operation_set_delegate;
+                recog_func_name = Constant._recog_operation_set_delegate;
+                field =
+                  [
+                    ( Constant._field_content,
+                      Some (ZOption.create_sort ctx ~content_typ:mt_keyhash_cc)
+                    );
+                  ];
+              }
+        )
+     in
+     [
+       const_operation_create_contract;
+       const_operation_transfer_tokens;
+       const_operation_set_delegate;
+     ]
+  (* function create_const end *)
+
+  let create_sort : Ctx.t -> Sort.t =
+    fun ctx ->
+    Ctx.read_sort ctx mt_cc ~f:(fun () ->
+        let (const_lst : DataConst.t list) = create_const ctx in
+        DataType.create_sort ctx ~name:Constant._sort_operation const_lst
+    )
+  (* function create_sort end *)
+
+  let create_expr_create_contract : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
+    fun ctx expr_keyhash_opt expr_mutez ->
+    let (sort : Sort.t) = create_sort ctx in
+    DataType.create_expr sort
+      ~const_idx:Constant._idx_const_operation_create_contract
+      [ expr_keyhash_opt; expr_mutez ]
+  (* function create_expr_create_contract end *)
+
+  let create_expr_transfer_tokens : Ctx.t -> Expr.t -> Expr.t =
+    fun ctx expr_mutez ->
+    let (sort : Sort.t) = create_sort ctx in
+    DataType.create_expr sort
+      ~const_idx:Constant._idx_const_operation_transfer_tokens [ expr_mutez ]
+  (* function create_expr_transfer_tokens end *)
+
+  let create_expr_set_delegate : Ctx.t -> Expr.t -> Expr.t =
+    fun ctx expr_keyhash_opt ->
+    let (sort : Sort.t) = create_sort ctx in
+    DataType.create_expr sort
+      ~const_idx:Constant._idx_const_operation_set_delegate [ expr_keyhash_opt ]
+  (* function create_expr_set_delegate end *)
+
+  let read_amount : Ctx.t -> Expr.t -> Expr.t =
+    fun ctx expr1 ->
+    Z3.Boolean.mk_ite (Ctx.read ctx)
+      (DataType.read_expr_is_const
+         ~const_idx:Constant._idx_const_operation_set_delegate expr1
+      )
+      (ZMutez.create_expr ctx 0)
+      (Z3.Boolean.mk_ite (Ctx.read ctx)
+         (DataType.read_expr_is_const expr1
+            ~const_idx:Constant._idx_const_operation_transfer_tokens
+         )
+         (DataType.read_expr_of_field expr1
+            ~const_idx:Constant._idx_const_operation_transfer_tokens
+            ~field_idx:Constant._idx_field_content
+         )
+         (DataType.read_expr_of_field expr1
+            ~const_idx:Constant._idx_const_operation_create_contract
+            ~field_idx:Constant._idx_field_snd
+         )
+      )
+  (* function read_amount end *)
+end
 
 (* Contract *******************************************************************)
 
-module ZContract = struct end
+module ZContract = struct
+  let gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
+    (fun typ -> Tz.gen_dummy_cc (Tz.MT_contract typ))
+  (* function gen_mt_cc end *)
+
+  let create_const : Ctx.t -> Tz.mich_t Tz.cc -> DataConst.t list =
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
+           SmtError
+             ("ZContract : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
+           |> raise
+       )
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_const_name : string -> Sort.t list -> string =
+       fun const_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ const_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_const_name end *)
+     let gen_recog_func_name : string -> Sort.t list -> string =
+       fun recog_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       recog_name ^ "_" ^ field_names
+     in
+     (* inner-function gen_const_name end *)
+     fun ctx content_typ ->
+     let (const_contract : DataConst.t) =
+        Ctx.read_const ctx (CST_contract content_typ) ~f:(fun () ->
+            let (content_sort : Sort.t) =
+               read_sort_of_content ctx content_typ
+            in
+            DataConst.create_constructor ctx
+              {
+                name = gen_const_name Constant._const_contract [ content_sort ];
+                recog_func_name =
+                  gen_recog_func_name Constant._recog_contract [ content_sort ];
+                field =
+                  [ (Constant._field_content, Some (ZKeyHash.create_sort ctx)) ];
+              }
+        )
+     in
+     [ const_contract ]
+  (* function create_const end *)
+
+  let create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t =
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
+           SmtError
+             ("ZContract : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
+           |> raise
+       )
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_sort_name : string -> Sort.t list -> string =
+       fun sort_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ sort_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_sort_name end *)
+     fun ctx ~content_typ ->
+     Ctx.read_sort ctx (gen_mt_cc content_typ) ~f:(fun () ->
+         let (content_sort : Sort.t) = read_sort_of_content ctx content_typ in
+         let (name : string) =
+            gen_sort_name Constant._sort_contract [ content_sort ]
+         in
+         let (const_lst : DataConst.t list) = create_const ctx content_typ in
+         DataType.create_sort ctx ~name const_lst
+     )
+  (* function create_sort end *)
+
+  let create_expr : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t -> Expr.t =
+    fun ctx ~content_typ expr_keyhash ->
+    let (sort : Sort.t) = create_sort ctx ~content_typ in
+    DataType.create_expr sort ~const_idx:Constant._idx_const_contract
+      [ expr_keyhash ]
+  (* function create_expr end *)
+
+  let create_expr_of_address :
+      Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t -> Expr.t =
+    fun ctx ~content_typ expr_address ->
+    let (sort : Sort.t) = create_sort ctx ~content_typ in
+    DataType.create_expr sort ~const_idx:Constant._idx_const_contract
+      [ ZAddr.read_content expr_address ]
+  (* function create_expr end *)
+end
 
 (* Lambda *********************************************************************)
 
-module ZLambda = struct end
+module ZLambda = struct
+  let gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
+    (fun (typ1, typ2) -> Tz.gen_dummy_cc (Tz.MT_lambda (typ1, typ2)))
+  (* function gen_mt_cc end *)
+
+  let create_const :
+      Ctx.t ->
+      domain_typ:Tz.mich_t Tz.cc ->
+      range_typ:Tz.mich_t Tz.cc ->
+      DataConst.t list =
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
+           SmtError
+             ("ZLambda : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
+           |> raise
+       )
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_const_name : string -> Sort.t list -> string =
+       fun const_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ const_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_const_name end *)
+     let gen_recog_func_name : string -> Sort.t list -> string =
+       fun recog_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       recog_name ^ "_" ^ field_names
+     in
+     (* inner-function gen_const_name end *)
+     fun ctx ~domain_typ ~range_typ ->
+     let (const_lambda : DataConst.t) =
+        Ctx.read_const ctx
+          (CST_lambda (domain_typ, range_typ))
+          ~f:(fun () ->
+            let (domain_sort : Sort.t) = read_sort_of_content ctx domain_typ in
+            let (range_sort : Sort.t) = read_sort_of_content ctx range_typ in
+            DataConst.create_constructor ctx
+              {
+                name =
+                  gen_const_name Constant._const_lambda
+                    [ domain_sort; range_sort ];
+                recog_func_name =
+                  gen_recog_func_name Constant._recog_lambda
+                    [ domain_sort; range_sort ];
+                field =
+                  [
+                    (Constant._field_fst, Some domain_sort);
+                    (Constant._field_snd, Some range_sort);
+                  ];
+              })
+     in
+     [ const_lambda ]
+  (* function create_const end *)
+
+  let create_sort :
+      Ctx.t -> domain_typ:Tz.mich_t Tz.cc -> range_typ:Tz.mich_t Tz.cc -> Sort.t
+      =
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
+           SmtError
+             ("ZLambda : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
+           |> raise
+       )
+     in
+     (* inner-function read_sort_of_content end *)
+     let gen_sort_name : string -> Sort.t list -> string =
+       fun sort_name field_lst ->
+       let (field_names : string) =
+          List.map field_lst ~f:Sort.to_string |> String.concat ~sep:" "
+       in
+       "(" ^ sort_name ^ " " ^ field_names ^ ")"
+     in
+     (* inner-function gen_sort_name end *)
+     fun ctx ~domain_typ ~range_typ ->
+     Ctx.read_sort ctx
+       (gen_mt_cc (domain_typ, range_typ))
+       ~f:(fun () ->
+         let (domain_sort : Sort.t) = read_sort_of_content ctx domain_typ in
+         let (range_sort : Sort.t) = read_sort_of_content ctx range_typ in
+         let (name : string) =
+            gen_sort_name Constant._sort_lambda [ domain_sort; range_sort ]
+         in
+         let (const_lst : DataConst.t list) =
+            create_const ctx ~domain_typ ~range_typ
+         in
+         DataType.create_sort ctx ~name const_lst)
+  (* function create_sort end *)
+
+  let create_expr_domain : Ctx.t -> domain_typ:Tz.mich_t Tz.cc -> Expr.t =
+     let (cnt : int ref) = ref 0 in
+     let read_sort_of_content : Ctx.t -> Tz.mich_t Tz.cc -> Sort.t =
+       fun ctx content_typ ->
+       Ctx.read_sort ctx content_typ ~f:(fun () ->
+           SmtError
+             ("ZLambda : create_const : read_sort_of_content : sort of content type not defined : "
+             ^ Sexp.to_string (Tz.sexp_of_mich_t content_typ.cc_v)
+             )
+           |> raise
+       )
+     in
+     (* inner-function read_sort_of_content end *)
+     fun ctx ~domain_typ ->
+     let _ = incr cnt in
+     Expr.create_var ctx
+       (read_sort_of_content ctx domain_typ)
+       ~name:(Constant._name_lambda_domain_sym ^ string_of_int !cnt)
+  (* function create_expr_domain end *)
+
+  let create_expr :
+      Ctx.t ->
+      domain_typ:Tz.mich_t Tz.cc ->
+      Expr.t ->
+      range_typ:Tz.mich_t Tz.cc ->
+      Expr.t ->
+      Expr.t =
+    fun ctx ~domain_typ expr_domain ~range_typ expr_range ->
+    let (sort : Sort.t) = create_sort ctx ~domain_typ ~range_typ in
+    DataType.create_expr sort ~const_idx:Constant._idx_const_lambda
+      [ expr_domain; expr_range ]
+  (* function create_expr end *)
+
+  let create_exec : Expr.t -> Expr.t -> Expr.t =
+    fun expr_value expr1 ->
+    let (expr_domain : Expr.t) =
+       DataType.read_expr_of_field expr1 ~const_idx:Constant._idx_const_lambda
+         ~field_idx:Constant._idx_field_fst
+    in
+    let (expr_range : Expr.t) =
+       DataType.read_expr_of_field expr1 ~const_idx:Constant._idx_const_lambda
+         ~field_idx:Constant._idx_field_snd
+    in
+    Z3.Expr.substitute_one expr_range expr_domain expr_value
+  (* function create_exec end *)
+
+  let create_apply :
+      Ctx.t ->
+      Expr.t ->
+      domain_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc ->
+      range_typ:Tz.mich_t Tz.cc ->
+      Expr.t ->
+      Expr.t =
+    fun ctx expr_value ~domain_typ ~range_typ expr1 ->
+    let (expr_domain : Expr.t) =
+       DataType.read_expr_of_field expr1 ~const_idx:Constant._idx_const_lambda
+         ~field_idx:Constant._idx_field_fst
+    in
+    let (expr_range : Expr.t) =
+       DataType.read_expr_of_field expr1 ~const_idx:Constant._idx_const_lambda
+         ~field_idx:Constant._idx_field_snd
+    in
+    let (expr_new_domain : Expr.t) =
+       create_expr_domain ctx ~domain_typ:(snd domain_typ)
+    in
+    let (expr_pair : Expr.t) =
+       ZPair.create_expr ctx ~content_typ:domain_typ
+         (expr_value, expr_new_domain)
+    in
+    let (expr_new_range : Expr.t) =
+       Z3.Expr.substitute_one expr_range expr_domain expr_pair
+    in
+    create_expr ctx ~domain_typ:(snd domain_typ) expr_new_domain ~range_typ
+      expr_new_range
+  (* function create_apply end *)
+
+  let read_expr_domain : Expr.t -> Expr.t =
+    fun expr1 ->
+    DataType.read_expr_of_field expr1 ~const_idx:Constant._idx_const_lambda
+      ~field_idx:Constant._idx_field_fst
+  (* function read_expr_domain end *)
+end
 
 (******************************************************************************)
 (* Formula                                                                    *)
@@ -2065,7 +2554,7 @@ module Formula = struct
     |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_option_none)
     |> DataConst.recog_func_for_constructor
     |> Func.apply ~params:[ expr1 ]
-  (* function create_is_none end *)
+  (* function create_is_option_none end *)
 
   let create_is_option_some : Ctx.t -> Tz.mich_t Tz.cc -> Expr.t -> t =
     fun ctx typ expr1 ->
@@ -2073,7 +2562,7 @@ module Formula = struct
     |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_option_some)
     |> DataConst.recog_func_for_constructor
     |> Func.apply ~params:[ expr1 ]
-  (* function create_is_some end *)
+  (* function create_is_option_some end *)
 
   let create_is_pair : Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
       =
@@ -2186,7 +2675,7 @@ module Formula = struct
     |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_or_left)
     |> DataConst.recog_func_for_constructor
     |> Func.apply ~params:[ expr1 ]
-  (* function create_is_left end *)
+  (* function create_is_or_left end *)
 
   let create_is_or_right :
       Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t =
@@ -2195,21 +2684,65 @@ module Formula = struct
     |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_or_right)
     |> DataConst.recog_func_for_constructor
     |> Func.apply ~params:[ expr1 ]
-  (* function create_is_right end *)
+  (* function create_is_or_right end *)
 
   let create_is_list_nil : Expr.t -> t =
     fun expr1 ->
     Z3.Z3List.get_is_nil_decl (Expr.read_sort expr1)
     |> Func.apply ~params:[ expr1 ]
-  (* function create_is_nil end *)
+  (* function create_is_list_nil end *)
 
   let create_is_list_cons : Expr.t -> t =
     fun expr1 ->
     Z3.Z3List.get_is_cons_decl (Expr.read_sort expr1)
     |> Func.apply ~params:[ expr1 ]
-  (* function create_is_cons end *)
+  (* function create_is_list_cons end *)
 
-  let create_is_data_in_map : Ctx.t -> Expr.t -> Expr.t -> t =
+  let create_is_operation_create_contract : Ctx.t -> Expr.t -> t =
+    fun ctx expr1 ->
+    ZOperation.create_const ctx
+    |> (fun const_lst ->
+         List.nth_exn const_lst Constant._idx_const_operation_create_contract)
+    |> DataConst.recog_func_for_constructor
+    |> Func.apply ~params:[ expr1 ]
+  (* function create_is_operation_create_contract end *)
+
+  let create_is_operation_transfer_tokens : Ctx.t -> Expr.t -> t =
+    fun ctx expr1 ->
+    ZOperation.create_const ctx
+    |> (fun const_lst ->
+         List.nth_exn const_lst Constant._idx_const_operation_transfer_tokens)
+    |> DataConst.recog_func_for_constructor
+    |> Func.apply ~params:[ expr1 ]
+  (* function create_is_operation_transfer_tokens end *)
+
+  let create_is_operation_set_delegate : Ctx.t -> Expr.t -> t =
+    fun ctx expr1 ->
+    ZOperation.create_const ctx
+    |> (fun const_lst ->
+         List.nth_exn const_lst Constant._idx_const_operation_set_delegate)
+    |> DataConst.recog_func_for_constructor
+    |> Func.apply ~params:[ expr1 ]
+  (* function create_is_operation_set_delegate end *)
+
+  let create_is_contract : Ctx.t -> Tz.mich_t Tz.cc -> Expr.t -> t =
+    fun ctx typ expr1 ->
+    ZContract.create_const ctx typ
+    |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_contract)
+    |> DataConst.recog_func_for_constructor
+    |> Func.apply ~params:[ expr1 ]
+  (* function create_is_contract end *)
+
+  let create_is_lambda :
+      Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t =
+    fun ctx (domain_typ, range_typ) expr1 ->
+    ZLambda.create_const ctx ~domain_typ ~range_typ
+    |> (fun const_lst -> List.nth_exn const_lst Constant._idx_const_lambda)
+    |> DataConst.recog_func_for_constructor
+    |> Func.apply ~params:[ expr1 ]
+  (* function create_is_lambda end *)
+
+  let create_is_mem_of_map : Ctx.t -> Expr.t -> Expr.t -> t =
     fun ctx expr_key expr1 ->
     if_then_else ctx
       ~if_:
@@ -2220,9 +2753,24 @@ module Formula = struct
       ~then_:(create_true ctx) ~else_:(create_false ctx)
   (* function create_is_data_in_map end *)
 
-  let create_is_data_in_set : Ctx.t -> Expr.t -> Expr.t -> t =
+  let create_is_not_mem_of_map : Ctx.t -> Expr.t -> Expr.t -> t =
+    fun ctx expr_key expr1 ->
+    create_is_mem_of_map ctx expr_key expr1 |> create_not ctx
+  (* function create_is_not_mem_of_map end *)
+
+  let create_is_mem_of_set : Ctx.t -> Expr.t -> Expr.t -> t =
     (fun ctx expr_key expr1 -> ZMap.read_value ctx expr_key expr1)
   (* function create_is_data_in_set end *)
+
+  let create_is_not_mem_of_set : Ctx.t -> Expr.t -> Expr.t -> t =
+    fun ctx expr_key expr1 ->
+    create_is_mem_of_set ctx expr_key expr1 |> create_not ctx
+  (* function create_is_not_mem_of_set end *)
+
+  let create_is_expr_lambda_domain : Ctx.t -> Expr.t -> Expr.t -> t =
+    fun ctx expr_domain expr1 ->
+    create_eq ctx expr_domain (ZLambda.read_expr_domain expr1)
+  (* function create_is_lambda end *)
 
   let create_int_lt : Ctx.t -> Expr.t -> Expr.t -> t =
     (* Sort of input expressions are integer sort *)

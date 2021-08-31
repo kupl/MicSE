@@ -20,8 +20,8 @@ type constructor =
   | CST_keyhash_str
   | CST_keyhash_key
   | CST_option_none
-  | CST_option_some      of Tz.mich_t Tz.cc
-  | CST_pair             of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
+  | CST_option_some               of Tz.mich_t Tz.cc
+  | CST_pair                      of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
   | CST_bytes_nil
   | CST_bytes_str
   | CST_bytes_concat
@@ -33,11 +33,13 @@ type constructor =
   | CST_signature_str
   | CST_signature_signed
   | CST_address
-  | CST_or_left          of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
-  | CST_or_right         of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
-  | CST_operation
-  | CST_contract
-  | CST_lambda
+  | CST_or_left                   of Tz.mich_t Tz.cc
+  | CST_or_right                  of Tz.mich_t Tz.cc
+  | CST_operation_create_contract
+  | CST_operation_transfer_tokens
+  | CST_operation_set_delegate
+  | CST_contract                  of Tz.mich_t Tz.cc
+  | CST_lambda                    of Tz.mich_t Tz.cc * Tz.mich_t Tz.cc
 [@@deriving sexp, compare, equal]
 
 module CST_cmp : sig
@@ -627,22 +629,85 @@ end
 (* Set ************************************************************************)
 
 module ZSet : sig
-  val gen_mt_cc : Tz.mich_t Tz.cc  -> Tz.mich_t Tz.cc
+  val gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
 
-  val gen_mv_empty_set_cc : Tz.mich_t Tz.cc-> Tz.mich_v Tz.cc
+  val gen_mv_empty_set_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
 
-  val create_sort :
-    Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
+  val create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
 
-  val create_expr_empty_set :
-    Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t
+  val create_expr_empty_set : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t
 
   val update : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
+(* Operation ******************************************************************)
+
+module ZOperation : sig
+  val mt_cc : Tz.mich_t Tz.cc
+
+  val create_const : Ctx.t -> DataConst.t list
+
+  val create_sort : Ctx.t -> Sort.t
+
+  val create_expr_create_contract : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_expr_transfer_tokens : Ctx.t -> Expr.t -> Expr.t
+
+  val create_expr_set_delegate : Ctx.t -> Expr.t -> Expr.t
+
+  val read_amount : Ctx.t -> Expr.t -> Expr.t
+end
+
 (* Contract *******************************************************************)
 
-module ZContract :sig
+module ZContract : sig
+  val gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
+
+  val create_const : Ctx.t -> Tz.mich_t Tz.cc -> DataConst.t list
+
+  val create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
+
+  val create_expr : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t -> Expr.t
+
+  val create_expr_of_address :
+    Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t -> Expr.t
+end
+
+(* Lambda *********************************************************************)
+
+module ZLambda : sig
+  val gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
+
+  val create_const :
+    Ctx.t ->
+    domain_typ:Tz.mich_t Tz.cc ->
+    range_typ:Tz.mich_t Tz.cc ->
+    DataConst.t list
+
+  val create_sort :
+    Ctx.t -> domain_typ:Tz.mich_t Tz.cc -> range_typ:Tz.mich_t Tz.cc -> Sort.t
+
+  val create_expr_domain : Ctx.t -> domain_typ:Tz.mich_t Tz.cc -> Expr.t
+
+  val create_expr :
+    Ctx.t ->
+    domain_typ:Tz.mich_t Tz.cc ->
+    Expr.t ->
+    range_typ:Tz.mich_t Tz.cc ->
+    Expr.t ->
+    Expr.t
+
+  val create_exec : Expr.t -> Expr.t -> Expr.t
+
+  val create_apply :
+    Ctx.t ->
+    Expr.t ->
+    domain_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc ->
+    range_typ:Tz.mich_t Tz.cc ->
+    Expr.t ->
+    Expr.t
+
+  val read_expr_domain : Expr.t -> Expr.t
 end
 
 (******************************************************************************)
@@ -727,10 +792,27 @@ module Formula : sig
   val create_is_list_nil : Expr.t -> t
 
   val create_is_list_cons : Expr.t -> t
-  
-  val create_is_data_in_map : Ctx.t -> Expr.t -> Expr.t -> t
-  
-  val create_is_data_in_set : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_is_operation_create_contract : Ctx.t -> Expr.t -> t
+
+  val create_is_operation_transfer_tokens : Ctx.t -> Expr.t -> t
+
+  val create_is_operation_set_delegate : Ctx.t -> Expr.t -> t
+
+  val create_is_contract : Ctx.t -> Tz.mich_t Tz.cc -> Expr.t -> t
+
+  val create_is_lambda :
+    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
+
+  val create_is_mem_of_map : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_is_not_mem_of_map : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_is_mem_of_set : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_is_not_mem_of_set : Ctx.t -> Expr.t -> Expr.t -> t
+
+  val create_is_expr_lambda_domain : Ctx.t -> Expr.t -> Expr.t -> t
 
   val create_int_lt : Ctx.t -> Expr.t -> Expr.t -> t
 
