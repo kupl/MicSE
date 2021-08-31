@@ -81,11 +81,12 @@ and mich_sym_category =
   | MSC_time
   | MSC_balance
   | MSC_bc_balance
-  | MSC_mich_stack      of int
-  | MSC_dip_stack       of int
-  | MSC_map_entry_stack of int
-  | MSC_map_exit_stack  of int
-  | MSC_iter_stack      of int
+  | MSC_mich_stack       of int
+  | MSC_dip_stack        of int
+  | MSC_map_entry_stack  of int
+  | MSC_map_exit_stack   of int
+  | MSC_map_mapkey_stack of int
+  | MSC_iter_stack       of int
 
 and mich_sym_ctxt = int list
 
@@ -539,9 +540,10 @@ type sym_image = {
   si_mich : mich_v cc list;
   (* DIP instruction stack *)
   si_dip : mich_v cc list;
-  (* container stack for MAP instruction - Entry & Exit *)
+  (* container stack for MAP instruction - Entry & Exit & Key *)
   si_map_entry : mich_v cc list;
   si_map_exit : mich_v cc list;
+  si_map_mapkey : mich_v cc list;
   (* container stack for ITER instruction *)
   si_iter : mich_v cc list;
   (* contract balance snapshot *)
@@ -579,6 +581,17 @@ end
 
 (******************************************************************************)
 (******************************************************************************)
+(* InnerFirst Mapping                                                         *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* WARNING : It does not map any mich_v in functions (e.g., values in LAMBDA) *)
+val mvcc_map_innerfst : mapf:(mich_v -> mich_v) -> mich_v cc -> mich_v cc
+
+val mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f
+
+(******************************************************************************)
+(******************************************************************************)
 (* Utility Functions for Tz                                                   *)
 (******************************************************************************)
 (******************************************************************************)
@@ -600,6 +613,10 @@ val symbol_context_swap_i : mich_sym_ctxt -> mich_v -> mich_v
 val symbol_context_swap : mich_sym_ctxt -> mich_v cc -> mich_v cc
 
 val symbol_trx_image_context_swap : mich_sym_ctxt -> trx_image -> trx_image
+
+val symbol_context_swap_recursive : mich_sym_ctxt -> mich_v cc -> mich_v cc
+
+val symbol_context_swap_michf_recursive : mich_sym_ctxt -> mich_f -> mich_f
 
 (******************************************************************************)
 (* Tezos Type                                                                 *)
@@ -650,15 +667,6 @@ val is_entry_mci : mich_cut_info -> bool
 val get_reduced_mcc : mich_cut_category -> r_mich_cut_category
 
 val get_reduced_mci : mich_cut_info -> r_mich_cut_info
-
-(******************************************************************************)
-(******************************************************************************)
-(* InnerFirst Mapping                                                         *)
-(******************************************************************************)
-(******************************************************************************)
-
-(* WARNING : It does not map any mich_v in functions (e.g., values in LAMBDA) *)
-val mvcc_map_innerfst : mapf:(mich_v -> mich_v) -> mich_v cc -> mich_v cc
 
 (******************************************************************************)
 (******************************************************************************)

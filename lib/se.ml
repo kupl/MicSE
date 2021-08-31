@@ -287,6 +287,7 @@ let run_inst_initial_se_result :
         si_dip = [];
         si_map_entry = [];
         si_map_exit = [];
+        si_map_mapkey = [];
         si_iter = [];
         si_balance = MV_symbol (mutez_tcc, MSC_balance, sctxt) |> gen_dummy_cc;
         si_bc_balance =
@@ -772,6 +773,11 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      ~f:(fun x -> MSC_map_exit_stack x)
                      ~ctxt ~ccmaker bsi.si_map_exit
                 in
+                let (mapkeyst, mapkeyct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_map_mapkey_stack x)
+                     ~ctxt ~ccmaker bsi.si_map_mapkey
+                in
                 let (iterst, iterct) =
                    generate_symstack
                      ~f:(fun x -> MSC_iter_stack x)
@@ -802,6 +808,16 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                    |> gen_custom_cc inst
                 in
                 let elem_ct = michv_maybe_mtznat_constraints ~v:elem_v in
+                let mapkey_v : mich_v cc list =
+                   match container_t.cc_v with
+                   | MT_map (kt, _) ->
+                     [
+                       MV_symbol
+                         (kt, MSC_map_mapkey_stack (List.length mapkeyst), ctxt)
+                       |> gen_custom_cc inst;
+                     ]
+                   | _              -> []
+                in
                 (* no need to check & add constraints of tb_container_v or tb_out_container_v *)
                 let tb_container_v =
                    MV_symbol
@@ -819,11 +835,28 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      )
                    |> gen_custom_cc inst
                 in
+                let mapkey_ct : mich_f list =
+                   (* Precondition : container's type is map *)
+                   match container_t.cc_v with
+                   | MT_map _ ->
+                     let mapkey = List.hd_exn mapkey_v in
+                     [
+                       (* 1. key is not the key of the container *)
+                       MF_not
+                         (MF_is_true
+                            (MV_mem_xmb (mapkey, tb_container_v) |> gen_dummy_cc)
+                         );
+                       (* 2. CAR(elem_v) is equal to mapkey_v *)
+                       MF_eq (MV_car elem_v |> gen_dummy_cc, mapkey);
+                     ]
+                   | _        -> []
+                in
                 ( {
                     si_mich = elem_v :: michst;
                     si_dip = dipst;
                     si_map_entry = tb_container_v :: mapentryst;
                     si_map_exit = tb_out_container_v :: mapexitst;
+                    si_map_mapkey = mapkey_v @ mapkeyst;
                     si_iter = iterst;
                     si_balance = balance_v;
                     si_bc_balance = bc_balance_v;
@@ -833,8 +866,10 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   @ dipct
                   @ mapentryct
                   @ mapexitct
+                  @ mapkeyct
                   @ iterct
                   @ elem_ct
+                  @ mapkey_ct
                   @ constraints_abp
                 )
              in
@@ -905,6 +940,11 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   ~f:(fun x -> MSC_map_exit_stack x)
                   ~ctxt ~ccmaker bsi.si_map_exit
              in
+             let (mapkeyst, mapkeyct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_map_mapkey_stack x)
+                  ~ctxt ~ccmaker bsi.si_map_mapkey
+             in
              let (iterst, iterct) =
                 generate_symstack
                   ~f:(fun x -> MSC_iter_stack x)
@@ -940,6 +980,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                  si_dip = dipst;
                  si_map_entry = mapentryst;
                  si_map_exit = mapexitst;
+                 si_map_mapkey = mapkeyst;
                  si_iter = iterst;
                  si_balance = balance_v;
                  si_bc_balance = bc_balance_v;
@@ -949,6 +990,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                @ dipct
                @ mapentryct
                @ mapexitct
+               @ mapkeyct
                @ iterct
                @ constraints_abp
              )
@@ -1106,6 +1148,11 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      ~f:(fun x -> MSC_map_exit_stack x)
                      ~ctxt ~ccmaker bsi.si_map_exit
                 in
+                let (mapkeyst, mapkeyct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_map_mapkey_stack x)
+                     ~ctxt ~ccmaker bsi.si_map_mapkey
+                in
                 let (iterst, iterct) =
                    generate_symstack
                      ~f:(fun x -> MSC_iter_stack x)
@@ -1136,6 +1183,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                     si_dip = dipst;
                     si_map_entry = mapentryst;
                     si_map_exit = mapexitst;
+                    si_map_mapkey = mapkeyst;
                     si_iter = iterst;
                     si_balance = balance_v;
                     si_bc_balance = bc_balance_v;
@@ -1145,6 +1193,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   @ dipct
                   @ mapentryct
                   @ mapexitct
+                  @ mapkeyct
                   @ iterct
                   @ constraints_abp
                 )
@@ -1216,6 +1265,11 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   ~f:(fun x -> MSC_map_exit_stack x)
                   ~ctxt ~ccmaker bsi.si_map_exit
              in
+             let (mapkeyst, mapkeyct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_map_mapkey_stack x)
+                  ~ctxt ~ccmaker bsi.si_map_mapkey
+             in
              let (iterst, iterct) =
                 generate_symstack
                   ~f:(fun x -> MSC_iter_stack x)
@@ -1245,6 +1299,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                  si_dip = dipst;
                  si_map_entry = mapentryst;
                  si_map_exit = mapexitst;
+                 si_map_mapkey = mapkeyst;
                  si_iter = iterst;
                  si_balance = balance_v;
                  si_bc_balance = bc_balance_v;
@@ -1254,6 +1309,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                @ dipct
                @ mapentryct
                @ mapexitct
+               @ mapkeyct
                @ iterct
                @ constraints_abp
              )
