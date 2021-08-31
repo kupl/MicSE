@@ -380,7 +380,7 @@ let igdt_from_mich_stack : Tz.mich_cut_info -> Tz.mich_v Tz.cc list -> ISet.t =
        | (MCC_ln_map, l) when l = len ->
          let (cur_typ : mich_t cc) = typ_of_val cur_val in
          collect_igdt_from_mich_v
-           (gen_custom_cc cur_val (MV_inv_symbol (cur_typ, MIC_map_exit_cont)))
+           (gen_custom_cc cur_val (MV_ref_cont (cur_typ, MCSC_map_exit_cont)))
        | (MCC_lb_map, l)
        | (MCC_lb_iter, l)
          when l = len ->
@@ -439,7 +439,7 @@ let igdt_from_map_entry_stack :
        | (MCC_lb_map, l) when l = len ->
          let (cur_typ : mich_t cc) = typ_of_val cur_val in
          collect_igdt_from_mich_v
-           (gen_custom_cc cur_val (MV_inv_symbol (cur_typ, MIC_map_entry_cont)))
+           (gen_custom_cc cur_val (MV_ref_cont (cur_typ, MCSC_map_entry_cont)))
        | (_, l) when 0 <= l && l <= len -> collect_igdt_from_mich_v cur_val
        | _ ->
          IgdtError
@@ -492,7 +492,7 @@ let igdt_from_iter_stack : Tz.mich_cut_info -> Tz.mich_v Tz.cc list -> ISet.t =
        | (MCC_lb_iter, l) when l = len ->
          let (cur_typ : mich_t cc) = typ_of_val cur_val in
          collect_igdt_from_mich_v
-           (gen_custom_cc cur_val (MV_inv_symbol (cur_typ, MIC_iter_cont)))
+           (gen_custom_cc cur_val (MV_ref_cont (cur_typ, MCSC_iter_cont)))
        | (_, l) when 0 <= l && l <= len -> collect_igdt_from_mich_v cur_val
        | _ ->
          IgdtError
@@ -515,13 +515,11 @@ let igdt_from_balances : Tz.mich_v Tz.cc * Tz.mich_v Tz.cc -> ISet.t =
    | (MT_mutez, MT_mutez) ->
      let (igdt_balance : ISet.t) =
         collect_igdt_from_mich_v
-          (gen_custom_cc v_balance (MV_inv_symbol (t_balance, MIC_balance)))
+          (gen_custom_cc v_balance (MV_ref (t_balance, MSC_balance)))
      in
      let (igdt_bc_balance : ISet.t) =
         collect_igdt_from_mich_v
-          (gen_custom_cc v_bc_balance
-             (MV_inv_symbol (t_bc_balance, MIC_bc_balance))
-          )
+          (gen_custom_cc v_bc_balance (MV_ref (t_bc_balance, MSC_bc_balance)))
      in
      ISet.union igdt_balance igdt_bc_balance
    | _                    -> IgdtError "igdt_from_balances : _" |> raise

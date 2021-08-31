@@ -94,13 +94,12 @@ and mich_sym_ctxt = int list
    If some un-replaced MV_inv_symbol remained formula block in precondition of
    verification condition, that formula block should be replaced to MF_true.
    Caution: Free variable should not be allowed in precondition of formula. *)
-and mich_invsym_category =
-  | MIC_balance
-  | MIC_bc_balance
-  | MIC_iter_cont
-  | MIC_map_entry_cont
-  | MIC_map_exit_cont
-  | MIC_not_implemented
+(* MV_inv_symbol is now deprecated. use MV_ref or MV_ref_cont instead. *)
+and mich_contsym_category =
+  | MCSC_iter_cont
+  | MCSC_map_entry_cont
+  | MCSC_map_exit_cont
+  | MCSC_not_implemented
 
 and mich_v =
   (* Michelson Value *)
@@ -108,8 +107,7 @@ and mich_v =
   (*************************************************************************)
   (* Symbol & Polymorphic                                                  *)
   (*************************************************************************)
-  | MV_symbol               of
-      (mich_t cc * mich_sym_category * (mich_sym_ctxt[@sexp.opaque] [@ignore]))
+  | MV_symbol               of (mich_t cc * mich_sym_category * mich_sym_ctxt)
   | MV_car                  of mich_v cc (* ('a, 'b) pair -> 'a *)
   | MV_cdr                  of mich_v cc (* ('a, 'b) pair -> 'b *)
   | MV_unlift_option        of mich_v cc (* 'a option -> 'a *)
@@ -316,7 +314,8 @@ and mich_v =
   (*************************************************************************)
   (* Custom Domain Value for Invariant Synthesis                           *)
   (*************************************************************************)
-  | MV_inv_symbol           of (mich_t cc * mich_invsym_category)
+  | MV_ref                  of (mich_t cc * mich_sym_category)
+  | MV_ref_cont             of (mich_t cc * mich_contsym_category)
   | MV_sigma_tmplm          of mich_v cc
 (* (timestamp * mutez) list -> mutez *)
 
