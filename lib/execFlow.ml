@@ -33,9 +33,11 @@ let tz_rep :
     (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc)
     * Tz.mich_v Tz.cc option =
   fun (mich_pgm, mich_init_strg_opt) ->
-  let tz_pgm = Tz.M2T.cv_program mich_pgm in
+  let tz_pgm = TzUtil.M2T.cv_program mich_pgm in
   let tz_init_strg_opt =
-     Option.map (fun d -> Tz.M2T.cv_datat mich_pgm.storage d) mich_init_strg_opt
+     Option.map
+       (fun d -> TzUtil.M2T.cv_datat mich_pgm.storage d)
+       mich_init_strg_opt
   in
   (tz_pgm, tz_init_strg_opt)
 

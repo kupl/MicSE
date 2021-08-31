@@ -5,3 +5,4 @@ module MichParse = MichParse
 module Se = Se
 module Te = Te
 module Tz = Tz
+module TzUtil = TzUtil

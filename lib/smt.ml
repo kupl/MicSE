@@ -667,14 +667,14 @@ module ZInt = struct
   module Typ = struct
     type elt = int
 
-    let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_int
+    let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_int
 
     let gen_mv_lit_cc : int -> Tz.mich_v Tz.cc =
-      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_int (Bigint.of_int value)))
+      (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_int (Bigint.of_int value)))
     (* function gen_mv_lit_cc end *)
 
     let gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc =
-      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_int value))
+      (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_int value))
     (* function gen_mv_lit_cc_of_bigint end *)
   end
 
@@ -695,14 +695,14 @@ module ZNat = struct
   module Typ = struct
     type elt = int
 
-    let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_nat
+    let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_nat
 
     let gen_mv_lit_cc : int -> Tz.mich_v Tz.cc =
-      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_nat (Bigint.of_int value)))
+      (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_nat (Bigint.of_int value)))
     (* function gen_mv_lit_cc end *)
 
     let gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc =
-      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_nat value))
+      (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_nat value))
     (* function gen_mv_lit_cc_of_bigint end *)
   end
 
@@ -719,7 +719,7 @@ module ZNat = struct
         Bigint.pow (Bigint.of_int 2) (Bigint.of_int Constant._int2bv_precision)
      in
      let (mv_max_int2bv : Tz.mich_v Tz.cc) =
-        Tz.MV_lit_int max_int2bv |> Tz.gen_dummy_cc
+        Tz.MV_lit_int max_int2bv |> TzUtil.gen_dummy_cc
      in
      (* Sort of output expression is boolean sort *)
      fun ctx expr1 ->
@@ -809,14 +809,14 @@ module ZMutez = struct
   module Typ = struct
     type elt = int
 
-    let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_mutez
+    let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_mutez
 
     let gen_mv_lit_cc : int -> Tz.mich_v Tz.cc =
-      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_mutez (Bigint.of_int value)))
+      (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_mutez (Bigint.of_int value)))
     (* function gen_mv_lit_cc end *)
 
     let gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc =
-      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_mutez value))
+      (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_mutez value))
     (* function gen_mv_lit_cc_of_bigint end *)
   end
 
@@ -827,15 +827,15 @@ module ZTimestamp = struct
   module Typ = struct
     type elt = int
 
-    let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_timestamp
+    let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_timestamp
 
     let gen_mv_lit_cc : int -> Tz.mich_v Tz.cc =
       fun value ->
-      Tz.gen_dummy_cc (Tz.MV_lit_timestamp_sec (Bigint.of_int value))
+      TzUtil.gen_dummy_cc (Tz.MV_lit_timestamp_sec (Bigint.of_int value))
     (* function gen_mv_lit_cc end *)
 
     let gen_mv_lit_cc_of_bigint : Bigint.t -> Tz.mich_v Tz.cc =
-      (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_timestamp_sec value))
+      (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_timestamp_sec value))
     (* function gen_mv_lit_cc_of_bigint end *)
   end
 
@@ -847,10 +847,10 @@ end
 module ZBool = struct
   type elt = bool
 
-  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_bool
+  let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_bool
 
   let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
-    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_bool value))
+    (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_bool value))
   (* function gen_mv_lit_cc end *)
 
   let create_sort : Ctx.t -> Sort.t =
@@ -888,10 +888,10 @@ end
 module ZStr = struct
   type elt = string
 
-  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_string
+  let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_string
 
   let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
-    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_string value))
+    (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_string value))
   (* function gen_mv_lit_cc end *)
 
   let create_sort : Ctx.t -> Sort.t =
@@ -929,10 +929,10 @@ end
 module ZUnit = struct
   type elt = unit
 
-  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_unit
+  let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_unit
 
   let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
-    (fun () -> Tz.gen_dummy_cc Tz.MV_unit)
+    (fun () -> TzUtil.gen_dummy_cc Tz.MV_unit)
   (* function gen_mv_lit_cc end *)
 
   let create_const : Ctx.t -> DataConst.t list =
@@ -973,10 +973,10 @@ end
 module ZKey = struct
   type elt = string
 
-  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_key
+  let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_key
 
   let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
-    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_key value))
+    (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_key value))
   (* function gen_mv_lit_cc end *)
 
   let create_const : Ctx.t -> DataConst.t list =
@@ -1026,10 +1026,10 @@ end
 module ZKeyHash = struct
   type elt = string
 
-  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_key_hash
+  let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_key_hash
 
   let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
-    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_key_hash value))
+    (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_key_hash value))
   (* function gen_mv_lit_cc end *)
 
   let create_const : Ctx.t -> DataConst.t list =
@@ -1102,15 +1102,15 @@ end
 
 module ZOption = struct
   let gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
-    (fun typ -> Tz.gen_dummy_cc (Tz.MT_option typ))
+    (fun typ -> TzUtil.gen_dummy_cc (Tz.MT_option typ))
   (* function gen_mt_cc end *)
 
   let gen_mv_none_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc =
-    (fun typ -> Tz.gen_dummy_cc (Tz.MV_none typ))
+    (fun typ -> TzUtil.gen_dummy_cc (Tz.MV_none typ))
   (* function gen_mv_none_cc end *)
 
   let gen_mv_some_cc : Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc =
-    (fun value -> Tz.gen_dummy_cc (Tz.MV_some value))
+    (fun value -> TzUtil.gen_dummy_cc (Tz.MV_some value))
   (* function gen_mv_some_cc end *)
 
   let create_const : Ctx.t -> Tz.mich_t Tz.cc -> DataConst.t list =
@@ -1214,7 +1214,7 @@ module ZOption = struct
   let create_expr_some :
       Ctx.t -> content_value:Tz.mich_v Tz.cc -> Expr.t -> Expr.t =
     fun ctx ~content_value expr1 ->
-    let (content_typ : Tz.mich_t Tz.cc) = Tz.typ_of_val content_value in
+    let (content_typ : Tz.mich_t Tz.cc) = TzUtil.typ_of_val content_value in
     let (mv_some_cc : Tz.mich_v Tz.cc) = gen_mv_some_cc content_value in
     Ctx.read_expr ctx mv_some_cc ~f:(fun () ->
         let (sort : Sort.t) = create_sort ctx ~content_typ in
@@ -1234,7 +1234,7 @@ end
 
 module ZPair = struct
   let gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
-    (fun (typ1, typ2) -> Tz.gen_dummy_cc (Tz.MT_pair (typ1, typ2)))
+    (fun (typ1, typ2) -> TzUtil.gen_dummy_cc (Tz.MT_pair (typ1, typ2)))
   (* function gen_mt_cc end *)
 
   let create_const :
@@ -1361,10 +1361,10 @@ end
 module ZBytes = struct
   type elt = string
 
-  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_bytes
+  let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_bytes
 
   let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
-    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_bytes value))
+    (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_bytes value))
   (* function gen_mv_lit_cc end *)
 
   let create_const : Ctx.t -> DataConst.t list =
@@ -1593,10 +1593,10 @@ end
 module ZSig = struct
   type elt = string
 
-  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_signature
+  let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_signature
 
   let gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc =
-    (fun value -> Tz.gen_dummy_cc (Tz.MV_lit_signature_str value))
+    (fun value -> TzUtil.gen_dummy_cc (Tz.MV_lit_signature_str value))
   (* function gen_mv_lit_cc end *)
 
   let create_const : Ctx.t -> DataConst.t list =
@@ -1684,7 +1684,7 @@ end
 (* Address ********************************************************************)
 
 module ZAddr = struct
-  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_address
+  let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_address
 
   let create_const : Ctx.t -> DataConst.t list =
     fun ctx ->
@@ -1730,17 +1730,17 @@ end
 
 module ZOr = struct
   let gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
-    (fun (typ1, typ2) -> Tz.gen_dummy_cc (Tz.MT_or (typ1, typ2)))
+    (fun (typ1, typ2) -> TzUtil.gen_dummy_cc (Tz.MT_or (typ1, typ2)))
   (* function gen_mt_cc end *)
 
   let gen_mv_left_cc :
       Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc =
-    (fun typ value -> Tz.gen_dummy_cc (Tz.MV_left (gen_mt_cc typ, value)))
+    (fun typ value -> TzUtil.gen_dummy_cc (Tz.MV_left (gen_mt_cc typ, value)))
   (* function gen_mv_left_cc end *)
 
   let gen_mv_right_cc :
       Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc =
-    (fun typ value -> Tz.gen_dummy_cc (Tz.MV_right (gen_mt_cc typ, value)))
+    (fun typ value -> TzUtil.gen_dummy_cc (Tz.MV_right (gen_mt_cc typ, value)))
   (* function gen_mv_right_cc end *)
 
   let create_const :
@@ -1844,7 +1844,7 @@ module ZOr = struct
       Expr.t ->
       Expr.t =
     fun ctx ~left_value ~right_typ expr_left ->
-    let (left_typ : Tz.mich_t Tz.cc) = Tz.typ_of_val left_value in
+    let (left_typ : Tz.mich_t Tz.cc) = TzUtil.typ_of_val left_value in
     let (content_typ : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc) =
        (left_typ, right_typ)
     in
@@ -1865,7 +1865,7 @@ module ZOr = struct
       Expr.t ->
       Expr.t =
     fun ctx ~left_typ ~right_value expr_right ->
-    let (right_typ : Tz.mich_t Tz.cc) = Tz.typ_of_val right_value in
+    let (right_typ : Tz.mich_t Tz.cc) = TzUtil.typ_of_val right_value in
     let (content_typ : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc) =
        (left_typ, right_typ)
     in
@@ -1896,11 +1896,11 @@ end
 
 module ZList = struct
   let gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
-    (fun typ -> Tz.gen_dummy_cc (Tz.MT_list typ))
+    (fun typ -> TzUtil.gen_dummy_cc (Tz.MT_list typ))
   (* function gen_mt_cc end *)
 
   let gen_mv_nil_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc =
-    (fun typ -> Tz.gen_dummy_cc (Tz.MV_nil typ))
+    (fun typ -> TzUtil.gen_dummy_cc (Tz.MV_nil typ))
   (* function gen_mv_nil_cc end *)
 
   let create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t =
@@ -1951,12 +1951,12 @@ end
 
 module ZMap = struct
   let gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
-    (fun (typ1, typ2) -> Tz.gen_dummy_cc (Tz.MT_map (typ1, typ2)))
+    (fun (typ1, typ2) -> TzUtil.gen_dummy_cc (Tz.MT_map (typ1, typ2)))
   (* function gen_mt_cc end *)
 
   let gen_mv_empty_map_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
       =
-    (fun (typ1, typ2) -> Tz.gen_dummy_cc (Tz.MV_empty_map (typ1, typ2)))
+    (fun (typ1, typ2) -> TzUtil.gen_dummy_cc (Tz.MV_empty_map (typ1, typ2)))
   (* function gen_mv_empty_map_cc end *)
 
   let create_sort :
@@ -2017,11 +2017,11 @@ end
 
 module ZSet = struct
   let gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
-    (fun typ -> Tz.gen_dummy_cc (Tz.MT_set typ))
+    (fun typ -> TzUtil.gen_dummy_cc (Tz.MT_set typ))
   (* function gen_mt_cc end *)
 
   let gen_mv_empty_set_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc =
-    (fun typ -> Tz.gen_dummy_cc (Tz.MV_empty_set typ))
+    (fun typ -> TzUtil.gen_dummy_cc (Tz.MV_empty_set typ))
   (* function gen_mv_empty_map_cc end *)
 
   let create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t =
@@ -2062,10 +2062,12 @@ end
 (* Operation ******************************************************************)
 
 module ZOperation = struct
-  let (mt_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_operation
+  let (mt_cc : Tz.mich_t Tz.cc) = TzUtil.gen_dummy_cc Tz.MT_operation
 
   let create_const : Ctx.t -> DataConst.t list =
-     let (mt_keyhash_cc : Tz.mich_t Tz.cc) = Tz.gen_dummy_cc Tz.MT_key_hash in
+     let (mt_keyhash_cc : Tz.mich_t Tz.cc) =
+        TzUtil.gen_dummy_cc Tz.MT_key_hash
+     in
      fun ctx ->
      let (const_operation_create_contract : DataConst.t) =
         Ctx.read_const ctx CST_operation_create_contract ~f:(fun () ->
@@ -2173,7 +2175,7 @@ end
 
 module ZContract = struct
   let gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
-    (fun typ -> Tz.gen_dummy_cc (Tz.MT_contract typ))
+    (fun typ -> TzUtil.gen_dummy_cc (Tz.MT_contract typ))
   (* function gen_mt_cc end *)
 
   let create_const : Ctx.t -> Tz.mich_t Tz.cc -> DataConst.t list =
@@ -2274,7 +2276,7 @@ end
 
 module ZLambda = struct
   let gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
-    (fun (typ1, typ2) -> Tz.gen_dummy_cc (Tz.MT_lambda (typ1, typ2)))
+    (fun (typ1, typ2) -> TzUtil.gen_dummy_cc (Tz.MT_lambda (typ1, typ2)))
   (* function gen_mt_cc end *)
 
   let create_const :

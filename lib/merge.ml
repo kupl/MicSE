@@ -1,5 +1,6 @@
 open! Core
 open Tz
+open TzUtil
 
 let intertrx_merge : basic_block:sym_state -> sym_state -> sym_state =
   fun ~basic_block:ss1 ss2 ->

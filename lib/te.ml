@@ -27,6 +27,7 @@ let rec typ_run_inst :
     Tz.mich_t Tz.cc list ->
     Tz.mich_t Tz.cc list =
    let open Tz in
+   let open TzUtil in
    let z2i = Bigint.to_int_exn in
    let (hd, tl) = (List.hd_exn, List.tl_exn) in
    let gdc = gen_dummy_cc in

@@ -117,7 +117,7 @@ let gen_custom_igdt : Tz.mich_v Tz.cc -> igdt =
   fun base_value ->
   {
     ig_value = base_value;
-    ig_typ = Tz.typ_of_val base_value;
+    ig_typ = TzUtil.typ_of_val base_value;
     ig_precond_lst = [];
     ig_base_value = base_value;
   }
@@ -125,6 +125,7 @@ let gen_custom_igdt : Tz.mich_v Tz.cc -> igdt =
 
 let collect_igdt_from_option : igdt -> ISet.t * ISet.t =
    let open Tz in
+   let open TzUtil in
    fun cur_igdt ->
    let (cur_val : mich_v cc) = cur_igdt.ig_value in
    let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
@@ -164,6 +165,7 @@ let collect_igdt_from_option : igdt -> ISet.t * ISet.t =
 
 let collect_igdt_from_pair : igdt -> ISet.t * ISet.t =
    let open Tz in
+   let open TzUtil in
    fun cur_igdt ->
    let (cur_val : mich_v cc) = cur_igdt.ig_value in
    let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
@@ -190,6 +192,7 @@ let collect_igdt_from_pair : igdt -> ISet.t * ISet.t =
 
 let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
    let open Tz in
+   let open TzUtil in
    fun cur_igdt ->
    let (cur_val : mich_v cc) = cur_igdt.ig_value in
    let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
@@ -244,6 +247,7 @@ let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
 
 let collect_igdt_from_list : igdt -> ISet.t * ISet.t =
    let open Tz in
+   let open TzUtil in
    fun cur_igdt ->
    let (cur_val : mich_v cc) = cur_igdt.ig_value in
    let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
@@ -367,6 +371,7 @@ let collect_igdt_from_mich_v : Tz.mich_v Tz.cc -> ISet.t =
 
 let igdt_from_mich_stack : Tz.mich_cut_info -> Tz.mich_v Tz.cc list -> ISet.t =
    let open Tz in
+   let open TzUtil in
    fun start_mci v_stack ->
    let (len : int) = List.length v_stack - 1 in
    List.mapi v_stack ~f:(fun cur_loc cur_val ->
@@ -427,6 +432,7 @@ let igdt_from_dip_stack : Tz.mich_cut_info -> Tz.mich_v Tz.cc list -> ISet.t =
 let igdt_from_map_entry_stack :
     Tz.mich_cut_info -> Tz.mich_v Tz.cc list -> ISet.t =
    let open Tz in
+   let open TzUtil in
    fun start_mci v_stack ->
    let (len : int) = List.length v_stack - 1 in
    List.mapi v_stack ~f:(fun cur_loc cur_val ->
@@ -480,6 +486,7 @@ let igdt_from_map_exit_stack :
 
 let igdt_from_iter_stack : Tz.mich_cut_info -> Tz.mich_v Tz.cc list -> ISet.t =
    let open Tz in
+   let open TzUtil in
    fun start_mci v_stack ->
    let (len : int) = List.length v_stack - 1 in
    List.mapi v_stack ~f:(fun cur_loc cur_val ->
@@ -508,6 +515,7 @@ let igdt_from_iter_stack : Tz.mich_cut_info -> Tz.mich_v Tz.cc list -> ISet.t =
 
 let igdt_from_balances : Tz.mich_v Tz.cc * Tz.mich_v Tz.cc -> ISet.t =
    let open Tz in
+   let open TzUtil in
    fun (v_balance, v_bc_balance) ->
    let (t_balance : mich_t cc) = typ_of_val v_balance in
    let (t_bc_balance : mich_t cc) = typ_of_val v_bc_balance in
@@ -554,6 +562,7 @@ let igdt_from_sym_state : Tz.sym_state -> ISet.t =
 
 let get_igdts_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdts_map =
    let open Tz in
+   let open TzUtil in
    fun blocked_sset init_strg lit_set ->
    let (init_strg_igdt_set : ISet.t) = collect_igdt_from_mich_v init_strg in
    let (lit_igdt_set : ISet.t) =

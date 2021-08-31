@@ -189,6 +189,7 @@ let tmp_eq : Igdt.igdt_sets -> MFSet.t =
 
 let tmp_ge : Igdt.igdt_sets -> MFSet.t =
    let open Tz in
+   let open TzUtil in
    let (empty_str : mich_v cc) = gen_dummy_cc (MV_lit_string "") in
    let (max_mtz : mich_v cc) =
       MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc
@@ -225,6 +226,7 @@ let tmp_ge : Igdt.igdt_sets -> MFSet.t =
 
 let tmp_gt : Igdt.igdt_sets -> MFSet.t =
    let open Tz in
+   let open TzUtil in
    let (zero : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
    let make_gt : mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2) ->
@@ -247,6 +249,7 @@ let tmp_gt : Igdt.igdt_sets -> MFSet.t =
 
 let tmp_add_2_eq : Igdt.igdt_sets -> MFSet.t =
    let open Tz in
+   let open TzUtil in
    let make_add_2_eq_mtz : mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3) ->
      let (add : mich_v cc) = gen_dummy_cc (MV_add_mmm (v1, v2)) in
@@ -268,6 +271,7 @@ let tmp_add_2_eq : Igdt.igdt_sets -> MFSet.t =
 
 let tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t =
    let open Tz in
+   let open TzUtil in
    let make_add_3_eq_mtz :
        mich_v cc * mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3, v4) ->
@@ -310,6 +314,7 @@ let gen_initial_cand_map :
 
 let gen_true_inv_map : Se.se_result -> inv_map =
    let open Tz in
+   let open TzUtil in
    fun se_res ->
    SSet.to_list se_res.Se.sr_blocked
    |> List.map ~f:(fun ss ->
@@ -341,7 +346,7 @@ let find_cand_map_by_rmci : cand_map -> Tz.r_mich_cut_info -> MFSSet.t =
 (* function cand_map_find end *)
 
 let find_cand_map : cand_map -> Tz.mich_cut_info -> MFSSet.t =
-  (fun cmap mci -> find_cand_map_by_rmci cmap (Tz.get_reduced_mci mci))
+  (fun cmap mci -> find_cand_map_by_rmci cmap (TzUtil.get_reduced_mci mci))
 (* function cand_map_find end *)
 
 let find_inv_map_by_rmci : inv_map -> Tz.r_mich_cut_info -> MFSet.t =
@@ -356,7 +361,7 @@ let find_inv_map_by_rmci : inv_map -> Tz.r_mich_cut_info -> MFSet.t =
 (* function find_inv_map end *)
 
 let find_inv_map : inv_map -> Tz.mich_cut_info -> MFSet.t =
-  (fun imap mci -> find_inv_map_by_rmci imap (Tz.get_reduced_mci mci))
+  (fun imap mci -> find_inv_map_by_rmci imap (TzUtil.get_reduced_mci mci))
 (* function find_inv_map end *)
 
 let update_inv_map :

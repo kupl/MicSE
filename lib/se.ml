@@ -182,7 +182,8 @@ let add_nat_constraint_if_it_is :
   (fun ~tv ss -> add_constraints ~c:[ nat_constriant_if_it_is_or_true ~tv ] ss)
 
 let michv_maybe_mtznat_constraints : v:Tz.mich_v Tz.cc -> Tz.mich_f list =
-   let open Tz in
+   (* let open Tz in *)
+   let open TzUtil in
    fun ~v ->
    let tv = (typ_of_val v, v) in
    [ mtz_constriant_if_it_is_or_true ~tv; nat_constriant_if_it_is_or_true ~tv ]
@@ -194,6 +195,7 @@ let amount_balance_mutez_constraints :
     Tz.mich_f list =
   fun ~amount_v ~balance_v ~bc_balance_v ->
   let open Tz in
+  let open TzUtil in
   [
     (* 1. amount, balance, and bc_balance are mutez values *)
     MF_mutez_bound amount_v;
@@ -207,10 +209,12 @@ let mtz_comes_from_constraint :
     mtz_v:Tz.mich_v Tz.cc -> from_v:Tz.mich_v Tz.cc -> Tz.mich_f =
   fun ~mtz_v ~from_v ->
   let open Tz in
+  let open TzUtil in
   MF_is_true (MV_leq_ib (mtz_v, from_v) |> gen_dummy_cc)
 
 let lt_2_63_constraint : Tz.mich_v Tz.cc -> Tz.mich_f =
    let open Tz in
+   let open TzUtil in
    fun mv ->
    MF_eq (mv, MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc)
 
@@ -244,6 +248,7 @@ let lt_2_63_constraint : Tz.mich_v Tz.cc -> Tz.mich_f =
 let ge_balance_amount_in_non_trx_entry_constraint :
     amount_v:Tz.mich_v Tz.cc -> balance_v:Tz.mich_v Tz.cc -> Tz.mich_f =
    let open Tz in
+   let open TzUtil in
    fun ~amount_v ~balance_v ->
    MF_is_true (MV_geq_ib (balance_v, amount_v) |> gen_dummy_cc)
 
@@ -254,6 +259,7 @@ let ge_balance_amount_in_non_trx_entry_constraint :
 let run_inst_initial_se_result :
     Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result =
    let open Tz in
+   let open TzUtil in
    fun (param_tcc, strg_tcc, code) ->
    (* sid_counter & sym_ctxt *)
    let scounter = 0 in
@@ -353,6 +359,7 @@ let rec run_inst : Tz.mich_i Tz.cc -> se_result -> se_result =
 
 and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    let open Tz in
+   let open TzUtil in
    (* utilties : bmstack : blocked-mich-stack *)
    let get_bmstack : sym_state -> mich_v cc list =
      (fun ss -> ss.ss_block_si.si_mich)
@@ -1690,6 +1697,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
 let run_inst_entry :
     Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result =
    let open Tz in
+   let open TzUtil in
    fun (pt, st, c) ->
    let final_blocking : sym_state -> sym_state =
      fun ss ->
