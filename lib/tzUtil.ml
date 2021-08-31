@@ -284,7 +284,16 @@ let opt_mvcc_rules : mich_v -> mich_v = function
 | MV_unlift_right { cc_v = MV_right (_, v); _ } -> v.cc_v
 (* LIST HEAD-TAIL *)
 | MV_hd_l { cc_v = MV_lit_list (_, hd :: _); _ } -> hd.cc_v
-(* | MV_hd_l { cc_v = MV_lit_list (_, hd :: _); _ } -> hd.cc_v *)
+| MV_tl_l { cc_v = MV_lit_list (t, _ :: tl); _ } -> MV_lit_list (t, tl)
+| MV_hd_l { cc_v = MV_cons (hd, _); _ } -> hd.cc_v
+| MV_tl_l { cc_v = MV_cons (_, tl); _ } -> tl.cc_v
+| MV_cons ({ cc_v = MV_hd_l v1; _ }, { cc_v = MV_tl_l v2; _ })
+  when equal_mich_v v1.cc_v v2.cc_v ->
+  v1.cc_v
+(* MAP, BIG-MAP GET & UPDATE *)
+| MV_get_xmoy (k1, { cc_v = MV_update_xomm (k2, v, _); _ })
+  when equal_mich_v k1.cc_v k2.cc_v ->
+  MV_some v
 (* Others *)
 | _ as v -> v
 
