@@ -222,6 +222,7 @@ let rec mvcc_map_innerfst : mapf:(mich_v -> mich_v) -> mich_v cc -> mich_v cc =
   | MV_ref _ -> fc argv
   | MV_ref_cont _ -> fc argv
   | MV_sigma_tmplm v -> MV_sigma_tmplm (r v) |> fc
+(* function mvcc_map_innerfst end *)
 
 let rec mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f =
   fun ~mapf mf ->
@@ -252,6 +253,329 @@ let rec mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f =
 
 (******************************************************************************)
 (******************************************************************************)
+(* InnerFirst Folding                                                         *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* Simple process like context-swapping uses mapping only, but since our
+   Integer/NaturalNum/Mutez value requires appropriate constraints
+   we need to collect some constraints (e.g., MF_mutez_bound) everytime
+   new mutez/nat symbols comes out to the surface by optimization process.
+   That's why fold function required.
+*)
+
+let rec mvcc_fold_innerfst :
+    f:('a * mich_v cc -> 'a * mich_v cc) ->
+    acc:'a ->
+    mich_v cc ->
+    'a * mich_v cc =
+  fun ~f ~acc mvcc ->
+  (* init:'a -> f:(mich_v cc -> 'a -> 'a) -> mich_v cc -> 'a = *)
+  (* fun ~init ~f mvcc -> *)
+  let r : 'a * mich_v cc -> 'a * mich_v cc =
+    (fun (a, m) -> mvcc_fold_innerfst ~f ~acc:a m)
+  in
+  let fc0 : mich_v cc -> 'a * mich_v cc = (fun x -> f (acc, x)) in
+  let fc1 : (mich_v cc -> mich_v) -> mich_v cc -> 'a * mich_v cc =
+    fun cstr a1 ->
+    let (acc', a1') = r (acc, a1) in
+    f (acc', cstr a1' |> (fun x -> { mvcc with cc_v = x }))
+  in
+  let fc2 :
+      (mich_v cc -> mich_v cc -> mich_v) ->
+      mich_v cc ->
+      mich_v cc ->
+      'a * mich_v cc =
+    fun cstr a1 a2 ->
+    let (acc', a1') = r (acc, a1) in
+    let (acc'', a2') = r (acc', a2) in
+    f (acc'', cstr a1' a2' |> (fun x -> { mvcc with cc_v = x }))
+  in
+  let fc3 :
+      (mich_v cc -> mich_v cc -> mich_v cc -> mich_v) ->
+      mich_v cc ->
+      mich_v cc ->
+      mich_v cc ->
+      'a * mich_v cc =
+    fun cstr a1 a2 a3 ->
+    let (acc', a1') = r (acc, a1) in
+    let (acc'', a2') = r (acc', a2) in
+    let (acc''', a3') = r (acc'', a3) in
+    f (acc''', cstr a1' a2' a3' |> (fun x -> { mvcc with cc_v = x }))
+  in
+  let fc5 :
+      (mich_v cc -> mich_v cc -> mich_v cc -> mich_v cc -> mich_v cc -> mich_v) ->
+      mich_v cc ->
+      mich_v cc ->
+      mich_v cc ->
+      mich_v cc ->
+      mich_v cc ->
+      'a * mich_v cc =
+    fun cstr a1 a2 a3 a4 a5 ->
+    let (acc', a1') = r (acc, a1) in
+    let (acc'', a2') = r (acc', a2) in
+    let (acc''', a3') = r (acc'', a3) in
+    let (acc'''', a4') = r (acc''', a4) in
+    let (acc''''', a5') = r (acc'''', a5) in
+    f (acc''''', cstr a1' a2' a3' a4' a5' |> (fun x -> { mvcc with cc_v = x }))
+  in
+  (* let argv = mvcc.cc_v in *)
+  match mvcc.cc_v with
+  | MV_symbol _ -> fc0 mvcc
+  | MV_car v -> fc1 (fun x -> MV_car x) v
+  | MV_cdr v -> fc1 (fun x -> MV_cdr x) v
+  | MV_unlift_option v -> fc1 (fun x -> MV_unlift_option x) v
+  | MV_unlift_left v -> fc1 (fun x -> MV_unlift_left x) v
+  | MV_unlift_right v -> fc1 (fun x -> MV_unlift_right x) v
+  | MV_hd_l v -> fc1 (fun x -> MV_hd_l x) v
+  (*************************************************************************)
+  (* Integer                                                               *)
+  (*************************************************************************)
+  | MV_lit_int _ -> fc0 mvcc
+  | MV_neg_ni v -> fc1 (fun x -> MV_neg_ni x) v
+  | MV_neg_ii v -> fc1 (fun x -> MV_neg_ii x) v
+  | MV_not_ni v -> fc1 (fun x -> MV_not_ni x) v
+  | MV_not_ii v -> fc1 (fun x -> MV_not_ii x) v
+  | MV_add_nii (v1, v2) -> fc2 (fun x y -> MV_add_nii (x, y)) v1 v2
+  | MV_add_ini (v1, v2) -> fc2 (fun x y -> MV_add_ini (x, y)) v1 v2
+  | MV_add_iii (v1, v2) -> fc2 (fun x y -> MV_add_iii (x, y)) v1 v2
+  | MV_sub_nni (v1, v2) -> fc2 (fun x y -> MV_sub_nni (x, y)) v1 v2
+  | MV_sub_nii (v1, v2) -> fc2 (fun x y -> MV_sub_nii (x, y)) v1 v2
+  | MV_sub_ini (v1, v2) -> fc2 (fun x y -> MV_sub_ini (x, y)) v1 v2
+  | MV_sub_iii (v1, v2) -> fc2 (fun x y -> MV_sub_iii (x, y)) v1 v2
+  | MV_sub_tti (v1, v2) -> fc2 (fun x y -> MV_sub_tti (x, y)) v1 v2
+  | MV_mul_nii (v1, v2) -> fc2 (fun x y -> MV_mul_nii (x, y)) v1 v2
+  | MV_mul_ini (v1, v2) -> fc2 (fun x y -> MV_mul_ini (x, y)) v1 v2
+  | MV_mul_iii (v1, v2) -> fc2 (fun x y -> MV_mul_iii (x, y)) v1 v2
+  | MV_compare (v1, v2) -> fc2 (fun x y -> MV_compare (x, y)) v1 v2
+  | MV_int_of_nat v -> fc1 (fun x -> MV_int_of_nat x) v
+  (*************************************************************************)
+  (* Natural Number                                                        *)
+  (*************************************************************************)
+  | MV_lit_nat _ -> fc0 mvcc
+  | MV_abs_in v -> fc1 (fun x -> MV_abs_in x) v
+  | MV_add_nnn (v1, v2) -> fc2 (fun x y -> MV_add_nnn (x, y)) v1 v2
+  | MV_mul_nnn (v1, v2) -> fc2 (fun x y -> MV_mul_nnn (x, y)) v1 v2
+  | MV_shiftL_nnn (v1, v2) -> fc2 (fun x y -> MV_shiftL_nnn (x, y)) v1 v2
+  | MV_shiftR_nnn (v1, v2) -> fc2 (fun x y -> MV_shiftR_nnn (x, y)) v1 v2
+  | MV_and_nnn (v1, v2) -> fc2 (fun x y -> MV_and_nnn (x, y)) v1 v2
+  | MV_and_inn (v1, v2) -> fc2 (fun x y -> MV_and_inn (x, y)) v1 v2
+  | MV_or_nnn (v1, v2) -> fc2 (fun x y -> MV_or_nnn (x, y)) v1 v2
+  | MV_xor_nnn (v1, v2) -> fc2 (fun x y -> MV_xor_nnn (x, y)) v1 v2
+  | MV_size_s v -> fc1 (fun x -> MV_size_s x) v
+  | MV_size_m v -> fc1 (fun x -> MV_size_m x) v
+  | MV_size_l v -> fc1 (fun x -> MV_size_l x) v
+  | MV_size_str v -> fc1 (fun x -> MV_size_str x) v
+  | MV_size_b v -> fc1 (fun x -> MV_size_b x) v
+  (*************************************************************************)
+  (* String                                                                *)
+  (*************************************************************************)
+  | MV_lit_string _ -> fc0 mvcc
+  | MV_concat_sss (v1, v2) -> fc2 (fun x y -> MV_concat_sss (x, y)) v1 v2
+  | MV_concat_list_s v -> fc1 (fun x -> MV_concat_list_s x) v
+  (*************************************************************************)
+  (* Bytes                                                                 *)
+  (*************************************************************************)
+  | MV_lit_bytes _ -> fc0 mvcc
+  | MV_concat_bbb (v1, v2) -> fc2 (fun x y -> MV_concat_bbb (x, y)) v1 v2
+  | MV_concat_list_b v -> fc1 (fun x -> MV_concat_list_b x) v
+  | MV_pack v -> fc1 (fun x -> MV_pack x) v
+  | MV_blake2b v -> fc1 (fun x -> MV_blake2b x) v
+  | MV_sha256 v -> fc1 (fun x -> MV_sha256 x) v
+  | MV_sha512 v -> fc1 (fun x -> MV_sha256 x) v
+  (*************************************************************************)
+  (* Mutez                                                                 *)
+  (*************************************************************************)
+  | MV_lit_mutez _ -> fc0 mvcc
+  | MV_add_mmm (v1, v2) -> fc2 (fun x y -> MV_add_mmm (x, y)) v1 v2
+  | MV_sub_mmm (v1, v2) -> fc2 (fun x y -> MV_sub_mmm (x, y)) v1 v2
+  | MV_mul_mnm (v1, v2) -> fc2 (fun x y -> MV_mul_mnm (x, y)) v1 v2
+  | MV_mul_nmm (v1, v2) -> fc2 (fun x y -> MV_mul_nmm (x, y)) v1 v2
+  | MV_mtz_of_op_list v -> fc1 (fun x -> MV_mtz_of_op_list x) v
+  (*************************************************************************)
+  (* Bool                                                                  *)
+  (*************************************************************************)
+  | MV_lit_bool _ -> fc0 mvcc
+  | MV_not_bb v -> fc1 (fun x -> MV_not_bb x) v
+  | MV_and_bbb (v1, v2) -> fc2 (fun x y -> MV_and_bbb (x, y)) v1 v2
+  | MV_or_bbb (v1, v2) -> fc2 (fun x y -> MV_or_bbb (x, y)) v1 v2
+  | MV_xor_bbb (v1, v2) -> fc2 (fun x y -> MV_xor_bbb (x, y)) v1 v2
+  | MV_eq_ib (v1, v2) -> fc2 (fun x y -> MV_eq_ib (x, y)) v1 v2
+  | MV_neq_ib (v1, v2) -> fc2 (fun x y -> MV_neq_ib (x, y)) v1 v2
+  | MV_lt_ib (v1, v2) -> fc2 (fun x y -> MV_lt_ib (x, y)) v1 v2
+  | MV_gt_ib (v1, v2) -> fc2 (fun x y -> MV_gt_ib (x, y)) v1 v2
+  | MV_leq_ib (v1, v2) -> fc2 (fun x y -> MV_leq_ib (x, y)) v1 v2
+  | MV_geq_ib (v1, v2) -> fc2 (fun x y -> MV_geq_ib (x, y)) v1 v2
+  | MV_mem_xsb (v1, v2) -> fc2 (fun x y -> MV_mem_xsb (x, y)) v1 v2
+  | MV_mem_xmb (v1, v2) -> fc2 (fun x y -> MV_mem_xmb (x, y)) v1 v2
+  | MV_mem_xbmb (v1, v2) -> fc2 (fun x y -> MV_mem_xbmb (x, y)) v1 v2
+  | MV_check_signature (v1, v2, v3) ->
+    fc3 (fun x y z -> MV_check_signature (x, y, z)) v1 v2 v3
+  (*************************************************************************)
+  (* Key Hash                                                              *)
+  (*************************************************************************)
+  | MV_lit_key_hash _ -> fc0 mvcc
+  | MV_hash_key v -> fc1 (fun x -> MV_hash_key x) v
+  (*************************************************************************)
+  (* Timestamp                                                             *)
+  (*************************************************************************)
+  | MV_lit_timestamp_str _ -> fc0 mvcc
+  | MV_lit_timestamp_sec _ -> fc0 mvcc
+  | MV_add_tit (v1, v2) -> fc2 (fun x y -> MV_add_tit (x, y)) v1 v2
+  | MV_add_itt (v1, v2) -> fc2 (fun x y -> MV_add_itt (x, y)) v1 v2
+  | MV_sub_tit (v1, v2) -> fc2 (fun x y -> MV_sub_tit (x, y)) v1 v2
+  (*************************************************************************)
+  (* Address                                                               *)
+  (*************************************************************************)
+  | MV_lit_address v -> fc1 (fun x -> MV_lit_address x) v
+  | MV_address_of_contract v -> fc1 (fun x -> MV_address_of_contract x) v
+  (*************************************************************************)
+  (* Key                                                                   *)
+  (*************************************************************************)
+  | MV_lit_key _ -> fc0 mvcc
+  (*************************************************************************)
+  (* Unit                                                                  *)
+  (*************************************************************************)
+  | MV_unit -> fc0 mvcc
+  (*************************************************************************)
+  (* Signature                                                             *)
+  (*************************************************************************)
+  | MV_lit_signature_str _ -> fc0 mvcc
+  | MV_lit_signature_signed (v1, v2) ->
+    fc2 (fun x y -> MV_lit_signature_signed (x, y)) v1 v2
+  (*************************************************************************)
+  (* Option                                                                *)
+  (*************************************************************************)
+  | MV_some v -> fc1 (fun x -> MV_some x) v
+  | MV_none _ -> fc0 mvcc
+  | MV_ediv_nnnn (v1, v2) -> fc2 (fun x y -> MV_ediv_nnnn (x, y)) v1 v2
+  | MV_ediv_niin (v1, v2) -> fc2 (fun x y -> MV_ediv_niin (x, y)) v1 v2
+  | MV_ediv_inin (v1, v2) -> fc2 (fun x y -> MV_ediv_inin (x, y)) v1 v2
+  | MV_ediv_iiin (v1, v2) -> fc2 (fun x y -> MV_ediv_iiin (x, y)) v1 v2
+  | MV_ediv_mnmm (v1, v2) -> fc2 (fun x y -> MV_ediv_mnmm (x, y)) v1 v2
+  | MV_ediv_mmnm (v1, v2) -> fc2 (fun x y -> MV_ediv_mmnm (x, y)) v1 v2
+  | MV_get_xmoy (v1, v2) -> fc2 (fun x y -> MV_get_xmoy (x, y)) v1 v2
+  | MV_get_xbmo (v1, v2) -> fc2 (fun x y -> MV_get_xbmo (x, y)) v1 v2
+  | MV_slice_nnso (v1, v2, v3) ->
+    fc3 (fun x y z -> MV_slice_nnso (x, y, z)) v1 v2 v3
+  | MV_slice_nnbo (v1, v2, v3) ->
+    fc3 (fun x y z -> MV_slice_nnbo (x, y, z)) v1 v2 v3
+  | MV_unpack (t, v) -> fc1 (fun x -> MV_unpack (t, x)) v
+  | MV_contract_of_address (t, v) ->
+    fc1 (fun x -> MV_contract_of_address (t, x)) v
+  | MV_isnat v -> fc1 (fun x -> MV_isnat x) v
+  (*************************************************************************)
+  (* List                                                                  *)
+  (*************************************************************************)
+  | MV_lit_list (t, vl) ->
+    let (fr_acc, fr_vl) =
+       List.fold_right vl ~init:(acc, [])
+         ~f:(fun v_in_vl (innerfold_acc, innerfold_acc_vl) ->
+           let (vr_acc, vr) = r (innerfold_acc, v_in_vl) in
+           (vr_acc, vr :: innerfold_acc_vl)
+       )
+    in
+    f (fr_acc, MV_lit_list (t, fr_vl) |> (fun x -> { mvcc with cc_v = x }))
+  | MV_nil _ -> fc0 mvcc
+  | MV_cons (v1, v2) -> fc2 (fun x y -> MV_cons (x, y)) v1 v2
+  | MV_tl_l v -> fc1 (fun x -> MV_tl_l x) v
+  (*************************************************************************)
+  (* Set                                                                   *)
+  (*************************************************************************)
+  | MV_lit_set (t, vl) ->
+    let (fr_acc, fr_vl) =
+       List.fold_right vl ~init:(acc, [])
+         ~f:(fun v_in_vl (innerfold_acc, innerfold_acc_vl) ->
+           let (vr_acc, vr) = r (innerfold_acc, v_in_vl) in
+           (vr_acc, vr :: innerfold_acc_vl)
+       )
+    in
+    f (fr_acc, MV_lit_set (t, fr_vl) |> (fun x -> { mvcc with cc_v = x }))
+  | MV_empty_set _ -> fc0 mvcc
+  | MV_update_xbss (v1, v2, v3) ->
+    fc3 (fun x y z -> MV_update_xbss (x, y, z)) v1 v2 v3
+  (*************************************************************************)
+  (* Operation                                                             *)
+  (*************************************************************************)
+  | MV_create_contract (t1, t2, v1, v2, v3, v4, v5) ->
+    fc5
+      (fun a b c d e -> MV_create_contract (t1, t2, a, b, c, d, e))
+      v1 v2 v3 v4 v5
+  | MV_transfer_tokens (v1, v2, v3) ->
+    fc3 (fun x y z -> MV_transfer_tokens (x, y, z)) v1 v2 v3
+  | MV_set_delegate v -> fc1 (fun x -> MV_set_delegate x) v
+  (*************************************************************************)
+  (* Contract                                                              *)
+  (*************************************************************************)
+  | MV_lit_contract (t, v) -> fc1 (fun x -> MV_lit_contract (t, x)) v
+  | MV_self _ -> fc0 mvcc
+  | MV_implicit_account v -> fc1 (fun x -> MV_implicit_account x) v
+  (*************************************************************************)
+  (* Pair                                                                  *)
+  (*************************************************************************)
+  | MV_pair (v1, v2) -> fc2 (fun x y -> MV_pair (x, y)) v1 v2
+  (*************************************************************************)
+  (* Or                                                                    *)
+  (*************************************************************************)
+  | MV_left (t, v) -> fc1 (fun x -> MV_left (t, x)) v
+  | MV_right (t, v) -> fc1 (fun x -> MV_right (t, x)) v
+  (*************************************************************************)
+  (* Lambda                                                                *)
+  (*************************************************************************)
+  | MV_lit_lambda _ -> fc0 mvcc
+  (* embedded code with LAMBDA Michelson-instruction should be expressed with V_lambda_id, not V_lit_lambda *)
+  | MV_lambda_unknown _ -> fc0 mvcc
+  | MV_lambda_closure (v1, v2) ->
+    fc2 (fun x y -> MV_lambda_closure (x, y)) v1 v2
+  (*************************************************************************)
+  (* Map                                                                   *)
+  (*************************************************************************)
+  | MV_lit_map (t1, t2, vvl) ->
+    let (fr_acc, fr_vvl) =
+       List.fold_right vvl ~init:(acc, [])
+         ~f:(fun (v1_in_vvl, v2_in_vvl) (innerfold_acc, innerfold_acc_vvl) ->
+           let (vr_acc_1, vr_1) = r (innerfold_acc, v1_in_vvl) in
+           let (vr_acc_2, vr_2) = r (vr_acc_1, v2_in_vvl) in
+           (vr_acc_2, (vr_1, vr_2) :: innerfold_acc_vvl)
+       )
+    in
+    f (fr_acc, MV_lit_map (t1, t2, fr_vvl) |> (fun x -> { mvcc with cc_v = x }))
+  | MV_empty_map _ -> fc0 mvcc
+  | MV_update_xomm (v1, v2, v3) ->
+    fc3 (fun x y z -> MV_update_xomm (x, y, z)) v1 v2 v3
+  (*************************************************************************)
+  (* Big Map                                                               *)
+  (*************************************************************************)
+  | MV_lit_big_map (t1, t2, vvl) ->
+    let (fr_acc, fr_vvl) =
+       List.fold_right vvl ~init:(acc, [])
+         ~f:(fun (v1_in_vvl, v2_in_vvl) (innerfold_acc, innerfold_acc_vvl) ->
+           let (vr_acc_1, vr_1) = r (innerfold_acc, v1_in_vvl) in
+           let (vr_acc_2, vr_2) = r (vr_acc_1, v2_in_vvl) in
+           (vr_acc_2, (vr_1, vr_2) :: innerfold_acc_vvl)
+       )
+    in
+    f
+      ( fr_acc,
+        MV_lit_big_map (t1, t2, fr_vvl) |> (fun x -> { mvcc with cc_v = x })
+      )
+  | MV_empty_big_map _ -> fc0 mvcc
+  | MV_update_xobmbm (v1, v2, v3) ->
+    fc3 (fun x y z -> MV_update_xobmbm (x, y, z)) v1 v2 v3
+  (*************************************************************************)
+  (* Chain Id                                                              *)
+  (*************************************************************************)
+  | MV_lit_chain_id _ -> fc0 mvcc
+  (*************************************************************************)
+  (* Custom Domain Value for Invariant Synthesis                           *)
+  (*************************************************************************)
+  | MV_ref _ -> fc0 mvcc
+  | MV_ref_cont _ -> fc0 mvcc
+  | MV_sigma_tmplm v -> fc1 (fun x -> MV_sigma_tmplm x) v
+(* function mvcc_fold_innerfst end *)
+
+(******************************************************************************)
+(******************************************************************************)
 (* Utility Functions for Tz                                                   *)
 (******************************************************************************)
 (******************************************************************************)
@@ -265,39 +589,6 @@ let gen_dummy_cc : 'a -> 'a cc =
 
 let gen_custom_cc : 'ccbase cc -> 'a -> 'a cc =
   (fun base x -> { base with cc_v = x })
-
-(******************************************************************************)
-(* Value & Formula Optimizations                                              *)
-(******************************************************************************)
-
-let opt_mvcc_rules : mich_v -> mich_v = function
-(* PAIR, CAR, CDR *)
-| MV_car { cc_v = MV_pair (v, _); _ } -> v.cc_v
-| MV_cdr { cc_v = MV_pair (_, v); _ } -> v.cc_v
-| MV_pair ({ cc_v = MV_car v1; _ }, { cc_v = MV_cdr v2; _ })
-  when equal_mich_v v1.cc_v v2.cc_v ->
-  v1.cc_v
-(* UNLIFT-OPTION & SOME *)
-| MV_unlift_option { cc_v = MV_some v; _ } -> v.cc_v
-(* UNLIFT-LEFT & UNLIFT-RIGHT & OR-VALUES *)
-| MV_unlift_left { cc_v = MV_left (_, v); _ } -> v.cc_v
-| MV_unlift_right { cc_v = MV_right (_, v); _ } -> v.cc_v
-(* LIST HEAD-TAIL *)
-| MV_hd_l { cc_v = MV_lit_list (_, hd :: _); _ } -> hd.cc_v
-| MV_tl_l { cc_v = MV_lit_list (t, _ :: tl); _ } -> MV_lit_list (t, tl)
-| MV_hd_l { cc_v = MV_cons (hd, _); _ } -> hd.cc_v
-| MV_tl_l { cc_v = MV_cons (_, tl); _ } -> tl.cc_v
-| MV_cons ({ cc_v = MV_hd_l v1; _ }, { cc_v = MV_tl_l v2; _ })
-  when equal_mich_v v1.cc_v v2.cc_v ->
-  v1.cc_v
-(* MAP, BIG-MAP GET & UPDATE *)
-| MV_get_xmoy (k1, { cc_v = MV_update_xomm (k2, v, _); _ })
-  when equal_mich_v k1.cc_v k2.cc_v ->
-  MV_some v
-(* Others *)
-| _ as v -> v
-
-let opt_mvcc : mich_v cc -> mich_v cc = mvcc_map_innerfst ~mapf:opt_mvcc_rules
 
 (******************************************************************************)
 (* MV_symbol context swap                                                     *)
@@ -700,6 +991,103 @@ let get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc =
     TzError ("get_innertyp2 : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
     |> Stdlib.raise
 (* function get_innertyp2 end *)
+
+(******************************************************************************)
+(* Value & Formula Optimizations                                              *)
+(******************************************************************************)
+
+let opt_mf_rules : mich_f -> mich_f =
+  fun mf ->
+  match mf with
+  (* NOT *)
+  | MF_not MF_true -> MF_false
+  | MF_not MF_false -> MF_true
+  | MF_not (MF_not f) -> f
+  (* AND *)
+  | MF_and fl ->
+    (* 1. remove True values *)
+    let fl' = List.filter fl ~f:(fun x -> not (equal_mich_f MF_true x)) in
+    if equal_list equal_mich_f fl' []
+    then MF_true
+    else if List.exists fl' ~f:(equal_mich_f MF_false)
+    then MF_false
+    else MF_and fl'
+  (* IMPLY *)
+  | MF_imply (MF_true, f) -> f
+  | MF_imply (f, MF_false) -> MF_not f
+  | _ -> mf
+
+let opt_mf : mich_f -> mich_f = mf_map_innerfst ~mapf:opt_mf_rules
+
+(* Duplicated constraint generator from Se module *)
+let mtz_constriant_if_it_is_or_true :
+    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+  fun ~tv:(t, v) ->
+  if equal_mich_t t.cc_v MT_mutez then MF_mutez_bound v else MF_true
+
+let nat_constriant_if_it_is_or_true :
+    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+   let open Tz in
+   fun ~tv:(t, v) ->
+   if equal_mich_t t.cc_v MT_nat then MF_nat_bound v else MF_true
+
+let opt_mvcc_rules : mich_f list * mich_v cc -> mich_f list * mich_v cc =
+  fun (mfl_acc, mvcc) ->
+  let v_return : mich_v cc -> mich_f list * mich_v cc =
+    fun v ->
+    let tv = (typ_of_val v, v) in
+    ( [
+        mtz_constriant_if_it_is_or_true ~tv; nat_constriant_if_it_is_or_true ~tv;
+      ]
+      @ mfl_acc,
+      v
+    )
+  in
+  let v =
+     match mvcc.cc_v with
+     (* PAIR, CAR, CDR *)
+     | MV_car { cc_v = MV_pair (v, _); _ } -> v
+     | MV_cdr { cc_v = MV_pair (_, v); _ } -> v
+     | MV_pair ({ cc_v = MV_car v1; _ }, { cc_v = MV_cdr v2; _ })
+       when equal_mich_v v1.cc_v v2.cc_v ->
+       v1
+     (* UNLIFT-OPTION & SOME *)
+     | MV_unlift_option { cc_v = MV_some v; _ } -> v
+     (* UNLIFT-LEFT & UNLIFT-RIGHT & OR-VALUES *)
+     | MV_unlift_left { cc_v = MV_left (_, v); _ } -> v
+     | MV_unlift_right { cc_v = MV_right (_, v); _ } -> v
+     (* LIST HEAD-TAIL *)
+     | MV_hd_l { cc_v = MV_lit_list (_, hd :: _); _ } -> hd
+     | MV_tl_l { cc_v = MV_lit_list (t, _ :: tl); _ } ->
+       MV_lit_list (t, tl) |> gen_custom_cc mvcc
+     | MV_hd_l { cc_v = MV_cons (hd, _); _ } -> hd
+     | MV_tl_l { cc_v = MV_cons (_, tl); _ } -> tl
+     | MV_cons ({ cc_v = MV_hd_l v1; _ }, { cc_v = MV_tl_l v2; _ })
+       when equal_mich_v v1.cc_v v2.cc_v ->
+       v1
+     (* MAP, BIG-MAP GET & UPDATE *)
+     | MV_get_xmoy (k1, { cc_v = MV_update_xomm (k2, v, _); _ })
+       when equal_mich_v k1.cc_v k2.cc_v ->
+       v
+     | MV_get_xbmo (k1, { cc_v = MV_update_xobmbm (k2, v, _); _ })
+       when equal_mich_v k1.cc_v k2.cc_v ->
+       v
+     (* MAP, BIG-MAP UPDATE twice *)
+     | MV_update_xomm (k1, v1, { cc_v = MV_update_xomm (k2, _, m2); _ })
+       when equal_mich_v k1.cc_v k2.cc_v ->
+       MV_update_xomm (k1, v1, m2) |> gen_custom_cc mvcc
+     | MV_update_xobmbm (k1, v1, { cc_v = MV_update_xobmbm (k2, _, m2); _ })
+       when equal_mich_v k1.cc_v k2.cc_v ->
+       MV_update_xobmbm (k1, v1, m2) |> gen_custom_cc mvcc
+     (* Others *)
+     | _ -> mvcc
+  in
+  v_return v
+
+let opt_mvcc : mich_v cc -> mich_f list * mich_v cc =
+  fun mvcc ->
+  mvcc_fold_innerfst ~f:opt_mvcc_rules ~acc:[] mvcc
+  |> (fun (fl, v) -> (List.map ~f:opt_mf fl, v))
 
 (******************************************************************************)
 (* Michelson Cut Information                                                  *)

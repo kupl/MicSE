@@ -13,6 +13,22 @@ val mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f
 
 (******************************************************************************)
 (******************************************************************************)
+(* InnerFirst Folding                                                         *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* Simple process like context-swapping uses mapping only, but since our
+   Integer/NaturalNum/Mutez value requires appropriate constraints
+   we need to collect some constraints (e.g., MF_mutez_bound) everytime
+   new mutez/nat symbols comes out to the surface by optimization process.
+   That's why fold function required.
+*)
+
+val mvcc_fold_innerfst :
+  f:('a * mich_v cc -> 'a * mich_v cc) -> acc:'a -> mich_v cc -> 'a * mich_v cc
+
+(******************************************************************************)
+(******************************************************************************)
 (* Utility Functions for Tz                                                   *)
 (******************************************************************************)
 (******************************************************************************)
@@ -24,14 +40,6 @@ val mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f
 val gen_dummy_cc : 'a -> 'a cc
 
 val gen_custom_cc : 'ccbase cc -> 'a -> 'a cc
-
-(******************************************************************************)
-(* Value & Formula Optimizations                                              *)
-(******************************************************************************)
-
-val opt_mvcc_rules : mich_v -> mich_v
-
-val opt_mvcc : mich_v cc -> mich_v cc
 
 (******************************************************************************)
 (* MV_symbol context swap                                                     *)
@@ -56,6 +64,18 @@ val typ_of_val : mich_v cc -> mich_t cc
 val get_innertyp : mich_t cc -> mich_t cc
 
 val get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc
+
+(******************************************************************************)
+(* Value & Formula Optimizations                                              *)
+(******************************************************************************)
+
+val opt_mf_rules : mich_f -> mich_f
+
+val opt_mf : mich_f -> mich_f
+
+val opt_mvcc_rules : mich_f list * mich_v cc -> mich_f list * mich_v cc
+
+val opt_mvcc : mich_v cc -> mich_f list * mich_v cc
 
 (******************************************************************************)
 (* Michelson Cut Information                                                  *)
