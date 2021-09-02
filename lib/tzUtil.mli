@@ -49,11 +49,15 @@ val symbol_context_swap_i : mich_sym_ctxt -> mich_v -> mich_v
 
 val symbol_context_swap : mich_sym_ctxt -> mich_v cc -> mich_v cc
 
-val symbol_trx_image_context_swap : mich_sym_ctxt -> trx_image -> trx_image
-
 val symbol_context_swap_recursive : mich_sym_ctxt -> mich_v cc -> mich_v cc
 
 val symbol_context_swap_michf_recursive : mich_sym_ctxt -> mich_f -> mich_f
+
+val trx_image_symbol_context_swap : mich_sym_ctxt -> trx_image -> trx_image
+
+val sym_image_symbol_context_swap : mich_sym_ctxt -> sym_image -> sym_image
+
+val sym_state_symbol_context_swap : mich_sym_ctxt -> sym_state -> sym_state
 
 (******************************************************************************)
 (* Tezos Type                                                                 *)

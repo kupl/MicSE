@@ -320,7 +320,6 @@ let run_inst_initial_se_result :
         ss_block_mci = init_mci;
         ss_start_si = beginning_si;
         ss_block_si = blocking_si;
-        ss_param_history = [ beginning_ti ];
         ss_constraints =
           (* 1. first stack's CAR is parameter-value *)
           MF_eq
@@ -753,7 +752,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
           (* 3.1. construct entry sym-state *)
           let tb_entry_ss : sym_state =
              let tb_trx_image : trx_image =
-                symbol_trx_image_context_swap tb_ss_id
+                trx_image_symbol_context_swap tb_ss_id
                   blocked_state.ss_block_si.si_param
              in
              let (tb_entry_si, tb_entry_constraints) : sym_image * mich_f list =
@@ -886,7 +885,6 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                ss_block_mci = thenbr_mci;
                ss_start_si = tb_entry_si;
                ss_block_si = tb_entry_si;
-               ss_param_history = blocked_state.ss_param_history;
                ss_constraints = tb_entry_constraints;
              }
           in
@@ -920,7 +918,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        let eb_symstate : sym_state =
           let eb_ss_id = [ ctxt_sr.sr_sid_counter ] in
           let eb_trx_image : trx_image =
-             symbol_trx_image_context_swap eb_ss_id
+             trx_image_symbol_context_swap eb_ss_id
                blocked_state.ss_block_si.si_param
           in
           let (eb_entry_si, eb_entry_constraints) : sym_image * mich_f list =
@@ -1008,7 +1006,6 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
             ss_block_mci = elsebr_mci;
             ss_start_si = eb_entry_si;
             ss_block_si = eb_entry_si;
-            ss_param_history = blocked_state.ss_param_history;
             ss_constraints = eb_entry_constraints;
           }
        in
@@ -1128,7 +1125,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
           (* 3.1. construct entry sym-state *)
           let tb_entry_ss : sym_state =
              let tb_trx_image : trx_image =
-                symbol_trx_image_context_swap tb_ss_id
+                trx_image_symbol_context_swap tb_ss_id
                   blocked_state.ss_block_si.si_param
              in
              let (tb_entry_si, tb_entry_constraints) : sym_image * mich_f list =
@@ -1211,7 +1208,6 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                ss_block_mci = thenbr_mci;
                ss_start_si = tb_entry_si;
                ss_block_si = tb_entry_si;
-               ss_param_history = blocked_state.ss_param_history;
                ss_constraints = tb_entry_constraints;
              }
           in
@@ -1245,7 +1241,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        let eb_symstate : sym_state =
           let eb_ss_id = [ ctxt_sr.sr_sid_counter ] in
           let eb_trx_image : trx_image =
-             symbol_trx_image_context_swap eb_ss_id
+             trx_image_symbol_context_swap eb_ss_id
                blocked_state.ss_block_si.si_param
           in
           let (eb_entry_si, eb_entry_constraints) : sym_image * mich_f list =
@@ -1327,7 +1323,6 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
             ss_block_mci = elsebr_mci;
             ss_start_si = eb_entry_si;
             ss_block_si = eb_entry_si;
-            ss_param_history = blocked_state.ss_param_history;
             ss_constraints = eb_entry_constraints;
           }
        in

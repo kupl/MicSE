@@ -565,10 +565,6 @@ type sym_state = {
   (* symbolic stack image where the state starts/blocked *)
   ss_start_si : sym_image;
   ss_block_si : sym_image;
-  (* parameter & amount & timestamp history between start/blocked
-     - information duplicated with sym_image's si_param
-  *)
-  ss_param_history : trx_image list;
   (* AND-connected logical formula to constrain this state *)
   ss_constraints : mich_f list;
 }

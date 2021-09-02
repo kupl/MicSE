@@ -2,97 +2,6 @@ open! Core
 open Tz
 open TzUtil
 
-let intertrx_merge : basic_block:sym_state -> sym_state -> sym_state =
-  fun ~basic_block:ss1 ss2 ->
-  (* 1. check if two symstates' mci are valid *)
-  if not
-       (equal_mich_cut_category ss1.ss_block_mci.mci_cutcat MCC_trx_exit
-       && equal_mich_cut_category ss2.ss_start_mci.mci_cutcat MCC_trx_entry
-       )
-  then failwith "Merge : intertrx_merge : 1 : unexpected"
-  else (
-    (* +. declare syntax sugars for sym_images & trx_images in ss1, ss2 *)
-    let s1_ssi = ss1.ss_start_si
-    and s1_bsi = ss1.ss_block_si
-    and s1_bti = ss1.ss_block_si.si_param
-    and s2_ssi = ss2.ss_start_si
-    and s2_sti = ss2.ss_start_si.si_param in
-    (* 2. merge *)
-    (* 2.1. start_mci, block_mci, block_si, param_history *)
-    let start_mci = ss1.ss_start_mci
-    and block_mci = ss2.ss_block_mci
-    and block_si = ss2.ss_block_si in
-    (* 2.2. new sid *)
-    let sid = ss1.ss_id @ ss2.ss_id in
-    (* 2.3. renamed ss1's trx_image *)
-    let t_image = symbol_trx_image_context_swap sid s1_bti in
-    (* 2.4. renamed ss1's start_si *)
-    let rswap : mich_v cc -> mich_v cc = symbol_context_swap_recursive sid in
-    let start_si =
-       {
-         si_mich = List.map s1_ssi.si_mich ~f:rswap;
-         si_dip = List.map s1_ssi.si_dip ~f:rswap;
-         si_map_entry = List.map s1_ssi.si_map_entry ~f:rswap;
-         si_map_exit = List.map s1_ssi.si_map_exit ~f:rswap;
-         si_map_mapkey = List.map s1_ssi.si_map_mapkey ~f:rswap;
-         si_iter = List.map s1_ssi.si_iter ~f:rswap;
-         si_balance = rswap s1_ssi.si_balance;
-         si_bc_balance = rswap s1_ssi.si_bc_balance;
-         si_param = t_image;
-       }
-    in
-    (* 2.5. renamed ss1's block_si (for constraints) *)
-    let ss1_bsi_r =
-       {
-         si_mich = List.map s1_bsi.si_mich ~f:rswap;
-         si_dip = List.map s1_bsi.si_dip ~f:rswap;
-         si_map_entry = List.map s1_bsi.si_map_entry ~f:rswap;
-         si_map_exit = List.map s1_bsi.si_map_exit ~f:rswap;
-         si_map_mapkey = List.map s1_bsi.si_map_mapkey ~f:rswap;
-         si_iter = List.map s1_bsi.si_iter ~f:rswap;
-         si_balance = rswap s1_bsi.si_balance;
-         si_bc_balance = rswap s1_bsi.si_bc_balance;
-         si_param = t_image;
-       }
-    in
-    (* 2.6. construct constraints between two sym-images, ss1_bsi_r and s2_ssi *)
-    let frswap : mich_f -> mich_f = symbol_context_swap_michf_recursive sid in
-    let constraints : mich_f list =
-       (* 2.6.0. ss1's constraint ctxt overwriting *)
-       let ss1_renamed_constr = List.map ss1.ss_constraints ~f:frswap in
-       (* 2.6.1. michelson stack - storage equality *)
-       (* NOTE : This CDR should be optimized, maybe? *)
-       let ms_c =
-          MF_eq
-            ( MV_cdr (List.hd_exn ss1_bsi_r.si_mich) |> gen_dummy_cc,
-              MV_cdr (List.hd_exn s2_ssi.si_mich) |> gen_dummy_cc
-            )
-       (* 2.6.2. dip, map, iter stacks should be emptied - No Constraints *)
-       (* 2.6.3. balance equality *)
-       and b_c = MF_eq (ss1_bsi_r.si_balance, s2_ssi.si_balance)
-       (* 2.6.4. bc_balance equality *)
-       and bcb_c = MF_eq (ss1_bsi_r.si_bc_balance, s2_ssi.si_bc_balance)
-       (* 2.6.5. time inequality *)
-       and time_c =
-          MF_is_true
-            (MV_leq_ib (ss1_bsi_r.si_param.ti_time, s2_sti.ti_time)
-            |> gen_dummy_cc
-            )
-       in
-       ss1_renamed_constr @ [ ms_c; b_c; bcb_c; time_c ] @ ss2.ss_constraints
-    in
-    (* RETURN *)
-    {
-      ss_id = sid;
-      ss_start_mci = start_mci;
-      ss_block_mci = block_mci;
-      ss_start_si = start_si;
-      ss_block_si = block_si;
-      ss_param_history = t_image :: ss2.ss_param_history;
-      ss_constraints = constraints;
-    }
-  )
-
 let trx_image_equality_fmla : trx_image -> trx_image -> mich_f =
    let eqf x y = MF_eq (x, y) in
    fun t1 t2 ->
@@ -113,6 +22,28 @@ let stack_equality_fmlas :
    let eqf x y = MF_eq (x, y) in
    fun (mcc_1, mcc_2) (si1, si2) ->
    match (mcc_1, mcc_2) with
+   (* TRX *)
+   | (MCC_trx_exit, MCC_trx_entry) ->
+     (* 1. michelson stack - storage equality *)
+     (* NOTE : This CDR should be optimized, maybe? *)
+     let ms_c =
+        MF_eq
+          ( MV_cdr (List.hd_exn si1.si_mich) |> gen_dummy_cc,
+            MV_cdr (List.hd_exn si2.si_mich) |> gen_dummy_cc
+          )
+     (* 2. dip, map, iter stacks should be emptied - No Constraints *)
+     (* 3. balance equality *)
+     and b_c = MF_eq (si1.si_balance, si2.si_balance)
+     (* 4. bc_balance equality *)
+     and bcb_c = MF_eq (si1.si_bc_balance, si2.si_bc_balance)
+     (* 5. time inequality *)
+     and time_c =
+        MF_is_true
+          (MV_leq_ib (si1.si_param.ti_time, si2.si_param.ti_time)
+          |> gen_dummy_cc
+          )
+     in
+     [ ms_c; b_c; bcb_c; time_c ]
    (* LOOP *)
    | (MCC_ln_loop, MCC_ln_loop)
    | (MCC_ln_loop, MCC_lb_loop)
@@ -139,19 +70,19 @@ let stack_equality_fmlas :
      [ ms_c; ds_c; maps_entry_c; maps_exit_c; is_c; b_c; bcb_c; ti_c ]
    (* TODO *)
    (*
-       (* LOOP-LEFT *)
-       | (MCC_ln_loopleft, MCC_ln_loopleft) -> () (* TODO *)
-       | (MCC_ln_loopleft, MCC_lb_loopleft) -> () (* TODO *)
-       | (MCC_lb_loopleft, MCC_ln_loopleft) -> () (* TODO *)
-       | (MCC_lb_loopleft, MCC_lb_loopleft) -> () (* TODO *)
-    *)
+          (* LOOP-LEFT *)
+          | (MCC_ln_loopleft, MCC_ln_loopleft) -> () (* TODO *)
+          | (MCC_ln_loopleft, MCC_lb_loopleft) -> () (* TODO *)
+          | (MCC_lb_loopleft, MCC_ln_loopleft) -> () (* TODO *)
+          | (MCC_lb_loopleft, MCC_lb_loopleft) -> () (* TODO *)
+       *)
    (*
-  (* ITER *)
-  | (MCC_ln_iter, MCC_ln_iter) -> () (* TODO *)
-  | (MCC_ln_iter, MCC_lb_iter) -> () (* TODO *)
-  | (MCC_lb_iter, MCC_ln_iter) -> () (* TODO *)
-  | (MCC_lb_iter, MCC_lb_iter) -> () (* TODO *)
-  *)
+     (* ITER *)
+     | (MCC_ln_iter, MCC_ln_iter) -> () (* TODO *)
+     | (MCC_ln_iter, MCC_lb_iter) -> () (* TODO *)
+     | (MCC_lb_iter, MCC_ln_iter) -> () (* TODO *)
+     | (MCC_lb_iter, MCC_lb_iter) -> () (* TODO *)
+     *)
    (* MAP *)
    | (MCC_ln_map, MCC_ln_map)
    | (MCC_ln_map, MCC_lb_map)
@@ -379,97 +310,31 @@ let stack_equality_fmlas :
    | _ -> failwith "Merge : stack_equality_fmlas : 1 : unexpected"
 (* function stack_equality_fmlas end *)
 
-let intratrx_merge : basic_block:sym_state -> sym_state -> sym_state =
-  fun ~basic_block:ss1 ss2 ->
-  (* 1. check if two symstates' reduced-mich-cut-info and location are same *)
-  let ss1mci = ss1.ss_block_mci
-  and ss2mci = ss2.ss_start_mci in
-  if not
-       (equal_r_mich_cut_category
-          (get_reduced_mcc ss1mci.mci_cutcat)
-          (get_reduced_mcc ss2mci.mci_cutcat)
-       && (not
-             (equal_r_mich_cut_category
-                (get_reduced_mcc ss1mci.mci_cutcat)
-                RMCC_trx
-             )
-          )
-       && equal_ccp_loc ss1mci.mci_loc ss2mci.mci_loc
-       )
-  then failwith "Merge : intratrx_merge : 1 : unexpected"
-  else (
-    (* +. declare syntax sugars for sym_images & trx_images in ss1, ss2 *)
-    let s1_ssi = ss1.ss_start_si
-    and s1_bsi = ss1.ss_block_si
-    and s1_bti = ss1.ss_block_si.si_param
-    and s2_ssi = ss2.ss_start_si
-    and s2_sti = ss2.ss_start_si.si_param in
-    (* 2. merge *)
-    (* 2.1. start_mci, block_mci, block_si, param_history *)
-    let start_mci = ss1.ss_start_mci
-    and block_mci = ss2.ss_block_mci
-    and block_si = ss2.ss_block_si in
-    (* 2.2. new sid *)
-    let sid = ss1.ss_id @ ss2.ss_id in
-    (* 2.3. renamed ss1's trx_image *)
-    let t_image = symbol_trx_image_context_swap sid s1_bti in
-    (* 2.4. renamed ss1's start_si *)
-    let rswap : mich_v cc -> mich_v cc = symbol_context_swap_recursive sid in
-    let start_si =
-       {
-         si_mich = List.map s1_ssi.si_mich ~f:rswap;
-         si_dip = List.map s1_ssi.si_dip ~f:rswap;
-         si_map_entry = List.map s1_ssi.si_map_entry ~f:rswap;
-         si_map_exit = List.map s1_ssi.si_map_exit ~f:rswap;
-         si_map_mapkey = List.map s1_ssi.si_map_mapkey ~f:rswap;
-         si_iter = List.map s1_ssi.si_iter ~f:rswap;
-         si_balance = rswap s1_ssi.si_balance;
-         si_bc_balance = rswap s1_ssi.si_bc_balance;
-         si_param = t_image;
-       }
-    in
-    (* 2.5. renamed ss1's block_si (for constraints) *)
-    let ss1_bsi_r =
-       {
-         si_mich = List.map s1_bsi.si_mich ~f:rswap;
-         si_dip = List.map s1_bsi.si_dip ~f:rswap;
-         si_map_entry = List.map s1_bsi.si_map_entry ~f:rswap;
-         si_map_exit = List.map s1_bsi.si_map_exit ~f:rswap;
-         si_map_mapkey = List.map s1_bsi.si_map_mapkey ~f:rswap;
-         si_iter = List.map s1_bsi.si_iter ~f:rswap;
-         si_balance = rswap s1_bsi.si_balance;
-         si_bc_balance = rswap s1_bsi.si_bc_balance;
-         si_param = t_image;
-       }
-    in
-    (* 2.6. construct constraints between two sym-images, ss1_bsi_r and s2_ssi *)
-    let frswap : mich_f -> mich_f = symbol_context_swap_michf_recursive sid in
-    let constraints : mich_f list =
-       (* 2.6.0. ss1's constraint ctxt overwriting *)
-       let ss1_renamed_constr = List.map ss1.ss_constraints ~f:frswap in
-       (* 2.6.1. stack formulas *)
-       let stack_c =
-          stack_equality_fmlas
-            (ss1mci.mci_cutcat, ss2mci.mci_cutcat)
-            (ss1_bsi_r, s2_ssi)
-       in
-       (* 2.6.2. time inequality *)
-       let time_c =
-          MF_is_true
-            (MV_leq_ib (ss1_bsi_r.si_param.ti_time, s2_sti.ti_time)
-            |> gen_dummy_cc
-            )
-       in
-       ss1_renamed_constr @ (time_c :: stack_c) @ ss2.ss_constraints
-    in
-    (* RETURN *)
-    {
-      ss_id = sid;
-      ss_start_mci = start_mci;
-      ss_block_mci = block_mci;
-      ss_start_si = start_si;
-      ss_block_si = block_si;
-      ss_param_history = t_image :: List.tl_exn ss2.ss_param_history;
-      ss_constraints = constraints;
-    }
+type t = (sym_state * mich_f list) list [@@deriving sexp, compare, equal]
+
+let init ss : t = [ (ss, []) ]
+
+let cons ss ms : t =
+   let fst_ms_ss = List.hd_exn ms |> fst in
+   let new_ctxt = ss.ss_id @ fst_ms_ss.ss_id in
+   let renamed_ss = sym_state_symbol_context_swap new_ctxt ss in
+   let connection_fmla =
+      stack_equality_fmlas
+        (renamed_ss.ss_block_mci.mci_cutcat, fst_ms_ss.ss_start_mci.mci_cutcat)
+        (renamed_ss.ss_block_si, fst_ms_ss.ss_start_si)
+   in
+   (renamed_ss, connection_fmla) :: ms
+
+let cut_first_found_loop : mich_cut_info -> t -> t option =
+  fun mci ms ->
+  List.find ms ~f:(fun (ss, _) ->
+      equal_r_mich_cut_info
+        (get_reduced_mci ss.ss_block_mci)
+        (get_reduced_mci mci)
   )
+  |> Option.map ~f:(fun (ss, _) -> ss.ss_block_mci)
+  |> Option.map ~f:(fun found_mci ->
+         List.take_while ms ~f:(fun (ss, _) ->
+             equal_mich_cut_info ss.ss_block_mci found_mci
+         )
+     )

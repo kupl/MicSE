@@ -604,18 +604,6 @@ let symbol_context_swap_i : mich_sym_ctxt -> mich_v -> mich_v =
 let symbol_context_swap : mich_sym_ctxt -> mich_v cc -> mich_v cc =
   (fun ctxt x -> symbol_context_swap_i ctxt x.cc_v |> gen_custom_cc x)
 
-(* Warning: input trx_image must contain MV_symbol values only. *)
-let symbol_trx_image_context_swap : mich_sym_ctxt -> trx_image -> trx_image =
-  fun ctxt ti ->
-  {
-    ti_contract = symbol_context_swap ctxt ti.ti_contract;
-    ti_source = symbol_context_swap ctxt ti.ti_source;
-    ti_sender = symbol_context_swap ctxt ti.ti_sender;
-    ti_param = symbol_context_swap ctxt ti.ti_param;
-    ti_amount = symbol_context_swap ctxt ti.ti_amount;
-    ti_time = symbol_context_swap ctxt ti.ti_time;
-  }
-
 let symbol_context_swap_recursive : mich_sym_ctxt -> mich_v cc -> mich_v cc =
   fun ctxt mvcc ->
   mvcc_map_innerfst
@@ -659,6 +647,45 @@ let symbol_context_swap_michf_recursive : mich_sym_ctxt -> mich_f -> mich_f =
       | MF_shiftR_nnn_rhs_in_256 (v1, v2) ->
         MF_shiftR_nnn_rhs_in_256 (vswap v1, vswap v2))
     mf
+
+(* Warning: input trx_image must contain MV_symbol values only. *)
+let trx_image_symbol_context_swap : mich_sym_ctxt -> trx_image -> trx_image =
+  fun ctxt ti ->
+  {
+    ti_contract = symbol_context_swap ctxt ti.ti_contract;
+    ti_source = symbol_context_swap ctxt ti.ti_source;
+    ti_sender = symbol_context_swap ctxt ti.ti_sender;
+    ti_param = symbol_context_swap ctxt ti.ti_param;
+    ti_amount = symbol_context_swap ctxt ti.ti_amount;
+    ti_time = symbol_context_swap ctxt ti.ti_time;
+  }
+
+let sym_image_symbol_context_swap : mich_sym_ctxt -> sym_image -> sym_image =
+  fun ctxt si ->
+  let rswap = symbol_context_swap_recursive ctxt in
+  {
+    si_mich = List.map si.si_mich ~f:rswap;
+    si_dip = List.map si.si_dip ~f:rswap;
+    si_map_entry = List.map si.si_map_entry ~f:rswap;
+    si_map_exit = List.map si.si_map_exit ~f:rswap;
+    si_map_mapkey = List.map si.si_map_mapkey ~f:rswap;
+    si_iter = List.map si.si_iter ~f:rswap;
+    si_balance = rswap si.si_balance;
+    si_bc_balance = rswap si.si_bc_balance;
+    si_param = trx_image_symbol_context_swap ctxt si.si_param;
+  }
+
+let sym_state_symbol_context_swap : mich_sym_ctxt -> sym_state -> sym_state =
+  fun ctxt ss ->
+  {
+    ss_id = ctxt;
+    ss_start_mci = ss.ss_start_mci;
+    ss_block_mci = ss.ss_block_mci;
+    ss_start_si = sym_image_symbol_context_swap ctxt ss.ss_start_si;
+    ss_block_si = sym_image_symbol_context_swap ctxt ss.ss_block_si;
+    ss_constraints =
+      List.map ss.ss_constraints ~f:(symbol_context_swap_michf_recursive ctxt);
+  }
 
 (******************************************************************************)
 (* Tezos Type                                                                 *)
