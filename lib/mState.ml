@@ -334,7 +334,14 @@ let cut_first_found_loop : mich_cut_info -> t -> t option =
   )
   |> Option.map ~f:(fun (ss, _) -> ss.ss_block_mci)
   |> Option.map ~f:(fun found_mci ->
-         List.take_while ms ~f:(fun (ss, _) ->
-             equal_mich_cut_info ss.ss_block_mci found_mci
+         List.split_while ms ~f:(fun (ss, _) ->
+             not (equal_mich_cut_info ss.ss_block_mci found_mci)
          )
+         |> fun (hd, tl) ->
+         match tl with
+         | []           -> failwith "MState : cut_first_found_loop : unexpected"
+         | (ss, _) :: _ -> hd @ [ (ss, []) ]
      )
+
+let get_constraint : t -> mich_f list =
+  (fun ms -> List.concat (List.map ~f:snd ms))
