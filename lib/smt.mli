@@ -14,7 +14,7 @@ module MTMap : module type of Core.Map.Make (Tz.MichTCC_cmp)
 (* Map of Tz.mich_v Tz.cc *)
 module MVMap : module type of Core.Map.Make (Tz.MichVCC_cmp)
 
-type constructor =
+type const_delim =
   | CST_unit
   | CST_key
   | CST_keyhash_str
@@ -43,7 +43,7 @@ type constructor =
 [@@deriving sexp, compare, equal]
 
 module CST_cmp : sig
-  type t = constructor [@@deriving sexp, compare]
+  type t = const_delim [@@deriving sexp, compare]
 end
 
 module CSTMap : module type of Core.Map.Make (CST_cmp)
@@ -81,7 +81,7 @@ module Ctx : sig
 
   val read_const :
     t ->
-    constructor ->
+    const_delim ->
     f:(unit -> Z3.Datatype.Constructor.constructor) ->
     Z3.Datatype.Constructor.constructor
 
@@ -128,6 +128,10 @@ module Sort : sig
   val compare : t -> t -> int
 
   val equal : t -> t -> bool
+
+  (* Helper Function **********************************************************)
+
+  val gen_sort_name : string -> t list -> string
 end
 
 (******************************************************************************)
@@ -176,6 +180,9 @@ module DataConst : sig
   type t = Z3.Datatype.Constructor.constructor
 
   type info = {
+    (* Indicator of constructor *)
+    const_idx : int;
+    const_delim : const_delim;
     (* Name of constructor *)
     name : string;
     (* Name of function for recognizing constructor *)
@@ -193,6 +200,10 @@ module DataConst : sig
   val get_func_for_constructor : t -> idx:int -> Func.t
 
   val recog_func_for_constructor : t -> Func.t
+
+  (* Helper Function **********************************************************)
+
+  val gen_const_list : Ctx.t -> info list -> t list
 end
 
 (* Data Type ******************************************************************)
@@ -349,6 +360,18 @@ module ZBool : sig
   val create_or : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 
   val create_xor : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_eq : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_neq : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_int_lt : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_int_gt : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_int_leq : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+
+  val create_int_geq : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 end
 
 (* String *********************************************************************)
@@ -366,7 +389,7 @@ module ZStr : sig
 
   val create_concat : Ctx.t -> Expr.t list -> Expr.t
 
-  val create_slice : Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t
+  val create_slice : Ctx.t -> offset:Expr.t -> len:Expr.t -> Expr.t -> Expr.t
 
   val create_size : Ctx.t -> Expr.t -> Expr.t
 end
@@ -379,8 +402,6 @@ module ZUnit : sig
   val mt_cc : Tz.mich_t Tz.cc
 
   val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
-
-  val create_const : Ctx.t -> DataConst.t list
 
   val create_sort : Ctx.t -> Sort.t
 
@@ -395,8 +416,6 @@ module ZKey : sig
   val mt_cc : Tz.mich_t Tz.cc
 
   val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
-
-  val create_const : Ctx.t -> DataConst.t list
 
   val create_sort : Ctx.t -> Sort.t
 
@@ -414,8 +433,6 @@ module ZKeyHash : sig
 
   val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
 
-  val create_const : Ctx.t -> DataConst.t list
-
   val create_sort : Ctx.t -> Sort.t
 
   val create_expr : Ctx.t -> elt -> Expr.t
@@ -430,20 +447,12 @@ end
 (* Option *********************************************************************)
 
 module ZOption : sig
-  val gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
+  val create_sort :
+    Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t -> Sort.t
 
-  val gen_mv_none_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
+  val create_expr_none : Sort.t -> Expr.t
 
-  val gen_mv_some_cc : Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc
-
-  val create_const : Ctx.t -> Tz.mich_t Tz.cc -> DataConst.t list
-
-  val create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
-
-  val create_expr_none : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t
-
-  val create_expr_some :
-    Ctx.t -> content_value:Tz.mich_v Tz.cc -> Expr.t -> Expr.t
+  val create_expr_some : Sort.t -> Expr.t -> Expr.t
 
   val read_content : Expr.t -> Expr.t
 end
@@ -453,17 +462,10 @@ end
 module ZPair : sig
   val gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
 
-  val create_const :
-    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> DataConst.t list
-
   val create_sort :
-    Ctx.t -> content_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Sort.t
+    Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t * Sort.t -> Sort.t
 
-  val create_expr :
-    Ctx.t ->
-    content_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc ->
-    Expr.t * Expr.t ->
-    Expr.t
+  val create_expr : Sort.t -> Expr.t * Expr.t -> Expr.t
 
   val read_content_fst : Expr.t -> Expr.t
 
@@ -479,8 +481,6 @@ module ZBytes : sig
 
   val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
 
-  val create_const : Ctx.t -> DataConst.t list
-
   val create_sort : Ctx.t -> Sort.t
 
   val create_expr : Ctx.t -> elt -> Expr.t
@@ -495,7 +495,7 @@ module ZBytes : sig
 
   val create_pack : Ctx.t -> int -> Expr.t
 
-  val create_slice : Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t
+  val create_slice : Ctx.t -> offset:Expr.t -> len:Expr.t -> Expr.t -> Expr.t
 
   val read_str : Expr.t -> Expr.t
 
@@ -523,8 +523,6 @@ module ZSig : sig
 
   val gen_mv_lit_cc : elt -> Tz.mich_v Tz.cc
 
-  val create_const : Ctx.t -> DataConst.t list
-
   val create_sort : Ctx.t -> Sort.t
 
   val create_expr : Ctx.t -> elt -> Expr.t
@@ -543,8 +541,6 @@ end
 module ZAddr : sig
   val mt_cc : Tz.mich_t Tz.cc
 
-  val create_const : Ctx.t -> DataConst.t list
-
   val create_sort : Ctx.t -> Sort.t
 
   val create_expr : Ctx.t -> Expr.t -> Expr.t
@@ -557,31 +553,12 @@ end
 module ZOr : sig
   val gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
 
-  val gen_mv_left_cc :
-    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc
-
-  val gen_mv_right_cc :
-    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc
-
-  val create_const :
-    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> DataConst.t list
-
   val create_sort :
-    Ctx.t -> content_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Sort.t
+    Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t * Sort.t -> Sort.t
 
-  val create_expr_left :
-    Ctx.t ->
-    left_value:Tz.mich_v Tz.cc ->
-    right_typ:Tz.mich_t Tz.cc ->
-    Expr.t ->
-    Expr.t
+  val create_expr_left : Sort.t -> Expr.t -> Expr.t
 
-  val create_expr_right :
-    Ctx.t ->
-    left_typ:Tz.mich_t Tz.cc ->
-    right_value:Tz.mich_v Tz.cc ->
-    Expr.t ->
-    Expr.t
+  val create_expr_right : Sort.t -> Expr.t -> Expr.t
 
   val read_content_left : Expr.t -> Expr.t
 
@@ -593,13 +570,12 @@ end
 module ZList : sig
   val gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
 
-  val gen_mv_nil_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
+  val create_sort :
+    Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t -> Sort.t
 
-  val create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
+  val create_expr_nil : Sort.t -> Expr.t
 
-  val create_expr_nil : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t
-
-  val create_cons : Expr.t -> Expr.t -> Expr.t
+  val create_cons : content:Expr.t -> Expr.t -> Expr.t
 
   val read_head : Expr.t -> Expr.t
 
@@ -611,19 +587,22 @@ end
 module ZMap : sig
   val gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
 
-  val gen_mv_empty_map_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
-
   val create_sort :
-    Ctx.t -> key_typ:Tz.mich_t Tz.cc -> data_typ:Tz.mich_t Tz.cc -> Sort.t
+    Ctx.t ->
+    typ:Tz.mich_t Tz.cc ->
+    key_sort:Sort.t ->
+    data_body_sort:Sort.t ->
+    Sort.t
 
-  val create_expr_empty_map :
-    Ctx.t -> key_typ:Tz.mich_t Tz.cc -> data_typ:Tz.mich_t Tz.cc -> Expr.t
+  val create_expr_empty_map : Ctx.t -> Sort.t -> Expr.t
 
-  val read_value : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+  val read_value : Ctx.t -> key:Expr.t -> Expr.t -> Expr.t
 
   val read_default_value : Ctx.t -> Expr.t -> Expr.t
 
-  val update : Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t
+  val update : Ctx.t -> key:Expr.t -> data:Expr.t -> Expr.t -> Expr.t
+
+  val read_mem : Ctx.t -> key:Expr.t -> Expr.t -> Expr.t
 end
 
 (* Set ************************************************************************)
@@ -631,13 +610,14 @@ end
 module ZSet : sig
   val gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
 
-  val gen_mv_empty_set_cc : Tz.mich_t Tz.cc -> Tz.mich_v Tz.cc
+  val create_sort :
+    Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t -> Sort.t
 
-  val create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
+  val create_expr_empty_set : Ctx.t -> Sort.t -> Expr.t
 
-  val create_expr_empty_set : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t
+  val update : Ctx.t -> content:Expr.t -> flag:Expr.t -> Expr.t -> Expr.t
 
-  val update : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+  val read_mem : Ctx.t -> content:Expr.t -> Expr.t -> Expr.t
 end
 
 (* Operation ******************************************************************)
@@ -645,11 +625,10 @@ end
 module ZOperation : sig
   val mt_cc : Tz.mich_t Tz.cc
 
-  val create_const : Ctx.t -> DataConst.t list
-
   val create_sort : Ctx.t -> Sort.t
 
-  val create_expr_create_contract : Ctx.t -> Expr.t -> Expr.t -> Expr.t
+  val create_expr_create_contract :
+    Ctx.t -> Expr.t -> Expr.t -> Expr.t -> Expr.t
 
   val create_expr_transfer_tokens : Ctx.t -> Expr.t -> Expr.t
 
@@ -663,14 +642,14 @@ end
 module ZContract : sig
   val gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
 
-  val create_const : Ctx.t -> Tz.mich_t Tz.cc -> DataConst.t list
+  val create_sort :
+    Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t -> Sort.t
 
-  val create_sort : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Sort.t
+  val create_expr : Ctx.t -> Expr.t -> Expr.t
 
-  val create_expr : Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t -> Expr.t
+  val create_expr_of_address : Sort.t -> Expr.t -> Expr.t
 
-  val create_expr_of_address :
-    Ctx.t -> content_typ:Tz.mich_t Tz.cc -> Expr.t -> Expr.t
+  val read_keyhash : Expr.t -> Expr.t
 end
 
 (* Lambda *********************************************************************)
@@ -678,34 +657,20 @@ end
 module ZLambda : sig
   val gen_mt_cc : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
 
-  val create_const :
-    Ctx.t ->
-    domain_typ:Tz.mich_t Tz.cc ->
-    range_typ:Tz.mich_t Tz.cc ->
-    DataConst.t list
-
   val create_sort :
-    Ctx.t -> domain_typ:Tz.mich_t Tz.cc -> range_typ:Tz.mich_t Tz.cc -> Sort.t
-
-  val create_expr_domain : Ctx.t -> domain_typ:Tz.mich_t Tz.cc -> Expr.t
-
-  val create_expr :
     Ctx.t ->
-    domain_typ:Tz.mich_t Tz.cc ->
-    Expr.t ->
-    range_typ:Tz.mich_t Tz.cc ->
-    Expr.t ->
-    Expr.t
+    typ:Tz.mich_t Tz.cc ->
+    domain_sort:Sort.t ->
+    range_sort:Sort.t ->
+    Sort.t
+
+  val create_expr_domain : Ctx.t -> Sort.t -> Expr.t
+
+  val create_expr : Sort.t -> Expr.t -> Expr.t -> Expr.t
 
   val create_exec : Expr.t -> Expr.t -> Expr.t
 
-  val create_apply :
-    Ctx.t ->
-    Expr.t ->
-    domain_typ:Tz.mich_t Tz.cc * Tz.mich_t Tz.cc ->
-    range_typ:Tz.mich_t Tz.cc ->
-    Expr.t ->
-    Expr.t
+  val create_apply : Ctx.t -> Expr.t -> Expr.t -> Expr.t
 
   val read_expr_domain : Expr.t -> Expr.t
 end
@@ -747,62 +712,59 @@ module Formula : sig
 
   val create_is_false : Ctx.t -> Expr.t -> t
 
-  val create_is_unit : Ctx.t -> Expr.t -> t
+  val create_is_unit : Expr.t -> t
 
-  val create_is_key : Ctx.t -> Expr.t -> t
+  val create_is_key : Expr.t -> t
 
-  val create_is_keyhash_str : Ctx.t -> Expr.t -> t
+  val create_is_keyhash_str : Expr.t -> t
 
-  val create_is_keyhash_key : Ctx.t -> Expr.t -> t
+  val create_is_keyhash_key : Expr.t -> t
 
-  val create_is_option_none : Ctx.t -> Tz.mich_t Tz.cc -> Expr.t -> t
+  val create_is_option_none : Expr.t -> t
 
-  val create_is_option_some : Ctx.t -> Tz.mich_t Tz.cc -> Expr.t -> t
+  val create_is_option_some : Expr.t -> t
 
-  val create_is_pair : Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
+  val create_is_pair : Expr.t -> t
 
-  val create_is_bytes_nil : Ctx.t -> Expr.t -> t
+  val create_is_bytes_nil : Expr.t -> t
 
-  val create_is_bytes_str : Ctx.t -> Expr.t -> t
+  val create_is_bytes_str : Expr.t -> t
 
-  val create_is_bytes_concat : Ctx.t -> Expr.t -> t
+  val create_is_bytes_concat : Expr.t -> t
 
-  val create_is_bytes_blake2b : Ctx.t -> Expr.t -> t
+  val create_is_bytes_blake2b : Expr.t -> t
 
-  val create_is_bytes_sha256 : Ctx.t -> Expr.t -> t
+  val create_is_bytes_sha256 : Expr.t -> t
 
-  val create_is_bytes_sha512 : Ctx.t -> Expr.t -> t
+  val create_is_bytes_sha512 : Expr.t -> t
 
-  val create_is_bytes_pack : Ctx.t -> Expr.t -> t
+  val create_is_bytes_pack : Expr.t -> t
 
-  val create_is_bytes_sliced : Ctx.t -> Expr.t -> t
+  val create_is_bytes_sliced : Expr.t -> t
 
-  val create_is_signature_str : Ctx.t -> Expr.t -> t
+  val create_is_signature_str : Expr.t -> t
 
-  val create_is_signature_signed : Ctx.t -> Expr.t -> t
+  val create_is_signature_signed : Expr.t -> t
 
-  val create_is_address : Ctx.t -> Expr.t -> t
+  val create_is_address : Expr.t -> t
 
-  val create_is_or_left :
-    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
+  val create_is_or_left : Expr.t -> t
 
-  val create_is_or_right :
-    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
+  val create_is_or_right : Expr.t -> t
 
   val create_is_list_nil : Expr.t -> t
 
   val create_is_list_cons : Expr.t -> t
 
-  val create_is_operation_create_contract : Ctx.t -> Expr.t -> t
+  val create_is_operation_create_contract : Expr.t -> t
 
-  val create_is_operation_transfer_tokens : Ctx.t -> Expr.t -> t
+  val create_is_operation_transfer_tokens : Expr.t -> t
 
-  val create_is_operation_set_delegate : Ctx.t -> Expr.t -> t
+  val create_is_operation_set_delegate : Expr.t -> t
 
-  val create_is_contract : Ctx.t -> Tz.mich_t Tz.cc -> Expr.t -> t
+  val create_is_contract : Expr.t -> t
 
-  val create_is_lambda :
-    Ctx.t -> Tz.mich_t Tz.cc * Tz.mich_t Tz.cc -> Expr.t -> t
+  val create_is_lambda : Expr.t -> t
 
   val create_is_mem_of_map : Ctx.t -> Expr.t -> Expr.t -> t
 
