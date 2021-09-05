@@ -10,6 +10,9 @@ open! Core
 (******************************************************************************)
 (******************************************************************************)
 
+(* Set of Tz.mich_f *)
+module MFSet = Set.Make (Tz.MichF_cmp)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Smt Encoder                                                                *)
@@ -207,8 +210,7 @@ module Encoder = struct
        | None            -> (
          try Bigint.of_string lit1 |> ZInt.create_expr_of_bigint ctx with
          | _ ->
-           SmtError ("Encoder : cv_mv : MV_lit_timestamp_str : " ^ lit1)
-           |> raise
+           VcError ("Encoder : cv_mv : MV_lit_timestamp_str : " ^ lit1) |> raise
        )
        | Some (pt, _, _) -> (
          Ptime.to_span pt
@@ -581,3 +583,87 @@ module Encoder = struct
      | MF_shiftR_nnn_rhs_in_256 _ -> raise Not_Implemented
   (* function cv_mf end *)
 end
+
+(******************************************************************************)
+(******************************************************************************)
+(* Utility                                                                    *)
+(******************************************************************************)
+(******************************************************************************)
+
+let property_of_query : Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f =
+   let open Tz in
+   let get_hd1 : mich_v cc list -> mich_v cc =
+     fun vlst ->
+     match vlst with
+     | v1 :: _ -> v1
+     | _       ->
+       VcError "gen_query_property : get_hd1 : wrong mich stack status" |> raise
+   in
+   (* inner-function get_hd1 end *)
+   let get_hd2 : mich_v cc list -> mich_v cc * mich_v cc =
+     fun vlst ->
+     match vlst with
+     | v1 :: v2 :: _ -> (v1, v2)
+     | _             ->
+       VcError "gen_query_property : get_hd2 : wrong mich stack status" |> raise
+   in
+   (* inner-function get_hd2 end *)
+   fun mci si ->
+   match mci.mci_cutcat with
+   | MCC_query qc -> (
+     match qc with
+     | Q_mutez_add_no_overflow -> MF_add_mmm_no_overflow (get_hd2 si.si_mich)
+     | Q_mutez_sub_no_underflow -> MF_sub_mmm_no_underflow (get_hd2 si.si_mich)
+     | Q_mutez_mul_mnm_no_overflow -> MF_mul_mnm_no_overflow (get_hd2 si.si_mich)
+     | Q_mutez_mul_nmm_no_overflow -> MF_mul_nmm_no_overflow (get_hd2 si.si_mich)
+     | Q_shiftleft_safe -> MF_shiftL_nnn_rhs_in_256 (get_hd2 si.si_mich)
+     | Q_shiftright_safe -> MF_shiftR_nnn_rhs_in_256 (get_hd2 si.si_mich)
+     | Q_assertion -> MF_is_true (get_hd1 si.si_mich)
+   )
+   | _            -> VcError "gen_query_property : wrong mci" |> raise
+(* function property_of_query end *)
+
+(******************************************************************************)
+(******************************************************************************)
+(* Verification Condition                                                     *)
+(******************************************************************************)
+(******************************************************************************)
+
+let gen_query_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
+   let open Tz in
+   fun imap sstate ->
+   let (inv : mich_f list) =
+      Inv.find_inv_map imap sstate.ss_start_mci |> MFSet.to_list
+   in
+   let (sp : mich_f) = MF_and (inv @ sstate.ss_constraints) in
+   let (query : mich_f) =
+      property_of_query sstate.ss_block_mci sstate.ss_block_si
+   in
+   MF_imply (sp, query)
+(* function gen_query_vc end *)
+
+(******************************************************************************)
+(******************************************************************************)
+(* Verification                                                               *)
+(******************************************************************************)
+(******************************************************************************)
+
+let check_val :
+    Smt.Ctx.t ->
+    Smt.Solver.t ->
+    Tz.mich_f ->
+    Smt.Solver.validity * Smt.Model.t option =
+  fun ctx solver mf ->
+  let (fmla : Smt.Formula.t) = Encoder.cv_mf ctx mf in
+  Smt.Solver.check_val solver ctx fmla
+(* function check_validity end *)
+
+let check_sat :
+    Smt.Ctx.t ->
+    Smt.Solver.t ->
+    Tz.mich_f ->
+    Smt.Solver.satisfiability * Smt.Model.t option =
+  fun ctx solver mf ->
+  let (fmla : Smt.Formula.t) = Encoder.cv_mf ctx mf in
+  Smt.Solver.check_sat solver ctx fmla
+(* function check_validity end *)
