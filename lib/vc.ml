@@ -24,8 +24,8 @@ module Encoder = struct
      let open TzUtil in
      let open Smt in
      fun ctx typ ->
-     let sot typ_cc = cv_mtcc ctx typ_cc in
      let gdc typ = gen_dummy_cc typ in
+     let sot typ_cc = cv_mtcc ctx typ_cc in
      (* syntax sugar *)
      match typ with
      | MT_key                  -> ZKey.create_sort ctx
@@ -74,16 +74,22 @@ module Encoder = struct
      let open TzUtil in
      let open Smt in
      fun ctx value ->
+     let gdc value = gen_dummy_cc value in
      let sot typ_cc = cv_mtcc ctx typ_cc in
      let sov value_cc = cv_mtcc ctx (typ_of_val value_cc) in
      let eov value_cc = cv_mvcc ctx value_cc in
-     let gdc value = gen_dummy_cc value in
      (* syntax sugar *)
      match value with
      (*************************************************************************)
      (* Symbol & Polymorphic                                                  *)
      (*************************************************************************)
-     | MV_symbol _ -> Not_Implemented |> raise
+     | MV_symbol (t1, c2, sc3) ->
+       Expr.create_var ctx (sot t1)
+         ~name:
+           (Sexp.to_string (sexp_of_mich_sym_category c2)
+           ^ "_"
+           ^ Sexp.to_string (sexp_of_mich_sym_ctxt sc3)
+           )
      | MV_car v1cc -> ZPair.read_content_fst (eov v1cc)
      | MV_cdr v1cc -> ZPair.read_content_snd (eov v1cc)
      | MV_unlift_option v1cc -> ZOption.read_content (eov v1cc)
@@ -537,7 +543,41 @@ module Encoder = struct
      | _ -> VcError "Encoder : cv_compare : wrong comparison" |> raise
   (* function cv_compare end *)
 
-  let cv_mf : Smt.Ctx.t -> Tz.mich_f -> Smt.Formula.t =
-    (fun _ _ -> raise Not_Implemented)
+  let rec cv_mf : Smt.Ctx.t -> Tz.mich_f -> Smt.Formula.t =
+     let open Tz in
+     let open TzUtil in
+     let open Smt in
+     fun ctx fmla ->
+     let eov value_cc = cv_mvcc ctx value_cc in
+     let fof fmla = cv_mf ctx fmla in
+     (* syntax sugar *)
+     match fmla with
+     (* Logical Formula *)
+     | MF_true -> Formula.create_true ctx
+     | MF_false -> Formula.create_false ctx
+     | MF_not f1 -> Formula.create_not ctx (fof f1)
+     | MF_and fl1 -> Formula.create_and ctx (List.map fl1 ~f:fof)
+     | MF_or fl1 -> Formula.create_or ctx (List.map fl1 ~f:fof)
+     | MF_eq (v1, v2) -> Formula.create_eq ctx (eov v1) (eov v2)
+     | MF_imply (f1, f2) -> Formula.create_imply ctx (fof f1) (fof f2)
+     (* MicSE Branch *)
+     | MF_is_true v1 -> Formula.create_is_true ctx (eov v1)
+     | MF_is_none v1 -> Formula.create_is_option_none (eov v1)
+     | MF_is_left v1 -> Formula.create_is_or_left (eov v1)
+     | MF_is_cons v1 -> Formula.create_is_list_cons (eov v1)
+     (* MicSE Datatype Constraint *)
+     | MF_mutez_bound v1 -> Formula.create_mutez_bound ctx (eov v1)
+     | MF_nat_bound v1 -> Formula.create_nat_bound ctx (eov v1)
+     (* Custom Formula for verifiying *)
+     | MF_add_mmm_no_overflow (v1, v2) ->
+       Formula.create_add_no_overflow ctx (eov v1) (eov v2)
+     | MF_sub_mmm_no_underflow (v1, v2) ->
+       Formula.create_sub_no_underflow ctx (eov v1) (eov v2)
+     | MF_mul_mnm_no_overflow (v1, v2) ->
+       Formula.create_mul_no_overflow ctx (eov v1) (eov v2)
+     | MF_mul_nmm_no_overflow (v1, v2) ->
+       Formula.create_mul_no_overflow ctx (eov v1) (eov v2)
+     | MF_shiftL_nnn_rhs_in_256 _ -> raise Not_Implemented
+     | MF_shiftR_nnn_rhs_in_256 _ -> raise Not_Implemented
   (* function cv_mf end *)
 end
