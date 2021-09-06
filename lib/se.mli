@@ -105,11 +105,13 @@ val lt_2_63_constraint : Tz.mich_v Tz.cc -> Tz.mich_f
 (******************************************************************************)
 
 val run_inst_initial_se_result :
-  Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result
+  Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc ->
+  se_result * Tz.sym_state
 
 val run_inst : Tz.mich_i Tz.cc -> se_result -> se_result
 
 val run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result
 
 val run_inst_entry :
-  Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result
+  Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc ->
+  se_result * Tz.sym_image

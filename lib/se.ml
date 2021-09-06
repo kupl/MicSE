@@ -257,7 +257,8 @@ let ge_balance_amount_in_non_trx_entry_constraint :
 (******************************************************************************)
 
 let run_inst_initial_se_result :
-    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result =
+    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc ->
+    se_result * Tz.sym_state =
    let open Tz in
    let open TzUtil in
    fun (param_tcc, strg_tcc, code) ->
@@ -346,7 +347,7 @@ let run_inst_initial_se_result :
         sr_sid_counter = scounter + 1;
       }
    in
-   initial_se_result
+   (initial_se_result, initial_sym_state)
 (* function run_inst_initial_se_result end *)
 
 let rec run_inst : Tz.mich_i Tz.cc -> se_result -> se_result =
@@ -1690,7 +1691,8 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
 (* function run_inst_i end *)
 
 let run_inst_entry :
-    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> se_result =
+    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc ->
+    se_result * Tz.sym_image =
    let open Tz in
    let open TzUtil in
    fun (pt, st, c) ->
@@ -1726,7 +1728,8 @@ let run_inst_entry :
          @ ss.ss_constraints;
      }
    in
-   let result_raw = run_inst c (run_inst_initial_se_result (pt, st, c)) in
+   let (initial_sr, initial_ss) = run_inst_initial_se_result (pt, st, c) in
+   let result_raw = run_inst c initial_sr in
    (* let _ =
          (* DEBUG *)
          print_endline
@@ -1736,12 +1739,14 @@ let run_inst_entry :
            ^ (SSet.length result_raw.sr_blocked |> string_of_int)
            )
       in *)
-   {
-     result_raw with
-     sr_running = SSet.empty;
-     sr_blocked =
-       SSet.union
-         (SSet.map result_raw.sr_blocked ~f:final_blocking)
-         result_raw.sr_running;
-   }
+   ( {
+       result_raw with
+       sr_running = SSet.empty;
+       sr_blocked =
+         SSet.union
+           (SSet.map result_raw.sr_blocked ~f:final_blocking)
+           result_raw.sr_running;
+     },
+     initial_ss.ss_start_si
+   )
 (* function run_inst_entry end *)
