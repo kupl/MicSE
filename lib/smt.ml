@@ -1723,15 +1723,9 @@ module ZMap = struct
     )
   (* function create_sort end *)
 
-  let create_expr_empty_map : Ctx.t -> Sort.t -> Expr.t =
-    fun ctx sort ->
-    let (key_sort : Sort.t) = Z3.Z3Array.get_domain sort in
-    let (data_body_sort : Sort.t) =
-       Z3.Z3Array.get_range sort
-       |> DataType.read_sort_of_field ~const_idx:Constant._idx_const_option_some
-            ~field_idx:Constant._idx_field_content
-    in
-    let (default_value : Expr.t) = ZOption.create_expr_none data_body_sort in
+  let create_expr_empty_map : Ctx.t -> key_sort:Sort.t -> data_sort:Sort.t -> Expr.t =
+    fun ctx ~key_sort ~data_sort ->
+    let (default_value : Expr.t) = ZOption.create_expr_none data_sort in
     Z3.Z3Array.mk_const_array (Ctx.read ctx) key_sort default_value
   (* function create_expr_empty_map end *)
 
@@ -2467,13 +2461,7 @@ module Solver = struct
      let (id : int ref) = ref 0 in
      fun ctx ->
      let _ = incr id in
-     {
-       id = !id;
-       (* solver = Z3.Solver.mk_solver (Ctx.read ctx) ("_" ^ string_of_int !id); *)
-       solver =
-         Z3.Solver.mk_solver (Ctx.read ctx) None
-         (* (Some (Sym.create ctx ("_" ^ string_of_int !id))); *);
-     }
+     { id = !id; solver = Z3.Solver.mk_solver (Ctx.read ctx) None }
   (* function create end *)
 
   let read : t -> Z3.Solver.solver = (fun { solver; _ } -> solver)

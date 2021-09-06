@@ -82,6 +82,7 @@ module Encoder = struct
      let sov value_cc = cv_mtcc ctx (typ_of_val value_cc) in
      let eov value_cc = cv_mvcc ctx value_cc in
      (* syntax sugar *)
+     let (sort : Sort.t) = sov (gdc value) in
      match value with
      (*************************************************************************)
      (* Symbol & Polymorphic                                                  *)
@@ -248,8 +249,8 @@ module Encoder = struct
      (*************************************************************************)
      (* Option                                                                *)
      (*************************************************************************)
-     | MV_some v1cc -> ZOption.create_expr_some (sov v1cc) (eov v1cc)
-     | MV_none t1cc -> ZOption.create_expr_none (sot t1cc)
+     | MV_some v1cc -> ZOption.create_expr_some sort (eov v1cc)
+     | MV_none _ -> ZOption.create_expr_none sort
      | MV_ediv_nnnn (v1cc, v2cc)
      | MV_ediv_niin (v1cc, v2cc)
      | MV_ediv_inin (v1cc, v2cc)
@@ -348,29 +349,35 @@ module Encoder = struct
      (*************************************************************************)
      (* Map                                                                   *)
      (*************************************************************************)
-     | MV_lit_map (_, t2cc, vcc_pair_lst) ->
+     | MV_lit_map (t1cc, t2cc, vcc_pair_lst) ->
        let (sort2 : Sort.t) = MT_option t2cc |> gdc |> sot in
        List.fold vcc_pair_lst
-         ~init:(ZMap.create_expr_empty_map ctx (gdc value |> sov))
+         ~init:
+           (ZMap.create_expr_empty_map ctx ~key_sort:(sot t1cc) ~data_sort:sort2)
          ~f:(fun expr (v1cc, v2cc) ->
            ZMap.update ctx ~key:(eov v1cc)
              ~data:(ZOption.create_expr_some sort2 (eov v2cc))
              expr)
-     | MV_empty_map _ -> ZMap.create_expr_empty_map ctx (gdc value |> sov)
+     | MV_empty_map (t1cc, t2cc) ->
+       let (sort2 : Sort.t) = MT_option t2cc |> gdc |> sot in
+       ZMap.create_expr_empty_map ctx ~key_sort:(sot t1cc) ~data_sort:sort2
      | MV_update_xomm (v1cc, v2cc, v3cc) ->
        ZMap.update ctx ~key:(eov v1cc) ~data:(eov v2cc) (eov v3cc)
      (*************************************************************************)
      (* Big Map                                                               *)
      (*************************************************************************)
-     | MV_lit_big_map (_, t2cc, vcc_pair_lst) ->
+     | MV_lit_big_map (t1cc, t2cc, vcc_pair_lst) ->
        let (sort2 : Sort.t) = MT_option t2cc |> gdc |> sot in
        List.fold vcc_pair_lst
-         ~init:(ZMap.create_expr_empty_map ctx (gdc value |> sov))
+         ~init:
+           (ZMap.create_expr_empty_map ctx ~key_sort:(sot t1cc) ~data_sort:sort2)
          ~f:(fun expr (v1cc, v2cc) ->
            ZMap.update ctx ~key:(eov v1cc)
              ~data:(ZOption.create_expr_some sort2 (eov v2cc))
              expr)
-     | MV_empty_big_map _ -> ZMap.create_expr_empty_map ctx (gdc value |> sov)
+     | MV_empty_big_map (t1cc, t2cc) ->
+       let (sort2 : Sort.t) = MT_option t2cc |> gdc |> sot in
+       ZMap.create_expr_empty_map ctx ~key_sort:(sot t1cc) ~data_sort:sort2
      | MV_update_xobmbm (v1cc, v2cc, v3cc) ->
        ZMap.update ctx ~key:(eov v1cc) ~data:(eov v2cc) (eov v3cc)
      (****************************************************************************)
@@ -516,7 +523,10 @@ module Encoder = struct
               ~if_:(Formula.create_eq ctx expr1 expr2)
               ~then_:zero ~else_:dummy
            )
-     | (MT_address, MT_address) -> raise Not_Implemented
+     | (MT_address, MT_address) ->
+       cv_compare ctx
+         (MT_key_hash, ZAddr.read_content expr1)
+         (MT_key_hash, ZAddr.read_content expr2)
      | (MT_or (t11cc, t12cc), MT_or (t21cc, t22cc))
        when Tz.equal_cc Tz.equal_mich_t t11cc t21cc
             && Tz.equal_cc Tz.equal_mich_t t12cc t22cc ->

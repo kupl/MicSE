@@ -594,7 +594,7 @@ module ZMap : sig
     data_body_sort:Sort.t ->
     Sort.t
 
-  val create_expr_empty_map : Ctx.t -> Sort.t -> Expr.t
+  val create_expr_empty_map : Ctx.t -> key_sort:Sort.t -> data_sort:Sort.t -> Expr.t
 
   val read_value : Ctx.t -> key:Expr.t -> Expr.t -> Expr.t
 
