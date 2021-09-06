@@ -591,24 +591,22 @@ end
 (******************************************************************************)
 (******************************************************************************)
 
+let get_hd1 : 'a list -> 'a =
+  fun vlst ->
+  match vlst with
+  | v1 :: _ -> v1
+  | _       -> VcError "get_hd1 : wrong mich stack status" |> raise
+(* function get_hd1 end *)
+
+let get_hd2 : 'a list -> 'a * 'a =
+  fun vlst ->
+  match vlst with
+  | v1 :: v2 :: _ -> (v1, v2)
+  | _             -> VcError "get_hd2 : wrong mich stack status" |> raise
+(* function get_hd2 end *)
+
 let property_of_query : Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f =
    let open Tz in
-   let get_hd1 : mich_v cc list -> mich_v cc =
-     fun vlst ->
-     match vlst with
-     | v1 :: _ -> v1
-     | _       ->
-       VcError "gen_query_property : get_hd1 : wrong mich stack status" |> raise
-   in
-   (* inner-function get_hd1 end *)
-   let get_hd2 : mich_v cc list -> mich_v cc * mich_v cc =
-     fun vlst ->
-     match vlst with
-     | v1 :: v2 :: _ -> (v1, v2)
-     | _             ->
-       VcError "gen_query_property : get_hd2 : wrong mich stack status" |> raise
-   in
-   (* inner-function get_hd2 end *)
    fun mci si ->
    match mci.mci_cutcat with
    | MCC_query qc -> (
@@ -623,6 +621,18 @@ let property_of_query : Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f =
    )
    | _            -> VcError "gen_query_property : wrong mci" |> raise
 (* function property_of_query end *)
+
+let apply_initial_storage :
+    Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_v Tz.cc -> Tz.mich_f =
+   let open Tz in
+   fun mci si init_strg ->
+   match mci.mci_cutcat with
+   | MCC_trx_entry ->
+     let (param_strg : mich_v cc) = get_hd1 si.si_mich in
+     let (sym_strg : mich_v cc) = TzUtil.gen_dummy_cc (MV_cdr param_strg) in
+     MF_eq (sym_strg, init_strg)
+   | _             -> VcError "apply_initial_storage : wrong mci" |> raise
+(* function apply_initial_storage end *)
 
 (******************************************************************************)
 (******************************************************************************)
