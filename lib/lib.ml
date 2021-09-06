@@ -4,6 +4,7 @@ module Inv = Inv
 module Mich = Mich
 module MichParse = MichParse
 module MState = MState
+module Refute = Refute
 module Se = Se
 module Smt = Smt
 module Te = Te

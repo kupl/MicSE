@@ -325,23 +325,49 @@ let cons ss ms : t =
    in
    (renamed_ss, connection_fmla) :: ms
 
-let cut_first_found_loop : mich_cut_info -> t -> t option =
-  fun mci ms ->
-  List.find ms ~f:(fun (ss, _) ->
-      equal_r_mich_cut_info
-        (get_reduced_mci ss.ss_block_mci)
-        (get_reduced_mci mci)
-  )
-  |> Option.map ~f:(fun (ss, _) -> ss.ss_block_mci)
-  |> Option.map ~f:(fun found_mci ->
-         List.split_while ms ~f:(fun (ss, _) ->
-             not (equal_mich_cut_info ss.ss_block_mci found_mci)
-         )
-         |> fun (hd, tl) ->
-         match tl with
-         | []           -> failwith "MState : cut_first_found_loop : unexpected"
-         | (ss, _) :: _ -> hd @ [ (ss, []) ]
-     )
-
 let get_constraint : t -> mich_f list =
-  (fun ms -> List.concat (List.map ~f:snd ms))
+  fun ms ->
+  List.concat (List.map ~f:(fun (ss, fl) -> ss.ss_constraints @ fl) ms)
+
+let get_first_ss : t -> sym_state = (fun ms -> List.hd_exn ms |> fst)
+
+let get_last_ss : t -> sym_state =
+  fun ms ->
+  List.last ms
+  |> Option.value ~default:(failwith "mState : get_last_ss : unexpected")
+  |> fst
+
+let cut_first_found_loop : t -> t option =
+   let proper_mcc : mich_cut_category -> bool = function
+   | MCC_trx_entry
+   | MCC_lb_loop
+   | MCC_lb_loopleft
+   | MCC_lb_map
+   | MCC_lb_iter ->
+     true
+   | _ -> false
+   in
+   fun ms ->
+   let fss = get_first_ss ms in
+   (* 1. check if the start-mcc is proper category *)
+   if not (proper_mcc fss.ss_start_mci.mci_cutcat)
+   then None
+   else (
+     let start_rmci = get_reduced_mci fss.ss_start_mci in
+     (* 2. find corresponding block-mci *)
+     List.find ms ~f:(fun (ss, _) ->
+         equal_r_mich_cut_info (get_reduced_mci ss.ss_block_mci) start_rmci
+     )
+     |> Option.map ~f:(fun (ss, _) -> ss.ss_block_mci)
+     (* 3. if exists, then cut *)
+     |> Option.map ~f:(fun found_mci ->
+            List.split_while ms ~f:(fun (ss, _) ->
+                not (equal_mich_cut_info ss.ss_block_mci found_mci)
+            )
+            |> fun (hd, tl) ->
+            match tl with
+            | []           ->
+              failwith "MState : cut_first_found_loop : unexpected"
+            | (ss, _) :: _ -> hd @ [ (ss, []) ]
+        )
+   )
