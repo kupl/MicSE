@@ -643,6 +643,34 @@ let gen_query_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
    MF_imply (sp, query)
 (* function gen_query_vc end *)
 
+let gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f =
+   let open Tz in
+   let open MState in
+   fun imap mstate ->
+   let (start_state : sym_state) = get_first_ss mstate in
+   let (block_state : sym_state) = get_last_ss mstate in
+   let (inv : mich_f list) =
+      Inv.find_inv_map imap start_state.ss_start_mci |> MFSet.to_list
+   in
+   let (sp : mich_f) = MF_and (inv @ get_constraint mstate) in
+   let (query : mich_f) =
+      property_of_query block_state.ss_block_mci block_state.ss_block_si
+   in
+   MF_imply (sp, query)
+(* function gen_query_vc_from_ms end *)
+
+let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option =
+   let open Tz in
+   let open MState in
+   fun fset mstate ->
+   match cut_first_found_loop mstate with
+   | None          -> None
+   | Some p_mstate ->
+     let (fmla : mich_f list) = MFSet.to_list fset in
+     let (sp : mich_f) = MF_and (fmla @ get_constraint p_mstate) in
+     Some (MF_imply (sp, MF_and fmla))
+(* function gen_preservation_vc end *)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Verification                                                               *)
