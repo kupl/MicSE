@@ -802,6 +802,10 @@ module Formula : sig
 
   val create_sub_no_underflow : Ctx.t -> Expr.t -> Expr.t -> t
 
+  val create_shift_l_rhs_in_256 : Ctx.t -> Expr.t -> t
+
+  val create_shift_r_rhs_in_256 : Ctx.t -> Expr.t -> t
+
   val to_sat_check : Ctx.t -> t -> Expr.t list
 
   val to_val_check : Ctx.t -> t -> Expr.t list

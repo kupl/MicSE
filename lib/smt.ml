@@ -1736,8 +1736,7 @@ module ZMap = struct
   (* function create_expr_empty_map end *)
 
   let read_value : Ctx.t -> key:Expr.t -> Expr.t -> Expr.t =
-    fun ctx ~key expr1 ->
-    Z3.Z3Array.mk_select (Ctx.read ctx) expr1 key
+    (fun ctx ~key expr1 -> Z3.Z3Array.mk_select (Ctx.read ctx) expr1 key)
   (* function read_value end *)
 
   let read_default_value : Ctx.t -> Expr.t -> Expr.t =
@@ -2390,6 +2389,22 @@ module Formula = struct
     let (min : Expr.t) = ZMutez.create_expr ctx 0 in
     create_arith_le ctx min sub
   (* function create_sub_no_underflow end *)
+
+  let create_shift_l_rhs_in_256 : Ctx.t -> Expr.t -> t =
+     let (max_rhs : Bigint.t) = Bigint.of_int 256 in
+     (* Sort of input expression is integer sort (mutez type) *)
+     fun ctx expr2 ->
+     let (max : Expr.t) = ZMutez.create_expr_of_bigint ctx max_rhs in
+     create_arith_le ctx expr2 max
+  (* function create_shift_l_rhs_in_256 end *)
+
+  let create_shift_r_rhs_in_256 : Ctx.t -> Expr.t -> t =
+     let (max_rhs : Bigint.t) = Bigint.of_int 256 in
+     (* Sort of input expression is integer sort (mutez type) *)
+     fun ctx expr2 ->
+     let (max : Expr.t) = ZMutez.create_expr_of_bigint ctx max_rhs in
+     create_arith_le ctx expr2 max
+  (* function create_shift_l_rhs_in_256 end *)
 
   let to_sat_check : Ctx.t -> t -> Expr.t list = (fun _ fmla -> [ fmla ])
   (* function to_sat_check end *)

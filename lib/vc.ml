@@ -578,8 +578,10 @@ module Encoder = struct
        Formula.create_mul_no_overflow ctx (eov v1) (eov v2)
      | MF_mul_nmm_no_overflow (v1, v2) ->
        Formula.create_mul_no_overflow ctx (eov v1) (eov v2)
-     | MF_shiftL_nnn_rhs_in_256 _ -> raise Not_Implemented
-     | MF_shiftR_nnn_rhs_in_256 _ -> raise Not_Implemented
+     | MF_shiftL_nnn_rhs_in_256 (_, v2) ->
+       Formula.create_shift_l_rhs_in_256 ctx (eov v2)
+     | MF_shiftR_nnn_rhs_in_256 (_, v2) ->
+       Formula.create_shift_r_rhs_in_256 ctx (eov v2)
   (* function cv_mf end *)
 end
 
