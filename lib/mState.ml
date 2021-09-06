@@ -331,11 +331,7 @@ let get_constraint : t -> mich_f list =
 
 let get_first_ss : t -> sym_state = (fun ms -> List.hd_exn ms |> fst)
 
-let get_last_ss : t -> sym_state =
-  fun ms ->
-  List.last ms
-  |> Option.value ~default:(failwith "mState : get_last_ss : unexpected")
-  |> fst
+let get_last_ss : t -> sym_state = (fun ms -> List.last_exn ms |> fst)
 
 let cut_first_found_loop : t -> t option =
    let proper_mcc : mich_cut_category -> bool = function
