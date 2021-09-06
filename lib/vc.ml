@@ -634,6 +634,18 @@ let apply_initial_storage :
    | _             -> VcError "apply_initial_storage : wrong mci" |> raise
 (* function apply_initial_storage end *)
 
+let apply_inv_at_start :
+    Tz.mich_cut_info -> Tz.sym_image -> MFSet.t -> Tz.mich_f list =
+  fun mci _ fset ->
+  match mci.mci_cutcat with
+  | _ -> MFSet.to_list fset
+(* function apply_inv end *)
+
+let apply_inv_at_block :
+    Tz.mich_cut_info -> Tz.sym_image -> MFSet.t -> Tz.mich_f list =
+  (fun _ _ fset -> MFSet.to_list fset)
+(* function apply_inv end *)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Verification Condition                                                     *)
@@ -643,10 +655,11 @@ let apply_initial_storage :
 let gen_query_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
    let open Tz in
    fun imap sstate ->
-   let (inv : mich_f list) =
-      Inv.find_inv_map imap sstate.ss_start_mci |> MFSet.to_list
+   let (start_inv : mich_f list) =
+      Inv.find_inv_map imap sstate.ss_start_mci
+      |> apply_inv_at_start sstate.ss_start_mci sstate.ss_start_si
    in
-   let (sp : mich_f) = MF_and (inv @ sstate.ss_constraints) in
+   let (sp : mich_f) = MF_and (start_inv @ sstate.ss_constraints) in
    let (query : mich_f) =
       property_of_query sstate.ss_block_mci sstate.ss_block_si
    in
@@ -659,15 +672,55 @@ let gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f =
    fun imap mstate ->
    let (start_state : sym_state) = get_first_ss mstate in
    let (block_state : sym_state) = get_last_ss mstate in
-   let (inv : mich_f list) =
-      Inv.find_inv_map imap start_state.ss_start_mci |> MFSet.to_list
+   let (start_inv : mich_f list) =
+      Inv.find_inv_map imap start_state.ss_start_mci
+      |> apply_inv_at_start start_state.ss_start_mci start_state.ss_start_si
    in
-   let (sp : mich_f) = MF_and (inv @ get_constraint mstate) in
+   let (sp : mich_f) = MF_and (start_inv @ get_constraint mstate) in
    let (query : mich_f) =
       property_of_query block_state.ss_block_mci block_state.ss_block_si
    in
    MF_imply (sp, query)
 (* function gen_query_vc_from_ms end *)
+
+let gen_query_vc_from_ms_with_init_strg :
+    Inv.inv_map -> Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f =
+   let open Tz in
+   let open MState in
+   fun imap init_strg mstate ->
+   let (start_state : sym_state) = get_first_ss mstate in
+   let (block_state : sym_state) = get_last_ss mstate in
+   let (start_inv : mich_f list) =
+      Inv.find_inv_map imap start_state.ss_start_mci
+      |> apply_inv_at_start start_state.ss_start_mci start_state.ss_start_si
+   in
+   let (init_strg_fmla : mich_f) =
+      apply_initial_storage start_state.ss_start_mci start_state.ss_start_si
+        init_strg
+   in
+   let (sp : mich_f) =
+      MF_and (init_strg_fmla :: (start_inv @ get_constraint mstate))
+   in
+   let (query : mich_f) =
+      property_of_query block_state.ss_block_mci block_state.ss_block_si
+   in
+   MF_imply (sp, query)
+(* function gen_query_vc_from_ms end *)
+
+let gen_inductiveness_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
+   let open Tz in
+   fun imap sstate ->
+   let (start_inv : mich_f list) =
+      Inv.find_inv_map imap sstate.ss_start_mci
+      |> apply_inv_at_start sstate.ss_start_mci sstate.ss_start_si
+   in
+   let (block_inv : mich_f list) =
+      Inv.find_inv_map imap sstate.ss_block_mci
+      |> apply_inv_at_block sstate.ss_block_mci sstate.ss_block_si
+   in
+   let (sp : mich_f) = MF_and (start_inv @ sstate.ss_constraints) in
+   MF_imply (sp, MF_and block_inv)
+(* function gen_inductiveness_vc end *)
 
 let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option =
    let open Tz in
@@ -676,10 +729,30 @@ let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option =
    match cut_first_found_loop mstate with
    | None          -> None
    | Some p_mstate ->
-     let (fmla : mich_f list) = MFSet.to_list fset in
-     let (sp : mich_f) = MF_and (fmla @ get_constraint p_mstate) in
-     Some (MF_imply (sp, MF_and fmla))
+     let (start_state : sym_state) = get_first_ss p_mstate in
+     let (block_state : sym_state) = get_last_ss p_mstate in
+     let (start_fmla : mich_f list) =
+        apply_inv_at_start start_state.ss_start_mci start_state.ss_start_si fset
+     in
+     let (block_fmla : mich_f list) =
+        apply_inv_at_block block_state.ss_start_mci block_state.ss_start_si fset
+     in
+     let (sp : mich_f) = MF_and (start_fmla @ get_constraint p_mstate) in
+     Some (MF_imply (sp, MF_and block_fmla))
 (* function gen_preservation_vc end *)
+
+let gen_initial_inv_vc : MFSet.t -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
+    =
+   let open Tz in
+   fun fset init_strg sstate ->
+   let (start_inv : mich_f list) =
+      apply_inv_at_start sstate.ss_start_mci sstate.ss_start_si fset
+   in
+   let (init_strg_fmla : mich_f) =
+      apply_initial_storage sstate.ss_start_mci sstate.ss_start_si init_strg
+   in
+   MF_and (init_strg_fmla :: start_inv)
+(* function gen_initial_inv_vc end *)
 
 (******************************************************************************)
 (******************************************************************************)

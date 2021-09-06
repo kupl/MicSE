@@ -45,7 +45,7 @@ val get_hd2 : 'a list -> 'a * 'a
 val property_of_query : Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f
 
 val apply_initial_storage :
-Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_v Tz.cc -> Tz.mich_f
+  Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_v Tz.cc -> Tz.mich_f
 
 (******************************************************************************)
 (******************************************************************************)
@@ -57,7 +57,14 @@ val gen_query_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f
 
 val gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f
 
+val gen_query_vc_from_ms_with_init_strg :
+  Inv.inv_map -> Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f
+
+val gen_inductiveness_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f
+
 val gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option
+
+val gen_initial_inv_vc : MFSet.t -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
 
 (******************************************************************************)
 (******************************************************************************)
