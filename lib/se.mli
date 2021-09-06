@@ -114,4 +114,4 @@ val run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result
 
 val run_inst_entry :
   Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc ->
-  se_result * Tz.sym_image
+  se_result * Tz.sym_state

@@ -42,7 +42,8 @@ let tz_rep :
   (tz_pgm, tz_init_strg_opt)
 
 let sym_exec :
-    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc -> Se.se_result =
+    Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc ->
+    Se.se_result * Tz.sym_state =
    Se.run_inst_entry
 
 (******************************************************************************)
@@ -70,7 +71,7 @@ let upto_tz_rep :
   let (tz_pgm, tz_init_strg_opt) = tz_rep (mich_pgm, mich_init_strg_opt) in
   (tz_pgm, tz_init_strg_opt)
 
-let upto_sym_exec : string array option -> Se.se_result =
+let upto_sym_exec : string array option -> Se.se_result * Tz.sym_state =
   fun argv_opt ->
   let (tz_pgm, _) = upto_tz_rep argv_opt in
   sym_exec tz_pgm

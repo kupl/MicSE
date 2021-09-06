@@ -1692,7 +1692,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
 
 let run_inst_entry :
     Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc ->
-    se_result * Tz.sym_image =
+    se_result * Tz.sym_state =
    let open Tz in
    let open TzUtil in
    fun (pt, st, c) ->
@@ -1747,6 +1747,6 @@ let run_inst_entry :
            (SSet.map result_raw.sr_blocked ~f:final_blocking)
            result_raw.sr_running;
      },
-     initial_ss.ss_start_si
+     initial_ss
    )
 (* function run_inst_entry end *)
