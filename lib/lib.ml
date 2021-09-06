@@ -9,3 +9,4 @@ module Smt = Smt
 module Te = Te
 module Tz = Tz
 module TzUtil = TzUtil
+module Vc = Vc

@@ -547,7 +547,6 @@ module Encoder = struct
 
   let rec cv_mf : Smt.Ctx.t -> Tz.mich_f -> Smt.Formula.t =
      let open Tz in
-     let open TzUtil in
      let open Smt in
      fun ctx fmla ->
      let eov value_cc = cv_mvcc ctx value_cc in
