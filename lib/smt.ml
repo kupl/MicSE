@@ -2469,7 +2469,10 @@ module Solver = struct
      let _ = incr id in
      {
        id = !id;
-       solver = Z3.Solver.mk_solver_s (Ctx.read ctx) (string_of_int !id);
+       (* solver = Z3.Solver.mk_solver (Ctx.read ctx) ("_" ^ string_of_int !id); *)
+       solver =
+         Z3.Solver.mk_solver (Ctx.read ctx) None
+         (* (Some (Sym.create ctx ("_" ^ string_of_int !id))); *);
      }
   (* function create end *)
 
@@ -2477,7 +2480,7 @@ module Solver = struct
 
   let read_id : t -> int = (fun { id; _ } -> id)
 
-  let reset : t -> unit = fun { solver; _ } -> Z3.Solver.reset solver
+  let reset : t -> unit = (fun { solver; _ } -> Z3.Solver.reset solver)
 
   let check_sat : t -> Ctx.t -> Formula.t -> satisfiability * Model.t option =
     fun solver ctx fmla ->

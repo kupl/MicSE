@@ -75,3 +75,24 @@ let upto_sym_exec : string array option -> Se.se_result * Tz.sym_state =
   fun argv_opt ->
   let (tz_pgm, _) = upto_tz_rep argv_opt in
   sym_exec tz_pgm
+
+let refuter_naive_run :
+    string array option -> (Smt.Model.t * MState.t) option * Refute.MSSet.t =
+  fun argv_opt ->
+  let (tz_pgm, tz_init_strg_opt) = upto_tz_rep argv_opt in
+  let (se_result, _) = sym_exec tz_pgm in
+  let init_msset = se_result.sr_queries |> Refute.MSSet.map ~f:MState.init in
+  let timer = Utils.Time.create ~budget:!Utils.Argument.total_timeout ()
+  and init_strg =
+     tz_init_strg_opt
+     |> function
+     | Some s -> s
+     | None   -> failwith "ExecFlow.refuter_naive_run : init_strg : unexpected"
+  and smt_ctxt = Vc.gen_ctx () in
+  let smt_slvr = Vc.gen_solver smt_ctxt
+  and invmap = Inv.gen_true_inv_map se_result
+  and m_view =
+     Se.SSGraph.construct_mci_view ~basic_blocks:se_result.sr_blocked
+  in
+  Refute.naive_run ~timer ~init_strg ~smt_ctxt ~smt_slvr ~invmap ~m_view
+    init_msset
