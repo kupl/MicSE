@@ -27,10 +27,7 @@ module Encoder : sig
   val cv_mvcc : Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t
 
   val cv_compare :
-  Smt.Ctx.t ->
-  Tz.mich_t * Smt.Expr.t ->
-  Tz.mich_t * Smt.Expr.t ->
-  Smt.Expr.t
+    Smt.Ctx.t -> Tz.mich_t * Smt.Expr.t -> Tz.mich_t * Smt.Expr.t -> Smt.Expr.t
 
   val cv_mf : Smt.Ctx.t -> Tz.mich_f -> Smt.Formula.t
 end
@@ -50,7 +47,9 @@ val property_of_query : Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f
 (******************************************************************************)
 
 val gen_query_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f
+
 val gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f
+
 val gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option
 
 (******************************************************************************)
@@ -58,15 +57,18 @@ val gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option
 (* Verification                                                               *)
 (******************************************************************************)
 (******************************************************************************)
+val gen_ctx : unit -> Smt.Ctx.t
+
+val gen_solver : Smt.Ctx.t -> Smt.Solver.t
 
 val check_val :
-   Smt.Ctx.t ->
-   Smt.Solver.t ->
-   Tz.mich_f ->
-   Smt.Solver.validity * Smt.Model.t option
+  Smt.Ctx.t ->
+  Smt.Solver.t ->
+  Tz.mich_f ->
+  Smt.Solver.validity * Smt.Model.t option
 
 val check_sat :
-   Smt.Ctx.t ->
-   Smt.Solver.t ->
-   Tz.mich_f ->
-   Smt.Solver.satisfiability * Smt.Model.t option
+  Smt.Ctx.t ->
+  Smt.Solver.t ->
+  Tz.mich_f ->
+  Smt.Solver.satisfiability * Smt.Model.t option

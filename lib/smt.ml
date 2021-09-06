@@ -2477,6 +2477,8 @@ module Solver = struct
 
   let read_id : t -> int = (fun { id; _ } -> id)
 
+  let reset : t -> unit = fun { solver; _ } -> Z3.Solver.reset solver
+
   let check_sat : t -> Ctx.t -> Formula.t -> satisfiability * Model.t option =
     fun solver ctx fmla ->
     match Z3.Solver.check (read solver) (Formula.to_sat_check ctx fmla) with

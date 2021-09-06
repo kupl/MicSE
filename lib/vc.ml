@@ -677,14 +677,22 @@ let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option =
 (******************************************************************************)
 (******************************************************************************)
 
+let gen_ctx : unit -> Smt.Ctx.t = (fun () -> Smt.Ctx.create ())
+(* function gen_ctx end *)
+
+let gen_solver : Smt.Ctx.t -> Smt.Solver.t = (fun ctx -> Smt.Solver.create ctx)
+(* function gen_solver end *)
+
 let check_val :
     Smt.Ctx.t ->
     Smt.Solver.t ->
     Tz.mich_f ->
     Smt.Solver.validity * Smt.Model.t option =
-  fun ctx solver mf ->
-  let (fmla : Smt.Formula.t) = Encoder.cv_mf ctx mf in
-  Smt.Solver.check_val solver ctx fmla
+   let open Smt in
+   fun ctx solver mf ->
+   let _ = Solver.reset solver in
+   let (fmla : Formula.t) = Encoder.cv_mf ctx mf in
+   Solver.check_val solver ctx fmla
 (* function check_validity end *)
 
 let check_sat :
@@ -692,7 +700,9 @@ let check_sat :
     Smt.Solver.t ->
     Tz.mich_f ->
     Smt.Solver.satisfiability * Smt.Model.t option =
-  fun ctx solver mf ->
-  let (fmla : Smt.Formula.t) = Encoder.cv_mf ctx mf in
-  Smt.Solver.check_sat solver ctx fmla
+   let open Smt in
+   fun ctx solver mf ->
+   let _ = Solver.reset solver in
+   let (fmla : Formula.t) = Encoder.cv_mf ctx mf in
+   Solver.check_sat solver ctx fmla
 (* function check_validity end *)

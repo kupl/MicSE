@@ -860,6 +860,8 @@ module Solver : sig
 
   val read_id : t -> int
 
+  val reset : t -> unit
+
   val check_sat : t -> Ctx.t -> Formula.t -> satisfiability * Model.t option
 
   val check_val : t -> Ctx.t -> Formula.t -> validity * Model.t option
