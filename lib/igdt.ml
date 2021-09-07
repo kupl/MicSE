@@ -401,8 +401,6 @@ let igdt_from_mich_stack : Tz.mich_cut_info -> Tz.mich_v Tz.cc list -> ISet.t =
        | (MCC_lb_loop, l)
          when 0 <= l && l <= len ->
          collect_igdt_from_mich_v cur_val
-       | (MCC_query _, _) ->
-         IgdtError "igdt_from_mich_stack : MCC_trx_*, MCC_query" |> raise
        | _ ->
          IgdtError
            ("igdt_from_mich_stack : "
@@ -460,6 +458,7 @@ let igdt_from_map_entry_stack :
 let igdt_from_map_exit_stack :
     Tz.mich_cut_info -> Tz.mich_v Tz.cc list -> ISet.t =
    let open Tz in
+   let open TzUtil in
    fun start_mci v_stack ->
    let (len : int) = List.length v_stack - 1 in
    List.mapi v_stack ~f:(fun cur_loc cur_val ->
@@ -469,6 +468,9 @@ let igdt_from_map_exit_stack :
        | (MCC_query _, l)
          when 0 <= l && l <= len ->
          IgdtError "igdt_from_map_exit_stack : MCC_trx_*, MCC_query" |> raise
+      | (MCC_lb_map, l) when l = len ->
+         let (cur_typ : mich_t cc) = typ_of_val cur_val in
+         collect_igdt_from_mich_v (gen_custom_cc cur_val (MV_ref_cont cur_typ))
        | (_, l) when 0 <= l && l <= len -> collect_igdt_from_mich_v cur_val
        | _ ->
          IgdtError
