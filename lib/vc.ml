@@ -94,8 +94,40 @@ module Encoder = struct
            ^ "_"
            ^ Sexp.to_string (sexp_of_mich_sym_ctxt sc3)
            )
-     | MV_car v1cc -> ZPair.read_content_fst (eov v1cc)
-     | MV_cdr v1cc -> ZPair.read_content_snd (eov v1cc)
+     | MV_car v1cc -> (
+       match v1cc.cc_v with
+       (* Optimization Rules **************************************************)
+       | MV_unlift_option v11cc -> (
+         match v11cc.cc_v with
+         | MV_ediv_nnnn (v111cc, v112cc)
+         | MV_ediv_niin (v111cc, v112cc)
+         | MV_ediv_inin (v111cc, v112cc)
+         | MV_ediv_iiin (v111cc, v112cc)
+         | MV_ediv_mnmm (v111cc, v112cc)
+         | MV_ediv_mmnm (v111cc, v112cc) ->
+           ZInt.create_div ctx (eov v111cc) (eov v112cc)
+         | _ -> ZOption.read_content (eov v11cc) |> ZPair.read_content_fst
+       )
+       (* Normal Case *********************************************************)
+       | _ -> ZPair.read_content_fst (eov v1cc)
+     )
+     | MV_cdr v1cc -> (
+       match v1cc.cc_v with
+       (* Optimization Rules **************************************************)
+       | MV_unlift_option v11cc -> (
+         match v11cc.cc_v with
+         | MV_ediv_nnnn (v111cc, v112cc)
+         | MV_ediv_niin (v111cc, v112cc)
+         | MV_ediv_inin (v111cc, v112cc)
+         | MV_ediv_iiin (v111cc, v112cc)
+         | MV_ediv_mnmm (v111cc, v112cc)
+         | MV_ediv_mmnm (v111cc, v112cc) ->
+           ZInt.create_mod ctx (eov v111cc) (eov v112cc)
+         | _ -> ZOption.read_content (eov v11cc) |> ZPair.read_content_snd
+       )
+       (* Normal Case *********************************************************)
+       | _ -> ZPair.read_content_snd (eov v1cc)
+     )
      | MV_unlift_option v1cc -> ZOption.read_content (eov v1cc)
      | MV_unlift_left v1cc -> ZOr.read_content_left (eov v1cc)
      | MV_unlift_right v1cc -> ZOr.read_content_right (eov v1cc)
