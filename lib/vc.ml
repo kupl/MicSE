@@ -100,12 +100,24 @@ module Encoder = struct
        | MV_unlift_option v11cc -> (
          match v11cc.cc_v with
          | MV_ediv_nnnn (v111cc, v112cc)
+         | MV_ediv_mmnm (v111cc, v112cc) -> (
+           match v112cc.cc_v with
+           | MV_lit_nat l1 when Bigint.equal l1 (Bigint.of_int 1) -> eov v111cc
+           | _ -> ZInt.create_div ctx (eov v111cc) (eov v112cc)
+         )
          | MV_ediv_niin (v111cc, v112cc)
          | MV_ediv_inin (v111cc, v112cc)
-         | MV_ediv_iiin (v111cc, v112cc)
-         | MV_ediv_mnmm (v111cc, v112cc)
-         | MV_ediv_mmnm (v111cc, v112cc) ->
-           ZInt.create_div ctx (eov v111cc) (eov v112cc)
+         | MV_ediv_iiin (v111cc, v112cc) -> (
+           match v112cc.cc_v with
+           | MV_lit_int l1 when Bigint.equal l1 (Bigint.of_int 1) -> eov v111cc
+           | _ -> ZInt.create_div ctx (eov v111cc) (eov v112cc)
+         )
+         | MV_ediv_mnmm (v111cc, v112cc) -> (
+           match v112cc.cc_v with
+           | MV_lit_mutez l1 when Bigint.equal l1 (Bigint.of_int 1) ->
+             eov v111cc
+           | _ -> ZInt.create_div ctx (eov v111cc) (eov v112cc)
+         )
          | _ -> ZOption.read_content (eov v11cc) |> ZPair.read_content_fst
        )
        (* Normal Case *********************************************************)
@@ -117,12 +129,26 @@ module Encoder = struct
        | MV_unlift_option v11cc -> (
          match v11cc.cc_v with
          | MV_ediv_nnnn (v111cc, v112cc)
+         | MV_ediv_mmnm (v111cc, v112cc) -> (
+           match v112cc.cc_v with
+           | MV_lit_nat l1 when Bigint.equal l1 (Bigint.of_int 1) ->
+             ZInt.create_expr ctx 0
+           | _ -> ZInt.create_mod ctx (eov v111cc) (eov v112cc)
+         )
          | MV_ediv_niin (v111cc, v112cc)
          | MV_ediv_inin (v111cc, v112cc)
-         | MV_ediv_iiin (v111cc, v112cc)
-         | MV_ediv_mnmm (v111cc, v112cc)
-         | MV_ediv_mmnm (v111cc, v112cc) ->
-           ZInt.create_mod ctx (eov v111cc) (eov v112cc)
+         | MV_ediv_iiin (v111cc, v112cc) -> (
+           match v112cc.cc_v with
+           | MV_lit_int l1 when Bigint.equal l1 (Bigint.of_int 1) ->
+             ZInt.create_expr ctx 0
+           | _ -> ZInt.create_mod ctx (eov v111cc) (eov v112cc)
+         )
+         | MV_ediv_mnmm (v111cc, v112cc) -> (
+           match v112cc.cc_v with
+           | MV_lit_mutez l1 when Bigint.equal l1 (Bigint.of_int 1) ->
+             ZInt.create_expr ctx 0
+           | _ -> ZInt.create_mod ctx (eov v111cc) (eov v112cc)
+         )
          | _ -> ZOption.read_content (eov v11cc) |> ZPair.read_content_snd
        )
        (* Normal Case *********************************************************)
