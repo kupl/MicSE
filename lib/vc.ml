@@ -644,17 +644,128 @@ let apply_initial_storage :
    | _             -> VcError "apply_initial_storage : wrong mci" |> raise
 (* function apply_initial_storage end *)
 
+let subst_mf_rules :
+    mapf_vcc:(Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc) -> Tz.mich_f -> Tz.mich_f =
+  fun ~mapf_vcc mf ->
+  match mf with
+  (* Logical Formula *)
+  | MF_eq (v1, v2) -> MF_eq (mapf_vcc v1, mapf_vcc v2)
+  (* MicSE Branch *)
+  | MF_is_true v1 -> MF_is_true (mapf_vcc v1)
+  | MF_is_none v1 -> MF_is_none (mapf_vcc v1)
+  | MF_is_left v1 -> MF_is_left (mapf_vcc v1)
+  | MF_is_cons v1 -> MF_is_cons (mapf_vcc v1)
+  (* MicSE Datatype Constraint *)
+  | MF_mutez_bound v1 -> MF_mutez_bound (mapf_vcc v1)
+  | MF_nat_bound v1 -> MF_nat_bound (mapf_vcc v1)
+  (* Custom Formula for verifiying *)
+  | MF_add_mmm_no_overflow (v1, v2) ->
+    MF_add_mmm_no_overflow (mapf_vcc v1, mapf_vcc v2)
+  | MF_sub_mmm_no_underflow (v1, v2) ->
+    MF_sub_mmm_no_underflow (mapf_vcc v1, mapf_vcc v2)
+  | MF_mul_mnm_no_overflow (v1, v2) ->
+    MF_mul_mnm_no_overflow (mapf_vcc v1, mapf_vcc v2)
+  | MF_mul_nmm_no_overflow (v1, v2) ->
+    MF_mul_nmm_no_overflow (mapf_vcc v1, mapf_vcc v2)
+  | MF_shiftL_nnn_rhs_in_256 (v1, v2) ->
+    MF_shiftL_nnn_rhs_in_256 (mapf_vcc v1, mapf_vcc v2)
+  | MF_shiftR_nnn_rhs_in_256 (v1, v2) ->
+    MF_shiftR_nnn_rhs_in_256 (mapf_vcc v1, mapf_vcc v2)
+  (* Others *)
+  | _ -> mf
+(* function subst_mf_rules end *)
+
 let apply_inv_at_start :
     Tz.mich_cut_info -> Tz.sym_image -> MFSet.t -> Tz.mich_f list =
-  fun mci _ fset ->
-  match mci.mci_cutcat with
-  | _ -> MFSet.to_list fset
-(* function apply_inv end *)
+   let open Tz in
+   let open TzUtil in
+   fun mci si fset ->
+   let (mapf : mich_v -> mich_v) = function
+   | MV_ref (_, msc2) -> (
+     match msc2 with
+     | MSC_contract             -> si.si_param.ti_contract.cc_v
+     | MSC_source               -> si.si_param.ti_source.cc_v
+     | MSC_sender               -> si.si_param.ti_sender.cc_v
+     | MSC_param                -> si.si_param.ti_param.cc_v
+     | MSC_amount               -> si.si_param.ti_amount.cc_v
+     | MSC_time                 -> si.si_param.ti_time.cc_v
+     | MSC_balance              -> si.si_balance.cc_v
+     | MSC_bc_balance           -> si.si_bc_balance.cc_v
+     | MSC_mich_stack loc       -> (List.nth_exn si.si_mich loc).cc_v
+     | MSC_dip_stack loc        -> (List.nth_exn si.si_dip loc).cc_v
+     | MSC_map_entry_stack loc  -> (List.nth_exn si.si_map_entry loc).cc_v
+     | MSC_map_exit_stack loc   -> (List.nth_exn si.si_map_exit loc).cc_v
+     | MSC_map_mapkey_stack loc -> (List.nth_exn si.si_map_mapkey loc).cc_v
+     | MSC_iter_stack loc       -> (List.nth_exn si.si_iter loc).cc_v
+   )
+   | MV_ref_cont t1cc -> (
+     match mci.mci_cutcat with
+     | MCC_ln_map  -> (List.hd_exn si.si_mich).cc_v
+     | MCC_ln_iter -> (
+       match t1cc.cc_v with
+       | MT_list t11cc             -> MV_nil t11cc
+       | MT_set t11cc              -> MV_empty_set t11cc
+       | MT_map (t11cc, t12cc)     -> MV_empty_map (t11cc, t12cc)
+       | MT_big_map (t11cc, t12cc) -> MV_empty_big_map (t11cc, t12cc)
+       | _                         ->
+         VcError "apply_inv_at_start : MV_ref_cont : MCC_ln_iter : wrong type"
+         |> raise
+     )
+     | MCC_lb_map  -> (List.hd_exn si.si_map_entry).cc_v
+     | MCC_lb_iter -> (List.hd_exn si.si_iter).cc_v
+     | _           ->
+       VcError "apply_inv_at_start : MV_ref_cont : wrong reference" |> raise
+   )
+   | mv               -> mv
+   in
+   MFSet.to_list fset
+   |> List.map ~f:(fun fmla ->
+          mf_map_innerfst
+            ~mapf:(subst_mf_rules ~mapf_vcc:(mvcc_map_innerfst ~mapf))
+            fmla
+      )
 
 let apply_inv_at_block :
     Tz.mich_cut_info -> Tz.sym_image -> MFSet.t -> Tz.mich_f list =
-  (fun _ _ fset -> MFSet.to_list fset)
-(* function apply_inv end *)
+   let open Tz in
+   let open TzUtil in
+   fun mci si fset ->
+   let (mapf : mich_v -> mich_v) = function
+   | MV_ref (_, msc2) -> (
+     match msc2 with
+     | MSC_contract             -> si.si_param.ti_contract.cc_v
+     | MSC_source               -> si.si_param.ti_source.cc_v
+     | MSC_sender               -> si.si_param.ti_sender.cc_v
+     | MSC_param                -> si.si_param.ti_param.cc_v
+     | MSC_amount               -> si.si_param.ti_amount.cc_v
+     | MSC_time                 -> si.si_param.ti_time.cc_v
+     | MSC_balance              -> si.si_balance.cc_v
+     | MSC_bc_balance           -> si.si_bc_balance.cc_v
+     | MSC_mich_stack loc       -> (List.nth_exn si.si_mich loc).cc_v
+     | MSC_dip_stack loc        -> (List.nth_exn si.si_dip loc).cc_v
+     | MSC_map_entry_stack loc  -> (List.nth_exn si.si_map_entry loc).cc_v
+     | MSC_map_exit_stack loc   -> (List.nth_exn si.si_map_exit loc).cc_v
+     | MSC_map_mapkey_stack loc -> (List.nth_exn si.si_map_mapkey loc).cc_v
+     | MSC_iter_stack loc       -> (List.nth_exn si.si_iter loc).cc_v
+   )
+   | MV_ref_cont _    -> (
+     match mci.mci_cutcat with
+     | MCC_ln_map  -> (List.hd_exn si.si_mich).cc_v
+     | MCC_ln_iter -> (List.hd_exn si.si_mich).cc_v
+     | MCC_lb_map  -> (List.hd_exn si.si_map_exit).cc_v
+     | MCC_lb_iter -> (List.hd_exn si.si_iter).cc_v
+     | _           ->
+       VcError "apply_inv_at_start : MV_ref_cont : wrong reference" |> raise
+   )
+   | mv               -> mv
+   in
+   MFSet.to_list fset
+   |> List.map ~f:(fun fmla ->
+          mf_map_innerfst
+            ~mapf:(subst_mf_rules ~mapf_vcc:(mvcc_map_innerfst ~mapf))
+            fmla
+      )
+(* function apply_inv_at_start end *)
 
 (******************************************************************************)
 (******************************************************************************)

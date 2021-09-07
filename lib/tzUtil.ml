@@ -985,7 +985,7 @@ let typ_of_val : mich_v cc -> mich_t cc =
      (* Custom Domain Value for Invariant Synthesis                              *)
      (****************************************************************************)
      | MV_ref (t1, _) -> t1
-     | MV_ref_cont (t1, _) -> t1
+     | MV_ref_cont t1 -> t1
      | MV_sigma_tmplm _ -> gen_cc MT_mutez
      (* inner-function typ_of_val_i end *)
    in
