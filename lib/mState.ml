@@ -21,13 +21,13 @@ let stack_equality_fmlas :
     mich_f list =
    let eqf x y = MF_eq (x, y) in
    fun (mcc_1, mcc_2) (si1, si2) ->
-   let _ =
-      Utils.Log.debug (fun m ->
-          m "mcc-1 = %s , mcc-2 = %s"
-            (Tz.sexp_of_mich_cut_category mcc_1 |> string_of_sexp)
-            (Tz.sexp_of_mich_cut_category mcc_2 |> string_of_sexp)
-      )
-   in
+   (* let _ =
+         Utils.Log.debug (fun m ->
+             m "mcc-1 = %s , mcc-2 = %s"
+               (Tz.sexp_of_mich_cut_category mcc_1 |> string_of_sexp)
+               (Tz.sexp_of_mich_cut_category mcc_2 |> string_of_sexp)
+         )
+      in *)
    match (mcc_1, mcc_2) with
    (* TRX *)
    | (MCC_trx_exit, MCC_trx_entry) ->
@@ -56,15 +56,9 @@ let stack_equality_fmlas :
    | (MCC_ln_loop, MCC_lb_loop)
    | (MCC_lb_loop, MCC_ln_loop)
    | (MCC_lb_loop, MCC_lb_loop) ->
-     let mstack1 =
-        match mcc_1 with
-        | MCC_ln_loop -> List.tl_exn si1.si_mich
-        | MCC_lb_loop -> si1.si_mich
-        | _           ->
-          failwith "MState : stack_equality_fmlas : LOOP : 1 : unexpected"
-     in
      (* NOTE: question here : is (AND []) valid formula ? *)
-     let ms_c = MF_and (List.map2_exn mstack1 si2.si_mich ~f:eqf)
+     let ms_c =
+        MF_and (List.map2_exn (List.tl_exn si1.si_mich) si2.si_mich ~f:eqf)
      and ds_c = MF_and (List.map2_exn si1.si_dip si2.si_dip ~f:eqf)
      and maps_entry_c =
         MF_and (List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf)
