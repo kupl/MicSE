@@ -88,3 +88,5 @@ type config = {
   cfg_smt_slvr : Smt.Solver.t;
 }
 [@@deriving sexp, compare, equal]
+
+val string_of_res_rough_in_refuter_perspective : config -> res -> string

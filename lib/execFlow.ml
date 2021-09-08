@@ -46,6 +46,33 @@ let sym_exec :
     Se.se_result * Tz.sym_state =
    Se.run_inst_entry
 
+let get_config_base :
+    (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc)
+    * Tz.mich_v Tz.cc option
+    * Se.se_result
+    * Tz.sym_state ->
+    Res.config =
+  fun (_, tz_init_strg_opt, se_result, se_init_state) ->
+  let tz_init_strg =
+     match tz_init_strg_opt with
+     | Some v -> v
+     | None   -> failwith "ExecFlow : config_base : cfg_istrg = None"
+  in
+  let smt_ctxt = Vc.gen_ctx () in
+  {
+    cfg_timer = Utils.Time.create ~budget:!Utils.Argument.total_timeout ();
+    cfg_memory = Utils.Memory.create ~budget:!Utils.Argument.memory_bound ();
+    cfg_istate = se_init_state;
+    cfg_istrg = tz_init_strg;
+    cfg_se_res = se_result;
+    cfg_m_view =
+      Se.SSGraph.construct_mci_view ~basic_blocks:se_result.sr_blocked;
+    cfg_imap =
+      Igdt.get_igdts_map se_result.sr_blocked tz_init_strg Igdt.MVSet.empty;
+    cfg_smt_ctxt = smt_ctxt;
+    cfg_smt_slvr = Vc.gen_solver smt_ctxt;
+  }
+
 (******************************************************************************)
 (******************************************************************************)
 (* Execution Flow                                                             *)
@@ -71,33 +98,22 @@ let upto_tz_rep :
   let (tz_pgm, tz_init_strg_opt) = tz_rep (mich_pgm, mich_init_strg_opt) in
   (tz_pgm, tz_init_strg_opt)
 
-let upto_sym_exec : string array option -> Se.se_result * Tz.sym_state =
+let upto_sym_exec :
+    string array option ->
+    (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc)
+    * Tz.mich_v Tz.cc option
+    * Se.se_result
+    * Tz.sym_state =
   fun argv_opt ->
-  let (tz_pgm, _) = upto_tz_rep argv_opt in
-  sym_exec tz_pgm
-
-let get_config_base : string array option -> Res.config =
-  fun argv_opt ->
-  let _ = initial_system_setting argv_opt in
-  let (mich_pgm, mich_init_strg_opt) = parsing () in
-  let (tz_pgm, tz_init_strg_opt) = tz_rep (mich_pgm, mich_init_strg_opt) in
-  let tz_init_strg =
-     match tz_init_strg_opt with
-     | Some v -> v
-     | None   -> failwith "ExecFlow : config_base : cfg_istrg = None"
-  in
+  let (tz_pgm, tz_init_strg_opt) = upto_tz_rep argv_opt in
   let (se_result, se_init_state) = sym_exec tz_pgm in
-  let smt_ctxt = Vc.gen_ctx () in
-  {
-    cfg_timer = Utils.Time.create ~budget:!Utils.Argument.total_timeout ();
-    cfg_memory = Utils.Memory.create ~budget:!Utils.Argument.memory_bound ();
-    cfg_istate = se_init_state;
-    cfg_istrg = tz_init_strg;
-    cfg_se_res = se_result;
-    cfg_m_view =
-      Se.SSGraph.construct_mci_view ~basic_blocks:se_result.sr_blocked;
-    cfg_imap =
-      Igdt.get_igdts_map se_result.sr_blocked tz_init_strg Igdt.MVSet.empty;
-    cfg_smt_ctxt = smt_ctxt;
-    cfg_smt_slvr = Vc.gen_solver smt_ctxt;
-  }
+  (tz_pgm, tz_init_strg_opt, se_result, se_init_state)
+
+let refuter_naive_run : string array option -> Res.config * Res.res =
+  fun argv_opt ->
+  let sym_exec_res = upto_sym_exec argv_opt in
+  let (_, _, se_result, _) = sym_exec_res in
+  let cfg = get_config_base sym_exec_res in
+  let init_res = Refute.naive_run_init_res se_result in
+  let res = Refute.naive_run cfg init_res in
+  (cfg, res)

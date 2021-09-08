@@ -63,10 +63,11 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
    in
    fun { cfg_timer; cfg_istrg; cfg_m_view; cfg_smt_ctxt; cfg_smt_slvr; _ } res
        qr ->
-   let { qr_rft_flag; qr_exp_ppaths; qr_exp_cnt; _ } = qr in
+   let { qr_prv_flag; qr_rft_flag; qr_exp_ppaths; qr_exp_cnt; _ } = qr in
    (* 1. Check escape conditions *)
-   (* 1.1. Escape when (Timeout || (R-flag <> Unknown)) *)
+   (* 1.1. Escape when (Timeout || (R-flag <> RF_u) || (P-flag = PF_p)) *)
    if (not (equal_refuter_flag qr_rft_flag RF_u))
+      || equal_prover_flag qr_prv_flag PF_p
       || Utils.Time.is_timeout cfg_timer
    then qr
    else if (* 1.2. If Size(exp-ppaths) == 0, set refuter-flag to "failed" *)
@@ -132,3 +133,37 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
        }
      | None   -> { qr with qr_exp_ppaths = new_ppset; qr_exp_cnt = new_count }
    )
+
+let naive_run_res_escape_condition : Res.config -> Res.res -> bool =
+   let open Res in
+   fun { cfg_timer; _ } { r_qr_lst; _ } ->
+   (* 1. Timeout *)
+   Utils.Time.is_timeout cfg_timer
+   || (* 2. Every queries are PF_p or RF_r or RF_f *)
+   List.for_all r_qr_lst ~f:(fun qres ->
+       equal_prover_flag qres.qr_prv_flag PF_p
+       || not (equal_refuter_flag qres.qr_rft_flag RF_u)
+   )
+
+let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
+   let open Res in
+   fun cfg res ->
+   let _ =
+      (* DEBUGGING INFOs *)
+      Utils.Log.debug (fun m ->
+          m "%s" (Res.string_of_res_rough_in_refuter_perspective cfg res)
+      )
+   in
+   {
+     res with
+     r_qr_lst =
+       List.fold res.r_qr_lst ~init:[] ~f:(fun acc qres ->
+           naive_run_qres_atomic_action cfg res qres :: acc
+       );
+   }
+
+let rec naive_run : Res.config -> Res.res -> Res.res =
+  fun cfg res ->
+  if naive_run_res_escape_condition cfg res
+  then res
+  else naive_run cfg (naive_run_res_atomic_action cfg res)

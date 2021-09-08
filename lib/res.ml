@@ -90,3 +90,23 @@ type config = {
 }
 [@@deriving sexp, compare, equal]
 
+let string_of_res_rough_in_refuter_perspective : config -> res -> string =
+   let soi = string_of_int in
+   fun cfg res ->
+   let t = Utils.Time.string_of_elapsed_time cfg.cfg_timer in
+   let (p, r, u, f, c) =
+      List.fold res.r_qr_lst ~init:(0, 0, 0, 0, 0) ~f:(fun (p, r, u, f, c) qr ->
+          let c = c + qr.qr_exp_cnt in
+          match (qr.qr_prv_flag, qr.qr_rft_flag) with
+          (* WARNING : Be aware of match-with order *)
+          | (PF_p, _) -> (p + 1, r, u, f, c)
+          | (_, RF_r) -> (p, r + 1, u, f, c)
+          | (PF_f, RF_f) -> (p, r, u, f + 1, c)
+          | _ -> (p, r, u + 1, f, c)
+      )
+   in
+   let (p, r, u, f, c) = (soi p, soi r, soi u, soi f, soi c) in
+   let tstr = "Time = " ^ t in
+   let prufstr = "P/R/U/F = " ^ String.concat ~sep:" / " [ p; r; u; f ] in
+   let cstr = "expanding-ppath-count = " ^ c in
+   String.concat ~sep:" , " [ tstr; prufstr; cstr ]

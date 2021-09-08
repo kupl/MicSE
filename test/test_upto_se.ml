@@ -54,7 +54,7 @@ module MakeTS (A : ARG) : TS = struct
 
   let tf_se_bpnum_eq ctx =
      assert_equal ~ctxt:ctx ~printer:string_of_int ~cmp:Int.equal A.se_bpnum
-       (let (r, _) = Lib.ExecFlow.upto_sym_exec argv_opt in
+       (let (_, _, r, _) = Lib.ExecFlow.upto_sym_exec argv_opt in
         Lib.Se.SSet.length r.sr_blocked
        )
 
