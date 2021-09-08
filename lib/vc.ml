@@ -69,7 +69,17 @@ module Encoder = struct
   (* function cv_mt end *)
 
   and cv_mtcc : Smt.Ctx.t -> Tz.mich_t Tz.cc -> Smt.Sort.t =
-    (fun ctx typ_cc -> cv_mt ctx typ_cc.cc_v)
+     let open Tz in
+     fun ctx typ_cc ->
+     try cv_mt ctx typ_cc.cc_v with
+     | Z3.Error s ->
+       VcError
+         (s
+         ^ " : "
+         ^ Sexp.to_string
+             (sexp_of_cc sexp_of_mich_t typ_cc |> SexpUtil.tz_cc_sexp_form)
+         )
+       |> raise
   (* function cv_mtcc end *)
 
   let rec cv_mv : Smt.Ctx.t -> Tz.mich_v -> Smt.Expr.t =
@@ -339,7 +349,7 @@ module Encoder = struct
        ZBytes.create_slice ctx ~offset:(eov v1cc) ~len:(eov v2cc) (eov v3cc)
      | MV_unpack _ -> Not_Implemented |> raise
      | MV_contract_of_address (t1cc, v2cc) ->
-       ZContract.create_expr_of_address (sot t1cc) (eov v2cc)
+       ZContract.create_expr_of_address (sot (gdc (MT_contract t1cc))) (eov v2cc)
      | MV_isnat v1cc ->
        let (expr1 : Expr.t) = eov v1cc in
        Formula.if_then_else ctx
@@ -380,8 +390,8 @@ module Encoder = struct
      (*************************************************************************)
      (* Contract                                                              *)
      (*************************************************************************)
-     | MV_lit_contract (t1cc, v2cc) ->
-       ZContract.create_expr_of_address (sot t1cc) (eov v2cc)
+     | MV_lit_contract (_, v2cc) ->
+       ZContract.create_expr_of_address sort (eov v2cc)
      | MV_self _ -> Not_Implemented |> raise
      | MV_implicit_account v1cc -> ZContract.create_expr ctx (eov v1cc)
      (*************************************************************************)
@@ -400,7 +410,7 @@ module Encoder = struct
      | MV_lit_lambda _ -> Not_Implemented |> raise
      | MV_lambda_unknown (t1cc, t2cc) ->
        let (domain_expr : Expr.t) = ZLambda.create_expr_domain ctx (sot t1cc) in
-       ZLambda.create_expr (sot t1cc) domain_expr
+       ZLambda.create_expr sort domain_expr
          (Expr.create_dummy ctx (sot t2cc))
      | MV_lambda_closure (v1cc, v2cc) ->
        ZLambda.create_apply ctx (eov v2cc) (eov v1cc)
@@ -451,7 +461,17 @@ module Encoder = struct
   (* function cv_mv end *)
 
   and cv_mvcc : Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t =
-    (fun ctx value_cc -> cv_mv ctx value_cc.cc_v)
+     let open Tz in
+     fun ctx value_cc ->
+     try cv_mv ctx value_cc.cc_v with
+     | Z3.Error s ->
+       VcError
+         (s
+         ^ " : "
+         ^ Sexp.to_string
+             (sexp_of_cc sexp_of_mich_v value_cc |> SexpUtil.tz_cc_sexp_form)
+         )
+       |> raise
   (* function cv_mvcc end *)
 
   and cv_compare :
@@ -620,36 +640,45 @@ module Encoder = struct
      let eov value_cc = cv_mvcc ctx value_cc in
      let fof fmla = cv_mf ctx fmla in
      (* syntax sugar *)
-     match fmla with
-     (* Logical Formula *)
-     | MF_true -> Formula.create_true ctx
-     | MF_false -> Formula.create_false ctx
-     | MF_not f1 -> Formula.create_not ctx (fof f1)
-     | MF_and fl1 -> Formula.create_and ctx (List.map fl1 ~f:fof)
-     | MF_or fl1 -> Formula.create_or ctx (List.map fl1 ~f:fof)
-     | MF_eq (v1, v2) -> Formula.create_eq ctx (eov v1) (eov v2)
-     | MF_imply (f1, f2) -> Formula.create_imply ctx (fof f1) (fof f2)
-     (* MicSE Branch *)
-     | MF_is_true v1 -> Formula.create_is_true ctx (eov v1)
-     | MF_is_none v1 -> Formula.create_is_option_none (eov v1)
-     | MF_is_left v1 -> Formula.create_is_or_left (eov v1)
-     | MF_is_cons v1 -> Formula.create_is_list_cons (eov v1)
-     (* MicSE Datatype Constraint *)
-     | MF_mutez_bound v1 -> Formula.create_mutez_bound ctx (eov v1)
-     | MF_nat_bound v1 -> Formula.create_nat_bound ctx (eov v1)
-     (* Custom Formula for verifiying *)
-     | MF_add_mmm_no_overflow (v1, v2) ->
-       Formula.create_add_no_overflow ctx (eov v1) (eov v2)
-     | MF_sub_mmm_no_underflow (v1, v2) ->
-       Formula.create_sub_no_underflow ctx (eov v1) (eov v2)
-     | MF_mul_mnm_no_overflow (v1, v2) ->
-       Formula.create_mul_no_overflow ctx (eov v1) (eov v2)
-     | MF_mul_nmm_no_overflow (v1, v2) ->
-       Formula.create_mul_no_overflow ctx (eov v1) (eov v2)
-     | MF_shiftL_nnn_rhs_in_256 (_, v2) ->
-       Formula.create_shift_l_rhs_in_256 ctx (eov v2)
-     | MF_shiftR_nnn_rhs_in_256 (_, v2) ->
-       Formula.create_shift_r_rhs_in_256 ctx (eov v2)
+     try
+       match fmla with
+       (* Logical Formula *)
+       | MF_true -> Formula.create_true ctx
+       | MF_false -> Formula.create_false ctx
+       | MF_not f1 -> Formula.create_not ctx (fof f1)
+       | MF_and fl1 -> Formula.create_and ctx (List.map fl1 ~f:fof)
+       | MF_or fl1 -> Formula.create_or ctx (List.map fl1 ~f:fof)
+       | MF_eq (v1, v2) -> Formula.create_eq ctx (eov v1) (eov v2)
+       | MF_imply (f1, f2) -> Formula.create_imply ctx (fof f1) (fof f2)
+       (* MicSE Branch *)
+       | MF_is_true v1 -> Formula.create_is_true ctx (eov v1)
+       | MF_is_none v1 -> Formula.create_is_option_none (eov v1)
+       | MF_is_left v1 -> Formula.create_is_or_left (eov v1)
+       | MF_is_cons v1 -> Formula.create_is_list_cons (eov v1)
+       (* MicSE Datatype Constraint *)
+       | MF_mutez_bound v1 -> Formula.create_mutez_bound ctx (eov v1)
+       | MF_nat_bound v1 -> Formula.create_nat_bound ctx (eov v1)
+       (* Custom Formula for verifiying *)
+       | MF_add_mmm_no_overflow (v1, v2) ->
+         Formula.create_add_no_overflow ctx (eov v1) (eov v2)
+       | MF_sub_mmm_no_underflow (v1, v2) ->
+         Formula.create_sub_no_underflow ctx (eov v1) (eov v2)
+       | MF_mul_mnm_no_overflow (v1, v2) ->
+         Formula.create_mul_no_overflow ctx (eov v1) (eov v2)
+       | MF_mul_nmm_no_overflow (v1, v2) ->
+         Formula.create_mul_no_overflow ctx (eov v1) (eov v2)
+       | MF_shiftL_nnn_rhs_in_256 (_, v2) ->
+         Formula.create_shift_l_rhs_in_256 ctx (eov v2)
+       | MF_shiftR_nnn_rhs_in_256 (_, v2) ->
+         Formula.create_shift_r_rhs_in_256 ctx (eov v2)
+     with
+     | Z3.Error s ->
+       VcError
+         (s
+         ^ " : "
+         ^ Sexp.to_string (sexp_of_mich_f fmla |> SexpUtil.tz_cc_sexp_form)
+         )
+       |> raise
   (* function cv_mf end *)
 end
 

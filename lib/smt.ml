@@ -1896,10 +1896,6 @@ end
 (* Contract *******************************************************************)
 
 module ZContract = struct
-  let gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc =
-    (fun typ -> TzUtil.gen_dummy_cc (Tz.MT_contract typ))
-  (* function gen_mt_cc end *)
-
   let create_sort :
       Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t -> Sort.t =
     fun ctx ~typ ~content_sort ->

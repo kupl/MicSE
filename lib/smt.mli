@@ -640,8 +640,6 @@ end
 (* Contract *******************************************************************)
 
 module ZContract : sig
-  val gen_mt_cc : Tz.mich_t Tz.cc -> Tz.mich_t Tz.cc
-
   val create_sort :
     Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t -> Sort.t
 
