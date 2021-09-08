@@ -38,7 +38,7 @@ let naive_run_init_res : se_result -> Res.res =
             qr_unk_qs = data;
             qr_exp_ppaths = PPSet.map data ~f:PPath.t_of_ss;
             qr_rft_ppath = None;
-            qr_exp_cnt = 0;
+            qr_exp_cnt = SSet.length data;
           }
       )
       |> MCIMap.to_alist
@@ -138,22 +138,35 @@ let naive_run_res_escape_condition : Res.config -> Res.res -> bool =
    let open Res in
    fun { cfg_timer; _ } { r_qr_lst; _ } ->
    (* 1. Timeout *)
-   Utils.Time.is_timeout cfg_timer
-   || (* 2. Every queries are PF_p or RF_r or RF_f *)
-   List.for_all r_qr_lst ~f:(fun qres ->
-       equal_prover_flag qres.qr_prv_flag PF_p
-       || not (equal_refuter_flag qres.qr_rft_flag RF_u)
+   if Utils.Time.is_timeout cfg_timer
+   then (
+     let _ =
+        (* Debugging info *)
+        Utils.Log.debug (fun m ->
+            m "Refute : naive_run_res_escape_condition : TIMEOUT!!!"
+        )
+     in
+     true
    )
+   else if (* 2. Every queries are PF_p or RF_r or RF_f *)
+           List.for_all r_qr_lst ~f:(fun qres ->
+               equal_prover_flag qres.qr_prv_flag PF_p
+               || not (equal_refuter_flag qres.qr_rft_flag RF_u)
+           )
+   then (
+     let _ =
+        (* Debugging info *)
+        Utils.Log.debug (fun m ->
+            m "Refute : naive_run_res_escape_condition : ALL NON-UNKNOWN!!!"
+        )
+     in
+     true
+   )
+   else false
 
 let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    let open Res in
    fun cfg res ->
-   let _ =
-      (* DEBUGGING INFOs *)
-      Utils.Log.debug (fun m ->
-          m "%s" (Res.string_of_res_rough_in_refuter_perspective cfg res)
-      )
-   in
    {
      res with
      r_qr_lst =
@@ -164,6 +177,12 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
 
 let rec naive_run : Res.config -> Res.res -> Res.res =
   fun cfg res ->
+  let _ =
+     (* DEBUGGING INFOs *)
+     Utils.Log.debug (fun m ->
+         m "%s" (Res.string_of_res_rough_in_refuter_perspective cfg res)
+     )
+  in
   if naive_run_res_escape_condition cfg res
   then res
   else naive_run cfg (naive_run_res_atomic_action cfg res)

@@ -21,6 +21,13 @@ let stack_equality_fmlas :
     mich_f list =
    let eqf x y = MF_eq (x, y) in
    fun (mcc_1, mcc_2) (si1, si2) ->
+   let _ =
+      Utils.Log.debug (fun m ->
+          m "mcc-1 = %s , mcc-2 = %s"
+            (Tz.sexp_of_mich_cut_category mcc_1 |> string_of_sexp)
+            (Tz.sexp_of_mich_cut_category mcc_2 |> string_of_sexp)
+      )
+   in
    match (mcc_1, mcc_2) with
    (* TRX *)
    | (MCC_trx_exit, MCC_trx_entry) ->
