@@ -32,23 +32,7 @@ module SidMap : module type of Core.Map.Make (Core.Int)
 val construct_sid_checkmap : SSet.t -> Tz.sym_state SidMap.t
 
 module SSGraph : sig
-  module MciMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
-
-  type conn = {
-    (* connection information *)
-    trx : SSet.t;
-    ln : SSet.t;
-    lb : SSet.t;
-  }
-  [@@deriving sexp, compare, equal]
-
-  type 'f conn_f = {
-    cf_trx : 'f;
-    cf_ln : 'f;
-    cf_lb : 'f;
-  }
-
-  type csc_conn_f = (conn -> Tz.sym_state -> conn) conn_f
+  module RMCIMap : module type of Core.Map.Make (Tz.RMichCutInfo_cmp)
 
   type 'a ps_pair = {
     pred : 'a;
@@ -56,16 +40,13 @@ module SSGraph : sig
   }
   [@@deriving sexp, compare, equal]
 
-  type mci_view = conn ps_pair MciMap.t [@@deriving sexp, compare, equal]
-
-  val conn_mcc_match :
-    mcc:Tz.mich_cut_category -> ccf:csc_conn_f -> conn -> Tz.sym_state -> conn
+  type mci_view = SSet.t ps_pair RMCIMap.t [@@deriving sexp, compare, equal]
 
   val construct_mci_view : basic_blocks:SSet.t -> mci_view
 
-  val ss_view_pred : m_view:mci_view -> Tz.sym_state -> conn
+  val ss_view_pred : m_view:mci_view -> Tz.sym_state -> SSet.t
 
-  val ss_view_succ : m_view:mci_view -> Tz.sym_state -> conn
+  val ss_view_succ : m_view:mci_view -> Tz.sym_state -> SSet.t
 end
 
 (******************************************************************************)

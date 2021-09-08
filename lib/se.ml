@@ -56,25 +56,8 @@ let construct_sid_checkmap : SSet.t -> Tz.sym_state SidMap.t =
   )
 
 module SSGraph = struct
-  (* SSGraph's vertex is Tz.mich_cut_info, and the edge is sym-id (Tz.sym_state's id) *)
   open Tz
-  module MciMap = Core.Map.Make (MichCutInfo_cmp)
-
-  type conn = {
-    (* connection information *)
-    trx : SSet.t;
-    ln : SSet.t;
-    lb : SSet.t;
-  }
-  [@@deriving sexp, compare, equal]
-
-  type 'f conn_f = {
-    cf_trx : 'f;
-    cf_ln : 'f;
-    cf_lb : 'f;
-  }
-
-  type csc_conn_f = (conn -> sym_state -> conn) conn_f
+  module RMCIMap = Core.Map.Make (Tz.RMichCutInfo_cmp)
 
   type 'a ps_pair = {
     pred : 'a;
@@ -82,77 +65,39 @@ module SSGraph = struct
   }
   [@@deriving sexp, compare, equal]
 
-  type mci_view = conn ps_pair MciMap.t [@@deriving sexp, compare, equal]
-
-  let conn_empty : conn = { trx = SSet.empty; ln = SSet.empty; lb = SSet.empty }
-
-  let ps_pair_empty : empty:'a -> 'a ps_pair =
-    (fun ~empty -> { pred = empty; succ = empty })
-
-  let conn_csc_f_template : f:(SSet.t -> sym_state -> SSet.t) -> csc_conn_f =
-    fun ~f ->
-    {
-      cf_trx = (fun c ss -> { c with trx = f c.trx ss });
-      cf_ln = (fun c ss -> { c with lb = f c.ln ss });
-      cf_lb = (fun c ss -> { c with ln = f c.lb ss });
-    }
-
-  let conn_add : csc_conn_f = conn_csc_f_template ~f:SSet.add
-
-  let conn_mcc_match :
-      mcc:mich_cut_category -> ccf:csc_conn_f -> conn -> sym_state -> conn =
-    fun ~mcc ~ccf cnn ss ->
-    match mcc with
-    | MCC_trx_entry
-    | MCC_trx_exit ->
-      ccf.cf_trx cnn ss
-    | MCC_ln_loop
-    | MCC_ln_loopleft
-    | MCC_ln_map
-    | MCC_ln_iter ->
-      ccf.cf_ln cnn ss
-    | MCC_lb_loop
-    | MCC_lb_loopleft
-    | MCC_lb_map
-    | MCC_lb_iter ->
-      ccf.cf_lb cnn ss
-    | MCC_query _ -> failwith "SSGraph.conn_mcc_match : unexpected"
+  type mci_view = SSet.t ps_pair RMCIMap.t [@@deriving sexp, compare, equal]
 
   let construct_mci_view : basic_blocks:SSet.t -> mci_view =
-    fun ~basic_blocks ->
-    let empty_cp : conn ps_pair = ps_pair_empty ~empty:conn_empty in
-    SSet.fold basic_blocks ~init:MciMap.empty ~f:(fun accm ss ->
-        let (start_mcc, block_mcc) =
-           (ss.ss_start_mci.mci_cutcat, ss.ss_block_mci.mci_cutcat)
-        in
-        accm
-        |> (* 1 : use symstate's start-mci - symstate is start-mci's successor *)
-        (fun m ->
-          MciMap.update m ss.ss_start_mci ~f:(function
-          | None    -> empty_cp
-          | Some pp ->
-            {
-              pp with
-              succ = conn_mcc_match ~mcc:start_mcc ~ccf:conn_add pp.succ ss;
-            }
-          ))
-        |> (* 2 : use symstate's block-mci - symstate is block-mci's predecessor *)
-        fun m ->
-        MciMap.update m ss.ss_block_mci ~f:(function
-        | None    -> empty_cp
-        | Some pp ->
-          {
-            pp with
-            pred = conn_mcc_match ~mcc:block_mcc ~ccf:conn_add pp.pred ss;
-          }
-        )
-    )
+     let empty_cp = { pred = SSet.empty; succ = SSet.empty } in
+     fun ~basic_blocks ->
+     SSet.fold basic_blocks ~init:RMCIMap.empty ~f:(fun accm ss ->
+         let (start_rmci, block_rmci) =
+            ( TzUtil.get_reduced_mci ss.ss_start_mci,
+              TzUtil.get_reduced_mci ss.ss_block_mci
+            )
+         in
+         accm
+         |> (* 1. use symstate's start-rmci - symstate is start-rmci's successor *)
+         (fun m ->
+           RMCIMap.update m start_rmci ~f:(function
+           | None      -> empty_cp
+           | Some pspr -> { pspr with succ = SSet.add pspr.succ ss }
+           ))
+         |> (* 2. use symstate's block-rmci - symstate is block-rmci's predecessor *)
+         fun m ->
+         RMCIMap.update m block_rmci ~f:(function
+         | None      -> empty_cp
+         | Some pspr -> { pspr with pred = SSet.add pspr.pred ss }
+         )
+     )
 
-  let ss_view_pred : m_view:mci_view -> sym_state -> conn =
-    (fun ~m_view ss -> (MciMap.find_exn m_view ss.ss_start_mci).pred)
+  let ss_view_pred : m_view:mci_view -> sym_state -> SSet.t =
+    fun ~m_view ss ->
+    (RMCIMap.find_exn m_view (TzUtil.get_reduced_mci ss.ss_start_mci)).pred
 
-  let ss_view_succ : m_view:mci_view -> sym_state -> conn =
-    (fun ~m_view ss -> (MciMap.find_exn m_view ss.ss_block_mci).succ)
+  let ss_view_succ : m_view:mci_view -> sym_state -> SSet.t =
+    fun ~m_view ss ->
+    (RMCIMap.find_exn m_view (TzUtil.get_reduced_mci ss.ss_start_mci)).succ
 end
 (* module SSGraph end *)
 
