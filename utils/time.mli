@@ -22,6 +22,12 @@ module Setting : sig
   }
   [@@deriving sexp, compare, equal]
 
+  val us : int64
+
+  val ms : int64
+
+  val s : int64
+
   val create : ?budget:int -> unit -> t
 
   val read_time_elapsed : t -> Mtime_s.span

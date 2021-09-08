@@ -42,6 +42,12 @@ module Setting = struct
     }
   (* function create end *)
 
+  let (us : int64) = Int64.of_int 1000
+
+  let (ms : int64) = Int64.of_int (1000 * 1000)
+
+  let (s : int64) = Int64.of_int (1000 * 1000 * 1000)
+
   let read_time_elapsed : t -> Mtime_s.span =
     (fun time -> Mtime_s.span (Mtime_clock.now ()) time.created_at)
   (* function read_time_elapsed end *)
@@ -78,7 +84,11 @@ let time_curr : unit -> time =
 (* function time_curr end *)
 
 let string_of_curr_time : unit -> string =
-  (fun () -> (time_curr () |> Int64.to_string) ^ "ns")
+  fun () ->
+  ((time_curr () |> Float.of_int64) /. (Setting.s |> Float.of_int64)
+  |> string_of_float
+  )
+  ^ " sec"
 (* function string_of_curr_time end *)
 
 let create : ?budget:int -> unit -> t =
@@ -100,9 +110,17 @@ let is_timeout : t -> bool = (fun time -> Setting.read_is_timeout !time)
 (* function is_timeout end *)
 
 let string_of_elapsed_time : t -> string =
-  (fun time -> (read_interval time |> Int64.to_string) ^ "ns")
+  fun time ->
+  ((read_interval time |> Float.of_int64) /. (Setting.s |> Float.of_int64)
+  |> string_of_float
+  )
+  ^ " sec"
 (* function string_of_elapsed_time end *)
 
 let string_of_remaining_time : t -> string =
-  (fun time -> (read_remaining time |> Int64.to_string) ^ "ns")
+  fun time ->
+  ((read_remaining time |> Float.of_int64) /. (Setting.s |> Float.of_int64)
+  |> string_of_float
+  )
+  ^ " sec"
 (* function string_of_remaining_time end *)
