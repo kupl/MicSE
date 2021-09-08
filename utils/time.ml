@@ -1,5 +1,17 @@
 (* Timer *)
 
+open! Core
+
+module Mtime_s = struct
+  include Mtime
+
+  let t_of_sexp : Sexp.t -> t = (fun sexp -> int64_of_sexp sexp |> of_uint64_ns)
+  (* function t_of_sexp end *)
+
+  let sexp_of_t : t -> Sexp.t = (fun t -> to_uint64_ns t |> sexp_of_int64)
+  (* function sexp_of_t end *)
+end
+
 (******************************************************************************)
 (******************************************************************************)
 (* Setting                                                                    *)
@@ -8,42 +20,47 @@
 
 module Setting = struct
   type t = {
-    counter : Mtime_clock.counter;
-    timeout : bool;
-    budget : float option;
+    (* in nano second *)
+    created_at : Mtime_s.t;
+    expired_at : Mtime_s.t option;
   }
+  [@@deriving sexp, compare, equal]
 
   let create : ?budget:int -> unit -> t =
     fun ?(budget = -1) () ->
+    let (now : Mtime_s.t) = Mtime_clock.now () in
     {
-      counter = Mtime_clock.counter ();
-      timeout = false;
-      budget = (if budget < 0 then None else Some (float_of_int (budget * 1000)));
+      created_at = now;
+      expired_at =
+        ( if budget < 0
+        then None
+        else
+          Int64.of_int (budget * 1000000)
+          |> Mtime_s.Span.of_uint64_ns
+          |> Mtime_s.add_span now
+        );
     }
   (* function create end *)
 
-  let read_time_elapsed : t -> float =
-    (fun timer -> timer.counter |> Mtime_clock.count |> Mtime.Span.to_ms)
+  let read_time_elapsed : t -> Mtime_s.span =
+    (fun time -> Mtime_s.span (Mtime_clock.now ()) time.created_at)
   (* function read_time_elapsed end *)
 
-  let read_time_remain : t -> float =
-    fun timer ->
-    if Option.is_none timer.budget
-    then 0.
-    else Float.max (Option.get timer.budget -. read_time_elapsed timer) 0.
+  let read_time_remain : t -> Mtime_s.span =
+    fun time ->
+    let (now : Mtime_s.t) = Mtime_clock.now () in
+    let (expired : Mtime_s.t) = Option.value time.expired_at ~default:now in
+    if Mtime_s.is_later expired ~than:now
+    then Mtime_s.span expired now
+    else Mtime_s.Span.zero
   (* function read_time_remain end *)
 
   let read_is_timeout : t -> bool =
-    fun timer ->
-    if Option.is_none timer.budget
-    then false
-    else read_time_elapsed timer >= Option.get timer.budget
+    fun time ->
+    let (now : Mtime_s.t) = Mtime_clock.now () in
+    let (expired : Mtime_s.t) = Option.value time.expired_at ~default:now in
+    Mtime_s.is_earlier expired ~than:now
   (* function read_is_timeout end *)
-
-  let update_timeout : t -> t =
-    fun timer ->
-    if read_is_timeout timer then { timer with timeout = true } else timer
-  (* function update_timeout end *)
 end
 
 (******************************************************************************)
@@ -52,67 +69,40 @@ end
 (******************************************************************************)
 (******************************************************************************)
 
-type t = Setting.t Stdlib.ref
+type t = Setting.t ref [@@deriving sexp, compare, equal]
 
-type time = int
+type time = int64
 
-(* Current time from start of the execution *)
 let time_curr : unit -> time =
-  (fun () -> Mtime_clock.elapsed () |> Mtime.Span.to_ms |> int_of_float)
+  (fun () -> Mtime_clock.elapsed () |> Mtime_s.Span.to_uint64_ns)
 (* function time_curr end *)
 
-(* Current time from start of the execution *)
 let string_of_curr_time : unit -> string =
-  (fun () -> (time_curr () |> string_of_int) ^ "ms")
+  (fun () -> (time_curr () |> Int64.to_string) ^ "ns")
+(* function string_of_curr_time end *)
 
-let create : ?budget:time -> unit -> t =
+let create : ?budget:int -> unit -> t =
   (fun ?(budget = 0) () -> Stdlib.ref (Setting.create ~budget ()))
 (* function create end *)
 
-let read_interval : t -> time =
-  (fun timer -> Setting.read_time_elapsed !timer |> int_of_float)
+let read_elapsed_time : t -> time =
+  (fun time -> Setting.read_time_elapsed !time |> Mtime_s.Span.to_uint64_ns)
+(* function read_interval end *)
 
-let read_elapsed_time : t -> time = read_interval
+let read_interval : t -> time = (fun time -> read_elapsed_time time)
+(* function read_interval end *)
 
 let read_remaining : t -> time =
-  (fun timer -> Setting.read_time_remain !timer |> int_of_float)
+  (fun time -> Setting.read_time_remain !time |> Mtime_s.Span.to_uint64_ns)
+(* function read_remaining end *)
 
-let check_timeout : t -> unit =
-  fun timer ->
-  if Setting.read_is_timeout !timer
-  then timer := Setting.update_timeout !timer
-  else ()
-(* function check_timeout end *)
-
-let is_timeout : t -> bool =
-  fun timer ->
-  let _ = check_timeout timer in
-  !timer.timeout
+let is_timeout : t -> bool = (fun time -> Setting.read_is_timeout !time)
+(* function is_timeout end *)
 
 let string_of_elapsed_time : t -> string =
-  (fun timer -> (read_interval timer |> string_of_int) ^ "ms")
+  (fun time -> (read_interval time |> Int64.to_string) ^ "ns")
+(* function string_of_elapsed_time end *)
 
-let sexp_of_t : t -> Core.Sexp.t =
-   let open Core in
-   fun timer ->
-   List [ Atom "budget"; sexp_of_option sexp_of_float !timer.budget ]
-
-let t_of_sexp : Core.Sexp.t -> t =
-   let open Core in
-   fun sexp ->
-   match sexp with
-   | List [ Atom "budget"; budget ] ->
-     let (budget_opt : float option) = option_of_sexp float_of_sexp budget in
-     create ()
-       ~budget:(Option.value budget_opt ~default:Float.zero |> int_of_float)
-   | _ -> Failure "" |> raise
-
-let compare : t -> t -> int =
-  let open Core in
-  fun timer1 timer2 ->
-  compare_option compare_float !timer1.budget !timer2.budget 
-
-let equal : t -> t -> bool = 
-  let open Core in
-  fun timer1 timer2 ->
-  equal_option equal_float !timer1.budget !timer2.budget
+let string_of_remaining_time : t -> string =
+  (fun time -> (read_remaining time |> Int64.to_string) ^ "ns")
+(* function string_of_remaining_time end *)
