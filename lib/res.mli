@@ -69,3 +69,20 @@ type res = {
   r_comb_cnt : int;
 }
 [@@deriving sexp, compare, equal]
+
+type config = {
+  (* Execution configuration *)
+  cfg_timer : Utils.Time.t;
+  cfg_memory : Utils.Memory.t;
+  (* Information from symbolic execution *)
+  cfg_istate : Tz.sym_state;
+  cfg_istrg : Tz.mich_v Tz.cc;
+  cfg_se_res : Se.se_result;
+  cfg_m_view : Se.SSGraph.mci_view;
+  (* Ingrdients for invariant synthesis *)
+  cfg_imap : Igdt.igdts_map;
+  (* Environment for SMT solver *)
+  cfg_smt_ctxt : Smt.Ctx.t;
+  cfg_smt_slvr : Smt.Solver.t;
+}
+[@@deriving sexp, compare, equal]

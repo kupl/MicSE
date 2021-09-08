@@ -67,3 +67,11 @@ val check_memoryout : t -> unit
 val is_memoryout : t -> bool
 
 val string_of_used_memory : t -> string
+
+val sexp_of_t : t -> Core.Sexp.t
+
+val t_of_sexp : Core.Sexp.t -> t
+
+val compare : t -> t -> int
+
+val equal : t -> t -> bool

@@ -66,6 +66,7 @@ module SSGraph = struct
     ln : SSet.t;
     lb : SSet.t;
   }
+  [@@deriving sexp, compare, equal]
 
   type 'f conn_f = {
     cf_trx : 'f;
@@ -79,8 +80,9 @@ module SSGraph = struct
     pred : 'a;
     succ : 'a;
   }
+  [@@deriving sexp, compare, equal]
 
-  type mci_view = conn ps_pair MciMap.t
+  type mci_view = conn ps_pair MciMap.t [@@deriving sexp, compare, equal]
 
   let conn_empty : conn = { trx = SSet.empty; ln = SSet.empty; lb = SSet.empty }
 

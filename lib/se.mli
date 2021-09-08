@@ -40,6 +40,7 @@ module SSGraph : sig
     ln : SSet.t;
     lb : SSet.t;
   }
+  [@@deriving sexp, compare, equal]
 
   type 'f conn_f = {
     cf_trx : 'f;
@@ -53,8 +54,9 @@ module SSGraph : sig
     pred : 'a;
     succ : 'a;
   }
+  [@@deriving sexp, compare, equal]
 
-  type mci_view = conn ps_pair MciMap.t
+  type mci_view = conn ps_pair MciMap.t [@@deriving sexp, compare, equal]
 
   val conn_mcc_match :
     mcc:Tz.mich_cut_category -> ccf:csc_conn_f -> conn -> Tz.sym_state -> conn

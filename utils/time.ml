@@ -91,3 +91,28 @@ let is_timeout : t -> bool =
 
 let string_of_elapsed_time : t -> string =
   (fun timer -> (read_interval timer |> string_of_int) ^ "ms")
+
+let sexp_of_t : t -> Core.Sexp.t =
+   let open Core in
+   fun timer ->
+   List [ Atom "budget"; sexp_of_option sexp_of_float !timer.budget ]
+
+let t_of_sexp : Core.Sexp.t -> t =
+   let open Core in
+   fun sexp ->
+   match sexp with
+   | List [ Atom "budget"; budget ] ->
+     let (budget_opt : float option) = option_of_sexp float_of_sexp budget in
+     create ()
+       ~budget:(Option.value budget_opt ~default:Float.zero |> int_of_float)
+   | _ -> Failure "" |> raise
+
+let compare : t -> t -> int =
+  let open Core in
+  fun timer1 timer2 ->
+  compare_option compare_float !timer1.budget !timer2.budget 
+
+let equal : t -> t -> bool = 
+  let open Core in
+  fun timer1 timer2 ->
+  equal_option equal_float !timer1.budget !timer2.budget
