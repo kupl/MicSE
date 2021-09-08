@@ -26,6 +26,12 @@ module Setting = struct
   }
   [@@deriving sexp, compare, equal]
 
+  let (us : int64) = Int64.of_int 1000
+
+  let (ms : int64) = Int64.of_int (1000 * 1000)
+
+  let (s : int64) = Int64.of_int (1000 * 1000 * 1000)
+
   let create : ?budget:int -> unit -> t =
     fun ?(budget = -1) () ->
     let (now : Mtime_s.t) = Mtime_clock.now () in
@@ -35,18 +41,13 @@ module Setting = struct
         ( if budget < 0
         then None
         else
-          Int64.of_int (budget * 1000000)
+          Int64.of_int budget
+          |> Int64.( * ) s
           |> Mtime_s.Span.of_uint64_ns
           |> Mtime_s.add_span now
         );
     }
   (* function create end *)
-
-  let (us : int64) = Int64.of_int 1000
-
-  let (ms : int64) = Int64.of_int (1000 * 1000)
-
-  let (s : int64) = Int64.of_int (1000 * 1000 * 1000)
 
   let read_time_elapsed : t -> Mtime_s.span =
     (fun time -> Mtime_s.span (Mtime_clock.now ()) time.created_at)
