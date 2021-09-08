@@ -3,6 +3,7 @@ open Se
 open MState
 module MSSet = Core.Set.Make (MState)
 module MCIMap = Map.Make (Tz.MichCutInfo_cmp)
+module MPMap = Map.Make (Inv.MciPair_cmp)
 
 let expand_ms : m_view:SSGraph.mci_view -> MState.t -> MSSet.t =
   fun ~m_view ms ->
@@ -44,8 +45,8 @@ let naive_run_init_res : se_result -> Res.res =
    {
      r_qr_lst = qresl;
      r_inv = Inv.gen_true_inv_map sr;
-     r_cand = Inv.RMCIMap.empty;
-     r_failcp = RMCIMap.empty;
+     r_cand = RMCIMap.empty;
+     r_failcp = MPMap.empty;
      r_comb_cnt = 0;
    }
 

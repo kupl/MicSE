@@ -14,13 +14,6 @@ module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
 
-(* Set of (MFSet.t * MFSet.t) *)
-module MFSP_cmp = struct
-  type t = MFSet.t * MFSet.t [@@deriving compare, sexp]
-end
-
-module MFSPSet = Set.Make (MFSP_cmp)
-
 type prover_flag =
   | PF_p (* proved  *)
   | PF_u (* unknown *)
@@ -68,7 +61,7 @@ type res = {
   r_qr_lst : qres list;
   r_inv : Inv.inv_map;
   r_cand : Inv.cand_map;
-  r_failcp : MFSPSet.t RMCIMap.t;
+  r_failcp : Inv.failed_cp;
   r_comb_cnt : int;
 }
 [@@deriving sexp, compare, equal]
