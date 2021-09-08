@@ -42,6 +42,8 @@ module PPath : sig
     pp_score : int;
   }
   [@@deriving sexp, compare, equal]
+
+  val t_of_ss : Tz.sym_state -> t
 end
 
 module PPSet : module type of Set.Make (PPath)

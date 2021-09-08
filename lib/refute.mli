@@ -1,15 +1,11 @@
 module MSSet : module type of Core.Set.Make (MState)
 
+module MCIMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
+
 val expand_ms : m_view:Se.SSGraph.mci_view -> MState.t -> MSSet.t
 
 val expand_ms_multiple : m_view:Se.SSGraph.mci_view -> MSSet.t -> MSSet.t
 
-val naive_run :
-  timer:Utils.Time.t ->
-  init_strg:Tz.mich_v Tz.cc ->
-  smt_ctxt:Smt.Ctx.t ->
-  smt_slvr:Smt.Solver.t ->
-  invmap:Inv.inv_map ->
-  m_view:Se.SSGraph.mci_view ->
-  MSSet.t ->
-  (Smt.Model.t * MState.t) option * MSSet.t
+val naive_run_init_res : Se.se_result -> Res.res
+
+val naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres

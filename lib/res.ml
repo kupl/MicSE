@@ -42,6 +42,9 @@ module PPath = struct
     pp_score : int;
   }
   [@@deriving sexp, compare, equal]
+
+  let t_of_ss : Tz.sym_state -> t =
+    (fun ss -> { pp_mstate = MState.init ss; pp_goalst = []; pp_score = 0 })
 end
 
 module PPSet = Set.Make (PPath)
