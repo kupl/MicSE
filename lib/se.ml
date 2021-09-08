@@ -1746,8 +1746,8 @@ let run_inst_entry :
        sr_running = SSet.empty;
        sr_blocked =
          SSet.union
-           (SSet.map result_raw.sr_blocked ~f:final_blocking)
-           result_raw.sr_running;
+           (SSet.map result_raw.sr_running ~f:final_blocking)
+           result_raw.sr_blocked;
      },
      initial_ss
    )
