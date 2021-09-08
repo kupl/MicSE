@@ -54,7 +54,7 @@ let stack_equality_fmlas :
         | MCC_ln_loop -> List.tl_exn si1.si_mich
         | MCC_lb_loop -> si1.si_mich
         | _           ->
-          failwith "Merge : stack_equality_fmlas : LOOP : 1 : unexpected"
+          failwith "MState : stack_equality_fmlas : LOOP : 1 : unexpected"
      in
      (* NOTE: question here : is (AND []) valid formula ? *)
      let ms_c = MF_and (List.map2_exn mstack1 si2.si_mich ~f:eqf)
@@ -108,14 +108,14 @@ let stack_equality_fmlas :
         | MCC_lb_map ->
           (List.split_n si1.si_map_entry 1, List.split_n si1.si_map_exit 1)
         | _          ->
-          failwith "Merge : stack_equality_fmlas : MAP : 1 : unexpected"
+          failwith "MState : stack_equality_fmlas : MAP : 1 : unexpected"
      and ((m2_entry_h, m2_entry_t), (m2_exit_h, m2_exit_t)) =
         match mcc_2 with
         | MCC_ln_map -> (([], si2.si_map_entry), ([], si2.si_map_exit))
         | MCC_lb_map ->
           (List.split_n si2.si_map_entry 1, List.split_n si2.si_map_exit 1)
         | _          ->
-          failwith "Merge : stack_equality_fmlas : MAP : 2 : unexpected"
+          failwith "MState : stack_equality_fmlas : MAP : 2 : unexpected"
      in
      (* 1.2.2. map-stack tail constraints *)
      let maps_entry_c_common =
@@ -172,7 +172,7 @@ let stack_equality_fmlas :
                 eqf s1_mshd (MV_empty_map (t1k, t1e) |> gen_dummy_cc);
                 eqf s2_mshd (MV_empty_map (t2k, t2e) |> gen_dummy_cc);
               ]
-          | _ -> failwith "Merge : stack_equality_fmlas : MAP : 4 : unexpected"
+          | _ -> failwith "MState : stack_equality_fmlas : MAP : 4 : unexpected"
         )
         | (MCC_ln_map, MCC_lb_map) -> (
           (* 2. first-enter the MAP-loop
@@ -198,13 +198,13 @@ let stack_equality_fmlas :
                match s2_mshd.cc_v with
                | MV_pair (v1, v2) -> (v1, v2)
                | _                ->
-                 failwith "Merge : stack_equality_fmlas : MAP : 6 : unexpected"
+                 failwith "MState : stack_equality_fmlas : MAP : 6 : unexpected"
             in
             let (exit_tk, exit_te) =
                match (typ_of_val m2_exit_hd).cc_v with
                | MT_map (t1, t2) -> (t1, t2)
                | _               ->
-                 failwith "Merge : stack_equality_fmlas : MAP : 7 : unexpected"
+                 failwith "MState : stack_equality_fmlas : MAP : 7 : unexpected"
             in
             MF_and
               [
@@ -214,7 +214,7 @@ let stack_equality_fmlas :
                   );
                 eqf m2_exit_hd (MV_empty_map (exit_tk, exit_te) |> gen_dummy_cc);
               ]
-          | _ -> failwith "Merge : stack_equality_fmlas : MAP : 5 : unexpected"
+          | _ -> failwith "MState : stack_equality_fmlas : MAP : 5 : unexpected"
         )
         | (MCC_lb_map, MCC_ln_map) -> (
           (* 3. last-exit the MAP-loop
@@ -235,7 +235,7 @@ let stack_equality_fmlas :
                match (typ_of_val m1_entry_hd).cc_v with
                | MT_map (t1, t2) -> (t1, t2)
                | _               ->
-                 failwith "Merge : stack_equality_fmlas : MAP : 9 : unexpected"
+                 failwith "MState : stack_equality_fmlas : MAP : 9 : unexpected"
             in
             MF_and
               [
@@ -251,7 +251,7 @@ let stack_equality_fmlas :
                 eqf m1_entry_hd
                   (MV_empty_map (entry_tk, entry_te) |> gen_dummy_cc);
               ]
-          | _ -> failwith "Merge : stack_equality_fmlas : MAP : 8 : unexpected"
+          | _ -> failwith "MState : stack_equality_fmlas : MAP : 8 : unexpected"
         )
         | (MCC_lb_map, MCC_lb_map) -> (
           (* 4. MAP-loop to MAP-loop
@@ -290,10 +290,10 @@ let stack_equality_fmlas :
                   m2_exit_hd;
               ]
           | _              ->
-            failwith "Merge : stack_equality_fmlas : MAP : 10 : unexpected"
+            failwith "MState : stack_equality_fmlas : MAP : 10 : unexpected"
         )
         | _                        ->
-          failwith "Merge : stack_equality_fmlas : MAP : 3 : unexpected"
+          failwith "MState : stack_equality_fmlas : MAP : 3 : unexpected"
      in
      [
        ms_c_common;
@@ -307,7 +307,7 @@ let stack_equality_fmlas :
        mapkeys_c_common;
        maps_specific_c;
      ]
-   | _ -> failwith "Merge : stack_equality_fmlas : 1 : unexpected"
+   | _ -> failwith "MState : stack_equality_fmlas : 1 : unexpected"
 (* function stack_equality_fmlas end *)
 
 type t = (sym_state * mich_f list) list [@@deriving sexp, compare, equal]
