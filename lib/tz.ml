@@ -446,6 +446,8 @@ type mich_f =
   | MF_mul_nmm_no_overflow   of (mich_v_cc_ctx * mich_v_cc_ctx)
   | MF_shiftL_nnn_rhs_in_256 of (mich_v_cc_ctx * mich_v_cc_ctx)
   | MF_shiftR_nnn_rhs_in_256 of (mich_v_cc_ctx * mich_v_cc_ctx)
+  (* Custom Formula for state merging *)
+  | MF_time_leq              of (mich_v_cc_ctx * mich_v_cc_ctx)
 [@@deriving sexp, compare, equal]
 
 module MichF_cmp = struct
