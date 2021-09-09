@@ -245,7 +245,11 @@ module Encoder = struct
      | MV_mul_mnm (v1cc, v2cc)
      | MV_mul_nmm (v1cc, v2cc) ->
        ZMutez.create_mul ctx (eov v1cc) (eov v2cc)
-     | MV_mtz_of_op_list _ -> Not_Implemented |> raise
+     | MV_mtz_of_op_list v1cc -> (* TODO: List analysis *)
+       Formula.if_then_else ctx
+         ~if_:(Formula.create_is_list_nil (eov v1cc))
+         ~then_:(ZMutez.create_expr ctx 0)
+         ~else_:(Expr.create_dummy ctx (ZMutez.create_sort ctx))
      (****************************************************************************)
      (* Bool                                                                     *)
      (****************************************************************************)
@@ -355,8 +359,8 @@ module Encoder = struct
        let (expr1 : Expr.t) = eov v1cc in
        Formula.if_then_else ctx
          ~if_:(Formula.create_arith_ge ctx expr1 (ZInt.create_expr ctx 0))
-         ~then_:(ZOption.create_expr_some (gdc value |> sov) expr1)
-         ~else_:(ZOption.create_expr_none (gdc value |> sov))
+         ~then_:(ZOption.create_expr_some sort expr1)
+         ~else_:(ZOption.create_expr_none sort)
      (*************************************************************************)
      (* List                                                                  *)
      (*************************************************************************)
@@ -364,7 +368,7 @@ module Encoder = struct
        List.fold_right vcc_lst
          ~f:(fun vcc expr -> ZList.create_cons ~content:(eov vcc) expr)
          ~init:(ZList.create_expr_nil (sot t1cc))
-     | MV_nil t1cc -> ZList.create_expr_nil (sot t1cc)
+     | MV_nil _ -> ZList.create_expr_nil sort
      | MV_cons (v1cc, v2cc) -> ZList.create_cons ~content:(eov v1cc) (eov v2cc)
      | MV_tl_l v1cc -> ZList.read_tail (eov v1cc)
      (*************************************************************************)
@@ -376,7 +380,7 @@ module Encoder = struct
          ~init:(ZSet.create_expr_empty_set ctx (sot t1cc))
          ~f:(fun expr vcc ->
            ZSet.update ctx ~content:(eov vcc) ~flag:expr_true expr)
-     | MV_empty_set t1cc -> ZSet.create_expr_empty_set ctx (sot t1cc)
+     | MV_empty_set _ -> ZSet.create_expr_empty_set ctx sort
      | MV_update_xbss (v1cc, v2cc, v3cc) ->
        ZSet.update ctx ~content:(eov v1cc) ~flag:(eov v2cc) (eov v3cc)
      (*************************************************************************)
@@ -399,12 +403,12 @@ module Encoder = struct
      (* Pair                                                                  *)
      (*************************************************************************)
      | MV_pair (v1cc, v2cc) ->
-       ZPair.create_expr (gdc value |> sov) (eov v1cc, eov v2cc)
+       ZPair.create_expr sort (eov v1cc, eov v2cc)
      (*************************************************************************)
      (* Or                                                                    *)
      (*************************************************************************)
-     | MV_left (_, v2cc) -> ZOr.create_expr_left (gdc value |> sov) (eov v2cc)
-     | MV_right (_, v2cc) -> ZOr.create_expr_right (gdc value |> sov) (eov v2cc)
+     | MV_left (_, v2cc) -> ZOr.create_expr_left sort (eov v2cc)
+     | MV_right (_, v2cc) -> ZOr.create_expr_right sort (eov v2cc)
      (*************************************************************************)
      (* Lambda                                                                *)
      (*************************************************************************)
@@ -465,7 +469,14 @@ module Encoder = struct
      let open Tz in
      fun ~sctx ctx value_cc ->
      try cv_mv ~sctx ctx value_cc.cc_v with
-     | Z3.Error s ->
+     | Not_Implemented ->
+       VcError
+         ("Not Implemented : "
+         ^ Sexp.to_string
+             (sexp_of_cc sexp_of_mich_v value_cc |> SexpUtil.tz_cc_sexp_form)
+         )
+       |> raise
+     | Z3.Error s      ->
        VcError
          (s
          ^ " : "
