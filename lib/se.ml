@@ -5,6 +5,7 @@ open! Core
 (* Set of Tz.sym_state & Set of Tz.mich_cut_info *)
 module SSet = Core.Set.Make (Tz.SymState_cmp)
 module MciSet = Core.Set.Make (Tz.MichCutInfo_cmp)
+module MFSet = Core.Set.Make (Tz.MichF_cmp)
 
 type se_result = {
   (* symbolic states *)
@@ -488,6 +489,23 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    in
    (* FUNCTION BEGIN *)
    fun inst (ctxt_sr, ss) ->
+   (* VERY VERY NAIVE OPTIMIZATION BEGIN - optimize only block_si.mich_stack's top value *)
+   let ss =
+      let ((*additional_constraints*) _, optimized_stack) =
+         match ss.ss_block_si.si_mich with
+         | []     -> ([], [])
+         | h :: t ->
+           let (cl, v) = opt_mvcc ~ctx:ss.ss_id h in
+           (cl, v :: t)
+      in
+      {
+        ss with
+        ss_block_si =
+          { ss.ss_block_si with si_mich = optimized_stack }
+          (* ss_constraints = additional_constraints @ ss.ss_constraints; *);
+      }
+   in
+   (* VERY VERY NAIVE OPTIMIZATION END *)
    (* let _ =
          (* DEBUG *)
          print_endline ("HIHI " ^ (ctxt_sr.sr_sid_counter |> string_of_int))
@@ -1754,14 +1772,33 @@ let run_inst_entry :
            ^ (SSet.length result_raw.sr_blocked |> string_of_int)
            )
       in *)
-   ( {
-       result_raw with
-       sr_running = SSet.empty;
-       sr_blocked =
-         SSet.union
-           (SSet.map result_raw.sr_running ~f:final_blocking)
-           result_raw.sr_blocked;
-     },
-     initial_ss
-   )
+   let result =
+      {
+        result_raw with
+        sr_running = SSet.empty;
+        sr_blocked =
+          SSet.union
+            (SSet.map result_raw.sr_running ~f:final_blocking)
+            result_raw.sr_blocked;
+      }
+   in
+   let ss_constraint_optimization : sym_state -> sym_state =
+     fun ss ->
+     {
+       ss with
+       ss_constraints =
+         ss.ss_constraints
+         |> List.map ~f:opt_mf
+         |> MFSet.of_list
+         |> MFSet.to_list;
+     }
+   in
+   let result_constraint_optimized =
+      {
+        result with
+        sr_blocked = SSet.map result.sr_blocked ~f:ss_constraint_optimization;
+        sr_queries = SSet.map result.sr_queries ~f:ss_constraint_optimization;
+      }
+   in
+   (result_constraint_optimized, initial_ss)
 (* function run_inst_entry end *)

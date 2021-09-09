@@ -107,9 +107,7 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
                         "DBG - naive_run_qres_qtomic_action - ppath-fold - after expanded-pps"
                   )
                in *)
-            let new_count_if_expanded =
-               qr_exp_cnt + PPSet.length expanded_pps
-            in
+            let new_count_if_expanded = acc_cnt + PPSet.length expanded_pps in
             (* 2.1. if (timeout || any refuted results appeared before), then skip (add current pp to new-exp-ppath) *)
             if Utils.Time.is_timeout cfg_timer || Option.is_some r_opt
             then (r_opt, PPSet.add acc_new_ppset pp, acc_cnt)
