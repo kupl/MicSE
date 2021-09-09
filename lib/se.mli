@@ -56,29 +56,40 @@ end
 val add_constraints : c:Tz.mich_f list -> Tz.sym_state -> Tz.sym_state
 
 val mtz_constriant_if_it_is_or_true :
-  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
+  ctx:Tz.mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
 
 val add_mtz_constraint_if_it_is :
-  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.sym_state
+  ctx:Tz.mich_sym_ctxt ->
+  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc ->
+  Tz.sym_state ->
+  Tz.sym_state
 
 val nat_constriant_if_it_is_or_true :
-  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
+  ctx:Tz.mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
 
 val add_nat_constraint_if_it_is :
-  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.sym_state
+  ctx:Tz.mich_sym_ctxt ->
+  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc ->
+  Tz.sym_state ->
+  Tz.sym_state
 
-val michv_maybe_mtznat_constraints : v:Tz.mich_v Tz.cc -> Tz.mich_f list
+val michv_maybe_mtznat_constraints :
+  ctx:Tz.mich_sym_ctxt -> v:Tz.mich_v Tz.cc -> Tz.mich_f list
 
 val amount_balance_mutez_constraints :
+  ctx:Tz.mich_sym_ctxt ->
   amount_v:Tz.mich_v Tz.cc ->
   balance_v:Tz.mich_v Tz.cc ->
   bc_balance_v:Tz.mich_v Tz.cc ->
   Tz.mich_f list
 
 val mtz_comes_from_constraint :
-  mtz_v:Tz.mich_v Tz.cc -> from_v:Tz.mich_v Tz.cc -> Tz.mich_f
+  ctx:Tz.mich_sym_ctxt ->
+  mtz_v:Tz.mich_v Tz.cc ->
+  from_v:Tz.mich_v Tz.cc ->
+  Tz.mich_f
 
-val lt_2_63_constraint : Tz.mich_v Tz.cc -> Tz.mich_f
+val lt_2_63_constraint : ctx:Tz.mich_sym_ctxt -> Tz.mich_v Tz.cc -> Tz.mich_f
 
 (* val ge_balance_amount_in_non_trx_entry_constraint :
    amount_v:Tz.mich_v Tz.cc -> balance_v:Tz.mich_v Tz.cc -> Tz.mich_f *)

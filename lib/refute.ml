@@ -8,7 +8,13 @@ module MPMap = Map.Make (Inv.MciPair_cmp)
 let expand_ms : m_view:SSGraph.mci_view -> MState.t -> MSSet.t =
   fun ~m_view ms ->
   let open SSGraph in
-  ss_view_pred ~m_view (get_first_ss ms) |> MSSet.map ~f:(fun ss -> cons ss ms)
+  ss_view_pred ~m_view (get_first_ss ms)
+  |> MSSet.map ~f:(fun ss ->
+         (* let _ =
+               Utils.Log.debug (fun m -> m "DBG - expand_ms - MSSet.map ~f entered")
+            in *)
+         cons ss ms
+     )
 
 let expand_ms_multiple : m_view:Se.SSGraph.mci_view -> MSSet.t -> MSSet.t =
   fun ~m_view msset ->
@@ -61,6 +67,9 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
    in
    fun { cfg_timer; cfg_istrg; cfg_m_view; cfg_smt_ctxt; cfg_smt_slvr; _ } res
        qr ->
+   (* let _ =
+         Utils.Log.debug (fun m -> m "DBG - naive_run_qres_qtomic_action entered")
+      in *)
    let { qr_prv_flag; qr_rft_flag; qr_exp_ppaths; qr_exp_cnt; _ } = qr in
    (* 1. Check escape conditions *)
    (* 1.1. Escape when (Timeout || (R-flag <> RF_u) || (P-flag = PF_p)) *)
@@ -79,8 +88,25 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
         let open Tz in
         PPSet.fold qr_exp_ppaths ~init:(None, PPSet.empty, qr_exp_cnt)
           ~f:(fun (r_opt, acc_new_ppset, acc_cnt) pp ->
+            (* let _ =
+                  Utils.Log.debug (fun m ->
+                      m "DBG - naive_run_qres_qtomic_action - ppath-fold entered"
+                  )
+               in *)
             let { pp_mstate; pp_goalst = _; pp_score = _ } = pp in
+            (* let _ =
+                  Utils.Log.debug (fun m ->
+                      m
+                        "DBG - naive_run_qres_qtomic_action - ppath-fold - before expanded-pps"
+                  )
+               in *)
             let expanded_pps = expand_pp ~m_view:cfg_m_view pp in
+            (* let _ =
+                  Utils.Log.debug (fun m ->
+                      m
+                        "DBG - naive_run_qres_qtomic_action - ppath-fold - after expanded-pps"
+                  )
+               in *)
             let new_count_if_expanded =
                qr_exp_cnt + PPSet.length expanded_pps
             in
