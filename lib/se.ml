@@ -1058,23 +1058,13 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
      update_top_2_bmstack_and_constraint
        ~f:(fun (h, h2) ->
          match (typ_of_val h2).cc_v with
-         | MT_map (_, t2)     ->
+         | MT_map _     ->
            let nv = MV_get_xmoy (h, h2) |> gen_custom_cc inst in
-           ( [ nv ],
-             [
-               mtz_constriant_if_it_is_or_true ~ctx ~tv:(t2, nv);
-               nat_constriant_if_it_is_or_true ~ctx ~tv:(t2, nv);
-             ]
-           )
-         | MT_big_map (_, t2) ->
+           ([ nv ], [])
+         | MT_big_map _ ->
            let nv = MV_get_xbmo (h, h2) |> gen_custom_cc inst in
-           ( [ nv ],
-             [
-               mtz_constriant_if_it_is_or_true ~ctx ~tv:(t2, nv);
-               nat_constriant_if_it_is_or_true ~ctx ~tv:(t2, nv);
-             ]
-           )
-         | _                  -> failwith "run_inst_i : MI_get : unexpected")
+           ([ nv ], [])
+         | _            -> failwith "run_inst_i : MI_get : unexpected")
        ss
      |> running_ss_to_sr ctxt_sr
    | MI_update ->
