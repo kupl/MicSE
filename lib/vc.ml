@@ -82,27 +82,28 @@ module Encoder = struct
        |> raise
   (* function cv_mtcc end *)
 
-  let rec cv_mv : Smt.Ctx.t -> Tz.mich_v -> Smt.Expr.t =
+  let rec cv_mv : sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v -> Smt.Expr.t
+      =
      let open Tz in
      let open TzUtil in
      let open Smt in
-     fun ctx value ->
+     fun ~sctx ctx value ->
      let gdc value = gen_dummy_cc value in
      let sot typ_cc = cv_mtcc ctx typ_cc in
      let sov value_cc = cv_mtcc ctx (typ_of_val value_cc) in
-     let eov value_cc = cv_mvcc ctx value_cc in
+     let eov value_cc = cv_mvcc ~sctx ctx value_cc in
      (* syntax sugar *)
      let (sort : Sort.t) = sov (gdc value) in
      match value with
      (*************************************************************************)
      (* Symbol & Polymorphic                                                  *)
      (*************************************************************************)
-     | MV_symbol (t1, c2, sc3) ->
+     | MV_symbol (t1, c2) ->
        Expr.create_var ctx (sot t1)
          ~name:
            (Sexp.to_string (sexp_of_mich_sym_category c2)
            ^ "_"
-           ^ Sexp.to_string (sexp_of_mich_sym_ctxt sc3)
+           ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
            )
      | MV_car v1cc -> (
        match v1cc.cc_v with
@@ -410,8 +411,7 @@ module Encoder = struct
      | MV_lit_lambda _ -> Not_Implemented |> raise
      | MV_lambda_unknown (t1cc, t2cc) ->
        let (domain_expr : Expr.t) = ZLambda.create_expr_domain ctx (sot t1cc) in
-       ZLambda.create_expr sort domain_expr
-         (Expr.create_dummy ctx (sot t2cc))
+       ZLambda.create_expr sort domain_expr (Expr.create_dummy ctx (sot t2cc))
      | MV_lambda_closure (v1cc, v2cc) ->
        ZLambda.create_apply ctx (eov v2cc) (eov v1cc)
      (*************************************************************************)
@@ -460,10 +460,11 @@ module Encoder = struct
      | MV_sigma_tmplm _ -> Not_Implemented |> raise
   (* function cv_mv end *)
 
-  and cv_mvcc : Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t =
+  and cv_mvcc :
+      sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t =
      let open Tz in
-     fun ctx value_cc ->
-     try cv_mv ctx value_cc.cc_v with
+     fun ~sctx ctx value_cc ->
+     try cv_mv ~sctx ctx value_cc.cc_v with
      | Z3.Error s ->
        VcError
          (s
@@ -637,7 +638,7 @@ module Encoder = struct
      let open Tz in
      let open Smt in
      fun ctx fmla ->
-     let eov value_cc = cv_mvcc ctx value_cc in
+     let eov { ctx_i; ctx_v } = cv_mvcc ~sctx:ctx_i ctx ctx_v in
      let fof fmla = cv_mf ctx fmla in
      (* syntax sugar *)
      try
@@ -671,6 +672,8 @@ module Encoder = struct
          Formula.create_shift_l_rhs_in_256 ctx (eov v2)
        | MF_shiftR_nnn_rhs_in_256 (_, v2) ->
          Formula.create_shift_r_rhs_in_256 ctx (eov v2)
+       (* Custom Formula for state merging *)
+       | MF_time_leq (v1, v2) -> Formula.create_arith_le ctx (eov v1) (eov v2)
      with
      | Z3.Error s ->
        VcError
@@ -702,37 +705,65 @@ let get_hd2 : 'a list -> 'a * 'a =
   | _             -> VcError "get_hd2 : wrong mich stack status" |> raise
 (* function get_hd2 end *)
 
-let property_of_query : Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f =
+let property_of_query :
+    sctx:Tz.mich_sym_ctxt -> Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f =
    let open Tz in
-   fun mci si ->
+   fun ~sctx mci si ->
    match mci.mci_cutcat with
    | MCC_query qc -> (
      match qc with
-     | Q_mutez_add_no_overflow -> MF_add_mmm_no_overflow (get_hd2 si.si_mich)
-     | Q_mutez_sub_no_underflow -> MF_sub_mmm_no_underflow (get_hd2 si.si_mich)
-     | Q_mutez_mul_mnm_no_overflow -> MF_mul_mnm_no_overflow (get_hd2 si.si_mich)
-     | Q_mutez_mul_nmm_no_overflow -> MF_mul_nmm_no_overflow (get_hd2 si.si_mich)
-     | Q_shiftleft_safe -> MF_shiftL_nnn_rhs_in_256 (get_hd2 si.si_mich)
-     | Q_shiftright_safe -> MF_shiftR_nnn_rhs_in_256 (get_hd2 si.si_mich)
-     | Q_assertion -> MF_is_true (get_hd1 si.si_mich)
+     | Q_mutez_add_no_overflow ->
+       let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
+       MF_add_mmm_no_overflow
+         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+     | Q_mutez_sub_no_underflow ->
+       let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
+       MF_sub_mmm_no_underflow
+         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+     | Q_mutez_mul_mnm_no_overflow ->
+       let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
+       MF_mul_mnm_no_overflow
+         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+     | Q_mutez_mul_nmm_no_overflow ->
+       let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
+       MF_mul_nmm_no_overflow
+         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+     | Q_shiftleft_safe ->
+       let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
+       MF_shiftL_nnn_rhs_in_256
+         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+     | Q_shiftright_safe ->
+       let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
+       MF_shiftR_nnn_rhs_in_256
+         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+     | Q_assertion ->
+       let (v1 : mich_v cc) = get_hd1 si.si_mich in
+       MF_is_true (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx)
    )
    | _            -> VcError "gen_query_property : wrong mci" |> raise
 (* function property_of_query end *)
 
 let apply_initial_storage :
-    Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_v Tz.cc -> Tz.mich_f =
+    sctx:Tz.mich_sym_ctxt ->
+    Tz.mich_cut_info ->
+    Tz.sym_image ->
+    Tz.mich_v Tz.cc ->
+    Tz.mich_f =
    let open Tz in
-   fun mci si init_strg ->
+   fun ~sctx mci si init_strg ->
    match mci.mci_cutcat with
    | MCC_trx_entry ->
      let (param_strg : mich_v cc) = get_hd1 si.si_mich in
      let (sym_strg : mich_v cc) = TzUtil.gen_dummy_cc (MV_cdr param_strg) in
-     MF_eq (sym_strg, init_strg)
+     MF_eq
+       ( TzUtil.gen_mich_v_ctx sym_strg ~ctx:sctx,
+         TzUtil.gen_mich_v_ctx init_strg ~ctx:sctx
+       )
    | _             -> VcError "apply_initial_storage : wrong mci" |> raise
 (* function apply_initial_storage end *)
 
 let subst_mf_rules :
-    mapf_vcc:(Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc) -> Tz.mich_f -> Tz.mich_f =
+    mapf_vcc:(Tz.mich_v_cc_ctx -> Tz.mich_v_cc_ctx) -> Tz.mich_f -> Tz.mich_f =
   fun ~mapf_vcc mf ->
   match mf with
   (* Logical Formula *)
@@ -763,10 +794,14 @@ let subst_mf_rules :
 (* function subst_mf_rules end *)
 
 let apply_inv_at_start :
-    Tz.mich_cut_info -> Tz.sym_image -> MFSet.t -> Tz.mich_f list =
+    sctx:Tz.mich_sym_ctxt ->
+    Tz.mich_cut_info ->
+    Tz.sym_image ->
+    MFSet.t ->
+    Tz.mich_f list =
    let open Tz in
    let open TzUtil in
-   fun mci si fset ->
+   fun ~sctx mci si fset ->
    let (mapf : mich_v -> mich_v) = function
    | MV_ref (_, msc2) -> (
      match msc2 with
@@ -808,15 +843,26 @@ let apply_inv_at_start :
    MFSet.to_list fset
    |> List.map ~f:(fun fmla ->
           mf_map_innerfst
-            ~mapf:(subst_mf_rules ~mapf_vcc:(mvcc_map_innerfst ~mapf))
+            ~mapf:
+              (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
+                   {
+                     ctx_i = sctx;
+                     ctx_v = mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v;
+                   }
+               )
+              )
             fmla
       )
 
 let apply_inv_at_block :
-    Tz.mich_cut_info -> Tz.sym_image -> MFSet.t -> Tz.mich_f list =
+    sctx:Tz.mich_sym_ctxt ->
+    Tz.mich_cut_info ->
+    Tz.sym_image ->
+    MFSet.t ->
+    Tz.mich_f list =
    let open Tz in
    let open TzUtil in
-   fun mci si fset ->
+   fun ~sctx mci si fset ->
    let (mapf : mich_v -> mich_v) = function
    | MV_ref (_, msc2) -> (
      match msc2 with
@@ -849,7 +895,14 @@ let apply_inv_at_block :
    MFSet.to_list fset
    |> List.map ~f:(fun fmla ->
           mf_map_innerfst
-            ~mapf:(subst_mf_rules ~mapf_vcc:(mvcc_map_innerfst ~mapf))
+            ~mapf:
+              (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
+                   {
+                     ctx_i = sctx;
+                     ctx_v = mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v;
+                   }
+               )
+              )
             fmla
       )
 (* function apply_inv_at_start end *)
@@ -865,11 +918,13 @@ let gen_query_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
    fun imap sstate ->
    let (start_inv : mich_f list) =
       Inv.find_inv_map imap sstate.ss_start_mci
-      |> apply_inv_at_start sstate.ss_start_mci sstate.ss_start_si
+      |> apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
+           sstate.ss_start_si
    in
    let (sp : mich_f) = MF_and (start_inv @ sstate.ss_constraints) in
    let (query : mich_f) =
-      property_of_query sstate.ss_block_mci sstate.ss_block_si
+      property_of_query ~sctx:sstate.ss_id sstate.ss_block_mci
+        sstate.ss_block_si
    in
    MF_imply (sp, query)
 (* function gen_query_vc end *)
@@ -882,11 +937,13 @@ let gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f =
    let (block_state : sym_state) = get_last_ss mstate in
    let (start_inv : mich_f list) =
       Inv.find_inv_map imap start_state.ss_start_mci
-      |> apply_inv_at_start start_state.ss_start_mci start_state.ss_start_si
+      |> apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
+           start_state.ss_start_si
    in
    let (sp : mich_f) = MF_and (start_inv @ get_constraint mstate) in
    let (query : mich_f) =
-      property_of_query block_state.ss_block_mci block_state.ss_block_si
+      property_of_query ~sctx:block_state.ss_id block_state.ss_block_mci
+        block_state.ss_block_si
    in
    MF_imply (sp, query)
 (* function gen_query_vc_from_ms end *)
@@ -900,17 +957,19 @@ let gen_query_vc_from_ms_with_init_strg :
    let (block_state : sym_state) = get_last_ss mstate in
    let (start_inv : mich_f list) =
       Inv.find_inv_map imap start_state.ss_start_mci
-      |> apply_inv_at_start start_state.ss_start_mci start_state.ss_start_si
+      |> apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
+           start_state.ss_start_si
    in
    let (init_strg_fmla : mich_f) =
-      apply_initial_storage start_state.ss_start_mci start_state.ss_start_si
-        init_strg
+      apply_initial_storage ~sctx:start_state.ss_id start_state.ss_start_mci
+        start_state.ss_start_si init_strg
    in
    let (sp : mich_f) =
       MF_and (init_strg_fmla :: (start_inv @ get_constraint mstate))
    in
    let (query : mich_f) =
-      property_of_query block_state.ss_block_mci block_state.ss_block_si
+      property_of_query ~sctx:block_state.ss_id block_state.ss_block_mci
+        block_state.ss_block_si
    in
    MF_imply (sp, query)
 (* function gen_query_vc_from_ms end *)
@@ -920,11 +979,13 @@ let gen_inductiveness_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
    fun imap sstate ->
    let (start_inv : mich_f list) =
       Inv.find_inv_map imap sstate.ss_start_mci
-      |> apply_inv_at_start sstate.ss_start_mci sstate.ss_start_si
+      |> apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
+           sstate.ss_start_si
    in
    let (block_inv : mich_f list) =
       Inv.find_inv_map imap sstate.ss_block_mci
-      |> apply_inv_at_block sstate.ss_block_mci sstate.ss_block_si
+      |> apply_inv_at_block ~sctx:sstate.ss_id sstate.ss_block_mci
+           sstate.ss_block_si
    in
    let (sp : mich_f) = MF_and (start_inv @ sstate.ss_constraints) in
    MF_imply (sp, MF_and block_inv)
@@ -940,10 +1001,12 @@ let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option =
      let (start_state : sym_state) = get_first_ss p_mstate in
      let (block_state : sym_state) = get_last_ss p_mstate in
      let (start_fmla : mich_f list) =
-        apply_inv_at_start start_state.ss_start_mci start_state.ss_start_si fset
+        apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
+          start_state.ss_start_si fset
      in
      let (block_fmla : mich_f list) =
-        apply_inv_at_block block_state.ss_start_mci block_state.ss_start_si fset
+        apply_inv_at_block ~sctx:block_state.ss_id block_state.ss_start_mci
+          block_state.ss_start_si fset
      in
      let (sp : mich_f) = MF_and (start_fmla @ get_constraint p_mstate) in
      Some (MF_imply (sp, MF_and block_fmla))
@@ -954,10 +1017,12 @@ let gen_initial_inv_vc : MFSet.t -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
    let open Tz in
    fun fset init_strg sstate ->
    let (start_inv : mich_f list) =
-      apply_inv_at_start sstate.ss_start_mci sstate.ss_start_si fset
+      apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
+        sstate.ss_start_si fset
    in
    let (init_strg_fmla : mich_f) =
-      apply_initial_storage sstate.ss_start_mci sstate.ss_start_si init_strg
+      apply_initial_storage ~sctx:sstate.ss_id sstate.ss_start_mci
+        sstate.ss_start_si init_strg
    in
    MF_and (init_strg_fmla :: start_inv)
 (* function gen_initial_inv_vc end *)

@@ -171,6 +171,8 @@ let filter_equal : ILSet.t -> ILSet.t =
 (* Invariant Candidate Templates                                              *)
 (******************************************************************************)
 
+let dummy_ctx : Tz.mich_sym_ctxt = []
+
 let gen_template :
     ?except_lit_only:bool ->
     ?target_mode:[ `Normal | `Asymm | `Asymm_rfl ] ->
@@ -225,13 +227,16 @@ let gen_template :
 (* function gen_template end *)
 
 let tmp_eq : Igdt.igdt_sets -> MFSet.t =
+  let open TzUtil in
+  let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+  (* syntax sugar *)
   fun igdt_map ->
   let (target_types : Tz.mich_t Tz.cc list list) =
      MTMap.keys igdt_map |> List.map ~f:(fun t -> List.init 2 ~f:(fun _ -> t))
   in
   gen_template igdt_map target_types ~target_mode:`Asymm ~f:(fun tvl ->
       match tvl with
-      | [ (_, v1); (_, v2) ] -> Some (MF_eq (v1, v2))
+      | [ (_, v1); (_, v2) ] -> Some (MF_eq ((gctx v1), (gctx v2)))
       | _                    ->
         InvError "tmp_eq : wrong ingredient length" |> raise
   )
@@ -240,6 +245,8 @@ let tmp_eq : Igdt.igdt_sets -> MFSet.t =
 let tmp_ge : Igdt.igdt_sets -> MFSet.t =
    let open Tz in
    let open TzUtil in
+   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* syntax sugar *)
    let (empty_str : mich_v cc) = gen_dummy_cc (MV_lit_string "") in
    let (max_mtz : mich_v cc) =
       MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc
@@ -251,7 +258,7 @@ let tmp_ge : Igdt.igdt_sets -> MFSet.t =
    let make_ge : mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2) ->
      let (cmp : mich_v cc) = gen_dummy_cc (MV_compare (v1, v2)) in
-     Some (MF_is_true (gen_dummy_cc (MV_geq_ib (cmp, zero))))
+     Some (MF_is_true (gctx (gen_dummy_cc (MV_geq_ib ((cmp), zero)))))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -277,11 +284,13 @@ let tmp_ge : Igdt.igdt_sets -> MFSet.t =
 let tmp_gt : Igdt.igdt_sets -> MFSet.t =
    let open Tz in
    let open TzUtil in
+   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* syntax sugar *)
    let (zero : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
    let make_gt : mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2) ->
      let (cmp : mich_v cc) = gen_dummy_cc (MV_compare (v1, v2)) in
-     Some (MF_is_true (gen_dummy_cc (MV_gt_ib (cmp, zero))))
+     Some (MF_is_true (gctx (gen_dummy_cc (MV_gt_ib (cmp, zero)))))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -300,10 +309,12 @@ let tmp_gt : Igdt.igdt_sets -> MFSet.t =
 let tmp_add_2_eq : Igdt.igdt_sets -> MFSet.t =
    let open Tz in
    let open TzUtil in
+   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* syntax sugar *)
    let make_add_2_eq_mtz : mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3) ->
      let (add : mich_v cc) = gen_dummy_cc (MV_add_mmm (v1, v2)) in
-     Some (MF_eq (add, v3))
+     Some (MF_eq ((gctx add), (gctx v3)))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -322,13 +333,15 @@ let tmp_add_2_eq : Igdt.igdt_sets -> MFSet.t =
 let tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t =
    let open Tz in
    let open TzUtil in
+   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* syntax sugar *)
    let make_add_3_eq_mtz :
        mich_v cc * mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3, v4) ->
      let (add : mich_v cc) =
         gen_dummy_cc (MV_add_mmm (gen_dummy_cc (MV_add_mmm (v1, v2)), v3))
      in
-     Some (MF_eq (add, v4))
+     Some (MF_eq ((gctx add), (gctx v4)))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =

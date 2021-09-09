@@ -22,9 +22,10 @@ module Encoder : sig
 
   val cv_mtcc : Smt.Ctx.t -> Tz.mich_t Tz.cc -> Smt.Sort.t
 
-  val cv_mv : Smt.Ctx.t -> Tz.mich_v -> Smt.Expr.t
+  val cv_mv : sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v -> Smt.Expr.t
 
-  val cv_mvcc : Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t
+  val cv_mvcc :
+    sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t
 
   val cv_compare :
     Smt.Ctx.t -> Tz.mich_t * Smt.Expr.t -> Tz.mich_t * Smt.Expr.t -> Smt.Expr.t
@@ -42,19 +43,32 @@ val get_hd1 : 'a list -> 'a
 
 val get_hd2 : 'a list -> 'a * 'a
 
-val property_of_query : Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f
+val property_of_query :
+  sctx:Tz.mich_sym_ctxt -> Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f
 
 val apply_initial_storage :
-  Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_v Tz.cc -> Tz.mich_f
+  sctx:Tz.mich_sym_ctxt ->
+  Tz.mich_cut_info ->
+  Tz.sym_image ->
+  Tz.mich_v Tz.cc ->
+  Tz.mich_f
 
 val subst_mf_rules :
-  mapf_vcc:(Tz.mich_v Tz.cc -> Tz.mich_v Tz.cc) -> Tz.mich_f -> Tz.mich_f
+  mapf_vcc:(Tz.mich_v_cc_ctx -> Tz.mich_v_cc_ctx) -> Tz.mich_f -> Tz.mich_f
 
 val apply_inv_at_start :
-  Tz.mich_cut_info -> Tz.sym_image -> MFSet.t -> Tz.mich_f list
+  sctx:Tz.mich_sym_ctxt ->
+  Tz.mich_cut_info ->
+  Tz.sym_image ->
+  MFSet.t ->
+  Tz.mich_f list
 
 val apply_inv_at_block :
-  Tz.mich_cut_info -> Tz.sym_image -> MFSet.t -> Tz.mich_f list
+  sctx:Tz.mich_sym_ctxt ->
+  Tz.mich_cut_info ->
+  Tz.sym_image ->
+  MFSet.t ->
+  Tz.mich_f list
 
 (******************************************************************************)
 (******************************************************************************)
