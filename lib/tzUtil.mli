@@ -45,19 +45,11 @@ val gen_custom_cc : 'ccbase cc -> 'a -> 'a cc
 (* MV_symbol context swap                                                     *)
 (******************************************************************************)
 
-val symbol_context_swap_i : mich_sym_ctxt -> mich_v -> mich_v
+val gen_mich_v_ctx : ctx:mich_sym_ctxt -> mich_v cc -> mich_v_cc_ctx
 
-val symbol_context_swap : mich_sym_ctxt -> mich_v cc -> mich_v cc
+val symbol_context_swap_michf_recursive : ctx:mich_sym_ctxt -> mich_f -> mich_f
 
-val symbol_context_swap_recursive : mich_sym_ctxt -> mich_v cc -> mich_v cc
-
-val symbol_context_swap_michf_recursive : mich_sym_ctxt -> mich_f -> mich_f
-
-val trx_image_symbol_context_swap : mich_sym_ctxt -> trx_image -> trx_image
-
-val sym_image_symbol_context_swap : mich_sym_ctxt -> sym_image -> sym_image
-
-val sym_state_symbol_context_swap : mich_sym_ctxt -> sym_state -> sym_state
+val sym_state_symbol_context_swap : ctx:mich_sym_ctxt -> sym_state -> sym_state
 
 (******************************************************************************)
 (* Tezos Type                                                                 *)
@@ -77,9 +69,16 @@ val opt_mf_rules : mich_f -> mich_f
 
 val opt_mf : mich_f -> mich_f
 
-val opt_mvcc_rules : mich_f list * mich_v cc -> mich_f list * mich_v cc
+val mtz_constriant_if_it_is_or_true :
+  ctx:mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
 
-val opt_mvcc : mich_v cc -> mich_f list * mich_v cc
+val nat_constriant_if_it_is_or_true :
+  ctx:mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
+
+val opt_mvcc_rules :
+  ctx:mich_sym_ctxt -> mich_f list * mich_v cc -> mich_f list * mich_v cc
+
+val opt_mvcc : ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc
 
 (******************************************************************************)
 (* Michelson Cut Information                                                  *)

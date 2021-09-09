@@ -90,15 +90,13 @@ and mich_sym_category =
   | MSC_map_mapkey_stack of int
   | MSC_iter_stack       of int
 
-and mich_sym_ctxt = int list
-
 and mich_v =
   (* Michelson Value *)
 
   (****************************************************************************)
   (* Symbol & Polymorphic                                                     *)
   (****************************************************************************)
-  | MV_symbol               of (mich_t cc * mich_sym_category * mich_sym_ctxt)
+  | MV_symbol               of (mich_t cc * mich_sym_category)
   | MV_car                  of mich_v cc (* ('a, 'b) pair -> 'a *)
   | MV_cdr                  of mich_v cc (* ('a, 'b) pair -> 'b *)
   | MV_unlift_option        of mich_v cc (* 'a option -> 'a *)
@@ -416,6 +414,14 @@ end
 (******************************************************************************)
 (******************************************************************************)
 
+type mich_sym_ctxt = int list
+
+and mich_v_cc_ctx = {
+  ctx_i : mich_sym_ctxt;
+  ctx_v : mich_v cc;
+}
+[@@deriving sexp, compare, equal]
+
 type mich_f =
   (* Logical Formula *)
   | MF_true
@@ -423,23 +429,23 @@ type mich_f =
   | MF_not                   of mich_f
   | MF_and                   of mich_f list
   | MF_or                    of mich_f list
-  | MF_eq                    of mich_v cc * mich_v cc (* 'a * 'a -> formula *)
+  | MF_eq                    of mich_v_cc_ctx * mich_v_cc_ctx (* 'a * 'a -> formula *)
   | MF_imply                 of mich_f * mich_f
   (* MicSE Branch *)
-  | MF_is_true               of mich_v cc (* bool -> formula *)
-  | MF_is_none               of mich_v cc (* 'a option -> formula *)
-  | MF_is_left               of mich_v cc (* ('a, 'b) or -> formula *)
-  | MF_is_cons               of mich_v cc (* 'a list -> formula *)
+  | MF_is_true               of mich_v_cc_ctx (* bool -> formula *)
+  | MF_is_none               of mich_v_cc_ctx (* 'a option -> formula *)
+  | MF_is_left               of mich_v_cc_ctx (* ('a, 'b) or -> formula *)
+  | MF_is_cons               of mich_v_cc_ctx (* 'a list -> formula *)
   (* MicSE Datatype Constraint *)
-  | MF_mutez_bound           of mich_v cc (* (integer arithmetic) 'a -> formula *)
-  | MF_nat_bound             of mich_v cc (* (integer arithmetic) 'a -> formula *)
+  | MF_mutez_bound           of mich_v_cc_ctx (* (integer arithmetic) 'a -> formula *)
+  | MF_nat_bound             of mich_v_cc_ctx (* (integer arithmetic) 'a -> formula *)
   (* Custom Formula for verifiying *)
-  | MF_add_mmm_no_overflow   of (mich_v cc * mich_v cc)
-  | MF_sub_mmm_no_underflow  of (mich_v cc * mich_v cc)
-  | MF_mul_mnm_no_overflow   of (mich_v cc * mich_v cc)
-  | MF_mul_nmm_no_overflow   of (mich_v cc * mich_v cc)
-  | MF_shiftL_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
-  | MF_shiftR_nnn_rhs_in_256 of (mich_v cc * mich_v cc)
+  | MF_add_mmm_no_overflow   of (mich_v_cc_ctx * mich_v_cc_ctx)
+  | MF_sub_mmm_no_underflow  of (mich_v_cc_ctx * mich_v_cc_ctx)
+  | MF_mul_mnm_no_overflow   of (mich_v_cc_ctx * mich_v_cc_ctx)
+  | MF_mul_nmm_no_overflow   of (mich_v_cc_ctx * mich_v_cc_ctx)
+  | MF_shiftL_nnn_rhs_in_256 of (mich_v_cc_ctx * mich_v_cc_ctx)
+  | MF_shiftR_nnn_rhs_in_256 of (mich_v_cc_ctx * mich_v_cc_ctx)
 [@@deriving sexp, compare, equal]
 
 module MichF_cmp = struct

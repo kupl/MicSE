@@ -594,27 +594,14 @@ let gen_custom_cc : 'ccbase cc -> 'a -> 'a cc =
 (* MV_symbol context swap                                                     *)
 (******************************************************************************)
 
-let symbol_context_swap_i : mich_sym_ctxt -> mich_v -> mich_v =
-  fun ctxt mv ->
-  match mv with
-  | MV_symbol (t, symcat, _) -> MV_symbol (t, symcat, ctxt)
-  | _                        ->
-    failwith ("Tz.symbol_context_swap_i : " ^ __LOC__)
+let gen_mich_v_ctx : ctx:mich_sym_ctxt -> mich_v cc -> mich_v_cc_ctx =
+  (fun ~ctx mvcc -> { ctx_i = ctx; ctx_v = mvcc })
+(* function gen_mich_v_ctx end *)
 
-let symbol_context_swap : mich_sym_ctxt -> mich_v cc -> mich_v cc =
-  (fun ctxt x -> symbol_context_swap_i ctxt x.cc_v |> gen_custom_cc x)
-
-let symbol_context_swap_recursive : mich_sym_ctxt -> mich_v cc -> mich_v cc =
-  fun ctxt mvcc ->
-  mvcc_map_innerfst
-    ~mapf:(function
-      | MV_symbol (t, symcat, _) -> MV_symbol (t, symcat, ctxt)
-      | _ as mv                  -> mv)
-    mvcc
-
-let symbol_context_swap_michf_recursive : mich_sym_ctxt -> mich_f -> mich_f =
-  fun ctxt mf ->
-  let vswap = symbol_context_swap_recursive ctxt in
+let symbol_context_swap_michf_recursive : ctx:mich_sym_ctxt -> mich_f -> mich_f
+    =
+  fun ~ctx mf ->
+  let vswap mvcc_ctx = { mvcc_ctx with ctx_i = ctx } in
   mf_map_innerfst
     ~mapf:(function
       (* Logical Formula *)
@@ -623,68 +610,39 @@ let symbol_context_swap_michf_recursive : mich_sym_ctxt -> mich_f -> mich_f =
       | MF_not _ as mf -> mf
       | MF_and _ as mf -> mf
       | MF_or _ as mf -> mf
-      | MF_eq (v1, v2) -> MF_eq (vswap v1, vswap v2)
+      | MF_eq (v1ctx, v2ctx) -> MF_eq (vswap v1ctx, vswap v2ctx)
       | MF_imply _ as mf -> mf
       (* MicSE Branch *)
-      | MF_is_true v -> MF_is_true (vswap v)
-      | MF_is_none v -> MF_is_none (vswap v)
-      | MF_is_left v -> MF_is_left (vswap v)
-      | MF_is_cons v -> MF_is_cons (vswap v)
+      | MF_is_true vctx -> MF_is_true (vswap vctx)
+      | MF_is_none vctx -> MF_is_none (vswap vctx)
+      | MF_is_left vctx -> MF_is_left (vswap vctx)
+      | MF_is_cons vctx -> MF_is_cons (vswap vctx)
       (* MicSE Datatype Constraint *)
-      | MF_mutez_bound v -> MF_mutez_bound (vswap v)
-      | MF_nat_bound v -> MF_nat_bound (vswap v)
+      | MF_mutez_bound vctx -> MF_mutez_bound (vswap vctx)
+      | MF_nat_bound vctx -> MF_nat_bound (vswap vctx)
       (* Custom Formula for verifiying *)
-      | MF_add_mmm_no_overflow (v1, v2) ->
-        MF_add_mmm_no_overflow (vswap v1, vswap v2)
-      | MF_sub_mmm_no_underflow (v1, v2) ->
-        MF_sub_mmm_no_underflow (vswap v1, vswap v2)
-      | MF_mul_mnm_no_overflow (v1, v2) ->
-        MF_mul_mnm_no_overflow (vswap v1, vswap v2)
-      | MF_mul_nmm_no_overflow (v1, v2) ->
-        MF_mul_nmm_no_overflow (vswap v1, vswap v2)
-      | MF_shiftL_nnn_rhs_in_256 (v1, v2) ->
-        MF_shiftL_nnn_rhs_in_256 (vswap v1, vswap v2)
-      | MF_shiftR_nnn_rhs_in_256 (v1, v2) ->
-        MF_shiftR_nnn_rhs_in_256 (vswap v1, vswap v2))
+      | MF_add_mmm_no_overflow (v1ctx, v2ctx) ->
+        MF_add_mmm_no_overflow (vswap v1ctx, vswap v2ctx)
+      | MF_sub_mmm_no_underflow (v1ctx, v2ctx) ->
+        MF_sub_mmm_no_underflow (vswap v1ctx, vswap v2ctx)
+      | MF_mul_mnm_no_overflow (v1ctx, v2ctx) ->
+        MF_mul_mnm_no_overflow (vswap v1ctx, vswap v2ctx)
+      | MF_mul_nmm_no_overflow (v1ctx, v2ctx) ->
+        MF_mul_nmm_no_overflow (vswap v1ctx, vswap v2ctx)
+      | MF_shiftL_nnn_rhs_in_256 (v1ctx, v2ctx) ->
+        MF_shiftL_nnn_rhs_in_256 (vswap v1ctx, vswap v2ctx)
+      | MF_shiftR_nnn_rhs_in_256 (v1ctx, v2ctx) ->
+        MF_shiftR_nnn_rhs_in_256 (vswap v1ctx, vswap v2ctx))
     mf
 
-(* Warning: input trx_image must contain MV_symbol values only. *)
-let trx_image_symbol_context_swap : mich_sym_ctxt -> trx_image -> trx_image =
-  fun ctxt ti ->
+let sym_state_symbol_context_swap : ctx:mich_sym_ctxt -> sym_state -> sym_state
+    =
+  fun ~ctx ss ->
   {
-    ti_contract = symbol_context_swap ctxt ti.ti_contract;
-    ti_source = symbol_context_swap ctxt ti.ti_source;
-    ti_sender = symbol_context_swap ctxt ti.ti_sender;
-    ti_param = symbol_context_swap ctxt ti.ti_param;
-    ti_amount = symbol_context_swap ctxt ti.ti_amount;
-    ti_time = symbol_context_swap ctxt ti.ti_time;
-  }
-
-let sym_image_symbol_context_swap : mich_sym_ctxt -> sym_image -> sym_image =
-  fun ctxt si ->
-  let rswap = symbol_context_swap_recursive ctxt in
-  {
-    si_mich = List.map si.si_mich ~f:rswap;
-    si_dip = List.map si.si_dip ~f:rswap;
-    si_map_entry = List.map si.si_map_entry ~f:rswap;
-    si_map_exit = List.map si.si_map_exit ~f:rswap;
-    si_map_mapkey = List.map si.si_map_mapkey ~f:rswap;
-    si_iter = List.map si.si_iter ~f:rswap;
-    si_balance = rswap si.si_balance;
-    si_bc_balance = rswap si.si_bc_balance;
-    si_param = trx_image_symbol_context_swap ctxt si.si_param;
-  }
-
-let sym_state_symbol_context_swap : mich_sym_ctxt -> sym_state -> sym_state =
-  fun ctxt ss ->
-  {
-    ss_id = ctxt;
-    ss_start_mci = ss.ss_start_mci;
-    ss_block_mci = ss.ss_block_mci;
-    ss_start_si = sym_image_symbol_context_swap ctxt ss.ss_start_si;
-    ss_block_si = sym_image_symbol_context_swap ctxt ss.ss_block_si;
+    ss with
+    ss_id = ctx;
     ss_constraints =
-      List.map ss.ss_constraints ~f:(symbol_context_swap_michf_recursive ctxt);
+      List.map ss.ss_constraints ~f:(symbol_context_swap_michf_recursive ~ctx);
   }
 
 (******************************************************************************)
@@ -709,7 +667,7 @@ let typ_of_val : mich_v cc -> mich_t cc =
      (**************************************************************************)
      (* Symbol & Polymorphic                                                   *)
      (**************************************************************************)
-     | MV_symbol (t, _, _) -> t
+     | MV_symbol (t, _) -> t
      | MV_car v1 -> (
        (typ_of_val_i v1).cc_v
        |> function
@@ -1048,23 +1006,29 @@ let opt_mf : mich_f -> mich_f = mf_map_innerfst ~mapf:opt_mf_rules
 
 (* Duplicated constraint generator from Se module *)
 let mtz_constriant_if_it_is_or_true :
-    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
-  fun ~tv:(t, v) ->
-  if equal_mich_t t.cc_v MT_mutez then MF_mutez_bound v else MF_true
+    ctx:mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+  fun ~ctx ~tv:(t, v) ->
+  if equal_mich_t t.cc_v MT_mutez
+  then MF_mutez_bound (gen_mich_v_ctx v ~ctx)
+  else MF_true
 
 let nat_constriant_if_it_is_or_true :
-    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+    ctx:mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
    let open Tz in
-   fun ~tv:(t, v) ->
-   if equal_mich_t t.cc_v MT_nat then MF_nat_bound v else MF_true
+   fun ~ctx ~tv:(t, v) ->
+   if equal_mich_t t.cc_v MT_nat
+   then MF_nat_bound (gen_mich_v_ctx v ~ctx)
+   else MF_true
 
-let opt_mvcc_rules : mich_f list * mich_v cc -> mich_f list * mich_v cc =
-  fun (mfl_acc, mvcc) ->
+let opt_mvcc_rules :
+    ctx:mich_sym_ctxt -> mich_f list * mich_v cc -> mich_f list * mich_v cc =
+  fun ~ctx (mfl_acc, mvcc) ->
   let v_return : mich_v cc -> mich_f list * mich_v cc =
     fun v ->
     let tv = (typ_of_val v, v) in
     ( [
-        mtz_constriant_if_it_is_or_true ~tv; nat_constriant_if_it_is_or_true ~tv;
+        mtz_constriant_if_it_is_or_true ~ctx ~tv;
+        nat_constriant_if_it_is_or_true ~ctx ~tv;
       ]
       @ mfl_acc,
       v
@@ -1111,9 +1075,9 @@ let opt_mvcc_rules : mich_f list * mich_v cc -> mich_f list * mich_v cc =
   in
   v_return v
 
-let opt_mvcc : mich_v cc -> mich_f list * mich_v cc =
-  fun mvcc ->
-  mvcc_fold_innerfst ~f:opt_mvcc_rules ~acc:[] mvcc
+let opt_mvcc : ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc =
+  fun ~ctx mvcc ->
+  mvcc_fold_innerfst ~f:(opt_mvcc_rules ~ctx) ~acc:[] mvcc
   |> (fun (fl, v) -> (List.map ~f:opt_mf fl, v))
 
 (******************************************************************************)
