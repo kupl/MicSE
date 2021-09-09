@@ -1027,6 +1027,11 @@ let gen_initial_inv_vc : MFSet.t -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
    MF_and (init_strg_fmla :: start_inv)
 (* function gen_initial_inv_vc end *)
 
+let gen_refute_vc : Inv.inv_map -> Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f =
+  fun imap init_strg mstate ->
+  MF_not (gen_query_vc_from_ms_with_init_strg imap init_strg mstate)
+(* function gen_refute_vc end *)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Verification                                                               *)
