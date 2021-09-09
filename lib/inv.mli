@@ -50,19 +50,11 @@ end
 (******************************************************************************)
 (******************************************************************************)
 
-type cand = {
-  cd_fmla : MFSet.t;
-  cd_score : int; [@ignore]
-}
-[@@deriving sexp, compare, equal]
+module CMap : module type of Core.Map.Make (MFSet)
 
-module Cand_cmp : sig
-  type t = cand [@@deriving sexp, compare]
-end
+type cands = int CMap.t [@@deriving sexp, compare, equal]
 
-module CSet : module type of Core.Set.Make (Cand_cmp)
-
-type cand_map = CSet.t RMCIMap.t [@@deriving sexp, compare, equal]
+type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
 (******************************************************************************)
 (******************************************************************************)
@@ -174,9 +166,15 @@ val find_inv_map_by_rmci : inv_map -> Tz.r_mich_cut_info -> MFSet.t
 
 val find_inv_map : inv_map -> Tz.mich_cut_info -> MFSet.t
 
-val find_cand_map_by_rmci : cand_map -> Tz.r_mich_cut_info -> CSet.t
+val find_cand_map_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands
 
-val find_cand_map : cand_map -> Tz.mich_cut_info -> CSet.t
+val find_cand_map : cand_map -> Tz.mich_cut_info -> cands
+
+val find_cand_map_top_k_by_rmci :
+  top_k:int -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list
+
+val find_cand_map_top_k :
+  top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list
 
 val find_failed_cp_by_rmci : failed_cp -> mci_pair -> CPSet.t
 

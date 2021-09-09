@@ -52,19 +52,11 @@ end
 (******************************************************************************)
 (******************************************************************************)
 
-type cand = {
-  cd_fmla : MFSet.t;
-  cd_score : int; [@ignore]
-}
-[@@deriving sexp, compare, equal]
+module CMap = Map.Make (MFSet)
 
-module Cand_cmp = struct
-  type t = cand [@@deriving sexp, compare]
-end
+type cands = int CMap.t [@@deriving sexp, compare, equal]
 
-module CSet = Set.Make (Cand_cmp)
-
-type cand_map = CSet.t RMCIMap.t [@@deriving sexp, compare, equal]
+type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
 (******************************************************************************)
 (******************************************************************************)
@@ -227,19 +219,19 @@ let gen_template :
 (* function gen_template end *)
 
 let tmp_eq : Igdt.igdt_sets -> MFSet.t =
-  let open TzUtil in
-  let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
-  (* syntax sugar *)
-  fun igdt_map ->
-  let (target_types : Tz.mich_t Tz.cc list list) =
-     MTMap.keys igdt_map |> List.map ~f:(fun t -> List.init 2 ~f:(fun _ -> t))
-  in
-  gen_template igdt_map target_types ~target_mode:`Asymm ~f:(fun tvl ->
-      match tvl with
-      | [ (_, v1); (_, v2) ] -> Some (MF_eq ((gctx v1), (gctx v2)))
-      | _                    ->
-        InvError "tmp_eq : wrong ingredient length" |> raise
-  )
+   let open TzUtil in
+   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* syntax sugar *)
+   fun igdt_map ->
+   let (target_types : Tz.mich_t Tz.cc list list) =
+      MTMap.keys igdt_map |> List.map ~f:(fun t -> List.init 2 ~f:(fun _ -> t))
+   in
+   gen_template igdt_map target_types ~target_mode:`Asymm ~f:(fun tvl ->
+       match tvl with
+       | [ (_, v1); (_, v2) ] -> Some (MF_eq (gctx v1, gctx v2))
+       | _                    ->
+         InvError "tmp_eq : wrong ingredient length" |> raise
+   )
 (* function tmp_eq end *)
 
 let tmp_ge : Igdt.igdt_sets -> MFSet.t =
@@ -258,7 +250,7 @@ let tmp_ge : Igdt.igdt_sets -> MFSet.t =
    let make_ge : mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2) ->
      let (cmp : mich_v cc) = gen_dummy_cc (MV_compare (v1, v2)) in
-     Some (MF_is_true (gctx (gen_dummy_cc (MV_geq_ib ((cmp), zero)))))
+     Some (MF_is_true (gctx (gen_dummy_cc (MV_geq_ib (cmp, zero)))))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -314,7 +306,7 @@ let tmp_add_2_eq : Igdt.igdt_sets -> MFSet.t =
    let make_add_2_eq_mtz : mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3) ->
      let (add : mich_v cc) = gen_dummy_cc (MV_add_mmm (v1, v2)) in
-     Some (MF_eq ((gctx add), (gctx v3)))
+     Some (MF_eq (gctx add, gctx v3))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -341,7 +333,7 @@ let tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t =
      let (add : mich_v cc) =
         gen_dummy_cc (MV_add_mmm (gen_dummy_cc (MV_add_mmm (v1, v2)), v3))
      in
-     Some (MF_eq ((gctx add), (gctx v4)))
+     Some (MF_eq (gctx add, gctx v4))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -406,8 +398,11 @@ let gen_initial_cand_map :
       [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> MFSet.union_list
-      |> CSet.map ~f:(fun fmla ->
-             { cd_fmla = MFSet.singleton fmla; cd_score = 0 }
+      |> MFSet.fold ~init:CMap.empty ~f:(fun acc_cmap fmla ->
+             CMap.add acc_cmap ~key:(MFSet.singleton fmla) ~data:0
+             |> function
+             | `Duplicate -> InvError "gen_initial_cand_map" |> raise
+             | `Ok cmap   -> cmap
          )
   )
 (* function gen_initial_cand_map end *)
@@ -430,17 +425,35 @@ let find_inv_map : inv_map -> Tz.mich_cut_info -> MFSet.t =
   (fun imap mci -> find_inv_map_by_rmci imap (TzUtil.get_reduced_mci mci))
 (* function find_inv_map end *)
 
-let find_cand_map_by_rmci : cand_map -> Tz.r_mich_cut_info -> CSet.t =
+let find_cand_map_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands =
   fun cmap rmci ->
   RMCIMap.find cmap rmci
   |> function
   | Some sss -> sss
-  | None     -> CSet.empty
+  | None     -> CMap.empty
 (* function cand_map_find end *)
 
-let find_cand_map : cand_map -> Tz.mich_cut_info -> CSet.t =
+let find_cand_map : cand_map -> Tz.mich_cut_info -> cands =
   (fun cmap mci -> find_cand_map_by_rmci cmap (TzUtil.get_reduced_mci mci))
 (* function cand_map_find end *)
+
+let find_cand_map_top_k_by_rmci :
+    top_k:int -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list =
+  fun ~top_k cmap rmci ->
+  find_cand_map_by_rmci cmap rmci
+  |> CMap.to_alist
+  |> List.sort ~compare:(fun (_, s1) (_, s2) -> compare_int s1 s2)
+  |> List.map ~f:fst
+  |> List.rev
+  |> (fun lst -> List.split_n lst top_k)
+  |> fst
+(* function finc_cand_map_top_k_by_tmci end *)
+
+let find_cand_map_top_k :
+    top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list =
+  fun ~top_k cmap mci ->
+  find_cand_map_top_k_by_rmci ~top_k cmap (TzUtil.get_reduced_mci mci)
+(* function find_cand_map_top_k end *)
 
 let find_failed_cp_by_rmci : failed_cp -> mci_pair -> CPSet.t =
   fun fmap rmcip ->
@@ -498,8 +511,11 @@ let strengthen_cand_map : cand_map -> inv_map -> cand_map =
   fun cmap imap ->
   RMCIMap.mapi cmap ~f:(fun ~key:rmci ~data:cset ->
       let (cur_inv : MFSet.t) = find_inv_map_by_rmci imap rmci in
-      CSet.map cset ~f:(fun cand ->
-          { cand with cd_fmla = MFSet.union cur_inv cand.cd_fmla }
+      CMap.fold cset ~init:CMap.empty ~f:(fun ~key ~data new_cmap ->
+          CMap.update new_cmap (MFSet.union cur_inv key) ~f:(function
+          | None       -> data
+          | Some score -> score + data
+          )
       )
   )
 (* function strengthen_cand_map *)
