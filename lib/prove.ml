@@ -37,42 +37,6 @@ module CPSet = Set.Make (Inv.CandPair_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
-let init_res : Res.config -> Res.res =
-   let open Se in
-   let open Res in
-   fun { cfg_se_res; cfg_istrg; _ } ->
-   let (mci_queries : SSet.t MCIMap.t) =
-      SSet.fold cfg_se_res.sr_queries ~init:MCIMap.empty ~f:(fun acc qs ->
-          MCIMap.update acc qs.ss_block_mci ~f:(function
-          | Some s -> SSet.add s qs
-          | None   -> SSet.singleton qs
-          )
-      )
-   in
-   let (qresl : qres list) =
-      MCIMap.mapi mci_queries ~f:(fun ~key ~data ->
-          {
-            qr_qid = key;
-            qr_prv_flag = PF_u;
-            qr_rft_flag = RF_u;
-            qr_unk_qs = data;
-            qr_exp_ppaths = PPSet.map data ~f:PPath.t_of_ss;
-            qr_rft_ppath = None;
-            qr_exp_cnt = SSet.length data;
-          }
-      )
-      |> MCIMap.to_alist
-      |> List.map ~f:snd
-   in
-   {
-     r_qr_lst = qresl;
-     r_inv = Inv.gen_true_inv_map cfg_se_res;
-     r_cand = Inv.gen_initial_cand_map cfg_se_res cfg_istrg MVSet.empty;
-     r_failcp = Inv.gen_initial_failed_cp ();
-     r_comb_cnt = 0;
-   }
-(* function init_res end *)
-
 let check_failed :
     SSet.t -> Inv.failed_cp -> Tz.r_mich_cut_info -> Inv.inv_map -> bool =
    let open Tz in
@@ -102,8 +66,9 @@ let check_failed :
 (******************************************************************************)
 
 let rec combinate :
-    cfg:Res.config ->
-    res:Res.res ->
+    SSet.t ->
+    Inv.failed_cp ->
+    Inv.inv_map ->
     Inv.cand_map ->
     Inv.inv_map list ->
     Inv.inv_map ->
@@ -112,48 +77,48 @@ let rec combinate :
    let open Res in
    let (top_k : int) = 20 in
    let (threshold : int) = 100 in
-   fun ~cfg ~res targets combs acc_imap ->
+   fun bsset failed_cp cinv targets combs acc_imap ->
+   let next_comb :
+       Inv.cand_map -> Inv.inv_map list -> Inv.inv_map -> Inv.inv_map list =
+      combinate bsset failed_cp cinv
+   in
    if List.length combs >= threshold
    then combs
+   else if RMCIMap.is_empty targets
+   then if equal_inv_map cinv acc_imap then combs else acc_imap :: combs
    else (
-     let { cfg_se_res; _ } = cfg in
-     let { r_inv; r_failcp; _ } = res in
-     if RMCIMap.is_empty targets
-     then if equal_inv_map r_inv acc_imap then combs else acc_imap :: combs
-     else (
-       (* 1. Target MCI for combinate *)
-       let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
-       let (remains : cand_map) = RMCIMap.remove targets rmci in
-       (* 2. Get candidates from target *)
-       let (cands : MFSet.t list) =
-          find_cand_map_by_rmci targets rmci
-          |> CMap.to_alist
-          |> List.sort ~compare:(fun (_, s1) (_, s2) -> compare_int s1 s2)
-          |> List.map ~f:fst
-          |> List.rev
-       in
-       let (target : inv_map list) =
-          List.fold cands ~init:[] ~f:(fun acc fset ->
-              if List.length acc >= top_k
-              then acc
-              else (
-                let (updated_inv : inv_map) =
-                   update_inv_map acc_imap ~key:rmci ~value:fset
-                in
-                if check_failed cfg_se_res.sr_blocked r_failcp rmci updated_inv
-                then acc (* remove already failed combination *)
-                else updated_inv :: acc
-              )
-          )
-       in
-       (* 3. Combinate candidates *)
-       let (new_combs : Inv.inv_map list) =
-          List.fold target ~init:combs ~f:(fun acc_comb imap ->
-              combinate ~cfg ~res remains acc_comb imap
-          )
-       in
-       new_combs
-     )
+     (* 1. Target MCI for combinate *)
+     let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
+     let (remains : cand_map) = RMCIMap.remove targets rmci in
+     (* 2. Get candidates from target *)
+     let (cands : MFSet.t list) =
+        find_cand_map_by_rmci targets rmci
+        |> CMap.to_alist
+        |> List.sort ~compare:(fun (_, s1) (_, s2) -> compare_int s1 s2)
+        |> List.map ~f:fst
+        |> List.rev
+     in
+     let (target : inv_map list) =
+        List.fold cands ~init:[] ~f:(fun acc fset ->
+            if List.length acc >= top_k
+            then acc
+            else (
+              let (updated_inv : inv_map) =
+                 update_inv_map acc_imap ~key:rmci ~value:fset
+              in
+              if check_failed bsset failed_cp rmci updated_inv
+              then acc (* remove already failed combination *)
+              else updated_inv :: acc
+            )
+        )
+     in
+     (* 3. Combinate candidates *)
+     let (new_combs : Inv.inv_map list) =
+        List.fold target ~init:combs ~f:(fun acc_comb imap ->
+            next_comb remains acc_comb imap
+        )
+     in
+     new_combs
    )
 (* function combinate end *)
 

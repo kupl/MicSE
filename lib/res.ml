@@ -2,17 +2,38 @@
 
 open! Core
 
+(******************************************************************************)
+(******************************************************************************)
+(* Common Datatypes                                                           *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* Set of Tz.mich_v Tz.cc *)
+module MVSet = Set.Make (Tz.MichVCC_cmp)
+
 (* Set of Tz.mich_f *)
 module MFSet = Set.Make (Tz.MichF_cmp)
 
 (* Set of set of Tz.mich_f *)
 module MFSSet = Set.Make (MFSet)
 
+(* Map of Tz.mich_cut_info *)
+module MCIMap = Map.Make (Tz.MichCutInfo_cmp)
+
 (* Map of Tz.r_mich_cut_info *)
 module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
+
+(* Set of Inv.inv_map *)
+module ISet = Set.Make (Inv.InvMap_cmp)
+
+(******************************************************************************)
+(******************************************************************************)
+(* Types                                                                      *)
+(******************************************************************************)
+(******************************************************************************)
 
 type prover_flag =
   | PF_p (* proved  *)
@@ -57,12 +78,18 @@ type qres = {
 }
 [@@deriving sexp, compare, equal]
 
+type worklist = {
+  wl_invs : ISet.t;
+  wl_cands : Inv.cand_map;
+  wl_failcp : Inv.failed_cp;
+  wl_comb_cnt : int;
+}
+[@@deriving sexp, compare, equal]
+
 type res = {
   r_qr_lst : qres list;
   r_inv : Inv.inv_map;
-  r_cand : Inv.cand_map;
-  r_failcp : Inv.failed_cp;
-  r_comb_cnt : int;
+  r_wlst : worklist;
 }
 [@@deriving sexp, compare, equal]
 
@@ -82,6 +109,88 @@ type config = {
   cfg_smt_slvr : Smt.Solver.t;
 }
 [@@deriving sexp, compare, equal]
+
+(******************************************************************************)
+(******************************************************************************)
+(* Initialization                                                             *)
+(******************************************************************************)
+(******************************************************************************)
+
+let init_qres : Tz.mich_cut_info -> SSet.t -> qres =
+  fun qr_qid qr_unk_qs ->
+  {
+    qr_qid;
+    qr_prv_flag = PF_u;
+    qr_rft_flag = RF_u;
+    qr_unk_qs;
+    qr_exp_ppaths = PPSet.map qr_unk_qs ~f:PPath.t_of_ss;
+    qr_rft_ppath = None;
+    qr_exp_cnt = SSet.length qr_unk_qs;
+  }
+(* function init_qres end *)
+
+let init_worklist : config -> worklist =
+  fun { cfg_se_res; cfg_istrg; _ } ->
+  {
+    wl_invs = ISet.empty;
+    wl_cands = Inv.gen_initial_cand_map cfg_se_res cfg_istrg MVSet.empty;
+    wl_failcp = Inv.gen_initial_failed_cp ();
+    wl_comb_cnt = 0;
+  }
+(* function init_worklist end *)
+
+let init_res : config -> res =
+   let open Se in
+   fun cfg ->
+   let (mci_queries : SSet.t MCIMap.t) =
+      SSet.fold cfg.cfg_se_res.sr_queries ~init:MCIMap.empty ~f:(fun acc qs ->
+          MCIMap.update acc qs.ss_block_mci ~f:(function
+          | Some s -> SSet.add s qs
+          | None   -> SSet.singleton qs
+          )
+      )
+   in
+   let (qresl : qres list) =
+      MCIMap.mapi mci_queries ~f:(fun ~key ~data -> init_qres key data)
+      |> MCIMap.to_alist
+      |> List.map ~f:snd
+   in
+   {
+     r_qr_lst = qresl;
+     r_inv = Inv.gen_true_inv_map cfg.cfg_se_res;
+     r_wlst = init_worklist cfg;
+   }
+(* function init_res end *)
+
+let init_config :
+    Tz.mich_v Tz.cc option -> Se.se_result -> Tz.sym_state -> config =
+  fun cfg_istrg_opt cfg_se_res cfg_istate ->
+  let (cfg_istrg : Tz.mich_v Tz.cc) =
+     match cfg_istrg_opt with
+     | Some v -> v
+     | None   -> failwith "ExecFlow : config_base : cfg_istrg = None"
+  in
+  let (cfg_smt_ctxt : Smt.Ctx.t) = Vc.gen_ctx () in
+  {
+    cfg_timer = Utils.Time.create ~budget:!Utils.Argument.total_timeout ();
+    cfg_memory = Utils.Memory.create ~budget:!Utils.Argument.memory_bound ();
+    cfg_istate;
+    cfg_istrg;
+    cfg_se_res;
+    cfg_m_view =
+      Se.SSGraph.construct_mci_view ~basic_blocks:cfg_se_res.sr_blocked;
+    cfg_imap =
+      Igdt.get_igdts_map cfg_se_res.sr_blocked cfg_istrg Igdt.MVSet.empty;
+    cfg_smt_ctxt;
+    cfg_smt_slvr = Vc.gen_solver cfg_smt_ctxt;
+  }
+(* function init_config end *)
+
+(******************************************************************************)
+(******************************************************************************)
+(* Utility                                                                    *)
+(******************************************************************************)
+(******************************************************************************)
 
 let string_of_res_rough_in_refuter_perspective : config -> res -> string =
    let soi = string_of_int in

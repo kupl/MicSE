@@ -22,40 +22,6 @@ let expand_ms_multiple : m_view:Se.SSGraph.mci_view -> MSSet.t -> MSSet.t =
       MSSet.union (expand_ms ~m_view ms) accs
   )
 
-let naive_run_init_res : se_result -> Res.res =
-   let open Res in
-   fun sr ->
-   let mci_queries : SSet.t MCIMap.t =
-      SSet.fold sr.sr_queries ~init:MCIMap.empty ~f:(fun acc qs ->
-          MCIMap.update acc qs.ss_block_mci ~f:(function
-          | Some s -> SSet.add s qs
-          | None   -> SSet.singleton qs
-          )
-      )
-   in
-   let qresl : qres list =
-      MCIMap.mapi mci_queries ~f:(fun ~key ~data ->
-          {
-            qr_qid = key;
-            qr_prv_flag = PF_u;
-            qr_rft_flag = RF_u;
-            qr_unk_qs = data;
-            qr_exp_ppaths = PPSet.map data ~f:PPath.t_of_ss;
-            qr_rft_ppath = None;
-            qr_exp_cnt = SSet.length data;
-          }
-      )
-      |> MCIMap.to_alist
-      |> List.map ~f:snd
-   in
-   {
-     r_qr_lst = qresl;
-     r_inv = Inv.gen_true_inv_map sr;
-     r_cand = RMCIMap.empty;
-     r_failcp = MPMap.empty;
-     r_comb_cnt = 0;
-   }
-
 let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
     =
    let open Res in

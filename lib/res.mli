@@ -1,18 +1,37 @@
 (* Result of MicSE *)
 
-open! Core
+(******************************************************************************)
+(******************************************************************************)
+(* Common Datatypes                                                           *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* Set of Tz.mich_v Tz.cc *)
+module MVSet : module type of Core.Set.Make (Tz.MichVCC_cmp)
 
 (* Set of Tz.mich_f *)
-module MFSet : module type of Set.Make (Tz.MichF_cmp)
+module MFSet : module type of Core.Set.Make (Tz.MichF_cmp)
 
 (* Set of set of Tz.mich_f *)
-module MFSSet : module type of Set.Make (MFSet)
+module MFSSet : module type of Core.Set.Make (MFSet)
+
+(* Map of Tz.mich_cut_info *)
+module MCIMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
 
 (* Map of Tz.r_mich_cut_info *)
-module RMCIMap : module type of Map.Make (Tz.RMichCutInfo_cmp)
+module RMCIMap : module type of Core.Map.Make (Tz.RMichCutInfo_cmp)
 
 (* Set of Tz.sym_state *)
-module SSet : module type of Set.Make (Tz.SymState_cmp)
+module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
+
+(* Set of Inv.inv_map *)
+module ISet : module type of Core.Set.Make (Inv.InvMap_cmp)
+
+(******************************************************************************)
+(******************************************************************************)
+(* Types                                                                      *)
+(******************************************************************************)
+(******************************************************************************)
 
 type prover_flag =
   | PF_p (* proved  *)
@@ -39,7 +58,7 @@ module PPath : sig
   val t_of_ss : Tz.sym_state -> t
 end
 
-module PPSet : module type of Set.Make (PPath)
+module PPSet : module type of Core.Set.Make (PPath)
 
 type qres = {
   qr_qid : Tz.mich_cut_info;
@@ -56,12 +75,18 @@ type qres = {
 }
 [@@deriving sexp, compare, equal]
 
+type worklist = {
+  wl_invs : ISet.t;
+  wl_cands : Inv.cand_map;
+  wl_failcp : Inv.failed_cp;
+  wl_comb_cnt : int;
+}
+[@@deriving sexp, compare, equal]
+
 type res = {
   r_qr_lst : qres list;
   r_inv : Inv.inv_map;
-  r_cand : Inv.cand_map;
-  r_failcp : Inv.failed_cp;
-  r_comb_cnt : int;
+  r_wlst : worklist;
 }
 [@@deriving sexp, compare, equal]
 
@@ -81,5 +106,26 @@ type config = {
   cfg_smt_slvr : Smt.Solver.t;
 }
 [@@deriving sexp, compare, equal]
+
+(******************************************************************************)
+(******************************************************************************)
+(* Initialization                                                             *)
+(******************************************************************************)
+(******************************************************************************)
+
+val init_qres : Tz.mich_cut_info -> SSet.t -> qres
+
+val init_worklist : config -> worklist
+
+val init_res : config -> res
+
+val init_config :
+  Tz.mich_v Tz.cc option -> Se.se_result -> Tz.sym_state -> config
+
+(******************************************************************************)
+(******************************************************************************)
+(* Utility                                                                    *)
+(******************************************************************************)
+(******************************************************************************)
 
 val string_of_res_rough_in_refuter_perspective : config -> res -> string

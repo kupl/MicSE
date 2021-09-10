@@ -17,8 +17,6 @@ module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
-val init_res : Res.config -> Res.res
-
 val check_failed :
   SSet.t -> Inv.failed_cp -> Tz.r_mich_cut_info -> Inv.inv_map -> bool
 
@@ -29,12 +27,13 @@ val check_failed :
 (******************************************************************************)
 
 val combinate :
-cfg:Res.config ->
-res:Res.res ->
-Inv.cand_map ->
-Inv.inv_map list ->
-Inv.inv_map ->
-Inv.inv_map list
+  SSet.t ->
+  Inv.failed_cp ->
+  Inv.inv_map ->
+  Inv.cand_map ->
+  Inv.inv_map list ->
+  Inv.inv_map ->
+  Inv.inv_map list
 
 (******************************************************************************)
 (******************************************************************************)

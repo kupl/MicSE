@@ -46,33 +46,6 @@ let sym_exec :
     Se.se_result * Tz.sym_state =
    Se.run_inst_entry
 
-let get_config_base :
-    (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc)
-    * Tz.mich_v Tz.cc option
-    * Se.se_result
-    * Tz.sym_state ->
-    Res.config =
-  fun (_, tz_init_strg_opt, se_result, se_init_state) ->
-  let tz_init_strg =
-     match tz_init_strg_opt with
-     | Some v -> v
-     | None   -> failwith "ExecFlow : config_base : cfg_istrg = None"
-  in
-  let smt_ctxt = Vc.gen_ctx () in
-  {
-    cfg_timer = Utils.Time.create ~budget:!Utils.Argument.total_timeout ();
-    cfg_memory = Utils.Memory.create ~budget:!Utils.Argument.memory_bound ();
-    cfg_istate = se_init_state;
-    cfg_istrg = tz_init_strg;
-    cfg_se_res = se_result;
-    cfg_m_view =
-      Se.SSGraph.construct_mci_view ~basic_blocks:se_result.sr_blocked;
-    cfg_imap =
-      Igdt.get_igdts_map se_result.sr_blocked tz_init_strg Igdt.MVSet.empty;
-    cfg_smt_ctxt = smt_ctxt;
-    cfg_smt_slvr = Vc.gen_solver smt_ctxt;
-  }
-
 (******************************************************************************)
 (******************************************************************************)
 (* Execution Flow                                                             *)
@@ -112,7 +85,7 @@ let upto_sym_exec :
 let refuter_naive_run : string array option -> Res.config * Res.res =
   fun argv_opt ->
   let sym_exec_res = upto_sym_exec argv_opt in
-  let (_, _, se_result, _) = sym_exec_res in
+  let (_, init_strg_opt, se_result, init_state) = sym_exec_res in
   (* let _ =
         (* se_result debugging *)
         Se.SSet.iter se_result.sr_blocked ~f:(fun ss ->
@@ -123,7 +96,7 @@ let refuter_naive_run : string array option -> Res.config * Res.res =
             )
         )
      in *)
-  let cfg = get_config_base sym_exec_res in
+  let cfg = Res.init_config init_strg_opt se_result init_state in
   let _ =
      (* cfg.cfg_m_view debugging info *)
      let mv = cfg.cfg_m_view in
@@ -142,6 +115,6 @@ let refuter_naive_run : string array option -> Res.config * Res.res =
      in
      ()
   in
-  let init_res = Refute.naive_run_init_res se_result in
+  let init_res = Res.init_res cfg in
   let res = Refute.naive_run cfg init_res in
   (cfg, res)
