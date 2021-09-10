@@ -1777,10 +1777,7 @@ let run_inst_entry :
      {
        ss with
        ss_constraints =
-         ss.ss_constraints
-         |> List.map ~f:opt_mf
-         |> MFSet.of_list
-         |> MFSet.to_list;
+         ss.ss_constraints |> List.map ~f:opt_mf |> List.stable_dedup;
      }
    in
    let result_constraint_optimized =
