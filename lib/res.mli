@@ -76,8 +76,7 @@ type qres = {
 [@@deriving sexp, compare, equal]
 
 type worklist = {
-  wl_invs : ISet.t;
-  wl_cands : Inv.cand_map;
+  wl_combs : Inv.inv_map list;
   wl_failcp : Inv.failed_cp;
   wl_comb_cnt : int;
 }
@@ -86,6 +85,7 @@ type worklist = {
 type res = {
   r_qr_lst : qres list;
   r_inv : Inv.inv_map;
+  r_cands : Inv.cand_map;
   r_wlst : worklist;
 }
 [@@deriving sexp, compare, equal]
@@ -115,7 +115,7 @@ type config = {
 
 val init_qres : Tz.mich_cut_info -> SSet.t -> qres
 
-val init_worklist : config -> worklist
+val init_worklist : unit -> worklist
 
 val init_res : config -> res
 

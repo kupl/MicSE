@@ -79,8 +79,7 @@ type qres = {
 [@@deriving sexp, compare, equal]
 
 type worklist = {
-  wl_invs : ISet.t;
-  wl_cands : Inv.cand_map;
+  wl_combs : Inv.inv_map list;
   wl_failcp : Inv.failed_cp;
   wl_comb_cnt : int;
 }
@@ -89,6 +88,7 @@ type worklist = {
 type res = {
   r_qr_lst : qres list;
   r_inv : Inv.inv_map;
+  r_cands : Inv.cand_map;
   r_wlst : worklist;
 }
 [@@deriving sexp, compare, equal]
@@ -129,21 +129,16 @@ let init_qres : Tz.mich_cut_info -> SSet.t -> qres =
   }
 (* function init_qres end *)
 
-let init_worklist : config -> worklist =
-  fun { cfg_se_res; cfg_istrg; _ } ->
-  {
-    wl_invs = ISet.empty;
-    wl_cands = Inv.gen_initial_cand_map cfg_se_res cfg_istrg MVSet.empty;
-    wl_failcp = Inv.gen_initial_failed_cp ();
-    wl_comb_cnt = 0;
-  }
+let init_worklist : unit -> worklist =
+  fun () ->
+  { wl_combs = []; wl_failcp = Inv.gen_initial_failed_cp (); wl_comb_cnt = 0 }
 (* function init_worklist end *)
 
 let init_res : config -> res =
    let open Se in
-   fun cfg ->
+   fun { cfg_se_res; cfg_istrg; _ } ->
    let (mci_queries : SSet.t MCIMap.t) =
-      SSet.fold cfg.cfg_se_res.sr_queries ~init:MCIMap.empty ~f:(fun acc qs ->
+      SSet.fold cfg_se_res.sr_queries ~init:MCIMap.empty ~f:(fun acc qs ->
           MCIMap.update acc qs.ss_block_mci ~f:(function
           | Some s -> SSet.add s qs
           | None   -> SSet.singleton qs
@@ -157,8 +152,9 @@ let init_res : config -> res =
    in
    {
      r_qr_lst = qresl;
-     r_inv = Inv.gen_true_inv_map cfg.cfg_se_res;
-     r_wlst = init_worklist cfg;
+     r_inv = Inv.gen_true_inv_map cfg_se_res;
+     r_cands = Inv.gen_initial_cand_map cfg_se_res cfg_istrg MVSet.empty;
+     r_wlst = init_worklist ();
    }
 (* function init_res end *)
 
