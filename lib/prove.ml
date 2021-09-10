@@ -10,9 +10,6 @@ open! Core
 (******************************************************************************)
 (******************************************************************************)
 
-(* Set of Tz.mich_v Tz.cc *)
-module MVSet = Set.Make (Tz.MichVCC_cmp)
-
 (* Set of Tz.mich_f *)
 module MFSet = Set.Make (Tz.MichF_cmp)
 
@@ -25,15 +22,12 @@ module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
 
-(* Set of Inv.mci_pair *)
-module MPMap = Map.Make (Inv.MciPair_cmp)
-
-(* Set of Inv.cand_pair *)
-module CPSet = Set.Make (Inv.CandPair_cmp)
+(* Set of Inv.inv_map *)
+module InvSet = Set.Make (Inv.InvMap_cmp)
 
 (******************************************************************************)
 (******************************************************************************)
-(* Utility                                                                    *)
+(* Prover                                                                     *)
 (******************************************************************************)
 (******************************************************************************)
 
@@ -59,33 +53,78 @@ let check_failed :
    )
 (* function check_failed end *)
 
-(******************************************************************************)
-(******************************************************************************)
-(* Prover                                                                     *)
-(******************************************************************************)
-(******************************************************************************)
+let check_inductiveness :
+    Smt.Ctx.t ->
+    Smt.Solver.t ->
+    SSet.t ->
+    Inv.inv_map ->
+    (Inv.inv_map, Tz.sym_state) Result.t =
+   let open Smt in
+   let open Vc in
+   fun ctx slvr bsset imap ->
+   SSet.fold bsset ~init:(Result.return imap) ~f:(fun inductive bs ->
+       if Result.is_error inductive
+       then inductive
+       else (
+         let (vc : Tz.mich_f) = gen_inductiveness_vc imap bs in
+         let ((vld : Solver.validity), _) = check_val ctx slvr vc in
+         if Solver.is_val vld then inductive else Result.fail bs
+       )
+   )
+(* function check_inductiveness end *)
+
+let add_failed :
+    Inv.failed_cp * Inv.cand_map * InvSet.t ->
+    Tz.sym_state ->
+    Inv.inv_map ->
+    Inv.failed_cp * Inv.cand_map * InvSet.t =
+   let open Inv in
+   fun (failed_cp, cmap, combs) state imap ->
+   let (mcip : mci_pair) =
+      cvt_mci_pair (state.ss_start_mci, state.ss_block_mci)
+   in
+   let (cand_start : MFSet.t) = find_inv_by_rmci imap mcip.mp_start in
+   let (cand_block : MFSet.t) = find_inv_by_rmci imap mcip.mp_block in
+   let (candp : cand_pair) = cvt_cand_pair (cand_start, cand_block) in
+   let (new_failed_cp : failed_cp) =
+      add_failed_cp failed_cp ~key:mcip ~value:candp
+   in
+   let (new_cmap : cand_map) =
+      deduct_cand cmap ~key:mcip.mp_start ~value:cand_start ~point:1
+      |> deduct_cand ~key:mcip.mp_block ~value:cand_block ~point:1
+   in
+   let (new_combs : InvSet.t) =
+      InvSet.filter combs ~f:(fun imap ->
+          not (check_contain_pair imap mcip candp)
+      )
+   in
+   (new_failed_cp, new_cmap, new_combs)
+(* function add_failed end *)
 
 let rec combinate :
     SSet.t ->
     Inv.failed_cp ->
     Inv.inv_map ->
     Inv.cand_map ->
-    Inv.inv_map list ->
+    InvSet.t ->
     Inv.inv_map ->
-    Inv.inv_map list =
+    InvSet.t =
    let open Inv in
    let open Res in
    let (top_k : int) = 20 in
    let (threshold : int) = 100 in
    fun bsset failed_cp cinv targets combs acc_imap ->
-   let next_comb :
-       Inv.cand_map -> Inv.inv_map list -> Inv.inv_map -> Inv.inv_map list =
+   let next_comb : Inv.cand_map -> InvSet.t -> Inv.inv_map -> InvSet.t =
       combinate bsset failed_cp cinv
    in
-   if List.length combs >= threshold
+   (* syntax sugar *)
+   if InvSet.length combs >= threshold
    then combs
    else if RMCIMap.is_empty targets
-   then if equal_inv_map cinv acc_imap then combs else acc_imap :: combs
+   then
+     if equal_inv_map cinv acc_imap || InvSet.mem combs acc_imap
+     then combs
+     else InvSet.add combs acc_imap
    else (
      (* 1. Target MCI for combinate *)
      let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
@@ -113,7 +152,7 @@ let rec combinate :
         )
      in
      (* 3. Combinate candidates *)
-     let (new_combs : Inv.inv_map list) =
+     let (new_combs : InvSet.t) =
         List.fold target ~init:combs ~f:(fun acc_comb imap ->
             next_comb remains acc_comb imap
         )
@@ -122,21 +161,25 @@ let rec combinate :
    )
 (* function combinate end *)
 
+let prove : Smt.Ctx.t -> Smt.Solver.t -> Inv.inv_map -> SSet.t -> SSet.t =
+   let open Res in
+   let open Smt in
+   let open Vc in
+   fun ctx slvr imap unk_qs ->
+   SSet.filter unk_qs ~f:(fun qs ->
+       let (vc : Tz.mich_f) = gen_query_vc imap qs in
+       let ((vld : Solver.validity), _) = check_val ctx slvr vc in
+       Solver.is_inval vld
+   )
+(* function prove end *)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Naïve Run                                                                  *)
 (******************************************************************************)
 (******************************************************************************)
 
-(* Qurey Result ***************************************************************)
-
-let naive_run_qres_atomic_action : Res.config -> Res.qres -> Res.res -> Res.res
-    =
-   let open Res in
-   fun _ qres res ->
-   let (new_qres : qres) = qres in
-   { res with r_qr_lst = new_qres :: res.r_qr_lst }
-(* function naive_run_qres_atomic_action end *)
+(* Query Result ***************************************************************)
 
 let naive_run_qres_escape_condition : Res.config -> Res.qres -> bool =
    let open Res in
@@ -154,20 +197,137 @@ let naive_run_qres_escape_condition : Res.config -> Res.qres -> bool =
    else false
 (* function naive_run_res_escape_condition end *)
 
+let naive_run_qres_atomic_action :
+    Res.config -> Inv.inv_map -> Res.qres -> Res.qres =
+   let open Res in
+   fun cfg imap qres ->
+   if naive_run_qres_escape_condition cfg qres
+   then qres
+   else (
+     let (qr_unk_qs : SSet.t) =
+        prove cfg.cfg_smt_ctxt cfg.cfg_smt_slvr imap qres.qr_unk_qs
+     in
+     let (qr_prv_flag : prover_flag) =
+        if SSet.is_empty qr_unk_qs then PF_p else qres.qr_prv_flag
+     in
+     let (new_qres : qres) = { qres with qr_unk_qs; qr_prv_flag } in
+     new_qres
+   )
+(* function naive_run_qres_atomic_action end *)
+
+(* Worklist *******************************************************************)
+
+let naive_run_wlst_escape_condition : Res.config -> Res.worklist -> bool =
+   let open Res in
+   fun { cfg_timer; cfg_memory; _ } { wl_combs; _ } ->
+   if (* 1. Timeout *)
+      Utils.Time.is_timeout cfg_timer
+   then true
+   else if (* 2. Memoryout *)
+           Utils.Memory.is_memoryout cfg_memory
+   then true
+   else if (* 3. Empty combinations *)
+           InvSet.is_empty wl_combs
+   then true
+   else false
+(* function naive_run_wlst_escape_condition end *)
+
+let rec naive_run_wlst_atomic_action :
+    Res.config ->
+    Inv.inv_map * Inv.cand_map * Res.worklist ->
+    Inv.inv_map option * Inv.cand_map * Res.worklist =
+   let open Inv in
+   let open Res in
+   fun cfg (imap, cands, wlst) ->
+   if naive_run_wlst_escape_condition cfg wlst
+   then (None, cands, wlst)
+   else (
+     (* 1. Choose one combination *)
+     let (comb : inv_map) = InvSet.choose_exn wlst.wl_combs in
+     let (remain_combs : InvSet.t) = InvSet.remove wlst.wl_combs comb in
+     (* 2. Check inductiveness *)
+     let (inductive : (inv_map, Tz.sym_state) Result.t) =
+        check_inductiveness cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
+          cfg.cfg_se_res.sr_blocked comb
+     in
+     if Result.is_ok inductive
+     then (
+       (* 3-1-1. New invariant is found *)
+       let (new_imap : inv_map) =
+          Result.ok inductive |> Option.value ~default:imap
+       in
+       (* 3-1-2. Update candidates *)
+       let (new_cands : cand_map) = strengthen_cand_map cands new_imap in
+       (* 3-1-3. Update combinations *)
+       let (new_combs : InvSet.t) =
+          Inv.strengthen_inv_map remain_combs new_imap
+       in
+       ( Some new_imap,
+         new_cands,
+         { wlst with wl_combs = new_combs; wl_comb_cnt = wlst.wl_comb_cnt + 1 }
+       )
+     )
+     else (
+       (* 3-2-1. This combination is not inductive *)
+       let (failed_state : Tz.sym_state) =
+          Result.error inductive |> Option.value ~default:cfg.cfg_istate
+       in
+       (* 3-2-2. Update failed information *)
+       let ( (new_failed_cp : failed_cp),
+             (new_cands : cand_map),
+             (new_combs : InvSet.t)
+           ) =
+          add_failed (wlst.wl_failcp, cands, wlst.wl_combs) failed_state imap
+       in
+       let (new_wlst : worklist) =
+          {
+            wl_combs = new_combs;
+            wl_failcp = new_failed_cp;
+            wl_comb_cnt = wlst.wl_comb_cnt + 1;
+          }
+       in
+       naive_run_wlst_atomic_action cfg (imap, new_cands, new_wlst)
+     )
+   )
+(* function naive_run_wlst_atomic_action end *)
+
 (* Result *********************************************************************)
 
 let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    let open Res in
    fun cfg res ->
-   List.fold_right res.r_qr_lst
-     ~f:(fun qres res ->
-       if naive_run_qres_escape_condition cfg qres
-       then { res with r_qr_lst = qres :: res.r_qr_lst }
-       else naive_run_qres_atomic_action cfg qres res)
-     ~init:{ res with r_qr_lst = [] }
+   (* 1. Generate combinations *)
+   let (wl_combs : InvSet.t) =
+      combinate cfg.cfg_se_res.sr_blocked res.r_wlst.wl_failcp res.r_inv
+        res.r_cands res.r_wlst.wl_combs res.r_inv
+   in
+   (* 2. Check inductiveness *)
+   let ( (r_inv_opt : Inv.inv_map option),
+         (r_cands : Inv.cand_map),
+         (r_wlst : worklist)
+       ) =
+      naive_run_wlst_atomic_action cfg
+        (res.r_inv, res.r_cands, { res.r_wlst with wl_combs })
+   in
+   if Option.is_some r_inv_opt
+   then (
+     (* 3-1. Prove queries when indutive invariant was found *)
+     let (r_inv : Inv.inv_map) = Option.value r_inv_opt ~default:res.r_inv in
+     let (r_qr_lst : qres list) =
+        List.map res.r_qr_lst ~f:(fun qres ->
+            naive_run_qres_atomic_action cfg r_inv qres
+        )
+     in
+     { r_qr_lst; r_inv; r_cands; r_wlst }
+   )
+   else
+     (* 3-2. Pass query proving when indutive invariant was not found *)
+     { res with r_cands; r_wlst }
 (* function naive_run_res_atomic_action end *)
 
-let naive_run_res_escape_condition : Res.config -> Res.res -> bool =
+(* Entry Point ****************************************************************)
+
+let naive_run_escape_condition : Res.config -> Res.res -> bool =
    let open Res in
    fun { cfg_timer; _ } { r_qr_lst; _ } ->
    if (* 1. Timeout *)
@@ -192,8 +352,6 @@ let naive_run_res_escape_condition : Res.config -> Res.res -> bool =
    else false
 (* function naive_run_res_escape_condition end *)
 
-(* Entry Point ****************************************************************)
-
 let rec naive_run : Res.config -> Res.res -> Res.res =
   fun cfg res ->
   let _ =
@@ -202,7 +360,7 @@ let rec naive_run : Res.config -> Res.res -> Res.res =
          m "%s" (Res.string_of_res_rough_in_refuter_perspective cfg res)
      )
   in
-  if naive_run_res_escape_condition cfg res
+  if naive_run_escape_condition cfg res
   then res
   else naive_run cfg (naive_run_res_atomic_action cfg res)
 (* function naive_run end *)

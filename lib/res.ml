@@ -27,7 +27,7 @@ module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 module SSet = Set.Make (Tz.SymState_cmp)
 
 (* Set of Inv.inv_map *)
-module ISet = Set.Make (Inv.InvMap_cmp)
+module InvSet = Set.Make (Inv.InvMap_cmp)
 
 (******************************************************************************)
 (******************************************************************************)
@@ -79,7 +79,7 @@ type qres = {
 [@@deriving sexp, compare, equal]
 
 type worklist = {
-  wl_combs : Inv.inv_map list;
+  wl_combs : InvSet.t;
   wl_failcp : Inv.failed_cp;
   wl_comb_cnt : int;
 }
@@ -131,7 +131,11 @@ let init_qres : Tz.mich_cut_info -> SSet.t -> qres =
 
 let init_worklist : unit -> worklist =
   fun () ->
-  { wl_combs = []; wl_failcp = Inv.gen_initial_failed_cp (); wl_comb_cnt = 0 }
+  {
+    wl_combs = InvSet.empty;
+    wl_failcp = Inv.gen_initial_failed_cp ();
+    wl_comb_cnt = 0;
+  }
 (* function init_worklist end *)
 
 let init_res : config -> res =

@@ -44,6 +44,9 @@ module InvMap_cmp : sig
   type t = inv_map [@@deriving sexp, compare]
 end
 
+(* Set of inv_map *)
+module InvSet : module type of Core.Set.Make (InvMap_cmp)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Invariant Candidates                                                       *)
@@ -149,6 +152,10 @@ val tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t
 (* Invariants & Invariant Candidates                                          *)
 (******************************************************************************)
 
+val cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair
+
+val cvt_cand_pair : MFSet.t * MFSet.t -> cand_pair
+
 (* Invariants *****************************************************************)
 
 val gen_true_inv_map : Se.se_result -> inv_map
@@ -164,7 +171,9 @@ val update_inv_map :
 
 val merge_inv_map : inv_map -> inv_map -> inv_map
 
-val strengthen_inv_map : inv_map list -> inv_map
+val strengthen_inv_map : InvSet.t -> inv_map -> InvSet.t 
+
+val check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool
 
 (* Invariant Candidates *******************************************************)
 
@@ -186,10 +195,6 @@ val deduct_cand :
   cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> point:int -> cand_map
 
 (* Failed Candidate Pair ******************************************************)
-
-val cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair
-
-val cvt_cand_pair : MFSet.t * MFSet.t -> cand_pair
 
 val gen_initial_failed_cp : unit -> failed_cp
 

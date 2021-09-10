@@ -46,6 +46,9 @@ module InvMap_cmp = struct
   type t = inv_map [@@deriving sexp, compare]
 end
 
+(* Set of inv_map *)
+module InvSet = Set.Make (InvMap_cmp)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Invariant Candidates                                                       *)
@@ -353,6 +356,15 @@ let tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t =
 (* Invariants & Invariant Candidates                                          *)
 (******************************************************************************)
 
+let cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair =
+   let open TzUtil in
+   fun (mci1, mci2) ->
+   { mp_start = get_reduced_mci mci1; mp_block = get_reduced_mci mci2 }
+(* function cvt_mci_pair end *)
+
+let cvt_cand_pair : MFSet.t * MFSet.t -> cand_pair =
+  (fun (fset1, fset2) -> { cp_start = fset1; cp_block = fset2 })
+
 (* Invariants *****************************************************************)
 
 let gen_true_inv_map : Se.se_result -> inv_map =
@@ -400,7 +412,7 @@ let update_inv_map :
   fun imap ~key:rmci ~value:fset ->
   RMCIMap.update imap rmci ~f:(function
   | Some inv -> MFSet.union inv fset
-  | None     -> MFSet.empty
+  | None     -> fset
   )
 (* function update_inv_map end *)
 
@@ -414,12 +426,18 @@ let merge_inv_map : inv_map -> inv_map -> inv_map =
   )
 (* function merge_inv_map end *)
 
-let strengthen_inv_map : inv_map list -> inv_map =
-  fun imap_lst ->
-  List.fold imap_lst ~init:RMCIMap.empty ~f:(fun acc_imap imap ->
-      merge_inv_map acc_imap imap
-  )
+let strengthen_inv_map : InvSet.t -> inv_map -> InvSet.t =
+  fun invset imap ->
+  InvSet.map invset ~f:(merge_inv_map imap)
 (* function strengthen_inv_map end *)
+
+let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
+  fun imap mcip candp ->
+  let (inv_start : MFSet.t) = find_inv_by_rmci imap mcip.mp_start in
+  let (inv_block : MFSet.t) = find_inv_by_rmci imap mcip.mp_block in
+  let (inv_cp : cand_pair) = cvt_cand_pair (inv_start, inv_block) in
+  equal_cand_pair candp inv_cp
+(* function check_contain_pair end *)
 
 (* Invariant Candidates *******************************************************)
 
@@ -466,8 +484,8 @@ let find_cand_top_k_by_rmci :
   |> fst
 (* function finc_cand_map_top_k_by_tmci end *)
 
-let find_cand_top_k :
-    top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list =
+let find_cand_top_k : top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list
+    =
   fun ~top_k cmap mci ->
   find_cand_top_k_by_rmci ~top_k cmap (TzUtil.get_reduced_mci mci)
 (* function find_cand_map_top_k end *)
@@ -500,15 +518,6 @@ let deduct_cand :
 (* function deduct_cand end *)
 
 (* Failed Candidate Pair ******************************************************)
-
-let cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair =
-   let open TzUtil in
-   fun (mci1, mci2) ->
-   { mp_start = get_reduced_mci mci1; mp_block = get_reduced_mci mci2 }
-(* function cvt_mci_pair end *)
-
-let cvt_cand_pair : MFSet.t * MFSet.t -> cand_pair =
-  (fun (fset1, fset2) -> { cp_start = fset1; cp_block = fset2 })
 
 (* function cvt_cand_pair end *)
 let gen_initial_failed_cp : unit -> failed_cp = (fun () -> MPMap.empty)

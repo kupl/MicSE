@@ -25,7 +25,7 @@ module RMCIMap : module type of Core.Map.Make (Tz.RMichCutInfo_cmp)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 
 (* Set of Inv.inv_map *)
-module ISet : module type of Core.Set.Make (Inv.InvMap_cmp)
+module InvSet : module type of Core.Set.Make (Inv.InvMap_cmp)
 
 (******************************************************************************)
 (******************************************************************************)
@@ -76,7 +76,7 @@ type qres = {
 [@@deriving sexp, compare, equal]
 
 type worklist = {
-  wl_combs : Inv.inv_map list;
+  wl_combs : InvSet.t;
   wl_failcp : Inv.failed_cp;
   wl_comb_cnt : int;
 }
