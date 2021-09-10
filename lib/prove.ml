@@ -50,8 +50,8 @@ let check_failed :
           equal_r_mich_cut_info mp_start rmci
           || equal_r_mich_cut_info mp_block rmci
        then (
-         let (cp_start : MFSet.t) = find_inv_map_by_rmci imap mp_start in
-         let (cp_block : MFSet.t) = find_inv_map_by_rmci imap mp_block in
+         let (cp_start : MFSet.t) = find_inv_by_rmci imap mp_start in
+         let (cp_block : MFSet.t) = find_inv_by_rmci imap mp_block in
          is_already_failed_by_rmci failed_cp { mp_start; mp_block }
            { cp_start; cp_block }
        )
@@ -92,7 +92,7 @@ let rec combinate :
      let (remains : cand_map) = RMCIMap.remove targets rmci in
      (* 2. Get candidates from target *)
      let (cands : MFSet.t list) =
-        find_cand_map_by_rmci targets rmci
+        find_cand_by_rmci targets rmci
         |> CMap.to_alist
         |> List.sort ~compare:(fun (_, s1) (_, s2) -> compare_int s1 s2)
         |> List.map ~f:fst

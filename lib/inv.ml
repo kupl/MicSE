@@ -353,15 +353,7 @@ let tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t =
 (* Invariants & Invariant Candidates                                          *)
 (******************************************************************************)
 
-let cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair =
-   let open TzUtil in
-   fun (mci1, mci2) ->
-   { mp_start = get_reduced_mci mci1; mp_block = get_reduced_mci mci2 }
-(* function cvt_mci_pair end *)
-
-let cvt_cand_pair : MFSet.t * MFSet.t -> cand_pair =
-  (fun (fset1, fset2) -> { cp_start = fset1; cp_block = fset2 })
-(* function cvt_cand_pair end *)
+(* Invariants *****************************************************************)
 
 let gen_true_inv_map : Se.se_result -> inv_map =
    let open Tz in
@@ -388,29 +380,7 @@ let gen_initial_inv_map : Se.se_result -> inv_map =
   (fun se_res -> gen_true_inv_map se_res)
 (* function gen_initial_inv_map end *)
 
-let gen_initial_cand_map :
-    Se.se_result -> Tz.mich_v Tz.cc -> MVSet.t -> cand_map =
-  fun se_res init_strg lit_set ->
-  let (igdt_map : Igdt.igdts_map) =
-     Igdt.get_igdts_map se_res.Se.sr_blocked init_strg lit_set
-  in
-  RMCIMap.map igdt_map ~f:(fun igdt_sets ->
-      [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
-      |> List.map ~f:(fun tmp -> tmp igdt_sets)
-      |> MFSet.union_list
-      |> MFSet.fold ~init:CMap.empty ~f:(fun acc_cmap fmla ->
-             CMap.add acc_cmap ~key:(MFSet.singleton fmla) ~data:0
-             |> function
-             | `Duplicate -> InvError "gen_initial_cand_map" |> raise
-             | `Ok cmap   -> cmap
-         )
-  )
-(* function gen_initial_cand_map end *)
-
-let gen_initial_failed_cp : unit -> failed_cp = (fun () -> MPMap.empty)
-(* function gen_initial_failed_cp end *)
-
-let find_inv_map_by_rmci : inv_map -> Tz.r_mich_cut_info -> MFSet.t =
+let find_inv_by_rmci : inv_map -> Tz.r_mich_cut_info -> MFSet.t =
   fun imap rmci ->
   RMCIMap.find imap rmci
   |> function
@@ -421,65 +391,9 @@ let find_inv_map_by_rmci : inv_map -> Tz.r_mich_cut_info -> MFSet.t =
     |> raise
 (* function find_inv_map end *)
 
-let find_inv_map : inv_map -> Tz.mich_cut_info -> MFSet.t =
-  (fun imap mci -> find_inv_map_by_rmci imap (TzUtil.get_reduced_mci mci))
+let find_inv : inv_map -> Tz.mich_cut_info -> MFSet.t =
+  (fun imap mci -> find_inv_by_rmci imap (TzUtil.get_reduced_mci mci))
 (* function find_inv_map end *)
-
-let find_cand_map_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands =
-  fun cmap rmci ->
-  RMCIMap.find cmap rmci
-  |> function
-  | Some sss -> sss
-  | None     -> CMap.empty
-(* function cand_map_find end *)
-
-let find_cand_map : cand_map -> Tz.mich_cut_info -> cands =
-  (fun cmap mci -> find_cand_map_by_rmci cmap (TzUtil.get_reduced_mci mci))
-(* function cand_map_find end *)
-
-let find_cand_map_top_k_by_rmci :
-    top_k:int -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list =
-  fun ~top_k cmap rmci ->
-  find_cand_map_by_rmci cmap rmci
-  |> CMap.to_alist
-  |> List.sort ~compare:(fun (_, s1) (_, s2) -> compare_int s1 s2)
-  |> List.map ~f:fst
-  |> List.rev
-  |> (fun lst -> List.split_n lst top_k)
-  |> fst
-(* function finc_cand_map_top_k_by_tmci end *)
-
-let find_cand_map_top_k :
-    top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list =
-  fun ~top_k cmap mci ->
-  find_cand_map_top_k_by_rmci ~top_k cmap (TzUtil.get_reduced_mci mci)
-(* function find_cand_map_top_k end *)
-
-let find_failed_cp_by_rmci : failed_cp -> mci_pair -> CPSet.t =
-  fun fmap rmcip ->
-  MPMap.find fmap rmcip
-  |> function
-  | Some sss -> sss
-  | None     -> CPSet.empty
-(* function find_failed_cp end *)
-
-let find_failed_cp : failed_cp -> Tz.mich_cut_info * Tz.mich_cut_info -> CPSet.t
-    =
-  (fun fmap mcip -> find_failed_cp_by_rmci fmap (cvt_mci_pair mcip))
-(* function find_failed_cp *)
-
-let is_already_failed_by_rmci : failed_cp -> mci_pair -> cand_pair -> bool =
-  (fun fmap rmcip candp -> CPSet.mem (find_failed_cp_by_rmci fmap rmcip) candp)
-(* function is_already_failed_by_rmci end *)
-
-let is_already_failed :
-    failed_cp ->
-    Tz.mich_cut_info * Tz.mich_cut_info ->
-    MFSet.t * MFSet.t ->
-    bool =
-  fun fmap mcip fsetp ->
-  is_already_failed_by_rmci fmap (cvt_mci_pair mcip) (cvt_cand_pair fsetp)
-(* function is_already_failed end *)
 
 let update_inv_map :
     inv_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> inv_map =
@@ -507,10 +421,61 @@ let strengthen_inv_map : inv_map list -> inv_map =
   )
 (* function strengthen_inv_map end *)
 
+(* Invariant Candidates *******************************************************)
+
+let gen_initial_cand_map :
+    Se.se_result -> Tz.mich_v Tz.cc -> MVSet.t -> cand_map =
+  fun se_res init_strg lit_set ->
+  let (igdt_map : Igdt.igdts_map) =
+     Igdt.get_igdts_map se_res.Se.sr_blocked init_strg lit_set
+  in
+  RMCIMap.map igdt_map ~f:(fun igdt_sets ->
+      [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
+      |> List.map ~f:(fun tmp -> tmp igdt_sets)
+      |> MFSet.union_list
+      |> MFSet.fold ~init:CMap.empty ~f:(fun acc_cmap fmla ->
+             CMap.add acc_cmap ~key:(MFSet.singleton fmla) ~data:0
+             |> function
+             | `Duplicate -> InvError "gen_initial_cand_map" |> raise
+             | `Ok cmap   -> cmap
+         )
+  )
+
+(* function gen_initial_cand_map end *)
+let find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands =
+  fun cmap rmci ->
+  RMCIMap.find cmap rmci
+  |> function
+  | Some sss -> sss
+  | None     -> CMap.empty
+(* function cand_map_find end *)
+
+let find_cand : cand_map -> Tz.mich_cut_info -> cands =
+  (fun cmap mci -> find_cand_by_rmci cmap (TzUtil.get_reduced_mci mci))
+(* function cand_map_find end *)
+
+let find_cand_top_k_by_rmci :
+    top_k:int -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list =
+  fun ~top_k cmap rmci ->
+  find_cand_by_rmci cmap rmci
+  |> CMap.to_alist
+  |> List.sort ~compare:(fun (_, s1) (_, s2) -> compare_int s1 s2)
+  |> List.map ~f:fst
+  |> List.rev
+  |> (fun lst -> List.split_n lst top_k)
+  |> fst
+(* function finc_cand_map_top_k_by_tmci end *)
+
+let find_cand_top_k :
+    top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list =
+  fun ~top_k cmap mci ->
+  find_cand_top_k_by_rmci ~top_k cmap (TzUtil.get_reduced_mci mci)
+(* function find_cand_map_top_k end *)
+
 let strengthen_cand_map : cand_map -> inv_map -> cand_map =
   fun cmap imap ->
   RMCIMap.mapi cmap ~f:(fun ~key:rmci ~data:cset ->
-      let (cur_inv : MFSet.t) = find_inv_map_by_rmci imap rmci in
+      let (cur_inv : MFSet.t) = find_inv_by_rmci imap rmci in
       CMap.fold cset ~init:CMap.empty ~f:(fun ~key ~data new_cmap ->
           CMap.update new_cmap (MFSet.union cur_inv key) ~f:(function
           | None       -> data
@@ -519,3 +484,66 @@ let strengthen_cand_map : cand_map -> inv_map -> cand_map =
       )
   )
 (* function strengthen_cand_map *)
+
+let deduct_cand :
+    cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> point:int -> cand_map
+    =
+  fun cmap ~key ~value ~point ->
+  RMCIMap.update cmap key ~f:(function
+  | Some cands ->
+    CMap.update cands value ~f:(function
+    | Some score -> score - point
+    | None       -> -point
+    )
+  | None       -> InvError "deduct_cand : wrong mci" |> raise
+  )
+(* function deduct_cand end *)
+
+(* Failed Candidate Pair ******************************************************)
+
+let cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair =
+   let open TzUtil in
+   fun (mci1, mci2) ->
+   { mp_start = get_reduced_mci mci1; mp_block = get_reduced_mci mci2 }
+(* function cvt_mci_pair end *)
+
+let cvt_cand_pair : MFSet.t * MFSet.t -> cand_pair =
+  (fun (fset1, fset2) -> { cp_start = fset1; cp_block = fset2 })
+
+(* function cvt_cand_pair end *)
+let gen_initial_failed_cp : unit -> failed_cp = (fun () -> MPMap.empty)
+(* function gen_initial_failed_cp end *)
+
+let find_failed_cp_by_rmci : failed_cp -> mci_pair -> CPSet.t =
+  fun fmap rmcip ->
+  MPMap.find fmap rmcip
+  |> function
+  | Some sss -> sss
+  | None     -> CPSet.empty
+(* function find_failed_cp end *)
+
+let find_failed_cp : failed_cp -> Tz.mich_cut_info * Tz.mich_cut_info -> CPSet.t
+    =
+  (fun fmap mcip -> find_failed_cp_by_rmci fmap (cvt_mci_pair mcip))
+(* function find_failed_cp *)
+
+let is_already_failed_by_rmci : failed_cp -> mci_pair -> cand_pair -> bool =
+  (fun fmap rmcip candp -> CPSet.mem (find_failed_cp_by_rmci fmap rmcip) candp)
+(* function is_already_failed_by_rmci end *)
+
+let is_already_failed :
+    failed_cp ->
+    Tz.mich_cut_info * Tz.mich_cut_info ->
+    MFSet.t * MFSet.t ->
+    bool =
+  fun fmap mcip fsetp ->
+  is_already_failed_by_rmci fmap (cvt_mci_pair mcip) (cvt_cand_pair fsetp)
+(* function is_already_failed end *)
+
+let add_failed_cp : failed_cp -> key:mci_pair -> value:cand_pair -> failed_cp =
+  fun failed_cp ~key ~value ->
+  MPMap.update failed_cp key ~f:(function
+  | Some cpset -> CPSet.add cpset value
+  | None       -> CPSet.singleton value
+  )
+(* function add_failed_cp end *)

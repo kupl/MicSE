@@ -928,7 +928,7 @@ let gen_query_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
    let open Tz in
    fun imap sstate ->
    let (start_inv : mich_f list) =
-      Inv.find_inv_map imap sstate.ss_start_mci
+      Inv.find_inv imap sstate.ss_start_mci
       |> apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
            sstate.ss_start_si
    in
@@ -947,7 +947,7 @@ let gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f =
    let (start_state : sym_state) = get_first_ss mstate in
    let (block_state : sym_state) = get_last_ss mstate in
    let (start_inv : mich_f list) =
-      Inv.find_inv_map imap start_state.ss_start_mci
+      Inv.find_inv imap start_state.ss_start_mci
       |> apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
            start_state.ss_start_si
    in
@@ -967,7 +967,7 @@ let gen_query_vc_from_ms_with_init_strg :
    let (start_state : sym_state) = get_first_ss mstate in
    let (block_state : sym_state) = get_last_ss mstate in
    let (start_inv : mich_f list) =
-      Inv.find_inv_map imap start_state.ss_start_mci
+      Inv.find_inv imap start_state.ss_start_mci
       |> apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
            start_state.ss_start_si
    in
@@ -989,12 +989,12 @@ let gen_inductiveness_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
    let open Tz in
    fun imap sstate ->
    let (start_inv : mich_f list) =
-      Inv.find_inv_map imap sstate.ss_start_mci
+      Inv.find_inv imap sstate.ss_start_mci
       |> apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
            sstate.ss_start_si
    in
    let (block_inv : mich_f list) =
-      Inv.find_inv_map imap sstate.ss_block_mci
+      Inv.find_inv imap sstate.ss_block_mci
       |> apply_inv_at_block ~sctx:sstate.ss_id sstate.ss_block_mci
            sstate.ss_block_si
    in
