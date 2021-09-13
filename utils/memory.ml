@@ -80,7 +80,7 @@ module Setting = struct
     fun memory ->
     let (now : int64) = cur_max_memory memory.typ in
     let (expired : int64) = Option.value memory.expired_at ~default:now in
-    Int64.( > ) expired now
+    Int64.( < ) expired now
   (* function read_is_memoryout end *)
 end
 
