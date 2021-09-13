@@ -169,7 +169,7 @@ let prove : Smt.Ctx.t -> Smt.Solver.t -> Inv.inv_map -> SSet.t -> SSet.t =
    SSet.filter unk_qs ~f:(fun qs ->
        let (vc : Tz.mich_f) = gen_query_vc imap qs in
        let ((vld : Solver.validity), _) = check_val ctx slvr vc in
-       Solver.is_inval vld
+       not (Solver.is_val vld)
    )
 (* function prove end *)
 

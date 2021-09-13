@@ -1746,7 +1746,7 @@ module ZMap = struct
     (* Sort of output expression is boolean sort *)
     fun ctx ~key expr1 ->
     Z3.Z3Array.mk_select (Ctx.read ctx) expr1 key
-    |> DataType.read_expr_is_const ~const_idx:Constant._idx_const_option_none
+    |> DataType.read_expr_is_const ~const_idx:Constant._idx_const_option_some
   (* function read_mem end *)
 end
 
