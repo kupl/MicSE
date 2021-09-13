@@ -165,7 +165,14 @@ module Encoder = struct
        (* Normal Case *********************************************************)
        | _ -> ZPair.read_content_snd (eov v1cc)
      )
-     | MV_unlift_option v1cc -> ZOption.read_content (eov v1cc)
+     | MV_unlift_option v1cc -> (
+       match v1cc.cc_v with
+       (* Optimization Rules **************************************************)
+       | MV_contract_of_address (_, v2cc) ->
+         ZContract.create_expr_of_address sort (eov v2cc)
+       (* Normal Case *********************************************************)
+       | _ -> ZOption.read_content (eov v1cc)
+     )
      | MV_unlift_left v1cc -> ZOr.read_content_left (eov v1cc)
      | MV_unlift_right v1cc -> ZOr.read_content_right (eov v1cc)
      | MV_hd_l v1cc -> ZList.read_head (eov v1cc)
@@ -354,8 +361,7 @@ module Encoder = struct
      | MV_slice_nnbo (v1cc, v2cc, v3cc) ->
        ZBytes.create_slice ctx ~offset:(eov v1cc) ~len:(eov v2cc) (eov v3cc)
      | MV_unpack _ -> Not_Implemented |> raise
-     | MV_contract_of_address (t1cc, v2cc) ->
-       ZContract.create_expr_of_address (sot (gdc (MT_contract t1cc))) (eov v2cc)
+     | MV_contract_of_address _ -> Expr.create_dummy ctx sort
      | MV_isnat v1cc ->
        let (expr1 : Expr.t) = eov v1cc in
        Formula.if_then_else ctx
