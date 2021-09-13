@@ -196,6 +196,7 @@ let string_of_res_rough_in_refuter_perspective : config -> res -> string =
    let soi = string_of_int in
    fun cfg res ->
    let t = Utils.Time.string_of_elapsed_time cfg.cfg_timer in
+   let m = Utils.Memory.string_of_used_memory cfg.cfg_memory in
    let (p, r, u, f, c, e) =
       List.fold res.r_qr_lst ~init:(0, 0, 0, 0, 0, 0)
         ~f:(fun (p, r, u, f, c, e) qr ->
@@ -210,8 +211,11 @@ let string_of_res_rough_in_refuter_perspective : config -> res -> string =
       )
    in
    let (p, r, u, f, c, e) = (soi p, soi r, soi u, soi f, soi c, soi e) in
+   let (b) = (soi res.r_wlst.wl_comb_cnt) in
    let tstr = "Time = " ^ t in
+   let mstr = "Memory = " ^ m in
    let prufstr = "P/R/U/F = " ^ String.concat ~sep:" / " [ p; r; u; f ] in
    let cstr = "expanding-ppath = " ^ c in
    let estr = "expanding-ppath-acc = " ^ e in
-   String.concat ~sep:" , " [ tstr; prufstr; cstr; estr ]
+   let bstr = "combinations = " ^ b in
+   String.concat ~sep:" , " [ tstr; mstr; prufstr; cstr; estr; bstr; ]

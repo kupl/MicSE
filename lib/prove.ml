@@ -128,8 +128,6 @@ let rec combinate :
    else (
      (* 1. Target MCI for combinate *)
      let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
-     let (remains : cand_map) = RMCIMap.remove targets rmci in
-     (* 2. Get candidates from target *)
      let (cands : MFSet.t list) =
         find_cand_by_rmci targets rmci
         |> CMap.to_alist
@@ -137,6 +135,8 @@ let rec combinate :
         |> List.map ~f:fst
         |> List.rev
      in
+     let (remains : cand_map) = RMCIMap.remove targets rmci in
+     (* 2. Get candidates from target *)
      let (target : inv_map list) =
         List.fold cands ~init:[] ~f:(fun acc fset ->
             if List.length acc >= top_k
@@ -301,40 +301,57 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
       combinate cfg.cfg_se_res.sr_blocked res.r_wlst.wl_failcp res.r_inv
         res.r_cands res.r_wlst.wl_combs res.r_inv
    in
-   (* 2. Check inductiveness *)
-   let ( (r_inv_opt : Inv.inv_map option),
-         (r_cands : Inv.cand_map),
-         (r_wlst : worklist)
-       ) =
-      naive_run_wlst_atomic_action cfg
-        (res.r_inv, res.r_cands, { res.r_wlst with wl_combs })
-   in
-   if Option.is_some r_inv_opt
-   then (
-     (* 3-1. Prove queries when indutive invariant was found *)
-     let (r_inv : Inv.inv_map) = Option.value r_inv_opt ~default:res.r_inv in
-     let (r_qr_lst : qres list) =
-        List.map res.r_qr_lst ~f:(fun qres ->
-            naive_run_qres_atomic_action cfg r_inv qres
-        )
+   if InvSet.length wl_combs <= 0
+   then
+     {
+       res with
+       r_qr_lst =
+         List.map res.r_qr_lst ~f:(fun qres -> { qres with qr_prv_flag = PF_f });
+     }
+   else (
+     (* 2. Check inductiveness *)
+     let ( (r_inv_opt : Inv.inv_map option),
+           (r_cands : Inv.cand_map),
+           (r_wlst : worklist)
+         ) =
+        naive_run_wlst_atomic_action cfg
+          (res.r_inv, res.r_cands, { res.r_wlst with wl_combs })
      in
-     { r_qr_lst; r_inv; r_cands; r_wlst }
+     if Option.is_some r_inv_opt
+     then (
+       (* 3-1. Prove queries when indutive invariant was found *)
+       let (r_inv : Inv.inv_map) = Option.value r_inv_opt ~default:res.r_inv in
+       let (r_qr_lst : qres list) =
+          List.map res.r_qr_lst ~f:(fun qres ->
+              naive_run_qres_atomic_action cfg r_inv qres
+          )
+       in
+       { r_qr_lst; r_inv; r_cands; r_wlst }
+     )
+     else
+       (* 3-2. Pass query proving when indutive invariant was not found *)
+       { res with r_cands; r_wlst }
    )
-   else
-     (* 3-2. Pass query proving when indutive invariant was not found *)
-     { res with r_cands; r_wlst }
 (* function naive_run_res_atomic_action end *)
 
 (* Entry Point ****************************************************************)
 
 let naive_run_escape_condition : Res.config -> Res.res -> bool =
    let open Res in
-   fun { cfg_timer; _ } { r_qr_lst; _ } ->
+   fun { cfg_timer; cfg_memory; _ } { r_qr_lst; _ } ->
    if (* 1. Timeout *)
       Utils.Time.is_timeout cfg_timer
    then (
      Utils.Log.debug (fun m ->
          m "Prove : naive_run_res_escape_condition : TIMEOUT!!!"
+     );
+     true
+   )
+   else if (* 2. Memoryout *)
+           Utils.Memory.is_memoryout cfg_memory
+   then (
+     Utils.Log.debug (fun m ->
+         m "Prove : naive_run_res_escape_condition : MEMORYOUT!!!"
      );
      true
    )
@@ -352,15 +369,31 @@ let naive_run_escape_condition : Res.config -> Res.res -> bool =
    else false
 (* function naive_run_res_escape_condition end *)
 
-let rec naive_run : Res.config -> Res.res -> Res.res =
-  fun cfg res ->
-  let _ =
-     (* DEBUGGING INFOs *)
-     Utils.Log.debug (fun m ->
-         m "%s" (Res.string_of_res_rough_in_refuter_perspective cfg res)
-     )
-  in
-  if naive_run_escape_condition cfg res
-  then res
-  else naive_run cfg (naive_run_res_atomic_action cfg res)
+let naive_run : Res.config -> Res.res -> Res.res =
+   let rec naive_run_i : Res.config -> Res.res -> Res.res =
+     fun cfg res ->
+     let _ =
+        (* DEBUGGING INFOs *)
+        Utils.Log.debug (fun m ->
+            m "%s" (Res.string_of_res_rough_in_refuter_perspective cfg res)
+        )
+     in
+     if naive_run_escape_condition cfg res
+     then res
+     else naive_run_i cfg (naive_run_res_atomic_action cfg res)
+   in
+   (* inner-function naive_run_i end *)
+   fun cfg res ->
+   let _ =
+      (* DEBUGGING INFOs *)
+      Utils.Log.debug (fun m ->
+          m "%s" (Res.string_of_res_rough_in_refuter_perspective cfg res)
+      )
+   in
+   let (r_qr_lst : Res.qres list) =
+      List.map res.r_qr_lst ~f:(fun qres ->
+          naive_run_qres_atomic_action cfg res.r_inv qres
+      )
+   in
+   naive_run_i cfg { res with r_qr_lst }
 (* function naive_run end *)
