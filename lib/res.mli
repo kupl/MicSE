@@ -69,6 +69,10 @@ type qres = {
 }
 [@@deriving sexp, compare, equal]
 
+module QRes_cmp : sig
+  type t = qres [@@deriving sexp, compare]
+end
+
 type worklist = {
   wl_combs : InvSet.t;
   wl_failcp : Inv.failed_cp;
@@ -122,4 +126,25 @@ val init_config :
 (******************************************************************************)
 (******************************************************************************)
 
-val string_of_res_rough_in_refuter_perspective : config -> res -> string
+module QRSet : module type of Core.Set.Make (QRes_cmp)
+
+type qres_classified = {
+  qrc_p : QRSet.t;
+  (* proved           *)
+  qrc_r : QRSet.t;
+  (* refuted          *)
+  qrc_err : QRSet.t;
+  (* error case       *)
+  qrc_uu : QRSet.t;
+  (* unknown-unknown  *)
+  qrc_uf : QRSet.t;
+  (* unknown-failed   *)
+  qrc_fu : QRSet.t;
+  (* failed-unknown   *)
+  qrc_ff : QRSet.t; (* failed-failed    *)
+}
+
+
+val string_of_res_rough : config -> res -> string
+
+val string_of_res : config -> res -> string

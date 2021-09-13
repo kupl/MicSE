@@ -9,8 +9,8 @@ exception TzError of string
 (******************************************************************************)
 
 type ccp_pos = {
-  col : int;
   lin : int;
+  col : int;
 }
 [@@deriving sexp, compare, equal]
 

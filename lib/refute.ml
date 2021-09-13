@@ -179,7 +179,7 @@ let rec naive_run : Res.config -> Res.res -> Res.res =
   let _ =
      (* DEBUGGING INFOs *)
      Utils.Log.debug (fun m ->
-         m "%s" (Res.string_of_res_rough_in_refuter_perspective cfg res)
+         m "%s" (Res.string_of_res_rough cfg res)
      )
   in
   if naive_run_res_escape_condition cfg res

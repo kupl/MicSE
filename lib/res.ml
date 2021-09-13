@@ -75,6 +75,10 @@ type qres = {
 }
 [@@deriving sexp, compare, equal]
 
+module QRes_cmp = struct
+  type t = qres [@@deriving sexp, compare]
+end
+
 type worklist = {
   wl_combs : InvSet.t;
   wl_failcp : Inv.failed_cp;
@@ -189,7 +193,25 @@ let init_config :
 (******************************************************************************)
 (******************************************************************************)
 
-let string_of_res_rough_in_refuter_perspective : config -> res -> string =
+module QRSet = Set.Make (QRes_cmp)
+
+type qres_classified = {
+  qrc_p : QRSet.t;
+  (* proved           *)
+  qrc_r : QRSet.t;
+  (* refuted          *)
+  qrc_err : QRSet.t;
+  (* error case       *)
+  qrc_uu : QRSet.t;
+  (* unknown-unknown  *)
+  qrc_uf : QRSet.t;
+  (* unknown-failed   *)
+  qrc_fu : QRSet.t;
+  (* failed-unknown   *)
+  qrc_ff : QRSet.t; (* failed-failed    *)
+}
+
+let string_of_res_rough : config -> res -> string =
    let soi = string_of_int in
    fun cfg res ->
    let t = Utils.Time.string_of_elapsed_time cfg.cfg_timer in
@@ -208,11 +230,94 @@ let string_of_res_rough_in_refuter_perspective : config -> res -> string =
       )
    in
    let (p, r, u, f, c, e) = (soi p, soi r, soi u, soi f, soi c, soi e) in
-   let (b) = (soi res.r_wlst.wl_comb_cnt) in
+   let b = soi res.r_wlst.wl_comb_cnt in
    let tstr = "Time = " ^ t in
    let mstr = "Memory = " ^ m in
    let prufstr = "P/R/U/F = " ^ String.concat ~sep:" / " [ p; r; u; f ] in
    let cstr = "expanding-ppath = " ^ c in
    let estr = "expanding-ppath-acc = " ^ e in
    let bstr = "combinations = " ^ b in
-   String.concat ~sep:" , " [ tstr; mstr; prufstr; cstr; estr; bstr; ]
+   String.concat ~sep:" , " [ tstr; mstr; prufstr; cstr; estr; bstr ]
+(* function string_of_res_rough end *)
+
+let string_of_res : config -> res -> string =
+   let open Tz in
+   let qres_str : qres -> string =
+     fun qres ->
+     match qres.qr_qid.mci_cutcat with
+     | MCC_query qcat ->
+       Printf.sprintf "> Location:%s\n  Category:%s\n"
+         (qres.qr_qid.mci_loc |> sexp_of_ccp_loc |> Sexp.to_string)
+         (qcat |> sexp_of_query_category |> Sexp.to_string)
+     | _              -> Failure "Wrong query result" |> raise
+   in
+   fun cfg res ->
+   let (cres : qres_classified) =
+      Core.List.fold res.r_qr_lst
+        ~init:
+          {
+            qrc_p = QRSet.empty;
+            qrc_r = QRSet.empty;
+            qrc_err = QRSet.empty;
+            qrc_uu = QRSet.empty;
+            qrc_uf = QRSet.empty;
+            qrc_fu = QRSet.empty;
+            qrc_ff = QRSet.empty;
+          } ~f:(fun acc qres ->
+          match (qres.qr_prv_flag, qres.qr_rft_flag) with
+          | (PF_p, RF_r) -> { acc with qrc_err = QRSet.add acc.qrc_err qres }
+          | (PF_p, _)    -> { acc with qrc_p = QRSet.add acc.qrc_p qres }
+          | (_, RF_r)    -> { acc with qrc_r = QRSet.add acc.qrc_r qres }
+          | (PF_u, RF_u) -> { acc with qrc_uu = QRSet.add acc.qrc_uu qres }
+          | (PF_u, RF_f) -> { acc with qrc_uf = QRSet.add acc.qrc_uf qres }
+          | (PF_f, RF_u) -> { acc with qrc_fu = QRSet.add acc.qrc_fu qres }
+          | (PF_f, RF_f) -> { acc with qrc_ff = QRSet.add acc.qrc_ff qres }
+      )
+   in
+   let (tot_c : int) = Core.List.length res.r_qr_lst
+   and (p_c : int) = QRSet.length cres.qrc_p
+   and (r_c : int) = QRSet.length cres.qrc_r
+   and (err_c : int) = QRSet.length cres.qrc_err
+   and (uu_c : int) = QRSet.length cres.qrc_uu
+   and (uf_c : int) = QRSet.length cres.qrc_uf
+   and (fu_c : int) = QRSet.length cres.qrc_fu
+   and (ff_c : int) = QRSet.length cres.qrc_ff in
+   let (failed_c : int) = err_c + uu_c + uf_c + fu_c + ff_c in
+   let (failed : QRSet.t) =
+      List.fold ~f:QRSet.union ~init:cres.qrc_err
+        [ cres.qrc_uu; cres.qrc_uf; cres.qrc_fu; cres.qrc_ff ]
+   in
+   let (head : string) = "=== Final Result ===" in
+   let (conf : string) =
+      Printf.sprintf "Time: %s\tMemory: %s"
+        (Utils.Time.string_of_elapsed_time cfg.cfg_timer)
+        (Utils.Memory.string_of_used_memory cfg.cfg_memory)
+   in
+   let (summ : string) =
+      Printf.sprintf "#Total: %d\t\t#Proved: %d\t\t#Refuted: %d\t\t#Failed: %d"
+        tot_c p_c r_c failed_c
+   in
+   let (finf : string) =
+      Printf.sprintf "#Err: %d\t#UU: %d\t#UF: %d\t#FU: %d\t#FF: %d" err_c uu_c
+        uf_c fu_c ff_c
+   in
+   let (prvd : string) =
+      Printf.sprintf "<< Proved >>\n%s"
+        (QRSet.to_list cres.qrc_p
+        |> List.map ~f:qres_str
+        |> String.concat ~sep:"\n"
+        )
+   in
+   let (rftd : string) =
+      Printf.sprintf "<< Refuted >>\n%s"
+        (QRSet.to_list cres.qrc_r
+        |> List.map ~f:qres_str
+        |> String.concat ~sep:"\n"
+        )
+   in
+   let (fail : string) =
+      Printf.sprintf "<< Failed >>\n%s"
+        (QRSet.to_list failed |> List.map ~f:qres_str |> String.concat ~sep:"\n")
+   in
+   String.concat ~sep:"\n" [ ""; head; conf; summ; finf; prvd; rftd; fail ]
+(* function string_of_res end *)
