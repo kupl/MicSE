@@ -1016,8 +1016,8 @@ let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option =
           start_state.ss_start_si fset
      in
      let (block_fmla : mich_f list) =
-        apply_inv_at_block ~sctx:block_state.ss_id block_state.ss_start_mci
-          block_state.ss_start_si fset
+        apply_inv_at_block ~sctx:block_state.ss_id block_state.ss_block_mci
+          block_state.ss_block_si fset
      in
      let (sp : mich_f) = MF_and (start_fmla @ get_constraint p_mstate) in
      Some (MF_imply (sp, MF_and block_fmla))
