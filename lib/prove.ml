@@ -90,8 +90,8 @@ let add_failed :
       add_failed_cp failed_cp ~key:mcip ~value:candp
    in
    let (new_cmap : cand_map) =
-      deduct_cand cmap ~key:mcip.mp_start ~value:cand_start ~point:1
-      |> deduct_cand ~key:mcip.mp_block ~value:cand_block ~point:1
+      score_cand cmap ~key:mcip.mp_start ~value:cand_start ~point:(-1)
+      |> score_cand ~key:mcip.mp_block ~value:cand_block ~point:(-1)
    in
    let (new_combs : InvSet.t) =
       InvSet.filter combs ~f:(fun imap ->

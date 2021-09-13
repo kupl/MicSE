@@ -512,19 +512,19 @@ let strengthen_cand_map : cand_map -> inv_map -> cand_map =
   )
 (* function strengthen_cand_map *)
 
-let deduct_cand :
+let score_cand :
     cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> point:int -> cand_map
     =
   fun cmap ~key ~value ~point ->
   RMCIMap.update cmap key ~f:(function
   | Some cands ->
     CMap.update cands value ~f:(function
-    | Some score -> score - point
-    | None       -> -point
+    | Some score -> score + point
+    | None       -> point
     )
-  | None       -> InvError "deduct_cand : wrong mci" |> raise
+  | None       -> InvError "score_cand : wrong mci" |> raise
   )
-(* function deduct_cand end *)
+(* function score_cand end *)
 
 (* Failed Candidate Pair ******************************************************)
 

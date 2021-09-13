@@ -171,7 +171,7 @@ val update_inv_map :
 
 val merge_inv_map : inv_map -> inv_map -> inv_map
 
-val strengthen_inv_map : InvSet.t -> inv_map -> InvSet.t 
+val strengthen_inv_map : InvSet.t -> inv_map -> InvSet.t
 
 val check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool
 
@@ -191,7 +191,7 @@ val find_cand_top_k : top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list
 
 val strengthen_cand_map : cand_map -> inv_map -> cand_map
 
-val deduct_cand :
+val score_cand :
   cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> point:int -> cand_map
 
 (* Failed Candidate Pair ******************************************************)
