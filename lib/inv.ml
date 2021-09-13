@@ -111,12 +111,22 @@ module ILSet = Set.Make (IGDTL_cmp)
 (* combination [{1; 2;}; {a; b;}; ...] === {[1; a; ...]; [1; b; ...]; [2; a; ...]; [2; b; ...];} *)
 let combination : ISet.t list -> ILSet.t =
   fun set_lst ->
-  List.fold_right set_lst
-    ~f:(fun i_set acc_l_set ->
-      ISet.to_list i_set
-      |> List.map ~f:(fun i -> ILSet.map acc_l_set ~f:(List.cons i))
-      |> ILSet.union_list)
-    ~init:ILSet.empty
+  if List.for_all set_lst ~f:(fun i_set -> not (ISet.is_empty i_set))
+  then
+    List.fold_right set_lst
+      ~f:(fun i_set acc_l_set ->
+        if ISet.is_empty i_set
+        then ILSet.empty
+        else
+          ISet.to_list i_set
+          |> List.map ~f:(fun i ->
+                 if ILSet.is_empty acc_l_set
+                 then ILSet.singleton [ i ]
+                 else ILSet.map acc_l_set ~f:(List.cons i)
+             )
+          |> ILSet.union_list)
+      ~init:ILSet.empty
+  else ILSet.empty
 (* function combination end *)
 
 (* combination_self {a; b;} 2 === {[a; a;]; [a; b;]; [b; a;]; [b; b;];} *)
@@ -190,7 +200,7 @@ let gen_template :
           )
        in
        let (target_comb : ILSet.t) =
-          ( if except_lit_only
+          ( if not except_lit_only
           then
             combination (List.map targets ~f:(fun (_, _, all_set, _) -> all_set))
           else
@@ -427,8 +437,7 @@ let merge_inv_map : inv_map -> inv_map -> inv_map =
 (* function merge_inv_map end *)
 
 let strengthen_inv_map : InvSet.t -> inv_map -> InvSet.t =
-  fun invset imap ->
-  InvSet.map invset ~f:(merge_inv_map imap)
+  (fun invset imap -> InvSet.map invset ~f:(merge_inv_map imap))
 (* function strengthen_inv_map end *)
 
 let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
@@ -458,8 +467,8 @@ let gen_initial_cand_map :
              | `Ok cmap   -> cmap
          )
   )
-
 (* function gen_initial_cand_map end *)
+
 let find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands =
   fun cmap rmci ->
   RMCIMap.find cmap rmci
