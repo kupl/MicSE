@@ -20,9 +20,6 @@ module MFSSet = Set.Make (MFSet)
 (* Map of Tz.mich_cut_info *)
 module MCIMap = Map.Make (Tz.MichCutInfo_cmp)
 
-(* Map of Tz.r_mich_cut_info *)
-module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
-
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
 
@@ -52,7 +49,7 @@ type refuter_flag =
 module PPath = struct
   type t = {
     pp_mstate : MState.t;
-    pp_goalst : MFSSet.t RMCIMap.t list;
+    pp_goalst : (Tz.r_mich_cut_info * MFSet.t list) list;
     pp_score : int;
   }
   [@@deriving sexp, compare, equal]

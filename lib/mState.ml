@@ -351,6 +351,8 @@ let get_first_ss : t -> sym_state = (fun ms -> List.hd_exn ms |> fst)
 
 let get_last_ss : t -> sym_state = (fun ms -> List.last_exn ms |> fst)
 
+let get_tail_ms : t -> t = (fun ms -> List.tl_exn ms)
+
 let cut_first_found_loop : t -> t option =
    let proper_mcc : mich_cut_category -> bool = function
    | MCC_trx_entry

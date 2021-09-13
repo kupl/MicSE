@@ -12,14 +12,8 @@ module MVSet : module type of Core.Set.Make (Tz.MichVCC_cmp)
 (* Set of Tz.mich_f *)
 module MFSet : module type of Core.Set.Make (Tz.MichF_cmp)
 
-(* Set of set of Tz.mich_f *)
-module MFSSet : module type of Core.Set.Make (MFSet)
-
 (* Map of Tz.mich_cut_info *)
 module MCIMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
-
-(* Map of Tz.r_mich_cut_info *)
-module RMCIMap : module type of Core.Map.Make (Tz.RMichCutInfo_cmp)
 
 (* Set of Tz.sym_state *)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
@@ -50,7 +44,7 @@ type refuter_flag =
 module PPath : sig
   type t = {
     pp_mstate : MState.t;
-    pp_goalst : MFSSet.t RMCIMap.t list;
+    pp_goalst : (Tz.r_mich_cut_info * MFSet.t list) list;
     pp_score : int;
   }
   [@@deriving sexp, compare, equal]
