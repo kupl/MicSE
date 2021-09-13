@@ -245,7 +245,8 @@ module Encoder = struct
      | MV_mul_mnm (v1cc, v2cc)
      | MV_mul_nmm (v1cc, v2cc) ->
        ZMutez.create_mul ctx (eov v1cc) (eov v2cc)
-     | MV_mtz_of_op_list v1cc -> (* TODO: List analysis *)
+     | MV_mtz_of_op_list v1cc ->
+       (* TODO: List analysis *)
        Formula.if_then_else ctx
          ~if_:(Formula.create_is_list_nil (eov v1cc))
          ~then_:(ZMutez.create_expr ctx 0)
@@ -402,8 +403,7 @@ module Encoder = struct
      (*************************************************************************)
      (* Pair                                                                  *)
      (*************************************************************************)
-     | MV_pair (v1cc, v2cc) ->
-       ZPair.create_expr sort (eov v1cc, eov v2cc)
+     | MV_pair (v1cc, v2cc) -> ZPair.create_expr sort (eov v1cc, eov v2cc)
      (*************************************************************************)
      (* Or                                                                    *)
      (*************************************************************************)
@@ -1042,6 +1042,24 @@ let gen_refute_vc : Inv.inv_map -> Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f =
   fun imap init_strg mstate ->
   MF_not (gen_query_vc_from_ms_with_init_strg imap init_strg mstate)
 (* function gen_refute_vc end *)
+
+let gen_precond_vc : MFSet.t -> MState.t -> Tz.mich_f =
+   let open Tz in
+   let open MState in
+   fun prec mstate ->
+   let (start_state : sym_state) = get_first_ss mstate in
+   let (block_state : sym_state) = get_last_ss mstate in
+   let (prec_lst : mich_f list) =
+      apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
+        start_state.ss_start_si prec
+   in
+   let (sp : mich_f) = MF_and (prec_lst @ get_constraint mstate) in
+   let (query : mich_f) =
+      property_of_query ~sctx:block_state.ss_id block_state.ss_block_mci
+        block_state.ss_block_si
+   in
+   MF_imply (sp, query)
+(* function gen_precond_vc end *)
 
 (******************************************************************************)
 (******************************************************************************)
