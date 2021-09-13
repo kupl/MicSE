@@ -118,3 +118,31 @@ let refuter_naive_run : string array option -> Res.config * Res.res =
   let init_res = Res.init_res cfg in
   let res = Refute.naive_run cfg init_res in
   (cfg, res)
+
+
+let prover_naive_run : string array option -> Res.config * Res.res =
+  fun argv_opt ->
+  let sym_exec_res = upto_sym_exec argv_opt in
+  let (_, init_strg_opt, se_result, init_state) = sym_exec_res in
+  let cfg = Res.init_config init_strg_opt se_result init_state in
+  let _ =
+     (* cfg.cfg_m_view debugging info *)
+     let mv = cfg.cfg_m_view in
+     let open Se in
+     let module RMCIMap = Se.SSGraph.RMCIMap in
+     let _ =
+        RMCIMap.iteri mv ~f:(fun ~key ~data:x ->
+            let l = SSet.length in
+            let (p, s) = (x.pred, x.succ) in
+            Utils.Log.debug (fun m ->
+                m "%s : %d %d"
+                  (Tz.sexp_of_r_mich_cut_info key |> Core.Sexp.to_string)
+                  (l p) (l s)
+            )
+        )
+     in
+     ()
+  in
+  let init_res = Res.init_res cfg in
+  let res = Prove.naive_run cfg init_res in
+  (cfg, res)

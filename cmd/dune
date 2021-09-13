@@ -1,5 +1,5 @@
 (executables
- (names main naive_refuter)
- (public_names micse micse.naive_refuter)
+ (names main naive_refuter naive_prover)
+ (public_names micse micse.naive_refuter micse.naive_prover)
  (libraries core lib utils)
  (package micse))
