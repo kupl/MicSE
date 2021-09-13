@@ -55,7 +55,7 @@ module InvSet : module type of Core.Set.Make (InvMap_cmp)
 
 module CMap : module type of Core.Map.Make (MFSet)
 
-type cands = int CMap.t [@@deriving sexp, compare, equal]
+type cands = (bool * int) CMap.t [@@deriving sexp, compare, equal]
 
 type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 

@@ -57,7 +57,7 @@ module InvSet = Set.Make (InvMap_cmp)
 
 module CMap = Map.Make (MFSet)
 
-type cands = int CMap.t [@@deriving sexp, compare, equal]
+type cands = (bool * int) CMap.t [@@deriving sexp, compare, equal]
 
 type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
@@ -461,7 +461,7 @@ let gen_initial_cand_map :
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> MFSet.union_list
       |> MFSet.fold ~init:CMap.empty ~f:(fun acc_cmap fmla ->
-             CMap.add acc_cmap ~key:(MFSet.singleton fmla) ~data:0
+             CMap.add acc_cmap ~key:(MFSet.singleton fmla) ~data:(true, 0)
              |> function
              | `Duplicate -> InvError "gen_initial_cand_map" |> raise
              | `Ok cmap   -> cmap
@@ -486,7 +486,8 @@ let find_cand_top_k_by_rmci :
   fun ~top_k cmap rmci ->
   find_cand_by_rmci cmap rmci
   |> CMap.to_alist
-  |> List.sort ~compare:(fun (_, s1) (_, s2) -> compare_int s1 s2)
+  (* CHECK *)
+  |> List.sort ~compare:(fun (_, (_, s1)) (_, (_, s2)) -> compare_int s1 s2)
   |> List.map ~f:fst
   |> List.rev
   |> (fun lst -> List.split_n lst top_k)
@@ -503,10 +504,11 @@ let strengthen_cand_map : cand_map -> inv_map -> cand_map =
   fun cmap imap ->
   RMCIMap.mapi cmap ~f:(fun ~key:rmci ~data:cset ->
       let (cur_inv : MFSet.t) = find_inv_by_rmci imap rmci in
-      CMap.fold cset ~init:CMap.empty ~f:(fun ~key ~data new_cmap ->
+      CMap.fold cset ~init:CMap.empty ~f:(fun ~key ~data:(f1, s1) new_cmap ->
           CMap.update new_cmap (MFSet.union cur_inv key) ~f:(function
-          | None       -> data
-          | Some score -> score + data
+          | None -> (f1, s1)
+          (* CHECK *)
+          | Some (f2, _) -> (f1 && f2, 0)
           )
       )
   )
@@ -519,8 +521,8 @@ let score_cand :
   RMCIMap.update cmap key ~f:(function
   | Some cands ->
     CMap.update cands value ~f:(function
-    | Some score -> score + point
-    | None       -> point
+    | Some (flag, score) -> (flag, score + point)
+    | None               -> (true, point)
     )
   | None       -> InvError "score_cand : wrong mci" |> raise
   )

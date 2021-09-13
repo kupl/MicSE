@@ -130,8 +130,9 @@ let rec combinate :
      let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
      let (cands : MFSet.t list) =
         find_cand_by_rmci targets rmci
+        |> CMap.filter ~f:(fun (f, _) -> f)
         |> CMap.to_alist
-        |> List.sort ~compare:(fun (_, s1) (_, s2) -> compare_int s1 s2)
+        |> List.sort ~compare:(fun (_, (_, s1)) (_, (_, s2)) -> compare_int s1 s2)
         |> List.map ~f:fst
         |> List.rev
      in
