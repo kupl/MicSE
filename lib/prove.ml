@@ -306,7 +306,6 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
       combinate cfg.cfg_se_res.sr_blocked res.r_wlst.wl_failcp res.r_inv
         res.r_cands res.r_wlst.wl_combs res.r_inv
    in
-   Utils.Log.debug (fun m -> m "%d" (InvSet.length wl_combs));
    if InvSet.length wl_combs <= 0
    then
      {
