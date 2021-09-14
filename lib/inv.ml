@@ -374,6 +374,7 @@ let cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair =
 
 let cvt_cand_pair : MFSet.t * MFSet.t -> cand_pair =
   (fun (fset1, fset2) -> { cp_start = fset1; cp_block = fset2 })
+(* function cvt_cand_pair end *)
 
 (* Invariants *****************************************************************)
 

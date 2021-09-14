@@ -76,15 +76,15 @@ let check_inductiveness :
 let add_failed :
     Inv.failed_cp * Inv.cand_map * InvSet.t ->
     Tz.sym_state ->
-    Inv.inv_map ->
+    failed:Inv.inv_map ->
     Inv.failed_cp * Inv.cand_map * InvSet.t =
    let open Inv in
-   fun (failed_cp, cmap, combs) state imap ->
+   fun (failed_cp, cmap, combs) state ~failed ->
    let (mcip : mci_pair) =
       cvt_mci_pair (state.ss_start_mci, state.ss_block_mci)
    in
-   let (cand_start : MFSet.t) = find_inv_by_rmci imap mcip.mp_start in
-   let (cand_block : MFSet.t) = find_inv_by_rmci imap mcip.mp_block in
+   let (cand_start : MFSet.t) = find_inv_by_rmci failed mcip.mp_start in
+   let (cand_block : MFSet.t) = find_inv_by_rmci failed mcip.mp_block in
    let (candp : cand_pair) = cvt_cand_pair (cand_start, cand_block) in
    let (new_failed_cp : failed_cp) =
       add_failed_cp failed_cp ~key:mcip ~value:candp
@@ -94,8 +94,8 @@ let add_failed :
       |> score_cand ~key:mcip.mp_block ~value:cand_block ~point:(-1)
    in
    let (new_combs : InvSet.t) =
-      InvSet.filter combs ~f:(fun imap ->
-          not (check_contain_pair imap mcip candp)
+      InvSet.filter combs ~f:(fun comb ->
+          not (check_contain_pair comb mcip candp)
       )
    in
    (new_failed_cp, new_cmap, new_combs)
@@ -132,7 +132,9 @@ let rec combinate :
         find_cand_by_rmci targets rmci
         |> CMap.filter ~f:(fun (f, _) -> f)
         |> CMap.to_alist
-        |> List.sort ~compare:(fun (_, (_, s1)) (_, (_, s2)) -> compare_int s1 s2)
+        |> List.sort ~compare:(fun (_, (_, s1)) (_, (_, s2)) ->
+               compare_int s1 s2
+           )
         |> List.map ~f:fst
         |> List.rev
      in
@@ -278,7 +280,9 @@ let rec naive_run_wlst_atomic_action :
              (new_cands : cand_map),
              (new_combs : InvSet.t)
            ) =
-          add_failed (wlst.wl_failcp, cands, wlst.wl_combs) failed_state imap
+          add_failed
+            (wlst.wl_failcp, cands, wlst.wl_combs)
+            failed_state ~failed:comb
        in
        let (new_wlst : worklist) =
           {
@@ -302,6 +306,7 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
       combinate cfg.cfg_se_res.sr_blocked res.r_wlst.wl_failcp res.r_inv
         res.r_cands res.r_wlst.wl_combs res.r_inv
    in
+   Utils.Log.debug (fun m -> m "%d" (InvSet.length wl_combs));
    if InvSet.length wl_combs <= 0
    then
      {
@@ -375,9 +380,7 @@ let naive_run : Res.config -> Res.res -> Res.res =
      fun cfg res ->
      let _ =
         (* DEBUGGING INFOs *)
-        Utils.Log.debug (fun m ->
-            m "%s" (Res.string_of_res_rough cfg res)
-        )
+        Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res))
      in
      if naive_run_escape_condition cfg res
      then res
@@ -387,9 +390,7 @@ let naive_run : Res.config -> Res.res -> Res.res =
    fun cfg res ->
    let _ =
       (* DEBUGGING INFOs *)
-      Utils.Log.debug (fun m ->
-          m "%s" (Res.string_of_res_rough cfg res)
-      )
+      Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res))
    in
    let (r_qr_lst : Res.qres list) =
       List.map res.r_qr_lst ~f:(fun qres ->
