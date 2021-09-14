@@ -259,6 +259,29 @@ let rec naive_run_wlst_atomic_action :
        let (new_imap : inv_map) =
           Result.ok inductive |> Option.value ~default:imap
        in
+       let _ =
+          (* Debugging info *)
+          Utils.Log.debug (fun m ->
+              m "naive_run_wlst_atomic_action : Invariant is updated\n%s"
+                (RMCIMap.fold new_imap ~init:"" ~f:(fun ~key ~data str ->
+                     str
+                     ^ Printf.sprintf "RMCI: %s\n\t%s\n"
+                         (key |> Tz.sexp_of_r_mich_cut_info |> Sexp.to_string)
+                         (data
+                         |> MFSet.to_list
+                         |> List.map ~f:(fun f ->
+                                f
+                                |> Tz.sexp_of_mich_f
+                                |> SexpUtil.tz_cc_sexp_form
+                                |> SexpUtil.tz_remove_ctx_i_ctx_v
+                                |> Sexp.to_string
+                            )
+                         |> String.concat ~sep:"\n\t/\\ "
+                         )
+                 )
+                )
+          )
+       in
        (* 3-1-2. Update candidates *)
        let (new_cands : cand_map) = strengthen_cand_map cands new_imap in
        (* 3-1-3. Update combinations *)
