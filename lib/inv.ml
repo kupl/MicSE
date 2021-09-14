@@ -204,11 +204,11 @@ let gen_template :
           then
             combination (List.map targets ~f:(fun (_, _, all_set, _) -> all_set))
           else
-            List.mapi targets ~f:(fun idx (n_set, _, _, _) ->
+            List.mapi targets ~f:(fun idx (_, n_set, _, _) ->
                 let ((l_set_lst : ISet.t list), (a_set_lst : ISet.t list)) =
                    List.split_n targets idx
                    |> fun (fst_lst, snd_lst) ->
-                   ( List.map fst_lst ~f:(fun (_, l_set, _, _) -> l_set),
+                   ( List.map fst_lst ~f:(fun (l_set, _, _, _) -> l_set),
                      List.tl_exn snd_lst
                      |> List.map ~f:(fun (_, _, a_set, _) -> a_set)
                    )
