@@ -27,9 +27,7 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
    let open Res in
    let expand_pp : m_view:SSGraph.mci_view -> PPath.t -> PPSet.t =
      fun ~m_view pp ->
-     PPSet.map (expand_ms ~m_view pp.pp_mstate) ~f:(fun ms ->
-         { pp_mstate = ms; pp_goalst = []; pp_score = 0 }
-     )
+     PPSet.map (expand_ms ~m_view pp.pp_mstate) ~f:Res.PPath.t_of_ms
    in
    fun { cfg_timer; cfg_istrg; cfg_m_view; cfg_smt_ctxt; cfg_smt_slvr; _ } res
        qr ->
@@ -70,7 +68,7 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
                       m "DBG - naive_run_qres_qtomic_action - ppath-fold entered"
                   )
                in *)
-            let { pp_mstate; pp_goalst = _; pp_score = _ } = pp in
+            let { pp_mstate; _ } = pp in
             (* let _ =
                   Utils.Log.debug (fun m ->
                       m

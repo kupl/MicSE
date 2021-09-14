@@ -452,6 +452,8 @@ module MichF_cmp : sig
   type t = mich_f [@@deriving compare, sexp]
 end
 
+module MFSet : module type of Core.Set.Make (MichF_cmp)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Symbolic State                                                             *)

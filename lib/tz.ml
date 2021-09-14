@@ -454,6 +454,8 @@ module MichF_cmp = struct
   type t = mich_f [@@deriving sexp, compare]
 end
 
+module MFSet = Set.Make (MichF_cmp)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Symbolic State                                                             *)

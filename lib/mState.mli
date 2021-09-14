@@ -1,6 +1,16 @@
 type t [@@deriving sexp, compare, equal]
 (* type t = (Tz.sym_state * Tz.mich_f list) list [@@deriving sexp, compare, equal] *)
 
+type summary = {
+  sm_rmci : Tz.r_mich_cut_info;
+  sm_s_id : Tz.sym_state_id;
+}
+[@@deriving sexp, compare, equal]
+
+module SMY_cmp : sig
+  type t = summary [@@deriving sexp, compare]
+end
+
 val init : Tz.sym_state -> t
 
 val cons : Tz.sym_state -> t -> t

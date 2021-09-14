@@ -12,6 +12,9 @@ module MVSet : module type of Core.Set.Make (Tz.MichVCC_cmp)
 (* Set of Tz.mich_f *)
 module MFSet : module type of Core.Set.Make (Tz.MichF_cmp)
 
+(* Set of set of Tz.mich_f *)
+module MFSSet : module type of Core.Set.Make (Tz.MFSet)
+
 (* Map of Tz.mich_cut_info *)
 module MCIMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
 
@@ -20,6 +23,9 @@ module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 
 (* Set of Inv.inv_map *)
 module InvSet : module type of Core.Set.Make (Inv.InvMap_cmp)
+
+(* Map of MState.summary *)
+module SMYMap : module type of Core.Map.Make (MState.SMY_cmp)
 
 (******************************************************************************)
 (******************************************************************************)
@@ -44,12 +50,14 @@ type refuter_flag =
 module PPath : sig
   type t = {
     pp_mstate : MState.t;
-    pp_goalst : (Tz.r_mich_cut_info * MFSet.t list) list;
     pp_score : int;
+    pp_checked : bool;
   }
   [@@deriving sexp, compare, equal]
 
   val t_of_ss : Tz.sym_state -> t
+
+  val t_of_ms : MState.t -> t
 end
 
 module PPSet : module type of Core.Set.Make (PPath)
@@ -63,6 +71,7 @@ type qres = {
   qr_unk_qs : SSet.t;
   (* Partial Paths and Invariant Candidates *)
   qr_exp_ppaths : PPSet.t;
+  qr_prec_map : MFSSet.t SMYMap.t;
   qr_rft_ppath : (PPath.t * Smt.Model.t) option;
   (* Count expanding_ppaths *)
   qr_exp_cnt : int;
@@ -143,7 +152,6 @@ type qres_classified = {
   (* failed-unknown   *)
   qrc_ff : QRSet.t; (* failed-failed    *)
 }
-
 
 val string_of_res_rough : config -> res -> string
 

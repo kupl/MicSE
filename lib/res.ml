@@ -15,7 +15,7 @@ module MVSet = Set.Make (Tz.MichVCC_cmp)
 module MFSet = Set.Make (Tz.MichF_cmp)
 
 (* Set of set of Tz.mich_f *)
-module MFSSet = Set.Make (MFSet)
+module MFSSet = Set.Make (Tz.MFSet)
 
 (* Map of Tz.mich_cut_info *)
 module MCIMap = Map.Make (Tz.MichCutInfo_cmp)
@@ -25,6 +25,9 @@ module SSet = Set.Make (Tz.SymState_cmp)
 
 (* Set of Inv.inv_map *)
 module InvSet = Set.Make (Inv.InvMap_cmp)
+
+(* Map of MState.summary *)
+module SMYMap = Map.Make (MState.SMY_cmp)
 
 (******************************************************************************)
 (******************************************************************************)
@@ -49,13 +52,18 @@ type refuter_flag =
 module PPath = struct
   type t = {
     pp_mstate : MState.t;
-    pp_goalst : (Tz.r_mich_cut_info * MFSet.t list) list;
     pp_score : int;
+    pp_checked : bool;
   }
   [@@deriving sexp, compare, equal]
 
   let t_of_ss : Tz.sym_state -> t =
-    (fun ss -> { pp_mstate = MState.init ss; pp_goalst = []; pp_score = 0 })
+    (fun ss -> { pp_mstate = MState.init ss; pp_score = 0; pp_checked = false })
+  (* function t_of_ss end *)
+
+  let t_of_ms : MState.t -> t =
+    (fun ms -> { pp_mstate = ms; pp_score = 0; pp_checked = false })
+  (* function t_of_ms end *)
 end
 
 module PPSet = Set.Make (PPath)
@@ -69,6 +77,7 @@ type qres = {
   qr_unk_qs : SSet.t;
   (* Partial Paths and Invariant Candidates *)
   qr_exp_ppaths : PPSet.t;
+  qr_prec_map : MFSSet.t SMYMap.t;
   qr_rft_ppath : (PPath.t * Smt.Model.t) option;
   (* Count expanding_ppaths *)
   qr_exp_cnt : int;
@@ -125,6 +134,7 @@ let init_qres : Tz.mich_cut_info -> SSet.t -> qres =
     qr_rft_flag = RF_u;
     qr_unk_qs;
     qr_exp_ppaths = PPSet.map qr_unk_qs ~f:PPath.t_of_ss;
+    qr_prec_map = SMYMap.empty;
     qr_rft_ppath = None;
     qr_exp_cnt = SSet.length qr_unk_qs;
   }
