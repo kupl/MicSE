@@ -43,12 +43,12 @@ echo "[NOTE] End-up Initialize OPAM"
 
 # Setup OCAML Dependencies
 echo "[NOTE] Start Setup OCAML Dependencies"
-for pkg in "batteries 2.9.0" "core 0.14.0" "dune 2.4.0" "menhir 20200624" "ocamlgraph 1.8.8" "ptime 0.8.5" "yojson 1.7.0" "zarith 1.10"; do
+for pkg in "batteries 3.3.0" "core v0.14.0" "dune 2.4.0" "menhir 20210419" "ocamlgraph 2.0.0" "ptime 0.8.5" "yojson 1.7.0" "zarith 1.12" "ounit2 2.2.4" "bignum v0.14.0" "ppx_deriving 5.2.1" "mtime 1.2.0" "logs 0.7.0"; do
   pkg_pair=( $pkg );
   pkg_name=${pkg_pair[0]};
   pkg_version=${pkg_pair[1]}
   echo "[NOTE] $pkg_name: Install"
-  opam install -y -j $CORES "$pkg_name>=$pkg_version" >/dev/null
+  opam install -y -j $CORES "$pkg_name.$pkg_version" >/dev/null
   # if [[ ! -d "${OPAM_LIB_DIR%%/}/$pkg_name" ]]; then
   #   echo "[NOTE] $pkg_name: Installation started."
   #   opam install -y -j $CORES "$pkg_name>=$pkg_version" >/dev/null
