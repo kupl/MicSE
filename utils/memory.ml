@@ -104,7 +104,7 @@ let string_of_curr_memory : ?typ:typ -> unit -> string =
   fun ?(typ = Both) () ->
   ((Setting.cur_max_memory typ |> Float.of_int64)
    /. (Setting.gB |> Float.of_int64)
-  |> Float.to_string_hum ~decimals:6
+  |> Float.to_string_hum ~decimals:6 ~delimiter:','
   )
   ^ " GB"
 (* function string_of_curr_memory end *)
@@ -129,7 +129,7 @@ let string_of_used_memory : t -> string =
   fun memory ->
   ((Setting.read_memory_used !memory |> Float.of_int64)
    /. (Setting.gB |> Float.of_int64)
-  |> Float.to_string_hum ~decimals:6
+  |> Float.to_string_hum ~decimals:6 ~delimiter:','
   )
   ^ " GB"
 (* function string_of_used_memory end *)
@@ -138,7 +138,7 @@ let string_of_remaining_memory : t -> string =
   fun memory ->
   ((Setting.read_memory_remain !memory |> Float.of_int64)
    /. (Setting.gB |> Float.of_int64)
-  |> Float.to_string_hum ~decimals:6
+  |> Float.to_string_hum ~decimals:6 ~delimiter:','
   )
   ^ " GB"
 (* function string_of_remaining_memory end *)

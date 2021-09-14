@@ -289,7 +289,7 @@ let string_of_res : config -> res -> string =
    in
    let (head : string) = "=== Final Result ===" in
    let (conf : string) =
-      Printf.sprintf "Time: %s\tMemory: %s"
+      Printf.sprintf "Time: %s\t\tMemory: %s"
         (Utils.Time.string_of_elapsed_time cfg.cfg_timer)
         (Utils.Memory.string_of_used_memory cfg.cfg_memory)
    in

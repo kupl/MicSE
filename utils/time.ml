@@ -87,7 +87,7 @@ let time_curr : unit -> time =
 let string_of_curr_time : unit -> string =
   fun () ->
   ((time_curr () |> Float.of_int64) /. (Setting.s |> Float.of_int64)
-  |> Float.to_string_hum ~decimals:6
+  |> Float.to_string_hum ~decimals:6 ~delimiter:','
   )
   ^ " sec"
 (* function string_of_curr_time end *)
@@ -113,7 +113,7 @@ let is_timeout : t -> bool = (fun time -> Setting.read_is_timeout !time)
 let string_of_elapsed_time : t -> string =
   fun time ->
   ((read_interval time |> Float.of_int64) /. (Setting.s |> Float.of_int64)
-  |> Float.to_string_hum ~decimals:6
+  |> Float.to_string_hum ~decimals:6 ~delimiter:','
   )
   ^ " sec"
 (* function string_of_elapsed_time end *)
@@ -121,7 +121,7 @@ let string_of_elapsed_time : t -> string =
 let string_of_remaining_time : t -> string =
   fun time ->
   ((read_remaining time |> Float.of_int64) /. (Setting.s |> Float.of_int64)
-  |> Float.to_string_hum ~decimals:6
+  |> Float.to_string_hum ~decimals:6 ~delimiter:','
   )
   ^ " sec"
 (* function string_of_remaining_time end *)
