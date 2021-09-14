@@ -210,19 +210,20 @@ let init_config :
 module QRSet = Set.Make (QRes_cmp)
 
 type qres_classified = {
-  qrc_p : QRSet.t;
   (* proved           *)
-  qrc_r : QRSet.t;
+  qrc_p : QRSet.t;
   (* refuted          *)
-  qrc_err : QRSet.t;
+  qrc_r : QRSet.t;
   (* error case       *)
-  qrc_uu : QRSet.t;
+  qrc_err : QRSet.t;
   (* unknown-unknown  *)
-  qrc_uf : QRSet.t;
+  qrc_uu : QRSet.t;
   (* unknown-failed   *)
-  qrc_fu : QRSet.t;
+  qrc_uf : QRSet.t;
   (* failed-unknown   *)
-  qrc_ff : QRSet.t; (* failed-failed    *)
+  qrc_fu : QRSet.t;
+  (* failed-failed    *)
+  qrc_ff : QRSet.t;
 }
 
 let string_of_res_rough : config -> res -> string =
