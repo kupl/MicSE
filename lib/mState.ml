@@ -387,3 +387,5 @@ let cut_first_found_loop : t -> t option =
             | (ss, _) :: _ -> hd @ [ (ss, []) ]
         )
    )
+
+let get_length : t -> int = List.length

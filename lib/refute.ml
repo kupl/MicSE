@@ -52,7 +52,18 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
            : (PPath.t * Smt.Model.t) option * PPSet.t * int =
         let open PPath in
         let open Tz in
-        PPSet.fold qr_exp_ppaths ~init:(None, PPSet.empty, qr_exp_cnt)
+        (* 2.0 (edit) Select some predetermined number of paths, perform logic for them only. *)
+        let (selected_ppaths, unselected_ppaths) : PPSet.t * PPSet.t =
+           let select_num = 1 in
+           List.sort (PPSet.to_list qr_exp_ppaths) ~compare:(fun pp1 pp2 ->
+               compare_int
+                 (MState.get_length pp1.pp_mstate)
+                 (MState.get_length pp2.pp_mstate)
+           )
+           |> (fun l -> List.split_n l select_num)
+           |> (fun (l1, l2) -> (PPSet.of_list l1, PPSet.of_list l2))
+        in
+        PPSet.fold selected_ppaths ~init:(None, unselected_ppaths, qr_exp_cnt)
           ~f:(fun (r_opt, acc_new_ppset, acc_cnt) pp ->
             (* let _ =
                   Utils.Log.debug (fun m ->
@@ -178,9 +189,7 @@ let rec naive_run : Res.config -> Res.res -> Res.res =
   fun cfg res ->
   let _ =
      (* DEBUGGING INFOs *)
-     Utils.Log.debug (fun m ->
-         m "%s" (Res.string_of_res_rough cfg res)
-     )
+     Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res))
   in
   if naive_run_res_escape_condition cfg res
   then res
