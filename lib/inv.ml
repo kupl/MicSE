@@ -528,6 +528,19 @@ let score_cand :
   )
 (* function score_cand end *)
 
+let unflag_cand :
+    cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> cand_map =
+  fun cmap ~key ~value ->
+  RMCIMap.update cmap key ~f:(function
+  | Some cands ->
+    CMap.update cands value ~f:(function
+    | Some (_, score) -> (false, score)
+    | None            -> (false, 0)
+    )
+  | None       -> InvError "unflag_cand : wrong mci" |> raise
+  )
+(* function unflag_cand end *)
+
 (* Failed Candidate Pair ******************************************************)
 
 (* function cvt_cand_pair end *)

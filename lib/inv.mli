@@ -194,6 +194,9 @@ val strengthen_cand_map : cand_map -> inv_map -> cand_map
 val score_cand :
   cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> point:int -> cand_map
 
+val unflag_cand :
+  cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> cand_map
+
 (* Failed Candidate Pair ******************************************************)
 
 val gen_initial_failed_cp : unit -> failed_cp
