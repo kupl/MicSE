@@ -1,5 +1,7 @@
 (* Logger *)
 
+open! Core
+
 (******************************************************************************)
 (******************************************************************************)
 (* Setting                                                                    *)
@@ -31,12 +33,12 @@ module Setting = struct
            ("%a [%06.0fms] @[" ^^ fmt ^^ "@]@.")
            Logs.pp_header (level, header) dt
     in
-    (* report function end *)
+    (* inner-function report end *)
     { Logs.report }
-  (* reporter function end *)
+  (* function reporter end *)
 
   let msg : Logs.level -> 'a Logs.log = (fun level log -> Logs.msg level log)
-  (* msg function end *)
+  (* function msg end *)
 end
 
 (******************************************************************************)
@@ -48,31 +50,31 @@ end
 let app : ('a, unit) Logs.msgf -> unit =
   fun log ->
   Setting.msg Logs.App log;
-  Stdlib.flush Stdlib.stdout
+  Out_channel.flush Out_channel.stdout
 (* function app end *)
 
 let debug : ('a, unit) Logs.msgf -> unit =
   fun log ->
   Setting.msg Logs.Debug log;
-  Stdlib.flush Stdlib.stderr
+  Out_channel.flush Out_channel.stderr
 (* function info end *)
 
 let info : ('a, unit) Logs.msgf -> unit =
   fun log ->
   Setting.msg Logs.Info log;
-  Stdlib.flush Stdlib.stderr
+  Out_channel.flush Out_channel.stderr
 (* function info end *)
 
 let warn : ('a, unit) Logs.msgf -> unit =
   fun log ->
   Setting.msg Logs.Warning log;
-  Stdlib.flush Stdlib.stderr
+  Out_channel.flush Out_channel.stderr
 (* function warn end *)
 
 let err : ('a, unit) Logs.msgf -> unit =
   fun log ->
   Setting.msg Logs.Error log;
-  Stdlib.flush Stdlib.stderr
+  Out_channel.flush Out_channel.stderr
 (* function err end *)
 
 let create : unit -> unit =
