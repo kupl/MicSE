@@ -21,8 +21,10 @@ code
         EDIV;                                           # option (%amount / 100, %amount % 100) : %rate : sc : [] : %rate
         IF_NONE { PUSH int 22; FAILWITH } {};           # (%amount / 100, %amount % 100) : %rate : sc : [] : %rate
         CDR;                                            # %amount / 100 : %rate : sc : [] : %rate
-        MUL;                                            # %amount / 100 * %rate : sc : [] : %rate
-        UNIT;                                           # () : %amount / 100 * %rate : sc : [] : %rate
+        MUL;                                            # %amount / 100 * %rate : sc : [] : %rate                   # Q1
+        AMOUNT;                                         # %amount : %amount / 100 * %rate : sc : [] : %rate
+        SUB;                                            # %amount - %amount / 100 * %rate : sc : [] : %rate         # Q2
+        UNIT;                                           # () : %amount - %amount / 100 * %rate : sc : [] : %rate
         TRANSFER_TOKENS;                                # tt : [] : %rate
         CONS;                                           # [tt] : %rate
       }
