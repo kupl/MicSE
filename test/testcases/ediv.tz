@@ -20,10 +20,10 @@ code
         AMOUNT;                                         # %amount : 100-m : %rate : sc : [] : %rate
         EDIV;                                           # option (%amount / 100, %amount % 100) : %rate : sc : [] : %rate
         IF_NONE { PUSH int 22; FAILWITH } {};           # (%amount / 100, %amount % 100) : %rate : sc : [] : %rate
-        CDR;                                            # %amount / 100 : %rate : sc : [] : %rate
-        MUL;                                            # %amount / 100 * %rate : sc : [] : %rate                   # Q1
+        CAR;                                            # %amount / 100 : %rate : sc : [] : %rate
+        MUL;                                            # %amount / 100 * %rate : sc : [] : %rate                   # Q1:SAFE
         AMOUNT;                                         # %amount : %amount / 100 * %rate : sc : [] : %rate
-        SUB;                                            # %amount - %amount / 100 * %rate : sc : [] : %rate         # Q2
+        SUB;                                            # %amount - %amount / 100 * %rate : sc : [] : %rate         # Q2:SAFE
         UNIT;                                           # () : %amount - %amount / 100 * %rate : sc : [] : %rate
         TRANSFER_TOKENS;                                # tt : [] : %rate
         CONS;                                           # [tt] : %rate
