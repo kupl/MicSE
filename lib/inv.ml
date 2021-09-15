@@ -232,6 +232,7 @@ let gen_template :
 (* function gen_template end *)
 
 let tmp_eq : Igdt.igdt_sets -> MFSet.t =
+   let open Tz in
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
@@ -241,9 +242,10 @@ let tmp_eq : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~target_mode:`Asymm ~f:(fun tvl ->
        match tvl with
-       | [ (_, v1); (_, v2) ] -> Some (MF_eq (gctx v1, gctx v2))
-       | _                    ->
-         InvError "tmp_eq : wrong ingredient length" |> raise
+       | [ (_, v1); (_, v2) ] when not (equal_cc equal_mich_v v1 v2) ->
+         Some (MF_eq (gctx v1, gctx v2))
+       | [ (_, _); (_, _) ] -> None
+       | _ -> InvError "tmp_eq : wrong ingredient length" |> raise
    )
 (* function tmp_eq end *)
 
@@ -273,15 +275,22 @@ let tmp_ge : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~f:(fun tvl ->
        match tvl with
-       | [ (MT_mutez, v1); (MT_mutez, v2) ] ->
-         if equal_mich_v_cc v1 max_mtz || equal_mich_v_cc v2 zero_mtz
-         then None
-         else make_ge (v1, v2)
-       | [ (MT_nat, v1); (MT_nat, v2) ] ->
-         if equal_mich_v_cc v2 zero_nat then None else make_ge (v1, v2)
-       | [ (MT_string, v1); (MT_string, v2) ] ->
-         if equal_mich_v_cc v2 empty_str then None else make_ge (v1, v2)
-       | [ (_, v1); (_, v2) ] -> make_ge (v1, v2)
+       | [ (MT_mutez, v1); (MT_mutez, v2) ]
+         when (not (equal_cc equal_mich_v v1 v2))
+              && (not (equal_mich_v_cc v1 max_mtz))
+              && not (equal_mich_v_cc v2 zero_mtz) ->
+         make_ge (v1, v2)
+       | [ (MT_nat, v1); (MT_nat, v2) ]
+         when (not (equal_cc equal_mich_v v1 v2))
+              && not (equal_mich_v_cc v2 zero_nat) ->
+         make_ge (v1, v2)
+       | [ (MT_string, v1); (MT_string, v2) ]
+         when (not (equal_cc equal_mich_v v1 v2))
+              && not (equal_mich_v_cc v2 empty_str) ->
+         make_ge (v1, v2)
+       | [ (_, v1); (_, v2) ] when not (equal_cc equal_mich_v v1 v2) ->
+         make_ge (v1, v2)
+       | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
    )
 (* function tmp_ge end *)
@@ -451,12 +460,8 @@ let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
 
 (* Invariant Candidates *******************************************************)
 
-let gen_initial_cand_map :
-    Se.se_result -> Tz.mich_v Tz.cc -> MVSet.t -> cand_map =
-  fun se_res init_strg lit_set ->
-  let (igdt_map : Igdt.igdts_map) =
-     Igdt.get_igdts_map se_res.Se.sr_blocked init_strg lit_set
-  in
+let gen_initial_cand_map : Igdt.igdts_map -> cand_map =
+  fun igdt_map ->
   RMCIMap.map igdt_map ~f:(fun igdt_sets ->
       [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)

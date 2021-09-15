@@ -76,12 +76,23 @@ val apply_inv_at_block :
 (******************************************************************************)
 (******************************************************************************)
 
+(* Strongest Postcondition ****************************************************)
+
+val gen_sp : Tz.mich_f list -> Tz.sym_state -> Tz.mich_f
+
+val gen_sp_from_ms : Tz.mich_f list -> MState.t -> Tz.mich_f
+
+(* Invariant ******************************************************************)
+
+val get_start_inv : Inv.inv_map -> Tz.sym_state -> Tz.mich_f list
+
+val get_block_inv : Inv.inv_map -> Tz.sym_state -> Tz.mich_f list
+
+(* Verification Condition *****************************************************)
+
 val gen_query_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f
 
 val gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f
-
-val gen_query_vc_from_ms_with_init_strg :
-  Inv.inv_map -> Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f
 
 val gen_inductiveness_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f
 
@@ -89,7 +100,7 @@ val gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option
 
 val gen_initial_inv_vc : MFSet.t -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
 
-val gen_refute_vc : Inv.inv_map -> Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f
+val gen_refute_vc : Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f
 
 val gen_precond_vc : MFSet.t -> MState.t -> Tz.mich_f
 

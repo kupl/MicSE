@@ -61,14 +61,20 @@ let check_inductiveness :
     (Inv.inv_map, Tz.sym_state) Result.t =
    let open Smt in
    let open Vc in
+   let id = ref 0 in
    fun ctx slvr bsset imap ->
+   let _ = incr id in
    SSet.fold bsset ~init:(Result.return imap) ~f:(fun inductive bs ->
        if Result.is_error inductive
        then inductive
        else (
+         let (sp : Tz.mich_f) = gen_sp (get_start_inv imap bs) bs in
+         let ((sat : Solver.satisfiability), _) = check_sat ctx slvr sp in
          let (vc : Tz.mich_f) = gen_inductiveness_vc imap bs in
          let ((vld : Solver.validity), _) = check_val ctx slvr vc in
-         if Solver.is_val vld then inductive else Result.fail bs
+         if Solver.is_sat sat && Solver.is_val vld
+         then inductive
+         else Result.fail bs
        )
    )
 (* function check_inductiveness end *)
@@ -334,7 +340,11 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
      {
        res with
        r_qr_lst =
-         List.map res.r_qr_lst ~f:(fun qres -> { qres with qr_prv_flag = PF_f });
+         List.map res.r_qr_lst ~f:(fun qres ->
+             if Res.equal_prover_flag qres.qr_prv_flag PF_u
+             then { qres with qr_prv_flag = PF_f }
+             else qres
+         );
      }
    else (
      (* 2. Check inductiveness *)

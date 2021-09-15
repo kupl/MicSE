@@ -425,8 +425,18 @@ let collect_igdt_from_igdt : igdt -> ISet.t =
    (fun base_igdt -> collect_from_igdt_i ISet.empty base_igdt)
 (* function collect_igdt_from_igdt end *)
 
+let ref_mv_rules : Tz.mich_v -> Tz.mich_v =
+  fun mv ->
+  match mv with
+  | MV_symbol info -> MV_ref info
+  | _              -> mv
+(* function ref_mv_rules end *)
+
 let collect_igdt_from_mich_v : Tz.mich_v Tz.cc -> ISet.t =
-  fun base_value ->
+  fun value ->
+  let (base_value : Tz.mich_v Tz.cc) =
+     TzUtil.mvcc_map_innerfst ~mapf:ref_mv_rules value
+  in
   let (base_igdt : igdt) = gen_custom_igdt base_value in
   collect_igdt_from_igdt base_igdt
 (* function collect_igdt_from_mich_v end *)
@@ -632,7 +642,7 @@ let get_igdts_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdts_map =
    let open TzUtil in
    fun blocked_sset init_strg lit_set ->
    let (init_strg_igdt_set : ISet.t) = collect_igdt_from_mich_v init_strg in
-   let (lit_igdt_set : ISet.t) =
+   let (lit_val_igdt_set : ISet.t) =
       ISet.union_list
         (MVSet.to_list lit_set |> List.map ~f:collect_igdt_from_mich_v)
    in
@@ -653,7 +663,7 @@ let get_igdts_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdts_map =
                 ISet.union_list (List.map p_blocked_slst ~f:igdt_from_sym_state)
              in
              let (lit_igdt_set : ISet.t) =
-                ISet.union_list [ init_strg_igdt_set; lit_igdt_set ]
+                ISet.union_list [ init_strg_igdt_set; lit_val_igdt_set ]
              in
              let (non_lit_igdt_tmap : ISet.t MTMap.t) =
                 tmap_from_iset non_lit_igdt_set

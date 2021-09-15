@@ -177,8 +177,7 @@ val check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool
 
 (* Invariant Candidates *******************************************************)
 
-val gen_initial_cand_map :
-  Se.se_result -> Tz.mich_v Tz.cc -> MVSet.t -> cand_map
+val gen_initial_cand_map : Igdt.igdts_map -> cand_map
 
 val find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands
 

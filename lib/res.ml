@@ -151,7 +151,7 @@ let init_worklist : unit -> worklist =
 
 let init_res : config -> res =
    let open Se in
-   fun { cfg_se_res; cfg_istrg; _ } ->
+   fun { cfg_se_res; cfg_imap; _ } ->
    let (mci_queries : SSet.t MCIMap.t) =
       SSet.fold cfg_se_res.sr_queries ~init:MCIMap.empty ~f:(fun acc qs ->
           MCIMap.update acc qs.ss_block_mci ~f:(function
@@ -168,7 +168,7 @@ let init_res : config -> res =
    {
      r_qr_lst = qresl;
      r_inv = Inv.gen_true_inv_map cfg_se_res;
-     r_cands = Inv.gen_initial_cand_map cfg_se_res cfg_istrg MVSet.empty;
+     r_cands = Inv.gen_initial_cand_map cfg_imap;
      r_wlst = init_worklist ();
    }
 (* function init_res end *)
@@ -180,7 +180,7 @@ let init_config :
     Tz.sym_state ->
     config =
   fun cfg_code cfg_istrg_opt cfg_se_res cfg_istate ->
-  let mv_literal_set : Igdt.MVSet.t = TzUtil.scrap_code_literals cfg_code in
+  let (mv_literal_set : MVSet.t) = TzUtil.scrap_code_literals cfg_code in
   let (cfg_istrg : Tz.mich_v Tz.cc) =
      match cfg_istrg_opt with
      | Some v -> v

@@ -100,7 +100,7 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
             else (
               (* 2.3. pp is total path. so try to refute *)
               let fmla : mich_f =
-                 Vc.gen_refute_vc res.r_inv cfg_istrg pp_mstate |> TzUtil.opt_mf
+                 Vc.gen_refute_vc cfg_istrg pp_mstate |> TzUtil.opt_mf
               in
               match Vc.check_sat cfg_smt_ctxt cfg_smt_slvr fmla with
               | (SAT, Some mdl) ->
