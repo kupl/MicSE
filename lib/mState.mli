@@ -26,3 +26,5 @@ val get_tail_ms : t -> t
 val cut_first_found_loop : t -> t option
 
 val get_length : t -> int
+
+val get_summary : t -> summary

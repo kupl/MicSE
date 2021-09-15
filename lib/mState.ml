@@ -399,3 +399,8 @@ let cut_first_found_loop : t -> t option =
    )
 
 let get_length : t -> int = List.length
+
+let get_summary : t -> summary =
+  fun ms ->
+  let fss = get_first_ss ms in
+  { sm_rmci = TzUtil.get_reduced_mci fss.ss_start_mci; sm_s_id = fss.ss_id }
