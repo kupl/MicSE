@@ -648,7 +648,14 @@ module Encoder = struct
                 )
               ~else_:one
            )
-     | _ -> VcError "Encoder : cv_compare : wrong comparison" |> raise
+     | _ ->
+       VcError
+         ("Encoder : cv_compare : wrong comparison : "
+         ^ (typ1 |> sexp_of_mich_t |> Sexp.to_string)
+         ^ " - "
+         ^ (typ2 |> sexp_of_mich_t |> Sexp.to_string)
+         )
+       |> raise
   (* function cv_compare end *)
 
   let rec cv_mf : Smt.Ctx.t -> Tz.mich_f -> Smt.Formula.t =
@@ -810,6 +817,10 @@ let subst_mf_rules :
   | _ -> mf
 (* function subst_mf_rules end *)
 
+let get_from_stack : Tz.mich_v Tz.cc list -> loc:int -> Tz.mich_v Tz.cc =
+  (fun stack ~loc -> List.nth_exn stack (List.length stack - loc - 1))
+(* function get_from_stack end *)
+
 let apply_inv_at_start :
     sctx:Tz.mich_sym_ctxt ->
     Tz.mich_cut_info ->
@@ -830,12 +841,12 @@ let apply_inv_at_start :
      | MSC_time                 -> si.si_param.ti_time.cc_v
      | MSC_balance              -> si.si_balance.cc_v
      | MSC_bc_balance           -> si.si_bc_balance.cc_v
-     | MSC_mich_stack loc       -> (List.nth_exn si.si_mich loc).cc_v
-     | MSC_dip_stack loc        -> (List.nth_exn si.si_dip loc).cc_v
-     | MSC_map_entry_stack loc  -> (List.nth_exn si.si_map_entry loc).cc_v
-     | MSC_map_exit_stack loc   -> (List.nth_exn si.si_map_exit loc).cc_v
-     | MSC_map_mapkey_stack loc -> (List.nth_exn si.si_map_mapkey loc).cc_v
-     | MSC_iter_stack loc       -> (List.nth_exn si.si_iter loc).cc_v
+     | MSC_mich_stack loc       -> (get_from_stack si.si_mich ~loc).cc_v
+     | MSC_dip_stack loc        -> (get_from_stack si.si_dip ~loc).cc_v
+     | MSC_map_entry_stack loc  -> (get_from_stack si.si_map_entry ~loc).cc_v
+     | MSC_map_exit_stack loc   -> (get_from_stack si.si_map_exit ~loc).cc_v
+     | MSC_map_mapkey_stack loc -> (get_from_stack si.si_map_mapkey ~loc).cc_v
+     | MSC_iter_stack loc       -> (get_from_stack si.si_iter ~loc).cc_v
    )
    | MV_ref_cont t1cc -> (
      match mci.mci_cutcat with
@@ -891,12 +902,12 @@ let apply_inv_at_block :
      | MSC_time                 -> si.si_param.ti_time.cc_v
      | MSC_balance              -> si.si_balance.cc_v
      | MSC_bc_balance           -> si.si_bc_balance.cc_v
-     | MSC_mich_stack loc       -> (List.nth_exn si.si_mich loc).cc_v
-     | MSC_dip_stack loc        -> (List.nth_exn si.si_dip loc).cc_v
-     | MSC_map_entry_stack loc  -> (List.nth_exn si.si_map_entry loc).cc_v
-     | MSC_map_exit_stack loc   -> (List.nth_exn si.si_map_exit loc).cc_v
-     | MSC_map_mapkey_stack loc -> (List.nth_exn si.si_map_mapkey loc).cc_v
-     | MSC_iter_stack loc       -> (List.nth_exn si.si_iter loc).cc_v
+     | MSC_mich_stack loc       -> (get_from_stack si.si_mich ~loc).cc_v
+     | MSC_dip_stack loc        -> (get_from_stack si.si_dip ~loc).cc_v
+     | MSC_map_entry_stack loc  -> (get_from_stack si.si_map_entry ~loc).cc_v
+     | MSC_map_exit_stack loc   -> (get_from_stack si.si_map_exit ~loc).cc_v
+     | MSC_map_mapkey_stack loc -> (get_from_stack si.si_map_mapkey ~loc).cc_v
+     | MSC_iter_stack loc       -> (get_from_stack si.si_iter ~loc).cc_v
    )
    | MV_ref_cont _    -> (
      match mci.mci_cutcat with

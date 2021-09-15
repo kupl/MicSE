@@ -288,7 +288,8 @@ let tmp_ge : Igdt.igdt_sets -> MFSet.t =
          when (not (equal_cc equal_mich_v v1 v2))
               && not (equal_mich_v_cc v2 empty_str) ->
          make_ge (v1, v2)
-       | [ (_, v1); (_, v2) ] when not (equal_cc equal_mich_v v1 v2) ->
+       | [ (t1, v1); (t2, v2) ]
+         when equal_mich_t t1 t2 && not (equal_cc equal_mich_v v1 v2) ->
          make_ge (v1, v2)
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
@@ -463,7 +464,8 @@ let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
 let gen_initial_cand_map : Igdt.igdts_map -> cand_map =
   fun igdt_map ->
   RMCIMap.map igdt_map ~f:(fun igdt_sets ->
-      [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
+      (* [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ] *)
+      [ tmp_ge ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> MFSet.union_list
       |> MFSet.fold ~init:CMap.empty ~f:(fun acc_cmap fmla ->
