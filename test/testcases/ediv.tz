@@ -1,0 +1,39 @@
+# EDIV safety
+
+parameter (or (unit %charge) (nat %new_rate));
+storage (nat %rate);
+code 
+  {
+    NIL operation;                                      # [] : %ps
+    SWAP;                                               # %ps : []
+    UNPAIR;                                             # %p : %rate : []
+    IF_LEFT
+      {                                                 # %charge : %rate : []
+        DROP;                                           # %rate : []
+        DUP;                                            # %rate : %rate : []
+        DUG 2;                                          # %rate : [] : %rate
+        SOURCE;                                         # %source : %rate : [] : %rate
+        CONTRACT unit;                                  # option sc : %rate : [] : %rate
+        IF_NONE { PUSH int 17; FAILWITH } {};           # sc : %rate : [] : %rate
+        SWAP;                                           # %rate : sc : [] : %rate
+        PUSH nat 100;                                   # 100-m : %rate : sc : [] : %rate
+        AMOUNT;                                         # %amount : 100-m : %rate : sc : [] : %rate
+        EDIV;                                           # option (%amount / 100, %amount % 100) : %rate : sc : [] : %rate
+        IF_NONE { PUSH int 22; FAILWITH } {};           # (%amount / 100, %amount % 100) : %rate : sc : [] : %rate
+        CDR;                                            # %amount / 100 : %rate : sc : [] : %rate
+        MUL;                                            # %amount / 100 * %rate : sc : [] : %rate
+        UNIT;                                           # () : %amount / 100 * %rate : sc : [] : %rate
+        TRANSFER_TOKENS;                                # tt : [] : %rate
+        CONS;                                           # [tt] : %rate
+      }
+      {                                                 # %new_rate : %rate : []
+        DUP;                                            # %new_rate : %new_rate : %rate : []
+        PUSH nat 100;                                   # 100-n : %new_rate : %new_rate : %rate : []
+        COMPARE;                                        # CMP (100-n, %new_rate) : %new_rate : %rate : []
+        GE;                                             # 100-n >= %new_rate : %new_rate : %rate : []
+        IF {} { PUSH int 34; FAILWITH };                # %new_rate : %rate : []
+        DUG 2;                                          # %rate : [] : %new_rate
+        DROP;                                           # [] : %new_rate
+      };
+    PAIR;
+  };
