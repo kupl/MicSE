@@ -464,8 +464,7 @@ let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
 let gen_initial_cand_map : Igdt.igdts_map -> cand_map =
   fun igdt_map ->
   RMCIMap.map igdt_map ~f:(fun igdt_sets ->
-      (* [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ] *)
-      [ tmp_ge ]
+      [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> MFSet.union_list
       |> MFSet.fold ~init:CMap.empty ~f:(fun acc_cmap fmla ->
