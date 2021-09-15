@@ -174,8 +174,13 @@ let init_res : config -> res =
 (* function init_res end *)
 
 let init_config :
-    Tz.mich_v Tz.cc option -> Se.se_result -> Tz.sym_state -> config =
-  fun cfg_istrg_opt cfg_se_res cfg_istate ->
+    Tz.mich_i Tz.cc ->
+    Tz.mich_v Tz.cc option ->
+    Se.se_result ->
+    Tz.sym_state ->
+    config =
+  fun cfg_code cfg_istrg_opt cfg_se_res cfg_istate ->
+  let mv_literal_set : Igdt.MVSet.t = TzUtil.scrap_code_literals cfg_code in
   let (cfg_istrg : Tz.mich_v Tz.cc) =
      match cfg_istrg_opt with
      | Some v -> v
@@ -190,8 +195,7 @@ let init_config :
     cfg_se_res;
     cfg_m_view =
       Se.SSGraph.construct_mci_view ~basic_blocks:cfg_se_res.sr_blocked;
-    cfg_imap =
-      Igdt.get_igdts_map cfg_se_res.sr_blocked cfg_istrg Igdt.MVSet.empty;
+    cfg_imap = Igdt.get_igdts_map cfg_se_res.sr_blocked cfg_istrg mv_literal_set;
     cfg_smt_ctxt;
     cfg_smt_slvr = Vc.gen_solver cfg_smt_ctxt;
   }

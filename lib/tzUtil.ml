@@ -1263,6 +1263,51 @@ let get_reduced_mci : mich_cut_info -> r_mich_cut_info =
   { rmci_loc = mci.mci_loc; rmci_cutcat = get_reduced_mcc mci.mci_cutcat }
 
 (******************************************************************************)
+(* Literals in Tz-Code                                                        *)
+(******************************************************************************)
+
+module MVSet = Core.Set.Make (MichVCC_cmp)
+
+let rec scrap_code_literals_i : init:MVSet.t -> Tz.mich_i Tz.cc -> MVSet.t =
+  fun ~init tz_code ->
+  match tz_code.cc_v with
+  (* * Containing Literals * *)
+  | MI_push (_, v) -> MVSet.add init v
+  | MI_none t -> MVSet.add init (MV_none t |> gen_dummy_cc)
+  | MI_unit -> MVSet.add init (MV_unit |> gen_dummy_cc)
+  | MI_nil t -> MVSet.add init (MV_nil t |> gen_dummy_cc)
+  | MI_empty_set t -> MVSet.add init (MV_empty_set t |> gen_dummy_cc)
+  | MI_empty_map (t1, t2) ->
+    MVSet.add init (MV_empty_map (t1, t2) |> gen_dummy_cc)
+  | MI_empty_big_map (t1, t2) ->
+    MVSet.add init (MV_empty_big_map (t1, t2) |> gen_dummy_cc)
+  (* * Nested Codes * *)
+  (* NOTE: be aware of MI_seq's skewed-shape. It might increases complexity. *)
+  | MI_seq (i1, i2) ->
+    scrap_code_literals_i ~init:(scrap_code_literals_i ~init i1) i2
+  | MI_if_none (i1, i2)
+  | MI_if_left (i1, i2)
+  | MI_if_cons (i1, i2)
+  | MI_if (i1, i2) ->
+    scrap_code_literals_i ~init:(scrap_code_literals_i ~init i1) i2
+  | MI_map i
+  | MI_iter i
+  | MI_loop i
+  | MI_loop_left i
+  | MI_dip_n (_, i)
+  | MI_micse_check i ->
+    scrap_code_literals_i ~init i
+  (* NOTE: Currently, ignore MI_lambda & MI_create_contract *)
+  (* | MI_lambda (_, _, i)
+     | MI_create_contract (_, _, i) ->
+       scrap_code_literals_i ~init i *)
+  (* * Others - Nothing * *)
+  | _ -> init
+
+let scrap_code_literals : Tz.mich_i Tz.cc -> MVSet.t =
+   scrap_code_literals_i ~init:MVSet.empty
+
+(******************************************************************************)
 (******************************************************************************)
 (* Michelson to Tz                                                            *)
 (******************************************************************************)

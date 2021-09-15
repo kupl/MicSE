@@ -85,7 +85,7 @@ let upto_sym_exec :
 let refuter_naive_run : string array option -> Res.config * Res.res =
   fun argv_opt ->
   let sym_exec_res = upto_sym_exec argv_opt in
-  let (_, init_strg_opt, se_result, init_state) = sym_exec_res in
+  let ((_, _, tz_code), init_strg_opt, se_result, init_state) = sym_exec_res in
   (* let _ =
         (* se_result debugging *)
         Se.SSet.iter se_result.sr_blocked ~f:(fun ss ->
@@ -96,7 +96,7 @@ let refuter_naive_run : string array option -> Res.config * Res.res =
             )
         )
      in *)
-  let cfg = Res.init_config init_strg_opt se_result init_state in
+  let cfg = Res.init_config tz_code init_strg_opt se_result init_state in
   let _ =
      (* cfg.cfg_m_view debugging info *)
      let mv = cfg.cfg_m_view in
@@ -122,8 +122,8 @@ let refuter_naive_run : string array option -> Res.config * Res.res =
 let prover_naive_run : string array option -> Res.config * Res.res =
   fun argv_opt ->
   let sym_exec_res = upto_sym_exec argv_opt in
-  let (_, init_strg_opt, se_result, init_state) = sym_exec_res in
-  let cfg = Res.init_config init_strg_opt se_result init_state in
+  let ((_, _, tz_code), init_strg_opt, se_result, init_state) = sym_exec_res in
+  let cfg = Res.init_config tz_code init_strg_opt se_result init_state in
   let _ =
      (* cfg.cfg_m_view debugging info *)
      let mv = cfg.cfg_m_view in
@@ -198,8 +198,8 @@ let prover_refuter_toss : string array option -> Res.config * Res.res =
    in
    fun argv_opt ->
    let sym_exec_res = upto_sym_exec argv_opt in
-   let (_, init_strg_opt, se_result, init_state) = sym_exec_res in
-   let cfg = Res.init_config init_strg_opt se_result init_state in
+   let ((_, _, tz_code), init_strg_opt, se_result, init_state) = sym_exec_res in
+   let cfg = Res.init_config tz_code init_strg_opt se_result init_state in
    let _ =
       (* cfg.cfg_m_view debugging info *)
       let mv = cfg.cfg_m_view in

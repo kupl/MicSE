@@ -127,7 +127,11 @@ val init_worklist : unit -> worklist
 val init_res : config -> res
 
 val init_config :
-  Tz.mich_v Tz.cc option -> Se.se_result -> Tz.sym_state -> config
+  Tz.mich_i Tz.cc ->
+  Tz.mich_v Tz.cc option ->
+  Se.se_result ->
+  Tz.sym_state ->
+  config
 
 (******************************************************************************)
 (******************************************************************************)
