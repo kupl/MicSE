@@ -17,6 +17,9 @@ module MVSet : module type of Core.Set.Make (Tz.MichVCC_cmp)
 (* Set of Tz.mich_f *)
 module MFSet : module type of Core.Set.Make (Tz.MichF_cmp)
 
+(* Map of set of Tz.mich_f *)
+module MFSMap : module type of Core.Map.Make (Tz.MFSet)
+
 (* Map of Tz.mich_cut_info *)
 module MCIMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
 
@@ -53,9 +56,7 @@ module InvSet : module type of Core.Set.Make (InvMap_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
-module CMap : module type of Core.Map.Make (MFSet)
-
-type cands = (bool * int) CMap.t [@@deriving sexp, compare, equal]
+type cands = (bool * int) MFSMap.t [@@deriving sexp, compare, equal]
 
 type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 

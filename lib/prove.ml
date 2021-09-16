@@ -13,6 +13,9 @@ open! Core
 (* Set of Tz.mich_f *)
 module MFSet = Set.Make (Tz.MichF_cmp)
 
+(* Map of set of Tz.mich_f *)
+module MFSMap = Map.Make (Tz.MFSet)
+
 (* Map of Tz.mich_cut_info *)
 module MCIMap = Map.Make (Tz.MichCutInfo_cmp)
 
@@ -138,8 +141,8 @@ let rec combinate :
      let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
      let (cands : MFSet.t list) =
         find_cand_by_rmci targets rmci
-        |> CMap.filter ~f:(fun (f, _) -> f)
-        |> CMap.to_alist
+        |> MFSMap.filter ~f:(fun (f, _) -> f)
+        |> MFSMap.to_alist
         |> List.sort ~compare:(fun (_, (_, s1)) (_, (_, s2)) ->
                compare_int s1 s2
            )

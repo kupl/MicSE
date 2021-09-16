@@ -19,6 +19,9 @@ module MVSet = Set.Make (Tz.MichVCC_cmp)
 (* Set of Tz.mich_f *)
 module MFSet = Set.Make (Tz.MichF_cmp)
 
+(* Map of set of Tz.mich_f *)
+module MFSMap = Map.Make (Tz.MFSet)
+
 (* Map of Tz.mich_cut_info *)
 module MCIMap = Map.Make (Tz.MichCutInfo_cmp)
 
@@ -55,9 +58,7 @@ module InvSet = Set.Make (InvMap_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
-module CMap = Map.Make (MFSet)
-
-type cands = (bool * int) CMap.t [@@deriving sexp, compare, equal]
+type cands = (bool * int) MFSMap.t [@@deriving sexp, compare, equal]
 
 type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
@@ -467,8 +468,8 @@ let gen_initial_cand_map : Igdt.igdts_map -> cand_map =
       [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> MFSet.union_list
-      |> MFSet.fold ~init:CMap.empty ~f:(fun acc_cmap fmla ->
-             CMap.add acc_cmap ~key:(MFSet.singleton fmla) ~data:(true, 0)
+      |> MFSet.fold ~init:MFSMap.empty ~f:(fun acc_cmap fmla ->
+             MFSMap.add acc_cmap ~key:(MFSet.singleton fmla) ~data:(true, 0)
              |> function
              | `Duplicate -> InvError "gen_initial_cand_map" |> raise
              | `Ok cmap   -> cmap
@@ -481,7 +482,7 @@ let find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands =
   RMCIMap.find cmap rmci
   |> function
   | Some sss -> sss
-  | None     -> CMap.empty
+  | None     -> MFSMap.empty
 (* function cand_map_find end *)
 
 let find_cand : cand_map -> Tz.mich_cut_info -> cands =
@@ -492,7 +493,7 @@ let find_cand_top_k_by_rmci :
     top_k:int -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list =
   fun ~top_k cmap rmci ->
   find_cand_by_rmci cmap rmci
-  |> CMap.to_alist
+  |> MFSMap.to_alist
   (* CHECK *)
   |> List.sort ~compare:(fun (_, (_, s1)) (_, (_, s2)) -> compare_int s1 s2)
   |> List.map ~f:fst
@@ -511,8 +512,8 @@ let strengthen_cand_map : cand_map -> inv_map -> cand_map =
   fun cmap imap ->
   RMCIMap.mapi cmap ~f:(fun ~key:rmci ~data:cset ->
       let (cur_inv : MFSet.t) = find_inv_by_rmci imap rmci in
-      CMap.fold cset ~init:CMap.empty ~f:(fun ~key ~data:(f1, s1) new_cmap ->
-          CMap.update new_cmap (MFSet.union cur_inv key) ~f:(function
+      MFSMap.fold cset ~init:MFSMap.empty ~f:(fun ~key ~data:(f1, s1) new_cmap ->
+          MFSMap.update new_cmap (MFSet.union cur_inv key) ~f:(function
           | None -> (f1, s1)
           (* CHECK *)
           | Some (f2, _) -> (f1 && f2, 0)
@@ -527,7 +528,7 @@ let score_cand :
   fun cmap ~key ~value ~point ->
   RMCIMap.update cmap key ~f:(function
   | Some cands ->
-    CMap.update cands value ~f:(function
+    MFSMap.update cands value ~f:(function
     | Some (flag, score) -> (flag, score + point)
     | None               -> (true, point)
     )
@@ -540,7 +541,7 @@ let unflag_cand :
   fun cmap ~key ~value ->
   RMCIMap.update cmap key ~f:(function
   | Some cands ->
-    CMap.update cands value ~f:(function
+    MFSMap.update cands value ~f:(function
     | Some (_, score) -> (false, score)
     | None            -> (false, 0)
     )
