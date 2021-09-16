@@ -178,7 +178,8 @@ val check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool
 
 (* Invariant Candidates *******************************************************)
 
-val gen_initial_cand_map : Igdt.igdts_map -> cand_map
+val gen_initial_cand_map :
+  is_fset_sat:(MFSet.t -> bool) -> Igdt.igdts_map -> cand_map
 
 val find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands
 
@@ -189,7 +190,8 @@ val find_cand_top_k_by_rmci :
 
 val find_cand_top_k : top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list
 
-val strengthen_cand_map : cand_map -> inv_map -> cand_map
+val strengthen_cand_map :
+  is_fset_sat:(MFSet.t -> bool) -> cand_map -> inv_map -> cand_map
 
 val score_cand :
   cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> point:int -> cand_map

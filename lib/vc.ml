@@ -1119,3 +1119,11 @@ let check_sat :
    let (fmla : Formula.t) = Encoder.cv_mf ctx mf in
    Solver.check_sat solver ctx fmla
 (* function check_validity end *)
+
+let is_fset_sat : Smt.Ctx.t -> Smt.Solver.t -> MFSet.t -> bool =
+   let open Smt in
+   fun ctx solver fset ->
+   let (cand : Tz.mich_f) = Tz.MF_and (MFSet.to_list fset) in
+   let ((sat : Solver.satisfiability), _) = check_sat ctx solver cand in
+   Solver.is_sat sat
+(* function is_fset_sat end *)

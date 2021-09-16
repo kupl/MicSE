@@ -124,3 +124,5 @@ val check_sat :
   Smt.Solver.t ->
   Tz.mich_f ->
   Smt.Solver.satisfiability * Smt.Model.t option
+
+val is_fset_sat : Smt.Ctx.t -> Smt.Solver.t -> MFSet.t -> bool

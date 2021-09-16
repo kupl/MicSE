@@ -294,7 +294,10 @@ let rec naive_run_wlst_atomic_action :
           )
        in
        (* 3-1-2. Update candidates *)
-       let (new_cands : cand_map) = strengthen_cand_map cands new_imap in
+       let (new_cands : cand_map) =
+          strengthen_cand_map cands new_imap
+            ~is_fset_sat:(Vc.is_fset_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr)
+       in
        (* 3-1-3. Update combinations *)
        let (new_combs : InvSet.t) =
           Inv.strengthen_inv_map remain_combs new_imap

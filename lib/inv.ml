@@ -462,17 +462,23 @@ let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
 
 (* Invariant Candidates *******************************************************)
 
-let gen_initial_cand_map : Igdt.igdts_map -> cand_map =
-  fun igdt_map ->
+let gen_initial_cand_map :
+    is_fset_sat:(MFSet.t -> bool) -> Igdt.igdts_map -> cand_map =
+  fun ~is_fset_sat igdt_map ->
   RMCIMap.map igdt_map ~f:(fun igdt_sets ->
       [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> MFSet.union_list
       |> MFSet.fold ~init:MFSMap.empty ~f:(fun acc_cmap fmla ->
-             MFSMap.add acc_cmap ~key:(MFSet.singleton fmla) ~data:(true, 0)
-             |> function
-             | `Duplicate -> InvError "gen_initial_cand_map" |> raise
-             | `Ok cmap   -> cmap
+             let (fset : MFSet.t) = MFSet.singleton fmla in
+             if not (is_fset_sat fset)
+             then acc_cmap
+             else
+               MFSMap.add acc_cmap ~key:fset ~data:(true, 0)
+               |> function
+               | `Duplicate ->
+                 InvError "gen_initial_cand_map : duplicate key" |> raise
+               | `Ok cmap   -> cmap
          )
   )
 (* function gen_initial_cand_map end *)
@@ -508,16 +514,21 @@ let find_cand_top_k : top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list
   find_cand_top_k_by_rmci ~top_k cmap (TzUtil.get_reduced_mci mci)
 (* function find_cand_map_top_k end *)
 
-let strengthen_cand_map : cand_map -> inv_map -> cand_map =
-  fun cmap imap ->
+let strengthen_cand_map :
+    is_fset_sat:(MFSet.t -> bool) -> cand_map -> inv_map -> cand_map =
+  fun ~is_fset_sat cmap imap ->
   RMCIMap.mapi cmap ~f:(fun ~key:rmci ~data:cset ->
       let (cur_inv : MFSet.t) = find_inv_by_rmci imap rmci in
-      MFSMap.fold cset ~init:MFSMap.empty ~f:(fun ~key ~data:(f1, s1) new_cmap ->
-          MFSMap.update new_cmap (MFSet.union cur_inv key) ~f:(function
-          | None -> (f1, s1)
-          (* CHECK *)
-          | Some (f2, _) -> (f1 && f2, 0)
-          )
+      MFSMap.fold cset ~init:MFSMap.empty
+        ~f:(fun ~key ~data:(f1, s1) new_cmap ->
+          let (fset : MFSet.t) = MFSet.union cur_inv key in
+          if not (is_fset_sat fset)
+          then new_cmap
+          else
+            MFSMap.update new_cmap fset ~f:(function
+            | None         -> (f1, s1)
+            | Some (f2, _) -> (f1 && f2, 0)
+            )
       )
   )
 (* function strengthen_cand_map *)

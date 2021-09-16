@@ -17,8 +17,14 @@ module MFSet = Set.Make (Tz.MichF_cmp)
 (* Set of set of Tz.mich_f *)
 module MFSSet = Set.Make (Tz.MFSet)
 
+(* Map of set of Tz.mich_f *)
+module MFSMap = Map.Make (Tz.MFSet)
+
 (* Map of Tz.mich_cut_info *)
 module MCIMap = Map.Make (Tz.MichCutInfo_cmp)
+
+(* Map of Tz.r_mich_cut_info *)
+module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
@@ -151,7 +157,8 @@ let init_worklist : unit -> worklist =
 
 let init_res : config -> res =
    let open Se in
-   fun { cfg_se_res; cfg_imap; _ } ->
+   let open Vc in
+   fun { cfg_se_res; cfg_imap; cfg_smt_ctxt; cfg_smt_slvr; _ } ->
    let (mci_queries : SSet.t MCIMap.t) =
       SSet.fold cfg_se_res.sr_queries ~init:MCIMap.empty ~f:(fun acc qs ->
           MCIMap.update acc qs.ss_block_mci ~f:(function
@@ -160,15 +167,17 @@ let init_res : config -> res =
           )
       )
    in
-   let (qresl : qres list) =
+   let (r_qr_lst : qres list) =
       MCIMap.mapi mci_queries ~f:(fun ~key ~data -> init_qres key data)
       |> MCIMap.to_alist
       |> List.map ~f:snd
    in
    {
-     r_qr_lst = qresl;
+     r_qr_lst;
      r_inv = Inv.gen_true_inv_map cfg_se_res;
-     r_cands = Inv.gen_initial_cand_map cfg_imap;
+     r_cands =
+       Inv.gen_initial_cand_map cfg_imap
+         ~is_fset_sat:(is_fset_sat cfg_smt_ctxt cfg_smt_slvr);
      r_wlst = init_worklist ();
    }
 (* function init_res end *)
