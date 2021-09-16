@@ -98,7 +98,8 @@ val gen_inductiveness_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f
 
 val gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f
 
-val gen_initial_inv_vc : MFSet.t -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
+val gen_initial_inv_vc :
+  Inv.inv_map -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
 
 val gen_refute_vc : Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f
 

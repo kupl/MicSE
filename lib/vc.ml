@@ -465,8 +465,16 @@ module Encoder = struct
      (****************************************************************************)
      (* Custom Domain Value for Invariant Synthesis                              *)
      (****************************************************************************)
-     | MV_ref _ -> Not_Implemented |> raise
-     | MV_ref_cont _ -> Not_Implemented |> raise
+     | MV_ref (t1cc, c2) ->
+       Expr.create_var ctx (sot t1cc)
+         ~name:
+           (Sexp.to_string (sexp_of_mich_sym_category c2)
+           ^ "_"
+           ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
+           )
+     | MV_ref_cont t1cc ->
+       Expr.create_var ctx (sot t1cc)
+         ~name:("MV_ref_cont_" ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx))
      | MV_sigma_tmplm _ -> Not_Implemented |> raise
   (* function cv_mv end *)
 
@@ -1033,19 +1041,22 @@ let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f =
    )
 (* function gen_preservation_vc end *)
 
-let gen_initial_inv_vc : MFSet.t -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
-    =
+let gen_initial_inv_vc :
+    Inv.inv_map -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f =
    let open Tz in
-   fun fset init_strg sstate ->
-   let (start_inv : mich_f list) =
-      apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
-        sstate.ss_start_si fset
-   in
-   let (init_strg_fmla : mich_f) =
-      apply_initial_storage ~sctx:sstate.ss_id sstate.ss_start_mci
-        sstate.ss_start_si init_strg
-   in
-   MF_and (init_strg_fmla :: start_inv)
+   fun imap init_strg sstate ->
+   if match sstate.ss_start_mci.mci_cutcat with
+      | MCC_trx_entry -> true
+      | _             -> false
+   then (
+     let (init_strg_fmla : mich_f) =
+        apply_initial_storage ~sctx:sstate.ss_id sstate.ss_start_mci
+          sstate.ss_start_si init_strg
+     in
+     let (trx_inv : mich_f) = MF_and (get_start_inv imap sstate) in
+     MF_imply (init_strg_fmla, trx_inv)
+   )
+   else VcError "gen_initial_inv_vc : wrong state" |> raise
 (* function gen_initial_inv_vc end *)
 
 let gen_refute_vc : Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f =

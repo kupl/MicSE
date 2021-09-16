@@ -59,26 +59,42 @@ let check_failed :
 let check_inductiveness :
     Smt.Ctx.t ->
     Smt.Solver.t ->
+    Tz.mich_v Tz.cc ->
     SSet.t ->
     Inv.inv_map ->
     (Inv.inv_map, Tz.sym_state) Result.t =
    let open Smt in
    let open Vc in
    let id = ref 0 in
-   fun ctx slvr bsset imap ->
+   fun ctx slvr istrg bsset imap ->
    let _ = incr id in
    SSet.fold bsset ~init:(Result.return imap) ~f:(fun inductive bs ->
        if Result.is_error inductive
        then inductive
        else (
-         let (sp : Tz.mich_f) = gen_sp (get_start_inv imap bs) bs in
-         let ((sat : Solver.satisfiability), _) = check_sat ctx slvr sp in
-         if not (Solver.is_sat sat)
+         (* 1. If state is started from Trx, check initial storage satisfies invariant candidate *)
+         let (cond1 : bool) =
+            if match bs.ss_start_mci.mci_cutcat with
+               | MCC_trx_entry -> true
+               | _             -> false
+            then
+              gen_initial_inv_vc imap istrg bs
+              |> check_val ctx slvr
+              |> fst
+              |> Solver.is_val
+            else true
+         in
+         if not cond1
          then Result.fail bs
+         (* 2. Check inductiveness of invariant candidate *)
          else (
-           let (vc : Tz.mich_f) = gen_inductiveness_vc imap bs in
-           let ((vld : Solver.validity), _) = check_val ctx slvr vc in
-           if not (Solver.is_val vld) then Result.fail bs else inductive
+           let (cond2 : bool) =
+              gen_inductiveness_vc imap bs
+              |> check_val ctx slvr
+              |> fst
+              |> Solver.is_val
+           in
+           if not cond2 then Result.fail bs else inductive
          )
        )
    )
@@ -261,7 +277,7 @@ let rec naive_run_wlst_atomic_action :
      let (remain_combs : InvSet.t) = InvSet.remove wlst.wl_combs comb in
      (* 2. Check inductiveness *)
      let (inductive : (inv_map, Tz.sym_state) Result.t) =
-        check_inductiveness cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
+        check_inductiveness cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg
           cfg.cfg_se_res.sr_blocked comb
      in
      if Result.is_ok inductive

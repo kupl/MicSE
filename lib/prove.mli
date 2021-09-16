@@ -11,6 +11,9 @@ exception PrvError of string
 (* Set of Tz.mich_f *)
 module MFSet : module type of Core.Set.Make (Tz.MichF_cmp)
 
+(* Map of set of Tz.mich_f *)
+module MFSMap : module type of Core.Map.Make (Tz.MFSet)
+
 (* Map of Tz.mich_cut_info *)
 module MCIMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
 
@@ -35,6 +38,7 @@ val check_failed :
 val check_inductiveness :
   Smt.Ctx.t ->
   Smt.Solver.t ->
+  Tz.mich_v Tz.cc ->
   SSet.t ->
   Inv.inv_map ->
   (Inv.inv_map, Tz.sym_state) Result.t
