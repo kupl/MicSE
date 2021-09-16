@@ -1006,15 +1006,20 @@ let gen_inductiveness_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
    MF_imply (sp, MF_and (get_block_inv imap sstate))
 (* function gen_inductiveness_vc end *)
 
-let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option =
+let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f =
    let open Tz in
+   let open TzUtil in
    let open MState in
    fun fset mstate ->
-   match cut_first_found_loop mstate with
-   | None          -> None
-   | Some p_mstate ->
-     let (start_state : sym_state) = get_first_ss p_mstate in
-     let (block_state : sym_state) = get_last_ss p_mstate in
+   let (start_state : sym_state) = get_first_ss mstate in
+   let (block_state : sym_state) = get_last_ss mstate in
+   if not
+        (equal_r_mich_cut_info
+           (get_reduced_mci start_state.ss_start_mci)
+           (get_reduced_mci block_state.ss_block_mci)
+        )
+   then VcError "gen_preservation_vc : wrong merged state" |> raise
+   else (
      let (start_fmla : mich_f list) =
         apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
           start_state.ss_start_si fset
@@ -1023,8 +1028,9 @@ let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f option =
         apply_inv_at_block ~sctx:block_state.ss_id block_state.ss_block_mci
           block_state.ss_block_si fset
      in
-     let (sp : mich_f) = gen_sp_from_ms start_fmla p_mstate in
-     Some (MF_imply (sp, MF_and block_fmla))
+     let (sp : mich_f) = gen_sp_from_ms start_fmla mstate in
+     MF_imply (sp, MF_and block_fmla)
+   )
 (* function gen_preservation_vc end *)
 
 let gen_initial_inv_vc : MFSet.t -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
