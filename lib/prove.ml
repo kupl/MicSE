@@ -70,11 +70,13 @@ let check_inductiveness :
        else (
          let (sp : Tz.mich_f) = gen_sp (get_start_inv imap bs) bs in
          let ((sat : Solver.satisfiability), _) = check_sat ctx slvr sp in
-         let (vc : Tz.mich_f) = gen_inductiveness_vc imap bs in
-         let ((vld : Solver.validity), _) = check_val ctx slvr vc in
-         if Solver.is_sat sat && Solver.is_val vld
-         then inductive
-         else Result.fail bs
+         if not (Solver.is_sat sat)
+         then Result.fail bs
+         else (
+           let (vc : Tz.mich_f) = gen_inductiveness_vc imap bs in
+           let ((vld : Solver.validity), _) = check_val ctx slvr vc in
+           if not (Solver.is_val vld) then Result.fail bs else inductive
+         )
        )
    )
 (* function check_inductiveness end *)
