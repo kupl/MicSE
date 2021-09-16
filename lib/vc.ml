@@ -740,6 +740,7 @@ let get_hd2 : 'a list -> 'a * 'a =
 let property_of_query :
     sctx:Tz.mich_sym_ctxt -> Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f =
    let open Tz in
+   let open TzUtil in
    fun ~sctx mci si ->
    match mci.mci_cutcat with
    | MCC_query qc -> (
@@ -747,30 +748,30 @@ let property_of_query :
      | Q_mutez_add_no_overflow ->
        let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
        MF_add_mmm_no_overflow
-         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+         (gen_mich_v_ctx v1 ~ctx:sctx, gen_mich_v_ctx v2 ~ctx:sctx)
      | Q_mutez_sub_no_underflow ->
        let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
        MF_sub_mmm_no_underflow
-         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+         (gen_mich_v_ctx v1 ~ctx:sctx, gen_mich_v_ctx v2 ~ctx:sctx)
      | Q_mutez_mul_mnm_no_overflow ->
        let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
        MF_mul_mnm_no_overflow
-         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+         (gen_mich_v_ctx v1 ~ctx:sctx, gen_mich_v_ctx v2 ~ctx:sctx)
      | Q_mutez_mul_nmm_no_overflow ->
        let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
        MF_mul_nmm_no_overflow
-         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+         (gen_mich_v_ctx v1 ~ctx:sctx, gen_mich_v_ctx v2 ~ctx:sctx)
      | Q_shiftleft_safe ->
        let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
        MF_shiftL_nnn_rhs_in_256
-         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+         (gen_mich_v_ctx v1 ~ctx:sctx, gen_mich_v_ctx v2 ~ctx:sctx)
      | Q_shiftright_safe ->
        let ((v1 : mich_v cc), (v2 : mich_v cc)) = get_hd2 si.si_mich in
        MF_shiftR_nnn_rhs_in_256
-         (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx, TzUtil.gen_mich_v_ctx v2 ~ctx:sctx)
+         (gen_mich_v_ctx v1 ~ctx:sctx, gen_mich_v_ctx v2 ~ctx:sctx)
      | Q_assertion ->
        let (v1 : mich_v cc) = get_hd1 si.si_mich in
-       MF_is_true (TzUtil.gen_mich_v_ctx v1 ~ctx:sctx)
+       MF_is_true (gen_mich_v_ctx v1 ~ctx:sctx)
    )
    | _            -> VcError "gen_query_property : wrong mci" |> raise
 (* function property_of_query end *)
@@ -782,15 +783,14 @@ let apply_initial_storage :
     Tz.mich_v Tz.cc ->
     Tz.mich_f =
    let open Tz in
+   let open TzUtil in
    fun ~sctx mci si init_strg ->
    match mci.mci_cutcat with
    | MCC_trx_entry ->
      let (param_strg : mich_v cc) = get_hd1 si.si_mich in
-     let (sym_strg : mich_v cc) = TzUtil.gen_dummy_cc (MV_cdr param_strg) in
+     let (sym_strg : mich_v cc) = gen_dummy_cc (MV_cdr param_strg) in
      MF_eq
-       ( TzUtil.gen_mich_v_ctx sym_strg ~ctx:sctx,
-         TzUtil.gen_mich_v_ctx init_strg ~ctx:sctx
-       )
+       (gen_mich_v_ctx sym_strg ~ctx:sctx, gen_mich_v_ctx init_strg ~ctx:sctx)
    | _             -> VcError "apply_initial_storage : wrong mci" |> raise
 (* function apply_initial_storage end *)
 
@@ -1021,13 +1021,10 @@ let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f =
    fun fset mstate ->
    let (start_state : sym_state) = get_first_ss mstate in
    let (block_state : sym_state) = get_last_ss mstate in
-   if not
-        (equal_r_mich_cut_info
-           (get_reduced_mci start_state.ss_start_mci)
-           (get_reduced_mci block_state.ss_block_mci)
-        )
-   then VcError "gen_preservation_vc : wrong merged state" |> raise
-   else (
+   if equal_r_mich_cut_info
+        (get_reduced_mci start_state.ss_start_mci)
+        (get_reduced_mci block_state.ss_block_mci)
+   then (
      let (start_fmla : mich_f list) =
         apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
           start_state.ss_start_si fset
@@ -1039,6 +1036,7 @@ let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f =
      let (sp : mich_f) = gen_sp_from_ms start_fmla mstate in
      MF_imply (sp, MF_and block_fmla)
    )
+   else VcError "gen_preservation_vc : wrong merged state" |> raise
 (* function gen_preservation_vc end *)
 
 let gen_initial_inv_vc :
