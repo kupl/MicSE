@@ -138,7 +138,6 @@ let rec combinate :
     InvSet.t =
    let open Inv in
    let open Res in
-   let (top_k : int) = 20 in
    let (threshold : int) = 100 in
    fun bsset failed_cp cinv targets combs acc_imap ->
    let next_comb : Inv.cand_map -> InvSet.t -> Inv.inv_map -> InvSet.t =
@@ -166,25 +165,15 @@ let rec combinate :
         |> List.rev
      in
      let (remains : cand_map) = RMCIMap.remove targets rmci in
-     (* 2. Get candidates from target *)
-     let (target : inv_map list) =
-        List.fold cands ~init:[] ~f:(fun acc fset ->
-            if List.length acc >= top_k
-            then acc
-            else (
-              let (updated_inv : inv_map) =
-                 update_inv_map acc_imap ~key:rmci ~value:fset
-              in
-              if check_failed bsset failed_cp rmci updated_inv
-              then acc (* remove already failed combination *)
-              else updated_inv :: acc
-            )
-        )
-     in
-     (* 3. Combinate candidates *)
+     (* 2. Combinate candidates *)
      let (new_combs : InvSet.t) =
-        List.fold target ~init:combs ~f:(fun acc_comb imap ->
-            next_comb remains acc_comb imap
+        List.fold cands ~init:combs ~f:(fun acc_comb fset ->
+            let (updated_inv : inv_map) =
+               update_inv_map acc_imap ~key:rmci ~value:fset
+            in
+            if check_failed bsset failed_cp rmci updated_inv
+            then acc_comb
+            else next_comb remains acc_comb updated_inv
         )
      in
      new_combs
