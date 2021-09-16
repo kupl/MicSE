@@ -55,7 +55,7 @@ end
 
 val add_constraints : c:Tz.mich_f list -> Tz.sym_state -> Tz.sym_state
 
-val mtz_constriant_if_it_is_or_true :
+val mtz_constraint_if_it_is_or_true :
   ctx:Tz.mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
 
 val add_mtz_constraint_if_it_is :
@@ -64,7 +64,7 @@ val add_mtz_constraint_if_it_is :
   Tz.sym_state ->
   Tz.sym_state
 
-val nat_constriant_if_it_is_or_true :
+val nat_constraint_if_it_is_or_true :
   ctx:Tz.mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
 
 val add_nat_constraint_if_it_is :

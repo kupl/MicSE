@@ -279,7 +279,7 @@ and mich_v =
   | MV_lit_lambda           of mich_t cc * mich_t cc * mich_i cc (* ('param) * ('ret) * ('param, 'ret) Mich.inst Mich.t -> ('param, 'ret) lambda *)
   (* embedded code with LAMBDA Michelson-instruction should be expressed with V_lambda_id, not V_lit_lambda *)
   | MV_lambda_unknown       of mich_t cc * mich_t cc (* ('param) * ('ret) -> ('param, 'ret) lambda *)
-  | MV_lambda_closure       of mich_v cc * mich_v cc (* (('p1, 'p2) pair, 'ret) lambda * 'p1 -> ('p2, 'ret) lambda *)
+  | MV_lambda_closure       of mich_v cc * mich_v cc (* 'p1 * (('p1, 'p2) pair, 'ret) lambda -> ('p2, 'ret) lambda *)
   (*************************************************************************)
   (* Map                                                                   *)
   (*************************************************************************)

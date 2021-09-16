@@ -55,7 +55,9 @@ let stack_equality_fmlas :
            { ctx_i = ctxt2; ctx_v = si2.si_param.ti_time }
          )
     in
-    [ ms_c; b_c; bcb_c; time_c ]
+    (* 6. contract equality *)
+    let ctrt_c = eqf si1.si_param.ti_contract si2.si_param.ti_contract in
+    [ ms_c; b_c; bcb_c; time_c; ctrt_c ]
   (* LOOP *)
   | (MCC_ln_loop, MCC_ln_loop)
   | (MCC_ln_loop, MCC_lb_loop)
