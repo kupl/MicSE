@@ -316,9 +316,10 @@ let tmp_gt : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~f:(fun tvl ->
        match tvl with
-       | [ (_, v1); (_, v2) ] -> make_gt (v1, v2)
-       | _                    ->
-         InvError "tmp_gt : wrong ingredient length" |> raise
+       | [ (_, v1); (_, v2) ] when not (equal_cc equal_mich_v v1 v2) ->
+         make_gt (v1, v2)
+       | [ (_, _); (_, _) ] -> None
+       | _ -> InvError "tmp_gt : wrong ingredient length" |> raise
    )
 (* function tmp_gt end *)
 
@@ -327,6 +328,7 @@ let tmp_add_2_eq : Igdt.igdt_sets -> MFSet.t =
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
+   let (zero : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
    let make_add_2_eq_mtz : mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3) ->
      let (add : mich_v cc) = gen_dummy_cc (MV_add_mmm (v1, v2)) in
@@ -340,8 +342,13 @@ let tmp_add_2_eq : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~f:(fun tvl ->
        match tvl with
-       | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3) ] ->
+       | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3) ]
+         when (not (equal_cc equal_mich_v v1 v3))
+              && (not (equal_cc equal_mich_v v2 v3))
+              && (not (equal_cc equal_mich_v v1 zero))
+              && not (equal_cc equal_mich_v v2 zero) ->
          make_add_2_eq_mtz (v1, v2, v3)
+       | [ (_, _); (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_add_2_eq : wrong ingredient length" |> raise
    )
 (* function tmp_add_2_eq end *)
@@ -351,6 +358,7 @@ let tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t =
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
+   let (zero : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
    let make_add_3_eq_mtz :
        mich_v cc * mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3, v4) ->
@@ -367,8 +375,15 @@ let tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~f:(fun tvl ->
        match tvl with
-       | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3); (MT_mutez, v4) ] ->
+       | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3); (MT_mutez, v4) ]
+         when (not (equal_cc equal_mich_v v1 v4))
+              && (not (equal_cc equal_mich_v v2 v4))
+              && (not (equal_cc equal_mich_v v3 v4))
+              && (not (equal_cc equal_mich_v v1 zero))
+              && (not (equal_cc equal_mich_v v2 zero))
+              && not (equal_cc equal_mich_v v3 zero) ->
          make_add_3_eq_mtz (v1, v2, v3, v4)
+       | [ (_, _); (_, _); (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_add_3_eq : wrong ingredient length" |> raise
    )
 (* function tmp_add_3_eq end *)
