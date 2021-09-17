@@ -1655,7 +1655,265 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
          sr_blocked = SSet.add ctxt_sr.sr_blocked blocked_state;
        }
      )
-   (* | MI_loop_left i -> TODO *)
+   | MI_loop_left i ->
+     (* refer MI_map case instead if you want to see
+           the most detailed symbolic execution among loop instructions.
+     *)
+     let (outer_cutcat, inner_cutcat) = (MCC_ln_loopleft, MCC_lb_loopleft) in
+     let (blocked_mci, thenbr_mci, elsebr_mci) =
+        ( { mci_loc = inst.cc_loc; mci_cutcat = outer_cutcat },
+          { mci_loc = inst.cc_loc; mci_cutcat = inner_cutcat },
+          { mci_loc = inst.cc_loc; mci_cutcat = outer_cutcat }
+        )
+     in
+     let branch_v = get_bmstack_1 ss in
+     let branch_t : mich_t cc = typ_of_val branch_v in
+     let (left_elem_t, right_elem_t) : mich_t cc * mich_t cc =
+        match branch_t.cc_v with
+        | MT_or (t1, t2) -> (t1, t2)
+        | _              ->
+          failwith "run_inst_i : MI_loop_left : left_elem_t, right_elem_t"
+     in
+     (* 1. Construct blocked-state *)
+     let blocked_state : sym_state = { ss with ss_block_mci = blocked_mci } in
+     (* 2. If this LOOP_LEFT-instruction is the instruction already met before, return only blocked-state. *)
+     if MciSet.mem ctxt_sr.sr_entered_loops blocked_mci
+     then { ctxt_sr with sr_blocked = SSet.singleton blocked_state }
+     else (
+       (* 2. +. update ctxt_sr - add entered-loop *)
+       let ctxt_sr : se_result =
+          {
+            ctxt_sr with
+            sr_entered_loops = MciSet.add ctxt_sr.sr_entered_loops blocked_mci;
+          }
+       in
+       (* 3. run-instruction inside LOOP_LEFT instruction *)
+       let tb_result : se_result =
+          let tb_ss_id = [ ctxt_sr.sr_sid_counter ] in
+          (* 3.1. construct entry sym-state *)
+          let tb_entry_ss : sym_state =
+             let tb_trx_image : trx_image =
+                blocked_state.ss_block_si.si_param
+             in
+             let (tb_entry_si, tb_entry_constraints) : sym_image * mich_f list =
+                let bsi = blocked_state.ss_block_si in
+                let ctx = tb_ss_id in
+                let ccmaker = gen_custom_cc inst in
+                let (michst, michct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_mich_stack x)
+                     ~ctx ~ccmaker (List.tl_exn bsi.si_mich)
+                in
+                let (dipst, dipct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_dip_stack x)
+                     ~ctx ~ccmaker bsi.si_dip
+                in
+                let (mapentryst, mapentryct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_map_entry_stack x)
+                     ~ctx ~ccmaker bsi.si_map_entry
+                in
+                let (mapexitst, mapexitct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_map_exit_stack x)
+                     ~ctx ~ccmaker bsi.si_map_exit
+                in
+                let (mapkeyst, mapkeyct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_map_mapkey_stack x)
+                     ~ctx ~ccmaker bsi.si_map_mapkey
+                in
+                let (iterst, iterct) =
+                   generate_symstack
+                     ~f:(fun x -> MSC_iter_stack x)
+                     ~ctx ~ccmaker bsi.si_iter
+                in
+                let balance_v : mich_v cc =
+                   MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_balance)
+                   |> gen_custom_cc inst
+                in
+                let bc_balance_v : mich_v cc =
+                   MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_bc_balance)
+                   |> gen_custom_cc inst
+                in
+                let constraints_abp =
+                   ge_balance_amount_in_non_trx_entry_constraint ~ctx
+                     ~amount_v:tb_trx_image.ti_amount ~balance_v
+                   :: michv_maybe_mtznat_constraints ~ctx
+                        ~v:tb_trx_image.ti_param
+                   @ [
+                       mtz_comes_from_constraint ~ctx
+                         ~mtz_v:tb_trx_image.ti_amount ~from_v:balance_v;
+                     ]
+                   @ amount_balance_mutez_constraints ~ctx
+                       ~amount_v:tb_trx_image.ti_amount ~balance_v ~bc_balance_v
+                in
+                let elem_v =
+                   MV_symbol (left_elem_t, MSC_mich_stack (List.length michst))
+                   |> gen_custom_cc inst
+                in
+                let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
+                ( {
+                    si_mich = elem_v :: michst;
+                    si_dip = dipst;
+                    si_map_entry = mapentryst;
+                    si_map_exit = mapexitst;
+                    si_map_mapkey = mapkeyst;
+                    si_iter = iterst;
+                    si_balance = balance_v;
+                    si_bc_balance = bc_balance_v;
+                    si_param = tb_trx_image;
+                  },
+                  michct
+                  @ dipct
+                  @ mapentryct
+                  @ mapexitct
+                  @ mapkeyct
+                  @ iterct
+                  @ elem_ct
+                  @ constraints_abp
+                )
+             in
+             {
+               ss_id = tb_ss_id;
+               ss_start_mci = thenbr_mci;
+               ss_block_mci = thenbr_mci;
+               ss_start_si = tb_entry_si;
+               ss_block_si = tb_entry_si;
+               ss_constraints = tb_entry_constraints;
+             }
+          in
+          (* be aware - between "after tb_symstate construction" and "before run-inst",
+               update ctxt_sr (increase sid-counter)
+               - becuase new sym-state constructed before.
+          *)
+          let ctxt_sr = ctxt_sr_sid_counter_incr ctxt_sr in
+          (* 3.2. run_inst_i recursive call *)
+          let tb_sr_result_raw : se_result =
+             run_inst_i i (ctxt_sr, tb_entry_ss)
+          in
+          (* 3.3. transform running states to blocked states *)
+          {
+            tb_sr_result_raw with
+            sr_running = SSet.empty;
+            sr_blocked =
+              SSet.union
+                (SSet.map tb_sr_result_raw.sr_running ~f:(fun rss ->
+                     { rss with ss_block_mci = thenbr_mci }
+                 )
+                )
+                tb_sr_result_raw.sr_blocked;
+          }
+       in
+       (* 3. +. update ctxt_sr - override it using tb_result
+          - it is okay to override since tb_result uses previous ctxt_sr in recursive call.
+       *)
+       let ctxt_sr : se_result = tb_result in
+       (* 4. construct MAP instruction escaping sym-state (else-branch) *)
+       let eb_symstate : sym_state =
+          let eb_ss_id = [ ctxt_sr.sr_sid_counter ] in
+          let eb_trx_image : trx_image = blocked_state.ss_block_si.si_param in
+          let (eb_entry_si, eb_entry_constraints) : sym_image * mich_f list =
+             let bsi = blocked_state.ss_block_si in
+             let ctx = eb_ss_id in
+             let ccmaker = gen_custom_cc inst in
+             let (michst, michct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_mich_stack x)
+                  ~ctx ~ccmaker (List.tl_exn bsi.si_mich)
+             in
+             let (dipst, dipct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_dip_stack x)
+                  ~ctx ~ccmaker bsi.si_dip
+             in
+             let (mapentryst, mapentryct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_map_entry_stack x)
+                  ~ctx ~ccmaker bsi.si_map_entry
+             in
+             let (mapexitst, mapexitct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_map_exit_stack x)
+                  ~ctx ~ccmaker bsi.si_map_exit
+             in
+             let (mapkeyst, mapkeyct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_map_mapkey_stack x)
+                  ~ctx ~ccmaker bsi.si_map_mapkey
+             in
+             let (iterst, iterct) =
+                generate_symstack
+                  ~f:(fun x -> MSC_iter_stack x)
+                  ~ctx ~ccmaker bsi.si_iter
+             in
+             let balance_v : mich_v cc =
+                MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_balance)
+                |> gen_custom_cc inst
+             in
+             let bc_balance_v : mich_v cc =
+                MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_bc_balance)
+                |> gen_custom_cc inst
+             in
+             let constraints_abp =
+                ge_balance_amount_in_non_trx_entry_constraint ~ctx
+                  ~amount_v:eb_trx_image.ti_amount ~balance_v
+                :: michv_maybe_mtznat_constraints ~ctx ~v:eb_trx_image.ti_param
+                @ [
+                    mtz_comes_from_constraint ~ctx ~mtz_v:eb_trx_image.ti_amount
+                      ~from_v:balance_v;
+                  ]
+                @ amount_balance_mutez_constraints ~ctx
+                    ~amount_v:eb_trx_image.ti_amount ~balance_v ~bc_balance_v
+             in
+             let elem_v =
+                MV_symbol (right_elem_t, MSC_mich_stack (List.length michst))
+                |> gen_custom_cc inst
+             in
+             let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
+             ( {
+                 si_mich = elem_v :: michst;
+                 si_dip = dipst;
+                 si_map_entry = mapentryst;
+                 si_map_exit = mapexitst;
+                 si_map_mapkey = mapkeyst;
+                 si_iter = iterst;
+                 si_balance = balance_v;
+                 si_bc_balance = bc_balance_v;
+                 si_param = eb_trx_image;
+               },
+               michct
+               @ dipct
+               @ mapentryct
+               @ mapexitct
+               @ mapkeyct
+               @ iterct
+               @ elem_ct
+               @ constraints_abp
+             )
+          in
+          {
+            ss_id = eb_ss_id;
+            ss_start_mci = elsebr_mci;
+            ss_block_mci = elsebr_mci;
+            ss_start_si = eb_entry_si;
+            ss_block_si = eb_entry_si;
+            ss_constraints = eb_entry_constraints;
+          }
+       in
+       (* 4. +. update ctxt_sr - increase sid-counter
+          - becuase new sym-state constructed before.
+       *)
+       let ctxt_sr : se_result = ctxt_sr_sid_counter_incr ctxt_sr in
+       (* RETURN *)
+       {
+         (* remember - current ctxt_sr contains tb_result in "3. +." *)
+         ctxt_sr with
+         sr_running = SSet.singleton eb_symstate;
+         sr_blocked = SSet.add ctxt_sr.sr_blocked blocked_state;
+       }
+     )
    | MI_lambda (t1, t2, i) ->
      push_bmstack ~v:(MV_lit_lambda (t1, t2, i) |> gen_custom_cc inst) ss
      |> running_ss_to_sr ctxt_sr
