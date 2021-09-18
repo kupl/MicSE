@@ -345,3 +345,23 @@ let string_of_res : config -> res -> string =
    in
    String.concat ~sep:"\n" [ ""; head; conf; summ; finf; prvd; rftd; fail ]
 (* function string_of_res end *)
+
+let find_precond : MFSSet.t SMYMap.t -> key:MState.summary -> MFSSet.t =
+  fun pmap ~key ->
+  SMYMap.find pmap key
+  |> function
+  | None      -> MFSSet.empty
+  | Some fset -> fset
+(* function find_precond end *)
+
+let update_precond :
+    MFSSet.t SMYMap.t ->
+    key:MState.summary ->
+    data:MFSSet.t ->
+    MFSSet.t SMYMap.t =
+  fun pmap ~key ~data ->
+  SMYMap.update pmap key ~f:(function
+  | None      -> data
+  | Some fset -> MFSSet.union fset data
+  )
+(* function update_precond end *)

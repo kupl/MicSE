@@ -160,3 +160,8 @@ type qres_classified = {
 val string_of_res_rough : config -> res -> string
 
 val string_of_res : config -> res -> string
+
+val find_precond : MFSSet.t SMYMap.t -> key:MState.summary -> MFSSet.t
+
+val update_precond :
+  MFSSet.t SMYMap.t -> key:MState.summary -> data:MFSSet.t -> MFSSet.t SMYMap.t
