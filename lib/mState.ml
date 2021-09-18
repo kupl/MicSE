@@ -683,6 +683,18 @@ let cut_first_found_loop : t -> t option =
         )
    )
 
+let cut_after_first_loop : t -> t =
+  fun ms ->
+  let (cms_opt : t option) = cut_first_found_loop ms in
+  if Option.is_none cms_opt
+  then ms
+  else (
+    let (cms : t) = Option.value_exn cms_opt in
+    let (rms : t) = List.drop ms (List.length cms) in
+    rms
+  )
+(* function cut_after_first_loop end *)
+
 let get_length : t -> int = List.length
 
 let get_summary : t -> summary =
