@@ -648,7 +648,7 @@ let get_last_ss : t -> sym_state = (fun ms -> List.last_exn ms |> fst)
 
 let get_tail_ms : t -> t = (fun ms -> List.tl_exn ms)
 
-let cut_first_found_loop : t -> t option =
+let cut_first_found_loop : t -> (t * t) option =
    let proper_mcc : mich_cut_category -> bool = function
    | MCC_trx_entry
    | MCC_lb_loop
@@ -677,23 +677,11 @@ let cut_first_found_loop : t -> t option =
             )
             |> fun (hd, tl) ->
             match tl with
-            | []           ->
+            | []                 ->
               failwith "MState : cut_first_found_loop : unexpected"
-            | (ss, _) :: _ -> hd @ [ (ss, []) ]
+            | (ss, _) :: remains -> (hd @ [ (ss, []) ], remains)
         )
    )
-
-let cut_after_first_loop : t -> t =
-  fun ms ->
-  let (cms_opt : t option) = cut_first_found_loop ms in
-  if Option.is_none cms_opt
-  then ms
-  else (
-    let (cms : t) = Option.value_exn cms_opt in
-    let (rms : t) = List.drop ms (List.length cms) in
-    rms
-  )
-(* function cut_after_first_loop end *)
 
 let get_length : t -> int = List.length
 
