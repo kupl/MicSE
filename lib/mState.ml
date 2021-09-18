@@ -27,6 +27,9 @@ let stack_equality_fmlas :
   let eqf x y =
      MF_eq ({ ctx_i = ctxt1; ctx_v = x }, { ctx_i = ctxt2; ctx_v = y })
   in
+  let eqf_cc c1 c2 x y =
+     MF_eq ({ ctx_i = c1; ctx_v = x }, { ctx_i = c2; ctx_v = y })
+  in
   (* let _ =
         Utils.Log.debug (fun m ->
             m "mcc-1 = %s , mcc-2 = %s"
@@ -76,22 +79,296 @@ let stack_equality_fmlas :
     and bcb_c = eqf si1.si_bc_balance si2.si_bc_balance
     and ti_c = trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param in
     [ ms_c; ds_c; maps_entry_c; maps_exit_c; is_c; b_c; bcb_c; ti_c ]
-  (* TODO *)
+  (* LOOP-LEFT *)
+  | (MCC_ln_loopleft, MCC_ln_loopleft)
+  | (MCC_ln_loopleft, MCC_lb_loopleft)
+  | (MCC_lb_loopleft, MCC_ln_loopleft)
+  | (MCC_lb_loopleft, MCC_lb_loopleft) ->
+    (* 1. common parts
+       - mich-stack tail, dip-stack, map-entry/exit/mapkey-stack,
+          iter-stack, balance, bc-balance, trx-images
+    *)
+    let ms_c_common =
+       MF_and
+         (List.map2_exn (List.tl_exn si1.si_mich) (List.tl_exn si2.si_mich)
+            ~f:eqf
+         )
+    and ds_c = MF_and (List.map2_exn si1.si_dip si2.si_dip ~f:eqf)
+    and map_entry_sc =
+       MF_and (List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf)
+    and map_exit_sc =
+       MF_and (List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf)
+    and map_mkey_sc =
+       MF_and (List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf)
+    and is_c = MF_and (List.map2_exn si1.si_iter si2.si_iter ~f:eqf)
+    and b_c = eqf si1.si_balance si2.si_balance
+    and bcb_c = eqf si1.si_bc_balance si2.si_bc_balance
+    and ti_c = trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param in
+    (* 2. Left/Right specific constraints *)
+    let lr_c =
+       let (h1, h2) = (List.hd_exn si1.si_mich, List.hd_exn si2.si_mich) in
+       let (left_typ, right_typ) =
+          match (typ_of_val h1).cc_v with
+          | MT_or (t1, t2) -> (t1, t2)
+          | _              ->
+            failwith
+              "MState : stack_equality_fmlas : LOOP_LEFT : 1 : unexpected"
+       in
+       match mcc_2 with
+       | MCC_ln_loopleft ->
+         (* Right *)
+         eqf h1 (MV_right (left_typ, h2) |> gen_dummy_cc)
+       | MCC_lb_loopleft ->
+         (* Left *) eqf h1 (MV_left (right_typ, h2) |> gen_dummy_cc)
+       | _               ->
+         failwith "MState : stack_equality_fmlas : LOOP_LEFT : 2 : unexpected"
+    in
+    [
+      ms_c_common;
+      ds_c;
+      map_entry_sc;
+      map_exit_sc;
+      map_mkey_sc;
+      is_c;
+      b_c;
+      bcb_c;
+      ti_c;
+      lr_c;
+    ]
+  (* ITER *)
   (*
-          (* LOOP-LEFT *)
-          | (MCC_ln_loopleft, MCC_ln_loopleft) -> () (* TODO *)
-          | (MCC_ln_loopleft, MCC_lb_loopleft) -> () (* TODO *)
-          | (MCC_lb_loopleft, MCC_ln_loopleft) -> () (* TODO *)
-          | (MCC_lb_loopleft, MCC_lb_loopleft) -> () (* TODO *)
-       *)
-  (*
-     (* ITER *)
-     | (MCC_ln_iter, MCC_ln_iter) -> () (* TODO *)
-     | (MCC_ln_iter, MCC_lb_iter) -> () (* TODO *)
-     | (MCC_lb_iter, MCC_ln_iter) -> () (* TODO *)
-     | (MCC_lb_iter, MCC_lb_iter) -> () (* TODO *)
-     *)
+    [ln-ln]
+      mich1-tail = mich2
+      iter1 = iter2
+      mich1-head = empty-container
+    [ln-lb]
+      mich1-tail = mich2-tail
+      iter1 = iter2-tail
+      mich1-head = mich2-head + iter2-head
+      (set,map : iter2-head has no mich2-head key)
+    [lb-ln]
+      mich1 = mich2
+      iter1-tail = iter2
+      iter1-head = empty-container
+    [lb-lb]
+      mich1 = mich2-tail
+      iter1-tail = iter2-tail
+      iter1-head = mich2-head + iter2-head
+      (set,map : iter2-head has no mich2-head key)
+  *)
+  | (MCC_ln_iter, MCC_ln_iter)
+  | (MCC_ln_iter, MCC_lb_iter)
+  | (MCC_lb_iter, MCC_ln_iter)
+  | (MCC_lb_iter, MCC_lb_iter) ->
+    (* 1. common parts
+       - dip-stack, map-entry/exit/mapkey-stack, balance, bc-balance, trx-images
+    *)
+    let ds_c = MF_and (List.map2_exn si1.si_dip si2.si_dip ~f:eqf)
+    and map_entry_sc =
+       MF_and (List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf)
+    and map_exit_sc =
+       MF_and (List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf)
+    and map_mkey_sc =
+       MF_and (List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf)
+    and b_c = eqf si1.si_balance si2.si_balance
+    and bcb_c = eqf si1.si_bc_balance si2.si_bc_balance
+    and ti_c = trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param in
+    (* 2. non-common parts - mich-stack & iter-stack *)
+    let (ms_c_common, is_c_common, iter_specific_c) : mich_f * mich_f * mich_f =
+       match (mcc_1, mcc_2) with
+       | (MCC_ln_iter, MCC_ln_iter) ->
+         let (m1h, m1t, m2) =
+            (List.hd_exn si1.si_mich, List.tl_exn si1.si_mich, si2.si_mich)
+         in
+         let empty_container =
+            match (typ_of_val m1h).cc_v with
+            | MT_list t       -> MV_nil t |> gen_dummy_cc
+            | MT_set t        -> MV_empty_set t |> gen_dummy_cc
+            | MT_map (t1, t2) -> MV_empty_map (t1, t2) |> gen_dummy_cc
+            | _               ->
+              failwith "MState : stack_equality_fmlas : ITER : 2 : unexpected"
+         in
+         ( MF_and (List.map2_exn m1t m2 ~f:eqf),
+           MF_and (List.map2_exn si1.si_iter si2.si_iter ~f:eqf),
+           eqf_cc ctxt1 ctxt1 m1h empty_container
+         )
+       | (MCC_ln_iter, MCC_lb_iter) -> (
+         let (m1h, m1t, m2h, m2t) =
+            ( List.hd_exn si1.si_mich,
+              List.tl_exn si1.si_mich,
+              List.hd_exn si2.si_mich,
+              List.tl_exn si2.si_mich
+            )
+         in
+         let (i1, i2h, i2t) =
+            (si1.si_iter, List.hd_exn si2.si_iter, List.tl_exn si2.si_iter)
+         in
+         ( MF_and (List.map2_exn m1t m2t ~f:eqf),
+           MF_and (List.map2_exn i1 i2t ~f:eqf),
+           match (typ_of_val m1h).cc_v with
+           | MT_list _ -> eqf m1h (MV_cons (m2h, i2h) |> gen_dummy_cc)
+           | MT_set _  ->
+             MF_and
+               [
+                 eqf m1h
+                   (MV_update_xbss (m2h, MV_lit_bool true |> gen_dummy_cc, i2h)
+                   |> gen_dummy_cc
+                   );
+                 MF_not
+                   (MF_is_true
+                      {
+                        ctx_i = ctxt2;
+                        ctx_v = MV_mem_xsb (m2h, i2h) |> gen_dummy_cc;
+                      }
+                   );
+               ]
+           | MT_map _  ->
+             let (m2_kv, m2_ev) =
+                (MV_car m2h |> gen_dummy_cc, MV_cdr m2h |> gen_dummy_cc)
+             in
+             MF_and
+               [
+                 eqf m1h
+                   (MV_update_xomm (m2_kv, MV_some m2_ev |> gen_dummy_cc, i2h)
+                   |> gen_dummy_cc
+                   );
+                 MF_not
+                   (MF_is_true
+                      {
+                        ctx_i = ctxt2;
+                        ctx_v = MV_mem_xmb (m2h, i2h) |> gen_dummy_cc;
+                      }
+                   );
+               ]
+           | _         ->
+             failwith "MState : stack_equality_fmlas : ITER : 3 : unexpected"
+         )
+       )
+       | (MCC_lb_iter, MCC_ln_iter) ->
+         let (i1h, i1t, i2) =
+            (List.hd_exn si1.si_iter, List.tl_exn si1.si_iter, si2.si_iter)
+         in
+         let empty_container =
+            match (typ_of_val i1h).cc_v with
+            | MT_list t       -> MV_nil t |> gen_dummy_cc
+            | MT_set t        -> MV_empty_set t |> gen_dummy_cc
+            | MT_map (t1, t2) -> MV_empty_map (t1, t2) |> gen_dummy_cc
+            | _               ->
+              failwith "MState : stack_equality_fmlas : ITER : 4 : unexpected"
+         in
+         ( MF_and (List.map2_exn si1.si_mich si2.si_mich ~f:eqf),
+           MF_and (List.map2_exn i1t i2 ~f:eqf),
+           eqf_cc ctxt1 ctxt1 i1h empty_container
+         )
+       | (MCC_lb_iter, MCC_lb_iter) -> (
+         let (m1, m2h, m2t) =
+            (si1.si_mich, List.hd_exn si2.si_mich, List.tl_exn si2.si_mich)
+         in
+         let (i1h, i1t, i2h, i2t) =
+            ( List.hd_exn si1.si_iter,
+              List.tl_exn si1.si_iter,
+              List.hd_exn si2.si_iter,
+              List.tl_exn si2.si_iter
+            )
+         in
+         ( MF_and (List.map2_exn m1 m2t ~f:eqf),
+           MF_and (List.map2_exn i1t i2t ~f:eqf),
+           match (typ_of_val m2h).cc_v with
+           | MT_list _ -> eqf i1h (MV_cons (m2h, i2h) |> gen_dummy_cc)
+           | MT_set _  ->
+             MF_and
+               [
+                 eqf i1h
+                   (MV_update_xbss (m2h, MV_lit_bool true |> gen_dummy_cc, i2h)
+                   |> gen_dummy_cc
+                   );
+                 MF_not
+                   (MF_is_true
+                      {
+                        ctx_i = ctxt2;
+                        ctx_v = MV_mem_xsb (m2h, i2h) |> gen_dummy_cc;
+                      }
+                   );
+               ]
+           | MT_map _  ->
+             let (m2_kv, m2_ev) =
+                (MV_car m2h |> gen_dummy_cc, MV_cdr m2h |> gen_dummy_cc)
+             in
+             MF_and
+               [
+                 eqf i1h
+                   (MV_update_xomm (m2_kv, MV_some m2_ev |> gen_dummy_cc, i2h)
+                   |> gen_dummy_cc
+                   );
+                 MF_not
+                   (MF_is_true
+                      {
+                        ctx_i = ctxt2;
+                        ctx_v = MV_mem_xmb (m2h, i2h) |> gen_dummy_cc;
+                      }
+                   );
+               ]
+           | _         ->
+             failwith "MState : stack_equality_fmlas : ITER : 5 : unexpected"
+         )
+       )
+       | _                          ->
+         failwith "MState : stack_equality_fmlas : ITER : 1 : unexpected"
+    in
+    [
+      ds_c;
+      map_entry_sc;
+      map_exit_sc;
+      map_mkey_sc;
+      b_c;
+      bcb_c;
+      ti_c;
+      ms_c_common;
+      is_c_common;
+      iter_specific_c;
+    ]
   (* MAP *)
+  (* TODO : check or rewrite existing code using constriaints below *)
+  (*
+    [ln-ln]
+      mich1-tail = mich2-tail
+      entry1 = entry2
+      exit1 = exit2
+      key1 = key2
+      mich1-head = empty-container (t1)
+      mich2-head = empty-container (t2)
+    [ln-lb]
+      mich1-tail = mich2-tail
+      entry1 = entry2-tail
+      exit1 = exit2-tail
+      (list : key1 = key2)
+      (map : key1 = key2-tail)
+      mich1-head = mich2-head + entry2-head
+      (map : entry2-head has no mich2-head key)
+      exit2-head = empty-container
+      (map : key2-head = mich2-head key)
+    [lb-ln]
+      mich1-tail = mich2-tail
+      entry1-tail = entry2
+      exit1-tail = exit2
+      (list : key1 = key2)
+      (map : key1-tail = key2)
+      (list : mich2-head = mich1-head + exit1-head)
+      (map : mich2-head = (key1-head, mich1-head) + exit1-head)
+      (map : entry1-head = empty-container (t1))
+    [lb-lb]
+      mich1-tail = mich2-tail
+      entry1-tail = entry2-tail
+      exit1-tail = exit2-tail
+      (list : key1 = key2)
+      (map : key1-tail = key2-tail)
+      (list : exit2-head = mich1-head + exit1-head)
+      (map : exit2-head = (key1-head, mich1-head) + exit1-head)
+      (map : exit1-head has no key1-head)
+      (list : entry1-head = mich2-head + entry2-head)
+      (map : entry1-head = (key2-head, mich2-head) + entry2-head)
+      (map : entry2-head has no key2-head)
+  *)
   | (MCC_ln_map, MCC_ln_map)
   | (MCC_ln_map, MCC_lb_map)
   | (MCC_lb_map, MCC_ln_map)
@@ -170,14 +447,16 @@ let stack_equality_fmlas :
          | (MT_list t1, MT_list t2) ->
            MF_and
              [
-               eqf s1_mshd (MV_nil t1 |> gen_dummy_cc);
-               eqf s2_mshd (MV_nil t2 |> gen_dummy_cc);
+               eqf_cc ctxt1 ctxt1 s1_mshd (MV_nil t1 |> gen_dummy_cc);
+               eqf_cc ctxt2 ctxt2 s2_mshd (MV_nil t2 |> gen_dummy_cc);
              ]
          | (MT_map (t1k, t1e), MT_map (t2k, t2e)) ->
            MF_and
              [
-               eqf s1_mshd (MV_empty_map (t1k, t1e) |> gen_dummy_cc);
-               eqf s2_mshd (MV_empty_map (t2k, t2e) |> gen_dummy_cc);
+               eqf_cc ctxt1 ctxt1 s1_mshd
+                 (MV_empty_map (t1k, t1e) |> gen_dummy_cc);
+               eqf_cc ctxt2 ctxt2 s2_mshd
+                 (MV_empty_map (t2k, t2e) |> gen_dummy_cc);
              ]
          | _ -> failwith "MState : stack_equality_fmlas : MAP : 4 : unexpected"
        )
@@ -196,7 +475,8 @@ let stack_equality_fmlas :
            MF_and
              [
                eqf s1_mshd (MV_cons (s2_mshd, m2_entry_hd) |> gen_dummy_cc);
-               eqf m2_exit_hd (MV_nil (typ_of_val m2_exit_hd) |> gen_dummy_cc);
+               eqf_cc ctxt2 ctxt2 m2_exit_hd
+                 (MV_nil (typ_of_val m2_exit_hd) |> gen_dummy_cc);
              ]
          | (MT_map (t1k, t1e), MT_pair (t2k, t2e))
            when equal_mich_t t1k.cc_v t2k.cc_v && equal_mich_t t1e.cc_v t2e.cc_v
@@ -219,7 +499,8 @@ let stack_equality_fmlas :
                  (MV_update_xomm (k, gen_dummy_cc (MV_some v), m2_entry_hd)
                  |> gen_dummy_cc
                  );
-               eqf m2_exit_hd (MV_empty_map (exit_tk, exit_te) |> gen_dummy_cc);
+               eqf_cc ctxt2 ctxt2 m2_exit_hd
+                 (MV_empty_map (exit_tk, exit_te) |> gen_dummy_cc);
              ]
          | _ -> failwith "MState : stack_equality_fmlas : MAP : 5 : unexpected"
        )
@@ -234,8 +515,10 @@ let stack_equality_fmlas :
          | (t1, MT_list t2) when equal_mich_t t1 t2.cc_v ->
            MF_and
              [
-               eqf s2_mshd (MV_cons (s1_mshd, m1_exit_hd) |> gen_dummy_cc);
-               eqf m1_entry_hd (MV_nil (typ_of_val m1_entry_hd) |> gen_dummy_cc);
+               eqf_cc ctxt2 ctxt1 s2_mshd
+                 (MV_cons (s1_mshd, m1_exit_hd) |> gen_dummy_cc);
+               eqf_cc ctxt1 ctxt1 m1_entry_hd
+                 (MV_nil (typ_of_val m1_entry_hd) |> gen_dummy_cc);
              ]
          | (t1e, MT_map (_, t2e)) when equal_mich_t t1e t2e.cc_v ->
            let (entry_tk, entry_te) =
@@ -255,7 +538,7 @@ let stack_equality_fmlas :
                  |> gen_dummy_cc
                  )
                  s2_mshd;
-               eqf m1_entry_hd
+               eqf_cc ctxt1 ctxt1 m1_entry_hd
                  (MV_empty_map (entry_tk, entry_te) |> gen_dummy_cc);
              ]
          | _ -> failwith "MState : stack_equality_fmlas : MAP : 8 : unexpected"
