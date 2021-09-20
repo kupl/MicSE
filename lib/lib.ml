@@ -8,6 +8,7 @@ module Prove = Prove
 module Refute = Refute
 module Res = Res
 module Se = Se
+module SexpUtil = SexpUtil
 module Smt = Smt
 module Te = Te
 module Tz = Tz
