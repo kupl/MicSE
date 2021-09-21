@@ -394,7 +394,7 @@ let naive_run_escape_condition : Res.config -> Res.res -> bool =
       Utils.Time.is_timeout cfg_timer
    then (
      Utils.Log.debug (fun m ->
-         m "Prove : naive_run_res_escape_condition : TIMEOUT!!!"
+         m "Prove : naive_run_escape_condition : TIMEOUT!!!"
      );
      true
    )
@@ -402,7 +402,7 @@ let naive_run_escape_condition : Res.config -> Res.res -> bool =
            Utils.Memory.is_memoryout cfg_memory
    then (
      Utils.Log.debug (fun m ->
-         m "Prove : naive_run_res_escape_condition : MEMORYOUT!!!"
+         m "Prove : naive_run_escape_condition : MEMORYOUT!!!"
      );
      true
    )
@@ -413,12 +413,12 @@ let naive_run_escape_condition : Res.config -> Res.res -> bool =
            )
    then (
      Utils.Log.debug (fun m ->
-         m "Prove : naive_run_res_escape_condition : ALL NON-UNKNOWN!!!"
+         m "Prove : naive_run_escape_condition : ALL NON-UNKNOWN!!!"
      );
      true
    )
    else false
-(* function naive_run_res_escape_condition end *)
+(* function naive_run_escape_condition end *)
 
 let naive_run : Res.config -> Res.res -> Res.res =
    let rec naive_run_i : Res.config -> Res.res -> Res.res =
