@@ -10,7 +10,7 @@ open! Core
 (******************************************************************************)
 (******************************************************************************)
 
-let initial_run_res_atomic_action : Res.config -> Res.res -> Res.res =
+let initial_prove_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    let open Res in
    fun cfg res ->
    let (r_qr_lst : Res.qres list) =
@@ -19,7 +19,7 @@ let initial_run_res_atomic_action : Res.config -> Res.res -> Res.res =
       )
    in
    { res with r_qr_lst }
-(* function initial_run_res_atomic_action end *)
+(* function initial_prove_run_res_atomic_action end *)
 
 (******************************************************************************)
 (******************************************************************************)
@@ -89,7 +89,7 @@ let naive_run : Res.config -> Res.res -> Res.res =
       )
    in
    let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
-   let (p_res : Res.res) = initial_run_res_atomic_action cfg res in
+   let (p_res : Res.res) = initial_prove_run_res_atomic_action cfg res in
    let _ = Utils.Log.info (fun m -> m "> Prover Turn End") in
    naive_run_i cfg p_res
 (* function naive_run end *)
