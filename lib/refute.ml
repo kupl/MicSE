@@ -142,21 +142,29 @@ let naive_run_qres_atomic_action : Res.config -> Res.res -> Res.qres -> Res.qres
      | None   -> { qr with qr_exp_ppaths = new_ppset; qr_exp_cnt = new_count }
    )
 
-let naive_run_res_escape_condition : Res.config -> Res.res -> bool =
+let naive_run_escape_condition : Res.config -> Res.res -> bool =
    let open Res in
-   fun { cfg_timer; _ } { r_qr_lst; _ } ->
-   (* 1. Timeout *)
-   if Utils.Time.is_timeout cfg_timer
+   fun { cfg_timer; cfg_memory; _ } { r_qr_lst; _ } ->
+   if (* 1. Timeout *)
+      Utils.Time.is_timeout cfg_timer
    then (
      let _ =
         (* Debugging info *)
         Utils.Log.debug (fun m ->
-            m "Refute : naive_run_res_escape_condition : TIMEOUT!!!"
+            m "Refute : naive_run_escape_condition : TIMEOUT!!!"
         )
      in
      true
    )
-   else if (* 2. Every queries are PF_p or RF_r or RF_f *)
+   else if (* 2. Memoryout *)
+           Utils.Memory.is_memoryout cfg_memory
+   then (
+     Utils.Log.debug (fun m ->
+         m "Refute : naive_run_escape_condition : MEMORYOUT!!!"
+     );
+     true
+   )
+   else if (* 3. Every queries are PF_p or RF_r or RF_f *)
            List.for_all r_qr_lst ~f:(fun qres ->
                equal_prover_flag qres.qr_prv_flag PF_p
                || not (equal_refuter_flag qres.qr_rft_flag RF_u)
@@ -165,7 +173,7 @@ let naive_run_res_escape_condition : Res.config -> Res.res -> bool =
      let _ =
         (* Debugging info *)
         Utils.Log.debug (fun m ->
-            m "Refute : naive_run_res_escape_condition : ALL NON-UNKNOWN!!!"
+            m "Refute : naive_run_escape_condition : ALL NON-UNKNOWN!!!"
         )
      in
      true
@@ -189,6 +197,6 @@ let rec naive_run : Res.config -> Res.res -> Res.res =
      (* DEBUGGING INFOs *)
      Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res))
   in
-  if naive_run_res_escape_condition cfg res
+  if naive_run_escape_condition cfg res
   then res
   else naive_run cfg (naive_run_res_atomic_action cfg res)

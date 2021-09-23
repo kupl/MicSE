@@ -44,8 +44,10 @@ let naive_run_escape_condition : Res.config -> Res.res -> bool =
    )
    else if (* 2. Every queries are PF_p or PF_f or RF_r or RF_f *)
            List.for_all r_qr_lst ~f:(fun { qr_prv_flag; qr_rft_flag; _ } ->
-               (not (equal_prover_flag qr_prv_flag PF_u))
-               && not (equal_refuter_flag qr_rft_flag RF_u)
+               equal_prover_flag qr_prv_flag PF_p
+               || equal_refuter_flag qr_rft_flag RF_r
+               || equal_prover_flag qr_prv_flag PF_f
+                  && equal_refuter_flag qr_rft_flag RF_f
            )
    then (
      Utils.Log.debug (fun m ->
@@ -68,7 +70,11 @@ let naive_run : Res.config -> Res.res -> Res.res =
           )
        in
        let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
-       let (p_res : Res.res) = Prove.naive_run_res_atomic_action cfg res in
+       let (p_res : Res.res) =
+          if Prove.naive_run_escape_condition cfg res
+          then res
+          else Prove.naive_run_res_atomic_action cfg res
+       in
        let _ = Utils.Log.info (fun m -> m "> Prover Turn End") in
        let _ =
           Utils.Log.info (fun m ->
@@ -76,7 +82,11 @@ let naive_run : Res.config -> Res.res -> Res.res =
           )
        in
        let _ = Utils.Log.info (fun m -> m "> Refuter Turn Start") in
-       let (r_res : Res.res) = Refute.naive_run_res_atomic_action cfg p_res in
+       let (r_res : Res.res) =
+          if Refute.naive_run_escape_condition cfg p_res
+          then p_res
+          else Refute.naive_run_res_atomic_action cfg p_res
+       in
        let _ = Utils.Log.info (fun m -> m "> Refuter Turn End") in
        naive_run_i cfg r_res
      )
