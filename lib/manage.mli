@@ -10,6 +10,8 @@ exception ManageError of string
 
 val initial_prove_run_res_atomic_action : Res.config -> Res.res -> Res.res
 
+val initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res
+
 (******************************************************************************)
 (******************************************************************************)
 (* Entry Point                                                                *)

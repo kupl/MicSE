@@ -21,6 +21,28 @@ let initial_prove_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    { res with r_qr_lst }
 (* function initial_prove_run_res_atomic_action end *)
 
+let initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res =
+   let open Res in
+   fun cfg res ->
+   let (r_qr_lst : Res.qres list) =
+      List.map res.r_qr_lst ~f:(fun qres ->
+          let (r_opt : (Res.PPath.t * Smt.Model.t) option) =
+             PPSet.fold qres.qr_exp_ppaths ~init:None ~f:(fun r_opt eppath ->
+                 if Option.is_some r_opt
+                 then r_opt
+                 else
+                   Refute.refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg
+                     eppath
+             )
+          in
+          if Option.is_some r_opt
+          then { qres with qr_rft_flag = RF_r; qr_rft_ppath = r_opt }
+          else qres
+      )
+   in
+   { res with r_qr_lst }
+(* function initial_refute_run_res_atomic_action end *)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Entry Point                                                                *)
@@ -101,5 +123,13 @@ let naive_run : Res.config -> Res.res -> Res.res =
    let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
    let (p_res : Res.res) = initial_prove_run_res_atomic_action cfg res in
    let _ = Utils.Log.info (fun m -> m "> Prover Turn End") in
-   naive_run_i cfg p_res
+   let _ =
+      Utils.Log.info (fun m ->
+          m "> Mid-Report: %s" (Res.string_of_res_rough cfg p_res)
+      )
+   in
+   let _ = Utils.Log.info (fun m -> m "> Refuter Turn Start") in
+   let (r_res : Res.res) = initial_refute_run_res_atomic_action cfg p_res in
+   let _ = Utils.Log.info (fun m -> m "> Refuter Turn End") in
+   naive_run_i cfg r_res
 (* function naive_run end *)
