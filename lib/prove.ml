@@ -64,10 +64,9 @@ let check_inductiveness :
     Inv.inv_map ->
     (Inv.inv_map, Tz.sym_state) Result.t =
    let open Smt in
+   let open Tz in
    let open Vc in
-   let id = ref 0 in
    fun ctx slvr istrg bsset imap ->
-   let _ = incr id in
    SSet.fold bsset ~init:(Result.return imap) ~f:(fun inductive bs ->
        if Result.is_error inductive
        then inductive
@@ -77,22 +76,24 @@ let check_inductiveness :
             if match bs.ss_start_mci.mci_cutcat with
                | MCC_trx_entry -> true
                | _             -> false
-            then
-              gen_initial_inv_vc imap istrg bs
-              |> check_val ctx slvr
-              |> fst
-              |> Solver.is_val
+            then (
+              let (vc : mich_f) =
+                 gen_initial_inv_vc imap istrg bs |> TzUtil.opt_mf
+              in
+              let ((vld : Solver.validity), _) = check_val ctx slvr vc in
+              Solver.is_val vld
+            )
             else true
          in
          if not cond1
-         then Result.fail bs
-         (* 2. Check inductiveness of invariant candidate *)
+         then Result.fail bs (* 2. Check inductiveness of invariant candidate *)
          else (
            let (cond2 : bool) =
-              gen_inductiveness_vc imap bs
-              |> check_val ctx slvr
-              |> fst
-              |> Solver.is_val
+              let (vc : mich_f) =
+                 gen_inductiveness_vc imap bs |> TzUtil.opt_mf
+              in
+              let ((vld : Solver.validity), _) = check_val ctx slvr vc in
+              Solver.is_val vld
            in
            if not cond2 then Result.fail bs else inductive
          )
@@ -186,7 +187,7 @@ let prove : Smt.Ctx.t -> Smt.Solver.t -> Inv.inv_map -> SSet.t -> SSet.t =
    let open Vc in
    fun ctx slvr imap unk_qs ->
    SSet.filter unk_qs ~f:(fun qs ->
-       let (vc : Tz.mich_f) = gen_query_vc imap qs in
+       let (vc : Tz.mich_f) = gen_query_vc imap qs |> TzUtil.opt_mf in
        let ((vld : Solver.validity), _) = check_val ctx slvr vc in
        not (Solver.is_val vld)
    )
@@ -197,42 +198,6 @@ let prove : Smt.Ctx.t -> Smt.Solver.t -> Inv.inv_map -> SSet.t -> SSet.t =
 (* Naïve Run                                                                  *)
 (******************************************************************************)
 (******************************************************************************)
-
-(* Query Result ***************************************************************)
-
-let naive_run_qres_escape_condition : Res.config -> Res.qres -> bool =
-   let open Res in
-   fun { cfg_timer; cfg_memory; _ } { qr_prv_flag; qr_rft_flag; _ } ->
-   if (* 1. Timeout *)
-      Utils.Time.is_timeout cfg_timer
-   then true
-   else if (* 2. Memoryout *)
-           Utils.Memory.is_memoryout cfg_memory
-   then true
-   else if (* 3. Query result is already judged *)
-           equal_refuter_flag qr_rft_flag RF_r
-           || not (equal_prover_flag qr_prv_flag PF_u)
-   then true
-   else false
-(* function naive_run_res_escape_condition end *)
-
-let naive_run_qres_atomic_action :
-    Res.config -> Inv.inv_map -> Res.qres -> Res.qres =
-   let open Res in
-   fun cfg imap qres ->
-   if naive_run_qres_escape_condition cfg qres
-   then qres
-   else (
-     let (qr_unk_qs : SSet.t) =
-        prove cfg.cfg_smt_ctxt cfg.cfg_smt_slvr imap qres.qr_unk_qs
-     in
-     let (qr_prv_flag : prover_flag) =
-        if SSet.is_empty qr_unk_qs then PF_p else qres.qr_prv_flag
-     in
-     let (new_qres : qres) = { qres with qr_unk_qs; qr_prv_flag } in
-     new_qres
-   )
-(* function naive_run_qres_atomic_action end *)
 
 (* Worklist *******************************************************************)
 
@@ -337,6 +302,42 @@ let rec naive_run_wlst_atomic_action :
      )
    )
 (* function naive_run_wlst_atomic_action end *)
+
+(* Query Result ***************************************************************)
+
+let naive_run_qres_escape_condition : Res.config -> Res.qres -> bool =
+   let open Res in
+   fun { cfg_timer; cfg_memory; _ } { qr_prv_flag; qr_rft_flag; _ } ->
+   if (* 1. Timeout *)
+      Utils.Time.is_timeout cfg_timer
+   then true
+   else if (* 2. Memoryout *)
+           Utils.Memory.is_memoryout cfg_memory
+   then true
+   else if (* 3. Query result is already judged *)
+           equal_refuter_flag qr_rft_flag RF_r
+           || not (equal_prover_flag qr_prv_flag PF_u)
+   then true
+   else false
+(* function naive_run_res_escape_condition end *)
+
+let naive_run_qres_atomic_action :
+    Res.config -> Inv.inv_map -> Res.qres -> Res.qres =
+   let open Res in
+   fun cfg imap qres ->
+   if naive_run_qres_escape_condition cfg qres
+   then qres
+   else (
+     let (qr_unk_qs : SSet.t) =
+        prove cfg.cfg_smt_ctxt cfg.cfg_smt_slvr imap qres.qr_unk_qs
+     in
+     let (qr_prv_flag : prover_flag) =
+        if SSet.is_empty qr_unk_qs then PF_p else qres.qr_prv_flag
+     in
+     let (new_qres : qres) = { qres with qr_unk_qs; qr_prv_flag } in
+     new_qres
+   )
+(* function naive_run_qres_atomic_action end *)
 
 (* Result *********************************************************************)
 
