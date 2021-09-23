@@ -123,6 +123,10 @@ type config = {
   (* Environment for SMT solver *)
   cfg_smt_ctxt : Smt.Ctx.t;
   cfg_smt_slvr : Smt.Solver.t;
+  (* Top-k setting *)
+  cfg_ppath_k : int;
+  cfg_cand_k : int;
+  cfg_comb_k : int;
 }
 [@@deriving sexp, compare, equal]
 
@@ -207,6 +211,9 @@ let init_config :
     cfg_imap = Igdt.get_igdts_map cfg_se_res.sr_blocked cfg_istrg mv_literal_set;
     cfg_smt_ctxt;
     cfg_smt_slvr = Vc.gen_solver cfg_smt_ctxt;
+    cfg_ppath_k = 1;
+    cfg_cand_k = 4;
+    cfg_comb_k = 100;
   }
 (* function init_config end *)
 

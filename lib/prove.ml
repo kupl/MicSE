@@ -129,6 +129,7 @@ let add_failed :
 (* function add_failed end *)
 
 let rec combinate :
+    int ->
     SSet.t ->
     Inv.failed_cp ->
     Inv.inv_map ->
@@ -138,10 +139,9 @@ let rec combinate :
     InvSet.t =
    let open Inv in
    let open Res in
-   let (threshold : int) = 100 in
-   fun bsset failed_cp cinv targets combs acc_imap ->
+   fun threshold bsset failed_cp cinv targets combs acc_imap ->
    let next_comb : Inv.cand_map -> InvSet.t -> Inv.inv_map -> InvSet.t =
-      combinate bsset failed_cp cinv
+      combinate threshold bsset failed_cp cinv
    in
    (* syntax sugar *)
    if InvSet.length combs >= threshold
@@ -345,8 +345,8 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    fun cfg res ->
    (* 1. Generate combinations *)
    let (wl_combs : InvSet.t) =
-      combinate cfg.cfg_se_res.sr_blocked res.r_wlst.wl_failcp res.r_inv
-        res.r_cands res.r_wlst.wl_combs res.r_inv
+      combinate cfg.cfg_comb_k cfg.cfg_se_res.sr_blocked res.r_wlst.wl_failcp
+        res.r_inv res.r_cands res.r_wlst.wl_combs res.r_inv
    in
    if InvSet.length wl_combs <= 0
    then

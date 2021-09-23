@@ -111,6 +111,10 @@ type config = {
   (* Environment for SMT solver *)
   cfg_smt_ctxt : Smt.Ctx.t;
   cfg_smt_slvr : Smt.Solver.t;
+  (* Top-k setting *)
+  cfg_ppath_k : int;
+  cfg_cand_k : int;
+  cfg_comb_k : int;
 }
 [@@deriving sexp, compare, equal]
 
