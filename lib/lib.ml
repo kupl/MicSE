@@ -1,6 +1,7 @@
 module ExecFlow = ExecFlow
 module Igdt = Igdt
 module Inv = Inv
+module Manage = Manage
 module Mich = Mich
 module MichParse = MichParse
 module MState = MState
