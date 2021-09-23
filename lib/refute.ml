@@ -28,6 +28,16 @@ module PPSet = Set.Make (Res.PPath)
 (******************************************************************************)
 (******************************************************************************)
 
+let select_pp : top_k:int -> PPSet.t -> PPSet.t * PPSet.t =
+   let open MState in
+   fun ~top_k ppaths ->
+   List.sort (PPSet.to_list ppaths) ~compare:(fun pp1 pp2 ->
+       compare_int (get_length pp1.pp_mstate) (get_length pp2.pp_mstate)
+   )
+   |> (fun l -> List.split_n l top_k)
+   |> (fun (l1, l2) -> (PPSet.of_list l1, PPSet.of_list l2))
+(* function select_pp end *)
+
 let expand_pp : m_view:Se.SSGraph.mci_view -> Res.PPath.t -> PPSet.t =
    let open Se.SSGraph in
    let open MState in
@@ -123,7 +133,6 @@ let naive_run_qres_escape_condition : Res.config -> Res.qres -> bool =
 (* function naive_run_qres_escape_condition end *)
 
 let naive_run_qres_atomic_action : Res.config -> Res.qres -> Res.qres =
-   let open MState in
    let open Res in
    fun cfg qres ->
    (* 1. Check escape conditions *)
@@ -135,12 +144,8 @@ let naive_run_qres_atomic_action : Res.config -> Res.qres -> Res.qres =
    then { qres with qr_rft_flag = RF_f }
    else (
      (* 2. Select some predetermined number of paths, perform logic for them only *)
-     let (selected_ppaths, unselected_ppaths) : PPSet.t * PPSet.t =
-        List.sort (PPSet.to_list qres.qr_exp_ppaths) ~compare:(fun pp1 pp2 ->
-            compare_int (get_length pp1.pp_mstate) (get_length pp2.pp_mstate)
-        )
-        |> (fun l -> List.split_n l cfg.cfg_ppath_k)
-        |> (fun (l1, l2) -> (PPSet.of_list l1, PPSet.of_list l2))
+     let ((selected_ppaths : PPSet.t), (unselected_ppaths : PPSet.t)) =
+        select_pp ~top_k:cfg.cfg_ppath_k qres.qr_exp_ppaths
      in
      (* 3. Expand and try to refute each selected paths *)
      let ( (qr_rft_ppath : (PPath.t * Smt.Model.t) option),

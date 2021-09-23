@@ -26,6 +26,8 @@ module PPSet : module type of Core.Set.Make (Res.PPath)
 (******************************************************************************)
 (******************************************************************************)
 
+val select_pp : top_k:int -> PPSet.t -> PPSet.t * PPSet.t
+
 val expand_pp : m_view:Se.SSGraph.mci_view -> Res.PPath.t -> PPSet.t
 
 val refute :
