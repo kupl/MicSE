@@ -174,7 +174,7 @@ let naive_run_qres_atomic_action : Res.config -> Res.qres -> Res.qres =
      if Option.is_some qr_rft_ppath
      then
        { qres with qr_rft_flag = RF_r; qr_rft_ppath; qr_exp_ppaths; qr_exp_cnt }
-     else { qres with qr_rft_ppath; qr_exp_cnt }
+     else { qres with qr_exp_ppaths; qr_exp_cnt }
    )
 (* function naive_run_qres_atomic_action end *)
 
@@ -186,9 +186,9 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    {
      res with
      r_qr_lst =
-       List.fold res.r_qr_lst ~init:[] ~f:(fun acc qres ->
+       List.fold_right res.r_qr_lst ~f:(fun qres acc ->
            naive_run_qres_atomic_action cfg qres :: acc
-       );
+       ) ~init:[];
    }
 (* function naive_run_res_atomic_action end *)
 
