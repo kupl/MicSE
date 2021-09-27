@@ -489,7 +489,7 @@ let gen_initial_cand_map :
              if not (is_fset_sat fset)
              then acc_cmap
              else
-               MFSMap.add acc_cmap ~key:fset ~data:(true, 0)
+               MFSMap.add acc_cmap ~key:fset ~data:(true, -1)
                |> function
                | `Duplicate ->
                  InvError "gen_initial_cand_map : duplicate key" |> raise
@@ -542,7 +542,7 @@ let strengthen_cand_map :
           else
             MFSMap.update new_cmap fset ~f:(function
             | None         -> (f1, s1)
-            | Some (f2, _) -> (f1 && f2, 0)
+            | Some (f2, _) -> (f1 && f2, -MFSet.length fset)
             )
       )
   )

@@ -44,10 +44,10 @@ val check_inductiveness :
   (Inv.inv_map, Tz.sym_state) Result.t
 
 val add_failed :
-  Inv.failed_cp * Inv.cand_map * InvSet.t ->
+  Inv.failed_cp * InvSet.t ->
   Tz.sym_state ->
   failed:Inv.inv_map ->
-  Inv.failed_cp * Inv.cand_map * InvSet.t
+  Inv.failed_cp * InvSet.t
 
 val combinate :
   int ->

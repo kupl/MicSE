@@ -102,12 +102,12 @@ let check_inductiveness :
 (* function check_inductiveness end *)
 
 let add_failed :
-    Inv.failed_cp * Inv.cand_map * InvSet.t ->
+    Inv.failed_cp * InvSet.t ->
     Tz.sym_state ->
     failed:Inv.inv_map ->
-    Inv.failed_cp * Inv.cand_map * InvSet.t =
+    Inv.failed_cp * InvSet.t =
    let open Inv in
-   fun (failed_cp, cmap, combs) state ~failed ->
+   fun (failed_cp, combs) state ~failed ->
    let (mcip : mci_pair) =
       cvt_mci_pair (state.ss_start_mci, state.ss_block_mci)
    in
@@ -117,16 +117,12 @@ let add_failed :
    let (new_failed_cp : failed_cp) =
       add_failed_cp failed_cp ~key:mcip ~value:candp
    in
-   let (new_cmap : cand_map) =
-      score_cand cmap ~key:mcip.mp_start ~value:cand_start ~point:(-1)
-      |> score_cand ~key:mcip.mp_block ~value:cand_block ~point:(-1)
-   in
    let (new_combs : InvSet.t) =
       InvSet.filter combs ~f:(fun comb ->
           not (check_contain_pair comb mcip candp)
       )
    in
-   (new_failed_cp, new_cmap, new_combs)
+   (new_failed_cp, new_combs)
 (* function add_failed end *)
 
 let rec combinate :
@@ -284,11 +280,10 @@ let rec naive_run_wlst_atomic_action :
        in
        (* 3-2-2. Update failed information *)
        let ( (new_failed_cp : failed_cp),
-             (new_cands : cand_map),
              (new_combs : InvSet.t)
            ) =
           add_failed
-            (wlst.wl_failcp, cands, wlst.wl_combs)
+            (wlst.wl_failcp, wlst.wl_combs)
             failed_state ~failed:comb
        in
        let (new_wlst : worklist) =
@@ -298,7 +293,7 @@ let rec naive_run_wlst_atomic_action :
             wl_comb_cnt = wlst.wl_comb_cnt + 1;
           }
        in
-       naive_run_wlst_atomic_action cfg (imap, new_cands, new_wlst)
+       naive_run_wlst_atomic_action cfg (imap, cands, new_wlst)
      )
    )
 (* function naive_run_wlst_atomic_action end *)
