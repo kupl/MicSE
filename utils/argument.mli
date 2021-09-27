@@ -8,13 +8,13 @@
 
 module Setting : sig
   type 'a t = {
-    value : 'a Stdlib.ref;
+    value : 'a ref;
     arg_lst : (Arg.key * Arg.spec * Arg.doc) list;
   }
 
-  type require = bool Stdlib.ref
+  type require = bool ref
 
-  val required_set : require Core.Set.Poly.t Stdlib.ref
+  val required_set : require Core.Set.Poly.t ref
 
   val add_required : unit -> require
 
@@ -68,18 +68,18 @@ end
 
 val create : string array option -> unit
 
-val input_file : string Stdlib.ref
+val input_file : string ref
 
-val input_storage_file : string Stdlib.ref
+val input_storage_file : string ref
 
-val memory_bound : int Stdlib.ref
+val memory_bound : int ref
 
-val total_timeout : int Stdlib.ref
+val total_timeout : int ref
 
-val z3_timeout : int Stdlib.ref
+val z3_timeout : int ref
 
-val debug_mode : bool Stdlib.ref
+val debug_mode : bool ref
 
-val inst_count : bool Stdlib.ref
+val inst_count : bool ref
 
-val verbose_mode : bool Stdlib.ref
+val verbose_mode : bool ref

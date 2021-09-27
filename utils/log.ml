@@ -9,6 +9,8 @@ open! Core
 (******************************************************************************)
 
 module Setting = struct
+  let log_created_flag : bool ref = ref false
+
   let log_counter : Mtime_clock.counter = Mtime_clock.counter ()
 
   let reporter : unit -> Logs.reporter =
@@ -79,13 +81,18 @@ let err : ('a, unit) Logs.msgf -> unit =
 
 let create : unit -> unit =
   fun () ->
-  Logs_threaded.enable ();
-  Logs.set_reporter (Setting.reporter ());
-  if !Argument.debug_mode
-  then Logs.set_level (Some Logs.Debug)
-  else if !Argument.verbose_mode
-  then Logs.set_level (Some Logs.Info)
-  else Logs.set_level (Some Logs.Warning);
-  info (fun m -> m "Logger Start.");
+  let _ = Logs_threaded.enable () in
+  let _ = Logs.set_reporter (Setting.reporter ()) in
+  let _ =
+     if !Argument.debug_mode
+     then Logs.set_level (Some Logs.Debug)
+     else if !Argument.verbose_mode
+     then Logs.set_level (Some Logs.Info)
+     else Logs.set_level (Some Logs.Warning)
+  in
+  let _ = Setting.log_created_flag := true in
+  let _ = info (fun m -> m "Logger Start.") in
   ()
 (* function create end *)
+
+let is_logger_created : unit -> bool = (fun () -> !Setting.log_created_flag)

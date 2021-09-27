@@ -7,6 +7,8 @@
 (******************************************************************************)
 
 module Setting : sig
+  val log_created_flag : bool ref
+
   val log_counter : Mtime_clock.counter
 
   val reporter : unit -> Logs.reporter
@@ -29,3 +31,5 @@ val warn : ('a, unit) Logs.msgf -> unit
 val err : ('a, unit) Logs.msgf -> unit
 
 val create : unit -> unit
+
+val is_logger_created : unit -> bool

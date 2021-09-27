@@ -1,5 +1,7 @@
 (* Argument Parser *)
 
+open! Core
+
 (******************************************************************************)
 (******************************************************************************)
 (* Setting                                                                    *)
@@ -8,26 +10,25 @@
 
 module Setting = struct
   type 'a t = {
-    value : 'a Stdlib.ref;
+    value : 'a ref;
     arg_lst : (Arg.key * Arg.spec * Arg.doc) list;
   }
 
-  type require = bool Stdlib.ref
+  type require = bool ref
 
-  let required_set : require Core.Set.Poly.t Stdlib.ref =
-     Stdlib.ref Core.Set.Poly.empty
+  let required_set : require Core.Set.Poly.t ref = ref Core.Set.Poly.empty
 
   let init_required : unit -> unit =
     (fun () -> Core.Set.Poly.iter !required_set ~f:(fun rf -> rf := false))
 
   let add_required : unit -> require =
     fun () ->
-    let rf : require = Stdlib.ref false in
+    let rf : require = ref false in
     let _ = required_set := Core.Set.Poly.add !required_set rf in
     rf
 
   let check_required : unit -> bool =
-    (fun () -> Core.Set.for_all !required_set ~f:Stdlib.( ! ))
+    (fun () -> Core.Set.for_all !required_set ~f:( ! ))
 
   let create_arg_lst :
       Arg.key list -> Arg.spec -> Arg.doc -> (Arg.key * Arg.spec * Arg.doc) list
@@ -42,7 +43,7 @@ module Setting = struct
 
   let input_file : string t =
      let (required : require) = add_required () in
-     let (value : string Stdlib.ref) = Stdlib.ref "" in
+     let (value : string ref) = ref "" in
      let (spec : Arg.spec) =
         Arg.String
           (fun s ->
@@ -54,37 +55,39 @@ module Setting = struct
 
   let input_storage_file : string t =
      let (required : require) = add_required () in
-     let (value : string Stdlib.ref) = Stdlib.ref "" in
+     let (value : string ref) = ref "" in
      let (spec : Arg.spec) =
         Arg.String
           (fun s ->
           required := true;
           value := s)
      in
-     let (doc : Arg.doc) = "file path for input initial storage information" in
+     let (doc : Arg.doc) =
+        "file path for input initial storage information (REQUIRED)"
+     in
      { value; arg_lst = create_arg_lst [ "--initial-storage"; "-S" ] spec doc }
 
   let memory_bound : int t =
-     let (value : int Stdlib.ref) = Stdlib.ref 5 in
+     let (value : int ref) = ref 5 in
      let (spec : Arg.spec) = Arg.Set_int value in
      let (doc : Arg.doc) =
-        "memory budget for entire MicSE in GB (default: 5GB)"
+        "memory budget for entire MicSE in GB (default: 5)"
      in
      { value; arg_lst = create_arg_lst [ "--memory-bound"; "-M" ] spec doc }
 
   let total_timeout : int t =
-     let (value : int Stdlib.ref) = Stdlib.ref 360 in
+     let (value : int ref) = ref 360 in
      let (spec : Arg.spec) = Arg.Set_int value in
      let (doc : Arg.doc) =
-        "time budget for entire MicSE execution in seconds. (default: 360s)"
+        "time budget for entire MicSE execution in seconds. (default: 360)"
      in
      { value; arg_lst = create_arg_lst [ "--total-timeout"; "-T" ] spec doc }
 
   let z3_timeout : int t =
-     let (value : int Stdlib.ref) = Stdlib.ref 30 in
+     let (value : int ref) = ref 30 in
      let (spec : Arg.spec) = Arg.Set_int value in
      let (doc : Arg.doc) =
-        "time budget for Z3 solver in seconds (default: 30s)"
+        "time budget for Z3 solver in seconds (default: 30)"
      in
      { value; arg_lst = create_arg_lst [ "--z3-timeout"; "-Z" ] spec doc }
 
@@ -93,13 +96,13 @@ module Setting = struct
   (****************************************************************************)
 
   let debug_mode : bool t =
-     let (value : bool Stdlib.ref) = Stdlib.ref false in
+     let (value : bool ref) = ref false in
      let (spec : Arg.spec) = Arg.Set value in
      let (doc : Arg.doc) = "print log over debug level" in
      { value; arg_lst = create_arg_lst [ "--debug"; "-d" ] spec doc }
 
   let inst_count : bool t =
-     let (value : bool Stdlib.ref) = Stdlib.ref false in
+     let (value : bool ref) = ref false in
      let (spec : Arg.spec) = Arg.Set value in
      let (doc : Arg.doc) =
         "print count of instructions in input Michelson file"
@@ -107,7 +110,7 @@ module Setting = struct
      { value; arg_lst = create_arg_lst [ "--inst-count" ] spec doc }
 
   let verbose_mode : bool t =
-     let (value : bool Stdlib.ref) = Stdlib.ref false in
+     let (value : bool ref) = ref false in
      let (spec : Arg.spec) = Arg.Set value in
      let (doc : Arg.doc) = "print log over info level" in
      { value; arg_lst = create_arg_lst [ "--verbose"; "-v" ] spec doc }
@@ -129,13 +132,13 @@ module Setting = struct
      @ verbose_mode.arg_lst
 
   let anon_fun : string -> unit =
-    (fun _ -> Stdlib.raise (Arg.Help "wrong anonymous argument(s)"))
+    (fun _ -> raise (Arg.Help "wrong anonymous argument(s)"))
 
   let finalize_parse : unit -> unit =
     fun () ->
-    (* 1. check required arguments *)
-    if Stdlib.not (check_required ())
-    then Stdlib.raise (Arg.Bad "all required argument are not set")
+    if (* 1. check required arguments *)
+       not (check_required ())
+    then raise (Arg.Bad "all required argument are not set")
     else ()
 end
 
@@ -161,18 +164,18 @@ let create : string array option -> unit =
   let _ = Setting.finalize_parse () in
   ()
 
-let input_file : string Stdlib.ref = Setting.input_file.value
+let input_file : string ref = Setting.input_file.value
 
-let input_storage_file : string Stdlib.ref = Setting.input_storage_file.value
+let input_storage_file : string ref = Setting.input_storage_file.value
 
-let memory_bound : int Stdlib.ref = Setting.memory_bound.value
+let memory_bound : int ref = Setting.memory_bound.value
 
-let total_timeout : int Stdlib.ref = Setting.total_timeout.value
+let total_timeout : int ref = Setting.total_timeout.value
 
-let z3_timeout : int Stdlib.ref = Setting.z3_timeout.value
+let z3_timeout : int ref = Setting.z3_timeout.value
 
-let debug_mode : bool Stdlib.ref = Setting.debug_mode.value
+let debug_mode : bool ref = Setting.debug_mode.value
 
-let inst_count : bool Stdlib.ref = Setting.inst_count.value
+let inst_count : bool ref = Setting.inst_count.value
 
-let verbose_mode : bool Stdlib.ref = Setting.verbose_mode.value
+let verbose_mode : bool ref = Setting.verbose_mode.value
