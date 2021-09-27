@@ -2553,7 +2553,22 @@ let run_inst_entry :
       {
         result with
         sr_blocked = SSet.map result.sr_blocked ~f:ss_constraint_optimization;
-        sr_queries = SSet.map result.sr_queries ~f:ss_constraint_optimization;
+        sr_queries =
+          SSet.map result.sr_queries ~f:ss_constraint_optimization
+          |> SSet.filter ~f:(fun ss ->
+                 if Option.is_none !Utils.Argument.query_pick
+                 then true
+                 else (
+                   let ((picked_lin : int), (picked_col : int)) =
+                      Option.value_exn !Utils.Argument.query_pick
+                   in
+                   match ss.ss_block_mci.mci_loc with
+                   | CCLOC_Pos (p1, _)
+                     when p1.lin = picked_lin && p1.col = picked_col ->
+                     true
+                   | _ -> false
+                 )
+             );
       }
    in
    (result_constraint_optimized, initial_ss)

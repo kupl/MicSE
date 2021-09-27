@@ -109,6 +109,24 @@ module Setting = struct
      in
      { value; arg_lst = create_arg_lst [ "--inst-count" ] spec doc }
 
+  let query_pick : (int * int) option t =
+     let (value : (int * int) option ref) = ref None in
+     let (spec : Arg.spec) =
+        Arg.Tuple
+          [
+            Arg.Int
+              (fun i1 ->
+              value := Some (i1, snd (Option.value !value ~default:(0, 0))));
+            Arg.Int
+              (fun i2 ->
+              value := Some (fst (Option.value !value ~default:(0, 0)), i2));
+          ]
+     in
+     let (doc : Arg.doc) =
+        "operate MicSE with only picked query (format: [lin] [col])"
+     in
+     { value; arg_lst = create_arg_lst [ "--query-pick"; "-q" ] spec doc }
+
   let verbose_mode : bool t =
      let (value : bool ref) = ref false in
      let (spec : Arg.spec) = Arg.Set value in
@@ -129,6 +147,7 @@ module Setting = struct
      @ z3_timeout.arg_lst
      @ debug_mode.arg_lst
      @ inst_count.arg_lst
+     @ query_pick.arg_lst
      @ verbose_mode.arg_lst
 
   let anon_fun : string -> unit =
@@ -139,6 +158,12 @@ module Setting = struct
     if (* 1. check required arguments *)
        not (check_required ())
     then raise (Arg.Bad "all required argument are not set")
+    else if (* 2. check validity of query pick *)
+            Option.is_some !(query_pick.value)
+            && (fst (Option.value_exn !(query_pick.value)) < 0
+               || snd (Option.value_exn !(query_pick.value)) < 0
+               )
+    then raise (Arg.Bad "invalid query picking is inputed")
     else ()
 end
 
@@ -177,5 +202,7 @@ let z3_timeout : int ref = Setting.z3_timeout.value
 let debug_mode : bool ref = Setting.debug_mode.value
 
 let inst_count : bool ref = Setting.inst_count.value
+
+let query_pick : (int * int) option ref = Setting.query_pick.value
 
 let verbose_mode : bool ref = Setting.verbose_mode.value

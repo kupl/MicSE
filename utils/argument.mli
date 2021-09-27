@@ -45,6 +45,8 @@ module Setting : sig
 
   val inst_count : bool t
 
+  val query_pick : (int * int) option t
+
   val debug_mode : bool t
 
   (****************************************************************************)
@@ -81,5 +83,7 @@ val z3_timeout : int ref
 val debug_mode : bool ref
 
 val inst_count : bool ref
+
+val query_pick : (int * int) option ref
 
 val verbose_mode : bool ref
