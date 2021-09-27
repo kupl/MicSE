@@ -1,12 +1,15 @@
 exception Error of string
 
+open Lib
+
 let _ =
    try
-     let (cfg, res) = Lib.ExecFlow.refuter_naive_run None in
-     let _ = Utils.Log.app (fun m -> m "%s" (Lib.Res.string_of_res cfg res)) in
+     let (cfg, res) = ExecFlow.refuter_naive_run None in
+     let _ = Utils.Log.app (fun m -> m "%s" (Res.string_of_res cfg res)) in
      ()
    with
-   | exc ->
+   | exc when Utils.Log.is_logger_created () ->
      Utils.Log.err (fun m ->
          m "%s\n%s" (exc |> Printexc.to_string) (Printexc.get_backtrace ())
      )
+   | exc -> raise exc

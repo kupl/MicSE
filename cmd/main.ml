@@ -5,10 +5,10 @@ open Lib
 let _ =
    try
      let _ = Utils.Log.app (fun m -> m "MicSE Start") in
-     let (cfg, res) = Lib.ExecFlow.prover_refuter_toss None in
+     let (cfg, res) = ExecFlow.prover_refuter_toss None in
      let _ =
         Utils.Log.app (fun m ->
-            m "Final-Report : %s" (Lib.Res.string_of_res cfg res)
+            m "Final-Report : %s" (Res.string_of_res cfg res)
         )
      in
      ()
