@@ -32,7 +32,7 @@ let select_pp : top_k:int -> PPSet.t -> PPSet.t * PPSet.t =
    let open MState in
    fun ~top_k ppaths ->
    List.sort (PPSet.to_list ppaths) ~compare:(fun pp1 pp2 ->
-       compare_int (get_length pp1.pp_mstate) (get_length pp2.pp_mstate)
+       -compare_int pp1.pp_score pp2.pp_score
    )
    |> (fun l -> List.split_n l top_k)
    |> (fun (l1, l2) -> (PPSet.of_list l1, PPSet.of_list l2))
@@ -186,9 +186,9 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    {
      res with
      r_qr_lst =
-       List.fold_right res.r_qr_lst ~f:(fun qres acc ->
-           naive_run_qres_atomic_action cfg qres :: acc
-       ) ~init:[];
+       List.fold_right res.r_qr_lst
+         ~f:(fun qres acc -> naive_run_qres_atomic_action cfg qres :: acc)
+         ~init:[];
    }
 (* function naive_run_res_atomic_action end *)
 
