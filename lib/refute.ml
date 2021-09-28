@@ -29,7 +29,6 @@ module PPSet = Set.Make (Res.PPath)
 (******************************************************************************)
 
 let select_pp : top_k:int -> PPSet.t -> PPSet.t * PPSet.t =
-   let open MState in
    fun ~top_k ppaths ->
    List.sort (PPSet.to_list ppaths) ~compare:(fun pp1 pp2 ->
        -compare_int pp1.pp_score pp2.pp_score
