@@ -75,6 +75,9 @@ type qres = {
   qr_rft_ppath : (PPath.t * Smt.Model.t) option;
   (* Count expanding_ppaths *)
   qr_exp_cnt : int;
+  (* Cooperation penalty *)
+  qr_coop_penalty : int;
+  qr_coop_stoptil : int;
 }
 [@@deriving sexp, compare, equal]
 

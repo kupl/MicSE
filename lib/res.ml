@@ -87,6 +87,9 @@ type qres = {
   qr_rft_ppath : (PPath.t * Smt.Model.t) option;
   (* Count expanding_ppaths *)
   qr_exp_cnt : int;
+  (* Cooperation penalty *)
+  qr_coop_penalty : int;
+  qr_coop_stoptil : int;
 }
 [@@deriving sexp, compare, equal]
 
@@ -147,6 +150,8 @@ let init_qres : Tz.mich_cut_info -> SSet.t -> qres =
     qr_prec_map = SMYMap.empty;
     qr_rft_ppath = None;
     qr_exp_cnt = SSet.length qr_unk_qs;
+    qr_coop_penalty = 0;
+    qr_coop_stoptil = 0;
   }
 (* function init_qres end *)
 
