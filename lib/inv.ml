@@ -556,14 +556,18 @@ let strengthen_cand_map :
       let (cur_inv : MFSet.t) = find_inv_by_rmci imap rmci in
       MFSMap.fold cset ~init:MFSMap.empty
         ~f:(fun ~key ~data:(f1, s1) new_cmap ->
-          let (fset : MFSet.t) = MFSet.union cur_inv key in
-          if not (is_fset_sat fset)
+          if MFSet.equal cur_inv key
           then new_cmap
-          else
-            MFSMap.update new_cmap fset ~f:(function
-            | None         -> (f1, s1)
-            | Some (f2, _) -> (f1 && f2, -MFSet.length fset)
-            )
+          else (
+            let (fset : MFSet.t) = MFSet.union cur_inv key in
+            if not (is_fset_sat fset)
+            then new_cmap
+            else
+              MFSMap.update new_cmap fset ~f:(function
+              | None          -> (f1, s1)
+              | Some (f2, s2) -> (f1 && f2, s2)
+              )
+          )
       )
   )
 (* function strengthen_cand_map *)
