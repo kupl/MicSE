@@ -583,6 +583,14 @@ let unflag_cand :
   )
 (* function unflag_cand end *)
 
+let get_score : cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> int =
+  fun cmap ~key ~value ->
+  MFSMap.find (find_cand_by_rmci cmap key) value
+  |> function
+  | Some (_, score) -> score
+  | None            -> InvError "get_score : wrong value" |> raise
+(* function get_score end *)
+
 (* Failed Candidate Pair ******************************************************)
 
 (* function cvt_cand_pair end *)

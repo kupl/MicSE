@@ -203,6 +203,8 @@ val score_cand :
 val unflag_cand :
   cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> cand_map
 
+val get_score : cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> int
+
 (* Failed Candidate Pair ******************************************************)
 
 val gen_initial_failed_cp : unit -> failed_cp
