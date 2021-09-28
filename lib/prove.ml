@@ -151,16 +151,7 @@ let rec combinate :
    else (
      (* 1. Target MCI for combinate *)
      let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
-     let (cands : MFSet.t list) =
-        find_cand_by_rmci targets rmci
-        |> MFSMap.filter ~f:(fun (f, _) -> f)
-        |> MFSMap.to_alist
-        |> List.sort ~compare:(fun (_, (_, s1)) (_, (_, s2)) ->
-               compare_int s1 s2
-           )
-        |> List.map ~f:fst
-        |> List.rev
-     in
+     let (cands : MFSet.t list) = find_ordered_cand_by_rmci targets rmci in
      let (remains : cand_map) = RMCIMap.remove targets rmci in
      (* 2. Combinate candidates *)
      let (new_combs : InvSet.t) =
@@ -279,12 +270,8 @@ let rec naive_run_wlst_atomic_action :
           Result.error inductive |> Option.value ~default:cfg.cfg_istate
        in
        (* 3-2-2. Update failed information *)
-       let ( (new_failed_cp : failed_cp),
-             (new_combs : InvSet.t)
-           ) =
-          add_failed
-            (wlst.wl_failcp, wlst.wl_combs)
-            failed_state ~failed:comb
+       let ((new_failed_cp : failed_cp), (new_combs : InvSet.t)) =
+          add_failed (wlst.wl_failcp, wlst.wl_combs) failed_state ~failed:comb
        in
        let (new_wlst : worklist) =
           {

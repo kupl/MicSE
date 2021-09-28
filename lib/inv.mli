@@ -185,6 +185,10 @@ val find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands
 
 val find_cand : cand_map -> Tz.mich_cut_info -> cands
 
+val find_ordered_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> MFSet.t list
+
+val find_ordered_cand : cand_map -> Tz.mich_cut_info -> MFSet.t list
+
 val find_cand_top_k_by_rmci :
   top_k:int -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list
 
