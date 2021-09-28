@@ -510,31 +510,43 @@ let find_cand : cand_map -> Tz.mich_cut_info -> cands =
   (fun cmap mci -> find_cand_by_rmci cmap (TzUtil.get_reduced_mci mci))
 (* function cand_map_find end *)
 
-let find_ordered_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> MFSet.t list =
-  fun cmap rmci ->
+let find_ordered_cand_by_rmci :
+    ?remove_unflaged:bool -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list =
+  fun ?(remove_unflaged = false) cmap rmci ->
   find_cand_by_rmci cmap rmci
-  |> MFSMap.filter ~f:fst
+  |> (if remove_unflaged then MFSMap.filter ~f:fst else Fun.id)
   |> MFSMap.to_alist
   |> List.sort ~compare:(fun (_, (_, s1)) (_, (_, s2)) -> -compare_int s1 s2)
   |> List.map ~f:fst
 (* function find_ordered_cand_by_rmci end *)
 
-let find_ordered_cand : cand_map -> Tz.mich_cut_info -> MFSet.t list =
-  (fun cmap mci -> find_ordered_cand_by_rmci cmap (TzUtil.get_reduced_mci mci))
+let find_ordered_cand :
+    ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> MFSet.t list =
+  fun ?(remove_unflaged = false) cmap mci ->
+  find_ordered_cand_by_rmci ~remove_unflaged cmap (TzUtil.get_reduced_mci mci)
 (* function find_ordered_cand end *)
 
 let find_cand_top_k_by_rmci :
-    top_k:int -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list =
-  fun ~top_k cmap rmci ->
-  find_ordered_cand_by_rmci cmap rmci
+    ?remove_unflaged:bool ->
+    top_k:int ->
+    cand_map ->
+    Tz.r_mich_cut_info ->
+    MFSet.t list =
+  fun ?(remove_unflaged = false) ~top_k cmap rmci ->
+  find_ordered_cand_by_rmci ~remove_unflaged cmap rmci
   |> (fun lst -> List.split_n lst top_k)
   |> fst
 (* function finc_cand_map_top_k_by_tmci end *)
 
-let find_cand_top_k : top_k:int -> cand_map -> Tz.mich_cut_info -> MFSet.t list
-    =
-  fun ~top_k cmap mci ->
-  find_cand_top_k_by_rmci ~top_k cmap (TzUtil.get_reduced_mci mci)
+let find_cand_top_k :
+    ?remove_unflaged:bool ->
+    top_k:int ->
+    cand_map ->
+    Tz.mich_cut_info ->
+    MFSet.t list =
+  fun ?(remove_unflaged = false) ~top_k cmap mci ->
+  find_cand_top_k_by_rmci ~remove_unflaged ~top_k cmap
+    (TzUtil.get_reduced_mci mci)
 (* function find_cand_map_top_k end *)
 
 let strengthen_cand_map :

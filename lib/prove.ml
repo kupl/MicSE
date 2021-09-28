@@ -151,7 +151,7 @@ let rec combinate :
    else (
      (* 1. Target MCI for combinate *)
      let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
-     let (cands : MFSet.t list) = find_ordered_cand_by_rmci targets rmci in
+     let (cands : MFSet.t list) = find_ordered_cand_by_rmci ~remove_unflaged:true targets rmci in
      let (remains : cand_map) = RMCIMap.remove targets rmci in
      (* 2. Combinate candidates *)
      let (new_combs : InvSet.t) =
