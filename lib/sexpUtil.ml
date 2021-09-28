@@ -20,3 +20,7 @@ let rec tz_remove_ctx_i_ctx_v : Sexp.t -> Sexp.t =
      tz_remove_ctx_i_ctx_v body
    | Atom _ as s -> s
    | List sl -> List (List.map ~f:tz_remove_ctx_i_ctx_v sl)
+
+let to_string : Sexp.t -> string =
+  fun sexp ->
+  sexp |> tz_cc_sexp_form |> tz_remove_ctx_i_ctx_v |> Sexp.to_string
