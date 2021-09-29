@@ -148,9 +148,9 @@ module Setting = struct
        arg_lst = create_arg_lst [ "--prec_random_rate"; "-pr" ] spec doc;
      }
 
-  let status_interval : int t =
-     let (value : int ref) = ref 10 in
-     let (spec : Arg.spec) = Arg.Set_int value in
+  let status_interval : int option t =
+     let (value : int option ref) = ref None in
+     let (spec : Arg.spec) = Arg.Int (fun v -> value := Some v) in
      let (doc : Arg.doc) =
         "set interval of printing intermediate status (interval: [0, ∞)"
      in
@@ -196,7 +196,8 @@ module Setting = struct
               )
     then raise (Arg.Bad "bad range of precondition-random-rate")
     else if (* 4. check range validity of status_interval *)
-            not (0 <= !(status_interval.value))
+            Option.is_some !(query_pick.value)
+            && not (0 <= Option.value_exn !(status_interval.value))
     then raise (Arg.Bad "bad range of status-interval")
     else ()
 end
@@ -255,4 +256,4 @@ let verbose_mode : bool ref = Setting.verbose_mode.value
 
 let prec_random_rate : int ref = Setting.prec_random_rate.value
 
-let status_interval : int ref = Setting.status_interval.value
+let status_interval : int option ref = Setting.status_interval.value

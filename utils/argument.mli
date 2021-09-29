@@ -55,7 +55,7 @@ module Setting : sig
 
   val prec_random_rate : int t
 
-  val status_interval : int t
+  val status_interval : int option t
 
   (****************************************************************************)
   (* Arguments Settings                                                       *)
@@ -110,4 +110,4 @@ val verbose_mode : bool ref
 
 val prec_random_rate : int ref
 
-val status_interval : int ref
+val status_interval : int option ref
