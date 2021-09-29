@@ -226,6 +226,9 @@ let gen_template :
        in
        MFOSet.map target_comb ~f:(fun c_lst ->
            f (List.map c_lst ~f:(fun i -> (i.ig_typ.cc_v, i.ig_value)))
+           |> function
+           | None   -> None
+           | Some f -> Some (MF_and [ f; fold_precond_lst c_lst ])
        )
        |> MFSet.filter_map ~f:Fun.id
    )
