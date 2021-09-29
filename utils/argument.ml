@@ -134,6 +134,29 @@ module Setting = struct
      { value; arg_lst = create_arg_lst [ "--verbose"; "-v" ] spec doc }
 
   (****************************************************************************)
+  (* Experiment Mode                                                          *)
+  (****************************************************************************)
+
+  let prec_random_rate : int t =
+     let (value : int ref) = ref 50 in
+     let (spec : Arg.spec) = Arg.Set_int value in
+     let (doc : Arg.doc) =
+        "set random choice rate of precondition (interval: [0, 100])"
+     in
+     {
+       value;
+       arg_lst = create_arg_lst [ "--prec_random_rate"; "-pr" ] spec doc;
+     }
+
+  let status_interval : int t =
+     let (value : int ref) = ref 10 in
+     let (spec : Arg.spec) = Arg.Set_int value in
+     let (doc : Arg.doc) =
+        "set interval of printing intermediate status (interval: [0, ∞)"
+     in
+     { value; arg_lst = create_arg_lst [ "--status-interval"; "-si" ] spec doc }
+
+  (****************************************************************************)
   (* Arguments Settings                                                       *)
   (****************************************************************************)
 
@@ -149,6 +172,8 @@ module Setting = struct
      @ inst_count.arg_lst
      @ query_pick.arg_lst
      @ verbose_mode.arg_lst
+     @ prec_random_rate.arg_lst
+     @ status_interval.arg_lst
 
   let anon_fun : string -> unit =
     (fun _ -> raise (Arg.Help "wrong anonymous argument(s)"))
@@ -164,6 +189,15 @@ module Setting = struct
                || snd (Option.value_exn !(query_pick.value)) < 0
                )
     then raise (Arg.Bad "invalid query picking is inputed")
+    else if (* 3. check range validity of prec_random_rate *)
+            not
+              (0 <= !(prec_random_rate.value)
+              && !(prec_random_rate.value) <= 100
+              )
+    then raise (Arg.Bad "bad range of precondition-random-rate")
+    else if (* 4. check range validity of status_interval *)
+            not (0 <= !(status_interval.value))
+    then raise (Arg.Bad "bad range of status-interval")
     else ()
 end
 
@@ -189,6 +223,10 @@ let create : string array option -> unit =
   let _ = Setting.finalize_parse () in
   ()
 
+(****************************************************************************)
+(* MicSE Behaviors                                                          *)
+(****************************************************************************)
+
 let input_file : string ref = Setting.input_file.value
 
 let input_storage_file : string ref = Setting.input_storage_file.value
@@ -199,6 +237,10 @@ let total_timeout : int ref = Setting.total_timeout.value
 
 let z3_timeout : int ref = Setting.z3_timeout.value
 
+(****************************************************************************)
+(* Dev Mode                                                                 *)
+(****************************************************************************)
+
 let debug_mode : bool ref = Setting.debug_mode.value
 
 let inst_count : bool ref = Setting.inst_count.value
@@ -206,3 +248,11 @@ let inst_count : bool ref = Setting.inst_count.value
 let query_pick : (int * int) option ref = Setting.query_pick.value
 
 let verbose_mode : bool ref = Setting.verbose_mode.value
+
+(****************************************************************************)
+(* Experiment Mode                                                          *)
+(****************************************************************************)
+
+let prec_random_rate : int ref = Setting.prec_random_rate.value
+
+let status_interval : int ref = Setting.status_interval.value

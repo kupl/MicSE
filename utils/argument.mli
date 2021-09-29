@@ -41,13 +41,21 @@ module Setting : sig
   (* Dev Mode                                                                 *)
   (****************************************************************************)
 
-  val verbose_mode : bool t
+  val debug_mode : bool t
 
   val inst_count : bool t
 
   val query_pick : (int * int) option t
 
-  val debug_mode : bool t
+  val verbose_mode : bool t
+
+  (****************************************************************************)
+  (* Experiment Mode                                                          *)
+  (****************************************************************************)
+
+  val prec_random_rate : int t
+
+  val status_interval : int t
 
   (****************************************************************************)
   (* Arguments Settings                                                       *)
@@ -70,6 +78,10 @@ end
 
 val create : string array option -> unit
 
+(****************************************************************************)
+(* MicSE Behaviors                                                          *)
+(****************************************************************************)
+
 val input_file : string ref
 
 val input_storage_file : string ref
@@ -80,6 +92,10 @@ val total_timeout : int ref
 
 val z3_timeout : int ref
 
+(****************************************************************************)
+(* Dev Mode                                                                 *)
+(****************************************************************************)
+
 val debug_mode : bool ref
 
 val inst_count : bool ref
@@ -87,3 +103,11 @@ val inst_count : bool ref
 val query_pick : (int * int) option ref
 
 val verbose_mode : bool ref
+
+(****************************************************************************)
+(* Experiment Mode                                                          *)
+(****************************************************************************)
+
+val prec_random_rate : int ref
+
+val status_interval : int ref
