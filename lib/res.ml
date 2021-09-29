@@ -206,7 +206,10 @@ let init_config :
   in
   let (cfg_smt_ctxt : Smt.Ctx.t) = Vc.gen_ctx () in
   {
-    cfg_timer = Utils.Time.create ~budget:!Utils.Argument.total_timeout ();
+    cfg_timer =
+      Utils.Time.create
+        ~budget:!Utils.Argument.total_timeout
+        () ~key_lst:[ "report" ];
     cfg_memory = Utils.Memory.create ~budget:!Utils.Argument.memory_bound ();
     cfg_istate;
     cfg_istrg;
@@ -250,7 +253,10 @@ type qres_classified = {
 let string_of_res_rough : config -> res -> string =
    let soi = string_of_int in
    fun cfg res ->
-   let t = Utils.Time.string_of_elapsed_time cfg.cfg_timer in
+   let t =
+      Utils.Time.string_of_elapsed_time_from_last_check cfg.cfg_timer
+        ~key:"report"
+   in
    let m = Utils.Memory.string_of_used_memory cfg.cfg_memory in
    let (p, r, u, f, c, e) =
       List.fold res.r_qr_lst ~init:(0, 0, 0, 0, 0, 0)

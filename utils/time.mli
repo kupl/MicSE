@@ -8,6 +8,8 @@ module Mtime_s : sig
   val sexp_of_t : t -> Core.Sexp.t
 end
 
+module SMap : module type of Core.Map.Make (Core.String)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Setting                                                                    *)
@@ -19,6 +21,7 @@ module Setting : sig
     (* in nano second *)
     created_at : Mtime_s.t;
     expired_at : Mtime_s.t option;
+    last_check : Mtime_s.t ref SMap.t;
   }
   [@@deriving sexp, compare, equal]
 
@@ -28,13 +31,15 @@ module Setting : sig
 
   val s : int64
 
-  val create : ?budget:int -> unit -> t
+  val create : budget:int -> key_lst:string list -> t
 
   val read_time_elapsed : t -> Mtime_s.span
 
   val read_time_remain : t -> Mtime_s.span
 
   val read_is_timeout : t -> bool
+
+  val check : t -> key:string -> Mtime_s.span
 end
 
 (******************************************************************************)
@@ -54,7 +59,7 @@ val time_curr : unit -> time
 val string_of_curr_time : unit -> string
 
 (* [create] makes time manager with optional time budget (in seconds) *)
-val create : ?budget:int -> unit -> t
+val create : ?budget:int -> ?key_lst:string list -> unit -> t
 
 (* [read_elapsed_time] read elapsed time since the time manager created *)
 val read_elapsed_time : t -> time
@@ -73,3 +78,9 @@ val string_of_elapsed_time : t -> string
 
 (* [string_of_remaining_time] is string format of remaining time until the time manager expired *)
 val string_of_remaining_time : t -> string
+
+(* [read_elapsed_time_from_last_check] read elapsed time since the last checked time about input key *)
+val read_elapsed_time_from_last_check : t -> key:string -> time
+
+(* [string_of_remaining_time] is string format of elapsed time since the last checked time about input key *)
+val string_of_elapsed_time_from_last_check : t -> key:string -> string

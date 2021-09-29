@@ -12,6 +12,8 @@ module Mtime_s = struct
   (* function sexp_of_t end *)
 end
 
+module SMap = Map.Make (String)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Setting                                                                    *)
@@ -23,6 +25,7 @@ module Setting = struct
     (* in nano second *)
     created_at : Mtime_s.t;
     expired_at : Mtime_s.t option;
+    last_check : Mtime_s.t ref SMap.t;
   }
   [@@deriving sexp, compare, equal]
 
@@ -32,9 +35,12 @@ module Setting = struct
 
   let (s : int64) = Int64.of_int (1000 * 1000 * 1000)
 
-  let create : ?budget:int -> unit -> t =
-    fun ?(budget = -1) () ->
+  let create : budget:int -> key_lst:string list -> t =
+    fun ~budget ~key_lst ->
     let (now : Mtime_s.t) = Mtime_clock.now () in
+    let (check_alist : (string * Mtime_s.t ref) list) =
+       List.stable_dedup key_lst |> List.map ~f:(fun key -> (key, ref now))
+    in
     {
       created_at = now;
       expired_at =
@@ -46,6 +52,7 @@ module Setting = struct
           |> Mtime_s.Span.of_uint64_ns
           |> Mtime_s.add_span now
         );
+      last_check = SMap.of_alist_exn check_alist;
     }
   (* function create end *)
 
@@ -68,6 +75,17 @@ module Setting = struct
     let (expired : Mtime_s.t) = Option.value time.expired_at ~default:now in
     Mtime_s.is_earlier expired ~than:now
   (* function read_is_timeout end *)
+
+  let check : t -> key:string -> Mtime_s.span =
+    fun time ~key ->
+    SMap.find time.last_check key
+    |> function
+    | None          -> Failure "Time : Setting : check : key is unset" |> raise
+    | Some time_ref ->
+      let (last_time : Mtime_s.t) = !time_ref in
+      let _ = time_ref := Mtime_clock.now () in
+      Mtime_s.span !time_ref last_time
+  (* function check end *)
 end
 
 (******************************************************************************)
@@ -92,8 +110,9 @@ let string_of_curr_time : unit -> string =
   ^ " sec"
 (* function string_of_curr_time end *)
 
-let create : ?budget:int -> unit -> t =
-  (fun ?(budget = 0) () -> Stdlib.ref (Setting.create ~budget ()))
+let create : ?budget:int -> ?key_lst:string list -> unit -> t =
+  fun ?(budget = -1) ?(key_lst = []) () ->
+  Stdlib.ref (Setting.create ~budget ~key_lst)
 (* function create end *)
 
 let read_elapsed_time : t -> time =
@@ -125,3 +144,16 @@ let string_of_remaining_time : t -> string =
   )
   ^ " sec"
 (* function string_of_remaining_time end *)
+
+let read_elapsed_time_from_last_check : t -> key:string -> time =
+  (fun time ~key -> Setting.check !time ~key |> Mtime_s.Span.to_uint64_ns)
+(* function read_elapsed_time_from_last_check end *)
+
+let string_of_elapsed_time_from_last_check : t -> key:string -> string =
+  fun time ~key ->
+  ((read_elapsed_time_from_last_check time ~key |> Float.of_int64)
+   /. (Setting.s |> Float.of_int64)
+  |> Float.to_string_hum ~decimals:6 ~delimiter:','
+  )
+  ^ " sec"
+(* function string_of_elapsed_time_from_last_check end *)
