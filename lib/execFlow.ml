@@ -131,7 +131,7 @@ let refuter_naive_run : string array option -> Res.config * Res.res =
      RMCIMap.iteri cfg.cfg_m_view ~f:(fun ~key ~data:x ->
          Utils.Log.debug (fun m ->
              m
-               "%s:\n\t> # of pred state:%d\n\t> # of succ state: %d\n\t> # of candidates: %d"
+               "%s:\n\t> # of pred state: %d\n\t> # of succ state: %d\n\t> # of candidates: %d"
                (Tz.sexp_of_r_mich_cut_info key |> Core.Sexp.to_string)
                (SSet.length x.pred) (SSet.length x.succ)
                (Inv.find_cand_by_rmci init_res.r_cands key |> Map.length)
@@ -162,7 +162,7 @@ let prover_naive_run : string array option -> Res.config * Res.res =
      RMCIMap.iteri cfg.cfg_m_view ~f:(fun ~key ~data:x ->
          Utils.Log.debug (fun m ->
              m
-               "%s:\n\t> # of pred state:%d\n\t> # of succ state: %d\n\t> # of candidates: %d"
+               "%s:\n\t> # of pred state: %d\n\t> # of succ state: %d\n\t> # of candidates: %d"
                (Tz.sexp_of_r_mich_cut_info key |> Core.Sexp.to_string)
                (SSet.length x.pred) (SSet.length x.succ)
                (Inv.find_cand_by_rmci init_res.r_cands key |> Map.length)
@@ -194,7 +194,7 @@ let prover_refuter_toss : string array option -> Res.config * Res.res =
       RMCIMap.iteri cfg.cfg_m_view ~f:(fun ~key ~data:x ->
           Utils.Log.debug (fun m ->
               m
-                "%s:\n\t> # of pred state:%d\n\t> # of succ state: %d\n\t> # of candidates: %d"
+                "%s:\n\t> # of pred state: %d\n\t> # of succ state: %d\n\t> # of candidates: %d"
                 (Tz.sexp_of_r_mich_cut_info key |> Core.Sexp.to_string)
                 (SSet.length x.pred) (SSet.length x.succ)
                 (Inv.find_cand_by_rmci init_res.r_cands key |> Map.length)
