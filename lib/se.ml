@@ -2489,15 +2489,8 @@ let run_inst_entry :
         MV_car (List.hd_exn ss.ss_block_si.si_mich)
         |> gen_custom_cc c
         |> TzUtil.opt_mvcc ~ctx
+        |> (fun (fl, mvcc) -> (fl, MV_mtz_of_op_list mvcc |> gen_custom_cc c))
      in
-     (* let op_mtz_v : mich_v cc =
-           MV_mtz_of_op_list
-             (MV_car (List.hd_exn ss.ss_block_si.si_mich)
-             |> gen_custom_cc c
-             |> TzUtil.opt_mvcc ~ctx
-             )
-           |> gen_custom_cc c
-        in *)
      let new_balance : mich_v cc =
         MV_sub_mmm (ss.ss_block_si.si_balance, op_mtz_v) |> gen_custom_cc c
      in
