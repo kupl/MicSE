@@ -2434,18 +2434,13 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
      (* let _ = (* DEBUG *) print_endline "unpair enter" in *)
      update_top_1_bmstack_and_constraint
        ~f:(fun x ->
-         let a_v = MV_car x |> gen_custom_cc inst in
-         let d_v = MV_cdr x |> gen_custom_cc inst in
-         let a_tv = (typ_of_val a_v, a_v) in
-         let d_tv = (typ_of_val d_v, d_v) in
-         ( [ a_v; d_v ],
-           [
-             mtz_constraint_if_it_is_or_true ~ctx ~tv:a_tv;
-             nat_constraint_if_it_is_or_true ~ctx ~tv:a_tv;
-             mtz_constraint_if_it_is_or_true ~ctx ~tv:d_tv;
-             nat_constraint_if_it_is_or_true ~ctx ~tv:d_tv;
-           ]
-         ))
+         let (a_fl, a_v) =
+            MV_car x |> gen_custom_cc inst |> TzUtil.opt_mvcc ~ctx
+         in
+         let (d_fl, d_v) =
+            MV_cdr x |> gen_custom_cc inst |> TzUtil.opt_mvcc ~ctx
+         in
+         ([ a_v; d_v ], a_fl @ d_fl))
        ss
      |> running_ss_to_sr ctxt_sr
    | MI_micse_check i ->
@@ -2490,11 +2485,19 @@ let run_inst_entry :
    let final_blocking : sym_state -> sym_state =
      fun ss ->
      let ctx = ss.ss_id in
-     let op_mtz_v : mich_v cc =
-        MV_mtz_of_op_list
-          (MV_car (List.hd_exn ss.ss_block_si.si_mich) |> gen_custom_cc c)
+     let (op_mtz_fl, op_mtz_v) : mich_f list * mich_v cc =
+        MV_car (List.hd_exn ss.ss_block_si.si_mich)
         |> gen_custom_cc c
+        |> TzUtil.opt_mvcc ~ctx
      in
+     (* let op_mtz_v : mich_v cc =
+           MV_mtz_of_op_list
+             (MV_car (List.hd_exn ss.ss_block_si.si_mich)
+             |> gen_custom_cc c
+             |> TzUtil.opt_mvcc ~ctx
+             )
+           |> gen_custom_cc c
+        in *)
      let new_balance : mich_v cc =
         MV_sub_mmm (ss.ss_block_si.si_balance, op_mtz_v) |> gen_custom_cc c
      in
@@ -2513,8 +2516,9 @@ let run_inst_entry :
            si_bc_balance = new_bc_balance;
          };
        ss_constraints =
-         mtz_comes_from_constraint ~ctx ~mtz_v:op_mtz_v
-           ~from_v:ss.ss_block_si.si_balance
+         MF_and op_mtz_fl
+         :: mtz_comes_from_constraint ~ctx ~mtz_v:op_mtz_v
+              ~from_v:ss.ss_block_si.si_balance
          :: amount_balance_mutez_constraints ~ctx ~amount_v:op_mtz_v
               ~balance_v:new_balance ~bc_balance_v:new_bc_balance
          @ ss.ss_constraints;

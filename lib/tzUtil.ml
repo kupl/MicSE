@@ -993,6 +993,7 @@ let opt_mf_rules : mich_f -> mich_f =
   | MF_not MF_false -> MF_true
   | MF_not (MF_not f) -> f
   (* AND *)
+  | MF_and [ f ] -> f
   | MF_and fl ->
     (* 1. remove True values *)
     let fl' = List.filter fl ~f:(fun x -> not (equal_mich_f MF_true x)) in
