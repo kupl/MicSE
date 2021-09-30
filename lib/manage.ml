@@ -26,7 +26,7 @@ let initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    fun cfg res ->
    let (r_qr_lst : Res.qres list) =
       List.map res.r_qr_lst ~f:(fun qres ->
-          let ( (qr_total_ppaths : PPSet.t),
+          let ( (qr_total_ppaths : (Res.PPath.t * Smt.Solver.satisfiability) list),
                 (qr_rft_ppath : (Res.PPath.t * Smt.Model.t) option)
               ) =
              PPSet.fold qres.qr_exp_ppaths ~init:(qres.qr_total_ppaths, None)
@@ -34,7 +34,7 @@ let initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res =
                  if Option.is_some r_opt
                  then (t_paths, r_opt)
                  else (
-                   let ( (total_path_opt : PPath.t option),
+                   let ( (total_path_opt : (PPath.t * Smt.Solver.satisfiability) option),
                          (model_opt : Smt.Model.t option)
                        ) =
                       Refute.refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
@@ -43,11 +43,11 @@ let initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res =
                    if Option.is_none total_path_opt
                    then (t_paths, r_opt)
                    else (
-                     let (total_path : PPath.t) =
+                     let (total_path : PPath.t * Smt.Solver.satisfiability) =
                         Option.value_exn total_path_opt
                      in
-                     ( PPSet.add t_paths total_path,
-                       Option.map model_opt ~f:(fun model -> (total_path, model))
+                     ( total_path::t_paths,
+                       Option.map model_opt ~f:(fun model -> (fst total_path, model))
                      )
                    )
                  )
