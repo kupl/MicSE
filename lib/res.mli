@@ -9,14 +9,17 @@
 (* Set of Tz.mich_v Tz.cc *)
 module MVSet : module type of Core.Set.Make (Tz.MichVCC_cmp)
 
-(* Set of Tz.mich_f *)
-module MFSet : module type of Core.Set.Make (Tz.MichF_cmp)
-
 (* Set of set of Tz.mich_f *)
 module MFSSet : module type of Core.Set.Make (Tz.MFSet)
 
 (* Map of Tz.mich_cut_info *)
 module MCIMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
+
+(* Set of Tz.qid *)
+module QIDSet : module type of Core.Set.Make (Tz.QId_cmp)
+
+(* Map of Tz.qid *)
+module QIDMap : module type of Core.Map.Make (Tz.QId_cmp)
 
 (* Set of Tz.sym_state *)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
@@ -63,7 +66,7 @@ end
 module PPSet : module type of Core.Set.Make (PPath)
 
 type qres = {
-  qr_qid : Tz.mich_cut_info;
+  qr_qid : Tz.qid;
   (* Overall Status *)
   qr_prv_flag : prover_flag;
   qr_rft_flag : refuter_flag;
@@ -111,6 +114,7 @@ type config = {
   cfg_istrg : Tz.mich_v Tz.cc;
   cfg_se_res : Se.se_result;
   cfg_m_view : Se.SSGraph.mci_view;
+  cfg_qid_set : QIDSet.t;
   (* Ingrdients for invariant synthesis *)
   cfg_imap : Igdt.igdts_map;
   (* Environment for SMT solver *)
@@ -129,7 +133,7 @@ type config = {
 (******************************************************************************)
 (******************************************************************************)
 
-val init_qres : Tz.mich_cut_info -> SSet.t -> qres
+val init_qres : Tz.qid -> SSet.t -> qres
 
 val init_worklist : unit -> worklist
 

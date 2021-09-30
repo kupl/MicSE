@@ -1263,6 +1263,17 @@ let get_reduced_mci : mich_cut_info -> r_mich_cut_info =
   fun mci ->
   { rmci_loc = mci.mci_loc; rmci_cutcat = get_reduced_mcc mci.mci_cutcat }
 
+let qid_of_rmci_exn : r_mich_cut_info -> qid =
+  fun rmci ->
+  match rmci.rmci_cutcat with
+  | RMCC_query qcat -> { qid_loc = rmci.rmci_loc; qid_cat = qcat }
+  | _               -> TzError "qid_of_rmci : wrong rmci" |> raise
+(* function qid_of_rmci end *)
+
+let qid_of_mci_exn : mich_cut_info -> qid =
+  (fun mci -> qid_of_rmci_exn (get_reduced_mci mci))
+(* function qid_of_mci end *)
+
 (******************************************************************************)
 (* Literals in Tz-Code                                                        *)
 (******************************************************************************)

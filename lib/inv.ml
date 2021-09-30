@@ -31,6 +31,12 @@ module RMCISet = Set.Make (Tz.RMichCutInfo_cmp)
 (* Map of Tz.r_mich_cut_info *)
 module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 
+(* Set of Tz.qid *)
+module QIDSet = Set.Make (Tz.QId_cmp)
+
+(* Map of Tz.qid *)
+module QIDMap = Map.Make (Tz.QId_cmp)
+
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
 
@@ -58,7 +64,7 @@ module InvSet = Set.Make (InvMap_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
-type cands = (bool * int) MFSMap.t [@@deriving sexp, compare, equal]
+type cands = (bool * int QIDMap.t) MFSMap.t [@@deriving sexp, compare, equal]
 
 type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
@@ -481,8 +487,13 @@ let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
 (* Invariant Candidates *******************************************************)
 
 let gen_initial_cand_map :
-    is_fset_sat:(MFSet.t -> bool) -> Igdt.igdts_map -> cand_map =
-  fun ~is_fset_sat igdt_map ->
+    is_fset_sat:(MFSet.t -> bool) -> QIDSet.t -> Igdt.igdts_map -> cand_map =
+  fun ~is_fset_sat qset igdt_map ->
+  let (default_score : int QIDMap.t) =
+     QIDSet.to_list qset
+     |> List.map ~f:(fun rmci -> (rmci, -1))
+     |> QIDMap.of_alist_exn
+  in
   RMCIMap.map igdt_map ~f:(fun igdt_sets ->
       [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
@@ -492,7 +503,7 @@ let gen_initial_cand_map :
              if not (is_fset_sat fset)
              then acc_cmap
              else
-               MFSMap.add acc_cmap ~key:fset ~data:(true, -1)
+               MFSMap.add acc_cmap ~key:fset ~data:(true, default_score)
                |> function
                | `Duplicate ->
                  InvError "gen_initial_cand_map : duplicate key" |> raise
@@ -513,20 +524,78 @@ let find_cand : cand_map -> Tz.mich_cut_info -> cands =
   (fun cmap mci -> find_cand_by_rmci cmap (TzUtil.get_reduced_mci mci))
 (* function cand_map_find end *)
 
-let find_ordered_cand_by_rmci :
+let get_score_by_rmci :
+    cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> qid:Tz.qid -> int =
+  fun cmap ~key ~value ~qid ->
+  MFSMap.find (find_cand_by_rmci cmap key) value
+  |> function
+  | Some (_, smap) -> QIDMap.find_exn smap qid
+  | None           -> InvError "get_score : wrong value" |> raise
+(* function get_score_by_rmci end *)
+
+let get_score :
+    cand_map -> key:Tz.mich_cut_info -> value:MFSet.t -> qid:Tz.qid -> int =
+  fun cmap ~key ~value ~qid ->
+  get_score_by_rmci cmap ~key:(TzUtil.get_reduced_mci key) ~value ~qid
+(* function get_score end *)
+
+let find_top_score_ordered_cand_by_rmci :
     ?remove_unflaged:bool -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list =
-  fun ?(remove_unflaged = false) cmap rmci ->
+   let top_score : int QIDMap.t -> int =
+     fun smap ->
+     QIDMap.to_alist smap
+     |> List.max_elt ~compare:(fun (_, s1) (_, s2) -> -compare_int s1 s2)
+     |> function
+     | None        ->
+       InvError
+         "find_top_score_ordered_cand_by_rmci : top_score : wrong score map"
+       |> raise
+     | Some (_, s) -> s
+     (* inner-function top_score end *)
+   in
+   fun ?(remove_unflaged = false) cmap rmci ->
+   find_cand_by_rmci cmap rmci
+   |> (if remove_unflaged then MFSMap.filter ~f:fst else Fun.id)
+   |> MFSMap.to_alist
+   |> List.sort ~compare:(fun (_, (_, smap1)) (_, (_, smap2)) ->
+          -compare_int (top_score smap1) (top_score smap2)
+      )
+   |> List.map ~f:fst
+(* function find_top_score_ordered_cand_by_rmci end *)
+
+let find_top_score_ordered_cand :
+    ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> MFSet.t list =
+  fun ?(remove_unflaged = false) cmap mci ->
+  find_top_score_ordered_cand_by_rmci ~remove_unflaged cmap
+    (TzUtil.get_reduced_mci mci)
+(* function find_top_score_ordered_cand_by end *)
+
+let find_ordered_cand_by_rmci :
+    ?remove_unflaged:bool ->
+    cand_map ->
+    Tz.r_mich_cut_info ->
+    Tz.qid ->
+    MFSet.t list =
+  fun ?(remove_unflaged = false) cmap rmci qid ->
   find_cand_by_rmci cmap rmci
   |> (if remove_unflaged then MFSMap.filter ~f:fst else Fun.id)
   |> MFSMap.to_alist
-  |> List.sort ~compare:(fun (_, (_, s1)) (_, (_, s2)) -> -compare_int s1 s2)
+  |> List.sort ~compare:(fun (_, (_, smap1)) (_, (_, smap2)) ->
+         -compare_int (QIDMap.find_exn smap1 qid) (QIDMap.find_exn smap2 qid)
+     )
   |> List.map ~f:fst
 (* function find_ordered_cand_by_rmci end *)
 
 let find_ordered_cand :
-    ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> MFSet.t list =
-  fun ?(remove_unflaged = false) cmap mci ->
-  find_ordered_cand_by_rmci ~remove_unflaged cmap (TzUtil.get_reduced_mci mci)
+    ?remove_unflaged:bool ->
+    cand_map ->
+    Tz.mich_cut_info ->
+    Tz.qid ->
+    MFSet.t list =
+  fun ?(remove_unflaged = false) cmap mci qid ->
+  find_ordered_cand_by_rmci ~remove_unflaged cmap
+    (TzUtil.get_reduced_mci mci)
+    qid
 (* function find_ordered_cand end *)
 
 let find_cand_top_k_by_rmci :
@@ -534,9 +603,10 @@ let find_cand_top_k_by_rmci :
     top_k:int ->
     cand_map ->
     Tz.r_mich_cut_info ->
+    Tz.qid ->
     MFSet.t list =
-  fun ?(remove_unflaged = false) ~top_k cmap rmci ->
-  find_ordered_cand_by_rmci ~remove_unflaged cmap rmci
+  fun ?(remove_unflaged = false) ~top_k cmap rmci qid ->
+  find_ordered_cand_by_rmci ~remove_unflaged cmap rmci qid
   |> (fun lst -> List.split_n lst top_k)
   |> fst
 (* function finc_cand_map_top_k_by_tmci end *)
@@ -546,10 +616,12 @@ let find_cand_top_k :
     top_k:int ->
     cand_map ->
     Tz.mich_cut_info ->
+    Tz.qid ->
     MFSet.t list =
-  fun ?(remove_unflaged = false) ~top_k cmap mci ->
+  fun ?(remove_unflaged = false) ~top_k cmap mci qid ->
   find_cand_top_k_by_rmci ~remove_unflaged ~top_k cmap
     (TzUtil.get_reduced_mci mci)
+    qid
 (* function find_cand_map_top_k end *)
 
 let strengthen_cand_map :
@@ -576,14 +648,24 @@ let strengthen_cand_map :
 (* function strengthen_cand_map *)
 
 let score_cand :
-    cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> point:int -> cand_map
-    =
-  fun cmap ~key ~value ~point ->
+    cand_map ->
+    key:Tz.r_mich_cut_info ->
+    value:MFSet.t ->
+    qid:Tz.qid ->
+    point:int ->
+    cand_map =
+  fun cmap ~key ~value ~qid ~point ->
   RMCIMap.update cmap key ~f:(function
   | Some cands ->
     MFSMap.update cands value ~f:(function
-    | Some (flag, score) -> (flag, score + point)
-    | None               -> (true, point)
+    | Some (flag, smap) ->
+      ( flag,
+        QIDMap.update smap qid ~f:(function
+        | Some score -> score + point
+        | None       -> point
+        )
+      )
+    | None              -> InvError "score_cand : wrong cand" |> raise
     )
   | None       -> InvError "score_cand : wrong mci" |> raise
   )
@@ -596,19 +678,11 @@ let unflag_cand :
   | Some cands ->
     MFSMap.update cands value ~f:(function
     | Some (_, score) -> (false, score)
-    | None            -> (false, 0)
+    | None            -> InvError "score_cand : wrong cand" |> raise
     )
   | None       -> InvError "unflag_cand : wrong mci" |> raise
   )
 (* function unflag_cand end *)
-
-let get_score : cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> int =
-  fun cmap ~key ~value ->
-  MFSMap.find (find_cand_by_rmci cmap key) value
-  |> function
-  | Some (_, score) -> score
-  | None            -> InvError "get_score : wrong value" |> raise
-(* function get_score end *)
 
 (* Failed Candidate Pair ******************************************************)
 

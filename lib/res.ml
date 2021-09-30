@@ -11,20 +11,17 @@ open! Core
 (* Set of Tz.mich_v Tz.cc *)
 module MVSet = Set.Make (Tz.MichVCC_cmp)
 
-(* Set of Tz.mich_f *)
-module MFSet = Set.Make (Tz.MichF_cmp)
-
 (* Set of set of Tz.mich_f *)
 module MFSSet = Set.Make (Tz.MFSet)
-
-(* Map of set of Tz.mich_f *)
-module MFSMap = Map.Make (Tz.MFSet)
 
 (* Map of Tz.mich_cut_info *)
 module MCIMap = Map.Make (Tz.MichCutInfo_cmp)
 
-(* Map of Tz.r_mich_cut_info *)
-module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
+(* Set of Tz.qid *)
+module QIDSet = Set.Make (Tz.QId_cmp)
+
+(* Map of Tz.qid *)
+module QIDMap = Map.Make (Tz.QId_cmp)
 
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
@@ -75,7 +72,7 @@ end
 module PPSet = Set.Make (PPath)
 
 type qres = {
-  qr_qid : Tz.mich_cut_info;
+  qr_qid : Tz.qid;
   (* Overall Status *)
   qr_prv_flag : prover_flag;
   qr_rft_flag : refuter_flag;
@@ -123,6 +120,7 @@ type config = {
   cfg_istrg : Tz.mich_v Tz.cc;
   cfg_se_res : Se.se_result;
   cfg_m_view : Se.SSGraph.mci_view;
+  cfg_qid_set : QIDSet.t;
   (* Ingrdients for invariant synthesis *)
   cfg_imap : Igdt.igdts_map;
   (* Environment for SMT solver *)
@@ -141,7 +139,7 @@ type config = {
 (******************************************************************************)
 (******************************************************************************)
 
-let init_qres : Tz.mich_cut_info -> SSet.t -> qres =
+let init_qres : Tz.qid -> SSet.t -> qres =
   fun qr_qid qr_unk_qs ->
   {
     qr_qid;
@@ -171,26 +169,27 @@ let init_worklist : unit -> worklist =
 let init_res : config -> res =
    let open Se in
    let open Vc in
-   fun { cfg_se_res; cfg_imap; cfg_smt_ctxt; cfg_smt_slvr; _ } ->
-   let (mci_queries : SSet.t MCIMap.t) =
-      SSet.fold cfg_se_res.sr_queries ~init:MCIMap.empty ~f:(fun acc qs ->
-          MCIMap.update acc qs.ss_block_mci ~f:(function
+   fun { cfg_se_res; cfg_qid_set; cfg_imap; cfg_smt_ctxt; cfg_smt_slvr; _ } ->
+   let (acc_qsmap : SSet.t QIDMap.t) =
+      SSet.fold cfg_se_res.sr_queries ~init:QIDMap.empty ~f:(fun acc_qsmap qs ->
+          QIDMap.update acc_qsmap (TzUtil.qid_of_mci_exn qs.ss_block_mci)
+            ~f:(function
           | Some s -> SSet.add s qs
           | None   -> SSet.singleton qs
           )
       )
    in
    let (r_qr_lst : qres list) =
-      MCIMap.mapi mci_queries ~f:(fun ~key ~data -> init_qres key data)
-      |> MCIMap.to_alist
-      |> List.map ~f:snd
+      QIDMap.to_alist acc_qsmap
+      |> List.map ~f:(fun (qr_qid, qr_unk_qs) -> init_qres qr_qid qr_unk_qs)
    in
    {
      r_qr_lst;
      r_inv = Inv.gen_true_inv_map cfg_se_res;
      r_cands =
-       Inv.gen_initial_cand_map cfg_imap
-         ~is_fset_sat:(is_fset_sat cfg_smt_ctxt cfg_smt_slvr);
+       Inv.gen_initial_cand_map
+         ~is_fset_sat:(is_fset_sat cfg_smt_ctxt cfg_smt_slvr)
+         cfg_qid_set cfg_imap;
      r_wlst = init_worklist ();
    }
 (* function init_res end *)
@@ -208,6 +207,12 @@ let init_config :
      | Some v -> v
      | None   -> failwith "ExecFlow : config_base : cfg_istrg = None"
   in
+  let (cfg_qid_set : QIDSet.t) =
+     SSet.fold cfg_se_res.sr_queries ~init:QIDSet.empty
+       ~f:(fun cfg_qid_set qs ->
+         QIDSet.add cfg_qid_set (TzUtil.qid_of_mci_exn qs.ss_block_mci)
+     )
+  in
   let (cfg_smt_ctxt : Smt.Ctx.t) = Vc.gen_ctx () in
   {
     cfg_timer =
@@ -218,14 +223,15 @@ let init_config :
     cfg_istate;
     cfg_istrg;
     cfg_se_res;
+    cfg_qid_set;
     cfg_m_view =
       Se.SSGraph.construct_mci_view ~basic_blocks:cfg_se_res.sr_blocked;
     cfg_imap = Igdt.get_igdts_map cfg_se_res.sr_blocked cfg_istrg mv_literal_set;
     cfg_smt_ctxt;
     cfg_smt_slvr = Vc.gen_solver cfg_smt_ctxt;
     cfg_ppath_k = 1;
-    cfg_cand_k = 4;
-    cfg_comb_k = 100;
+    cfg_cand_k = 2;
+    cfg_comb_k = 10;
   }
 (* function init_config end *)
 
@@ -290,12 +296,9 @@ let string_of_res : config -> res -> string =
    let open Tz in
    let qres_str : qres -> string =
      fun qres ->
-     match qres.qr_qid.mci_cutcat with
-     | MCC_query qcat ->
-       Printf.sprintf "> Location:%s\n  Category:%s\n"
-         (qres.qr_qid.mci_loc |> sexp_of_ccp_loc |> Sexp.to_string)
-         (qcat |> sexp_of_query_category |> Sexp.to_string)
-     | _              -> Failure "Wrong query result" |> raise
+     Printf.sprintf "> Location:%s\n  Category:%s\n"
+       (qres.qr_qid.qid_loc |> sexp_of_ccp_loc |> Sexp.to_string)
+       (qres.qr_qid.qid_cat |> sexp_of_query_category |> Sexp.to_string)
    in
    fun cfg res ->
    let (cres : qres_classified) =

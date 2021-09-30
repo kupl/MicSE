@@ -120,6 +120,10 @@ val get_reduced_mcc : mich_cut_category -> r_mich_cut_category
 
 val get_reduced_mci : mich_cut_info -> r_mich_cut_info
 
+val qid_of_rmci_exn : r_mich_cut_info -> qid
+
+val qid_of_mci_exn : mich_cut_info -> qid
+
 (******************************************************************************)
 (* Literals in Tz-Code                                                        *)
 (******************************************************************************)

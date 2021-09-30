@@ -518,6 +518,16 @@ module RMichCutInfo_cmp = struct
   type t = r_mich_cut_info [@@deriving sexp, compare]
 end
 
+type qid = {
+  qid_loc : ccp_loc;
+  qid_cat : query_category;
+}
+[@@deriving sexp, compare, equal]
+
+module QId_cmp = struct
+  type t = qid [@@deriving sexp, compare]
+end
+
 (* Transaction parameter value container *)
 type trx_image = {
   (* THIS CONTRACT (not address, since SELF instruction returns contract, not address. *)

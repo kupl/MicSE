@@ -29,6 +29,12 @@ module RMCISet : module type of Core.Set.Make (Tz.RMichCutInfo_cmp)
 (* Map of Tz.r_mich_cut_info *)
 module RMCIMap : module type of Core.Map.Make (Tz.RMichCutInfo_cmp)
 
+(* Set of Tz.qid *)
+module QIDSet : module type of Core.Set.Make (Tz.QId_cmp)
+
+(* Map of Tz.qid *)
+module QIDMap : module type of Core.Map.Make (Tz.QId_cmp)
+
 (* Set of Tz.sym_state *)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 
@@ -56,7 +62,7 @@ module InvSet : module type of Core.Set.Make (InvMap_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
-type cands = (bool * int) MFSMap.t [@@deriving sexp, compare, equal]
+type cands = (bool * int QIDMap.t) MFSMap.t [@@deriving sexp, compare, equal]
 
 type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
@@ -179,23 +185,44 @@ val check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool
 (* Invariant Candidates *******************************************************)
 
 val gen_initial_cand_map :
-  is_fset_sat:(MFSet.t -> bool) -> Igdt.igdts_map -> cand_map
+  is_fset_sat:(MFSet.t -> bool) -> QIDSet.t -> Igdt.igdts_map -> cand_map
 
 val find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands
 
 val find_cand : cand_map -> Tz.mich_cut_info -> cands
 
-val find_ordered_cand_by_rmci :
+val get_score_by_rmci :
+  cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> qid:Tz.qid -> int
+
+val get_score :
+  cand_map -> key:Tz.mich_cut_info -> value:MFSet.t -> qid:Tz.qid -> int
+
+val find_top_score_ordered_cand_by_rmci :
   ?remove_unflaged:bool -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list
 
-val find_ordered_cand :
+val find_top_score_ordered_cand :
   ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> MFSet.t list
+
+val find_ordered_cand_by_rmci :
+  ?remove_unflaged:bool ->
+  cand_map ->
+  Tz.r_mich_cut_info ->
+  Tz.qid ->
+  MFSet.t list
+
+val find_ordered_cand :
+  ?remove_unflaged:bool ->
+  cand_map ->
+  Tz.mich_cut_info ->
+  Tz.qid ->
+  MFSet.t list
 
 val find_cand_top_k_by_rmci :
   ?remove_unflaged:bool ->
   top_k:int ->
   cand_map ->
   Tz.r_mich_cut_info ->
+  Tz.qid ->
   MFSet.t list
 
 val find_cand_top_k :
@@ -203,18 +230,22 @@ val find_cand_top_k :
   top_k:int ->
   cand_map ->
   Tz.mich_cut_info ->
+  Tz.qid ->
   MFSet.t list
 
 val strengthen_cand_map :
   is_fset_sat:(MFSet.t -> bool) -> cand_map -> inv_map -> cand_map
 
 val score_cand :
-  cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> point:int -> cand_map
+  cand_map ->
+  key:Tz.r_mich_cut_info ->
+  value:MFSet.t ->
+  qid:Tz.qid ->
+  point:int ->
+  cand_map
 
 val unflag_cand :
   cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> cand_map
-
-val get_score : cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> int
 
 (* Failed Candidate Pair ******************************************************)
 
