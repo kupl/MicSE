@@ -210,7 +210,7 @@ let naive_run_qres_atomic_action : Res.config -> Res.qres -> Res.qres =
          qr_rft_ppath;
          qr_exp_cnt;
        }
-     else { qres with qr_exp_ppaths; qr_exp_cnt }
+     else { qres with qr_total_ppaths; qr_exp_ppaths; qr_exp_cnt }
    )
 (* function naive_run_qres_atomic_action end *)
 
