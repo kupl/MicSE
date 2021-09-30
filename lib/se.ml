@@ -2489,7 +2489,27 @@ let run_inst_entry :
         MV_car (List.hd_exn ss.ss_block_si.si_mich)
         |> gen_custom_cc c
         |> TzUtil.opt_mvcc ~ctx
-        |> (fun (fl, mvcc) -> (fl, MV_mtz_of_op_list mvcc |> gen_custom_cc c))
+        |> fun (fl, mvcc) ->
+        let ((lst_fl : mich_f list), (lst : mich_v cc list), (tl : mich_v cc)) =
+           v_of_list ~ctx mvcc
+        in
+        let ((mtz_fl : mich_f list), (mtz_vl : mich_v cc option list)) =
+           List.fold lst ~init:([], []) ~f:(fun (mtz_fl, mtz_vl) opv ->
+               let ((fl : mich_f list), (v_opt : mich_v cc option)) =
+                  mtz_of_op ~ctx opv
+               in
+               (fl @ mtz_fl, v_opt :: mtz_vl)
+           )
+        in
+        let (mtz_v : mich_v cc) =
+           List.fold mtz_vl
+             ~init:(MV_mtz_of_op_list tl |> gen_custom_cc c)
+             ~f:(fun acc vopt ->
+               if Option.is_some vopt
+               then MV_add_mmm (acc, Option.value_exn vopt) |> gen_custom_cc acc
+               else acc)
+        in
+        (lst_fl @ mtz_fl @ fl, mtz_v)
      in
      let new_balance : mich_v cc =
         MV_sub_mmm (ss.ss_block_si.si_balance, op_mtz_v) |> gen_custom_cc c

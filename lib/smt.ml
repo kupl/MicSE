@@ -695,6 +695,10 @@ struct
     (fun ctx expr1 expr2 -> Z3.Arithmetic.mk_add (Ctx.read ctx) [ expr1; expr2 ])
   (* function create_add end *)
 
+  let create_add_lst : Ctx.t -> Expr.t list -> Expr.t =
+    (fun ctx expr_lst -> Z3.Arithmetic.mk_add (Ctx.read ctx) expr_lst)
+  (* function create_add_lst end *)
+
   let create_sub : Ctx.t -> Expr.t -> Expr.t -> Expr.t =
     (fun ctx expr1 expr2 -> Z3.Arithmetic.mk_sub (Ctx.read ctx) [ expr1; expr2 ])
   (* function create_sub end *)
@@ -1723,7 +1727,8 @@ module ZMap = struct
     )
   (* function create_sort end *)
 
-  let create_expr_empty_map : Ctx.t -> key_sort:Sort.t -> data_sort:Sort.t -> Expr.t =
+  let create_expr_empty_map :
+      Ctx.t -> key_sort:Sort.t -> data_sort:Sort.t -> Expr.t =
     fun ctx ~key_sort ~data_sort ->
     let (default_value : Expr.t) = ZOption.create_expr_none data_sort in
     Z3.Z3Array.mk_const_array (Ctx.read ctx) key_sort default_value

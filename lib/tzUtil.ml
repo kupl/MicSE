@@ -1011,14 +1011,14 @@ let opt_mf : mich_f -> mich_f = mf_map_innerfst ~mapf:opt_mf_rules
 
 (* Duplicated constraint generator from Se module *)
 let mtz_constriant_if_it_is_or_true :
-    ctx:mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+    ctx:mich_sym_ctxt -> tv:mich_t cc * mich_v cc -> mich_f =
   fun ~ctx ~tv:(t, v) ->
   if equal_mich_t t.cc_v MT_mutez
   then MF_mutez_bound (gen_mich_v_ctx v ~ctx)
   else MF_true
 
 let nat_constriant_if_it_is_or_true :
-    ctx:mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+    ctx:mich_sym_ctxt -> tv:mich_t cc * mich_v cc -> mich_f =
    let open Tz in
    fun ~ctx ~tv:(t, v) ->
    if equal_mich_t t.cc_v MT_nat
@@ -1269,7 +1269,7 @@ let get_reduced_mci : mich_cut_info -> r_mich_cut_info =
 
 module MVSet = Core.Set.Make (MichVCC_cmp)
 
-let rec scrap_code_literals_i : init:MVSet.t -> Tz.mich_i Tz.cc -> MVSet.t =
+let rec scrap_code_literals_i : init:MVSet.t -> mich_i cc -> MVSet.t =
   fun ~init tz_code ->
   match tz_code.cc_v with
   (* * Containing Literals * *)
@@ -1305,8 +1305,113 @@ let rec scrap_code_literals_i : init:MVSet.t -> Tz.mich_i Tz.cc -> MVSet.t =
   (* * Others - Nothing * *)
   | _ -> init
 
-let scrap_code_literals : Tz.mich_i Tz.cc -> MVSet.t =
+let scrap_code_literals : mich_i cc -> MVSet.t =
    scrap_code_literals_i ~init:MVSet.empty
+
+(******************************************************************************)
+(* List                                                                       *)
+(******************************************************************************)
+
+let rec v_of_list :
+    ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc list * mich_v cc =
+   let size_of_list : mich_v cc -> mich_v cc =
+     (fun v -> gen_custom_cc v (MV_size_l v))
+     (* inner-function size_of_list end *)
+   in
+   fun ~ctx v ->
+   let len_const : mich_v cc -> mich_f =
+     fun len ->
+     MF_eq (gen_mich_v_ctx ~ctx (size_of_list v), gen_mich_v_ctx ~ctx len)
+     (* inner-function len_const end *)
+   in
+   let elem_const : mich_v cc list -> mich_f list =
+     fun vcc_lst ->
+     List.map vcc_lst ~f:(fun vcc ->
+         let tv = (typ_of_val vcc, vcc) in
+         [
+           mtz_constriant_if_it_is_or_true ~ctx ~tv;
+           nat_constriant_if_it_is_or_true ~ctx ~tv;
+         ]
+     )
+     |> List.join
+     (* inner-function elem_const end *)
+   in
+   let (_, (opt_v : mich_v cc)) = opt_mvcc ~ctx v in
+   match opt_v.cc_v with
+   | MV_lit_list (t1cc, vcc_lst) ->
+     let (len : mich_v cc) =
+        MV_lit_nat (Bigint.of_int (List.length vcc_lst)) |> gen_custom_cc v
+     in
+     ( len_const len :: elem_const vcc_lst,
+       vcc_lst,
+       gen_custom_cc v (MV_nil t1cc)
+     )
+   | MV_cons (v1cc, v2cc) ->
+     let ((list_fl : mich_f list), (lst : mich_v cc list), (tl : mich_v cc)) =
+        v_of_list ~ctx v2cc
+     in
+     let (len : mich_v cc) =
+        MV_add_nnn (size_of_list v2cc, gen_custom_cc v (MV_lit_nat Bigint.one))
+        |> gen_custom_cc v
+     in
+     (len_const len :: (elem_const [ v1cc ] @ list_fl), v1cc :: lst, tl)
+   | MV_tl_l v1cc -> (
+     let ((list_fl : mich_f list), (lst : mich_v cc list), (tl : mich_v cc)) =
+        v_of_list ~ctx v1cc
+     in
+     let (len_const : mich_f) =
+        MF_eq
+          ( gen_mich_v_ctx ~ctx
+              (MV_add_nnn
+                 (size_of_list v, gen_custom_cc v (MV_lit_nat Bigint.one))
+              |> gen_custom_cc v
+              ),
+            gen_mich_v_ctx ~ctx (size_of_list v1cc)
+          )
+     in
+     match lst with
+     | _ :: tl_lst -> (len_const :: list_fl, tl_lst, tl)
+     | []          -> (len_const :: list_fl, [], v)
+   )
+   | MV_nil _ ->
+     let (len : mich_v cc) = gen_custom_cc v (MV_lit_nat Bigint.zero) in
+     ([ len_const len ], [], v)
+   | _ -> ([], [], v)
+(* function list_of_v end *)
+
+(******************************************************************************)
+(* Operation                                                                  *)
+(******************************************************************************)
+
+let mtz_of_op : ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc option
+    =
+  fun ~ctx v ->
+  let v_return : mich_v cc option -> mich_f list * mich_v cc option = function
+  | None   -> ([], None)
+  | Some v ->
+    let (t : mich_t cc) = typ_of_val v in
+    if not (equal_mich_t t.cc_v MT_mutez)
+    then TzError "mtz_of_op : wrong type" |> raise
+    else (
+      let (tv : mich_t cc * mich_v cc) = (t, v) in
+      ( [
+          mtz_constriant_if_it_is_or_true ~ctx ~tv;
+          nat_constriant_if_it_is_or_true ~ctx ~tv;
+        ],
+        Some v
+      )
+    )
+  in
+  let (_, (opt_v : mich_v cc)) = opt_mvcc ~ctx v in
+  let (v : mich_v cc option) =
+     match opt_v.cc_v with
+     | MV_create_contract (_, _, _, _, v5cc, _, _) -> Some v5cc
+     | MV_transfer_tokens (_, v2cc, _) -> Some v2cc
+     | MV_set_delegate _ -> Some (gen_custom_cc v (MV_lit_mutez Bigint.zero))
+     | _ -> None
+  in
+  v_return v
+(* function mtz_of_op end *)
 
 (******************************************************************************)
 (******************************************************************************)

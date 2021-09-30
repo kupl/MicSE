@@ -70,10 +70,10 @@ val opt_mf_rules : mich_f -> mich_f
 val opt_mf : mich_f -> mich_f
 
 val mtz_constriant_if_it_is_or_true :
-  ctx:mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
+  ctx:mich_sym_ctxt -> tv:mich_t cc * mich_v cc -> mich_f
 
 val nat_constriant_if_it_is_or_true :
-  ctx:mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
+  ctx:mich_sym_ctxt -> tv:mich_t cc * mich_v cc -> mich_f
 
 val opt_mvcc_rules :
   ctx:mich_sym_ctxt -> mich_f list * mich_v cc -> mich_f list * mich_v cc
@@ -126,7 +126,20 @@ val get_reduced_mci : mich_cut_info -> r_mich_cut_info
 
 module MVSet : module type of Core.Set.Make (MichVCC_cmp)
 
-val scrap_code_literals : Tz.mich_i Tz.cc -> MVSet.t
+val scrap_code_literals : mich_i cc -> MVSet.t
+
+(******************************************************************************)
+(* List                                                                       *)
+(******************************************************************************)
+
+val v_of_list :
+  ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc list * mich_v cc
+
+(******************************************************************************)
+(* Operation                                                                  *)
+(******************************************************************************)
+
+val mtz_of_op : ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc option
 
 (******************************************************************************)
 (******************************************************************************)

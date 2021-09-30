@@ -1,0 +1,26 @@
+# Operation Check
+
+parameter (unit);
+storage (mutez);
+code 
+  {
+    AMOUNT;                               # %amount : %ps
+    PUSH mutez 0;                         # 0-m : %amount : %ps
+    COMPARE;                              # compare(0-m)(%amount) : %ps
+    EQ;                                   # 0-m = %amount : %ps
+    IF { PUSH int 11; FAILWITH } {};      # %ps
+    CDR;                                  # %s
+    PUSH mutez 1;                         # 1-m : %s          # If you want to violate below addition in 5-trx length, use "PUSH mutez 2305843000000000000"
+    ADD;                                  # (1-m + %s)
+    NIL operation;                        # [] : (1-m + %s)
+    SOURCE;                               # %source : [] : (1-m + %s)
+    CONTRACT unit;                        # option sc : [] : (1-m + %s)
+    IF_NONE { PUSH int 18; FAILWITH } {}; # sc : [] : (1-m + %s)
+    PUSH mutez 1;                         # 1-m : sc : [] : (1-m + %s)
+    AMOUNT;                               # %amount : 1-m : sc : [] : (1-m + %s)
+    SUB;                                  # (%amount - 1-m) : sc : [] : (1-m + %s)
+    UNIT;                                 # () : (%amount - 1-m) : sc : [] : (1-m + %s)
+    TRANSFER_TOKENS;                      # tt : [] : (1-m + %s)
+    CONS;                                 # [tt] : (1-m + %s)
+    PAIR;
+  };

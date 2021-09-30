@@ -88,12 +88,28 @@ module Encoder = struct
      let open TzUtil in
      let open Smt in
      fun ~sctx ctx value ->
-     let gdc value = gen_dummy_cc value in
-     let sot typ_cc = cv_mtcc ctx typ_cc in
-     let sov value_cc = cv_mtcc ctx (typ_of_val value_cc) in
-     let eov value_cc = cv_mvcc ~sctx ctx value_cc in
+     let gdc v1 = gen_dummy_cc v1 in
+     let sot t1cc = cv_mtcc ctx t1cc in
+     let sov v1cc = cv_mtcc ctx (typ_of_val v1cc) in
+     let eov v1cc = cv_mvcc ~sctx ctx v1cc in
      (* syntax sugar *)
      let (sort : Sort.t) = sov (gdc value) in
+     let fv prefix =
+        let (field : string) =
+           match sexp_of_mich_v value with
+           | Sexp.List [ Sexp.Atom s; _ ] -> s
+           | _ -> VcError "" |> raise
+        in
+        Expr.create_var ctx sort
+          ~name:
+            (field
+            ^ "_"
+            ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
+            ^ "_"
+            ^ prefix
+            ^ ""
+            )
+     in
      match value with
      (*************************************************************************)
      (* Symbol & Polymorphic                                                  *)
@@ -222,7 +238,7 @@ module Encoder = struct
      | MV_xor_nnn (v1cc, v2cc) -> ZNat.create_xor ctx (eov v1cc) (eov v2cc)
      | MV_size_s _ -> Not_Implemented |> raise
      | MV_size_m _ -> Not_Implemented |> raise
-     | MV_size_l _ -> Not_Implemented |> raise
+     | MV_size_l v1cc -> fv (sexp_of_ccp_loc v1cc.cc_loc |> SexpUtil.to_string)
      | MV_size_str v1cc -> ZStr.create_size ctx (eov v1cc)
      | MV_size_b _ -> Not_Implemented |> raise
      (*************************************************************************)
@@ -253,11 +269,10 @@ module Encoder = struct
      | MV_mul_nmm (v1cc, v2cc) ->
        ZMutez.create_mul ctx (eov v1cc) (eov v2cc)
      | MV_mtz_of_op_list v1cc ->
-       (* TODO: List analysis *)
        Formula.if_then_else ctx
          ~if_:(Formula.create_is_list_nil (eov v1cc))
          ~then_:(ZMutez.create_expr ctx 0)
-         ~else_:(Expr.create_dummy ctx (ZMutez.create_sort ctx))
+         ~else_:(fv (sexp_of_ccp_loc v1cc.cc_loc |> SexpUtil.to_string))
      (****************************************************************************)
      (* Bool                                                                     *)
      (****************************************************************************)
