@@ -29,12 +29,12 @@ module PPSet = Set.Make (Res.PPath)
 (******************************************************************************)
 
 let select_pp : top_k:int -> PPSet.t -> PPSet.t * PPSet.t =
-   fun ~top_k ppaths ->
-   List.sort (PPSet.to_list ppaths) ~compare:(fun pp1 pp2 ->
-       -compare_int pp1.pp_score pp2.pp_score
-   )
-   |> (fun l -> List.split_n l top_k)
-   |> (fun (l1, l2) -> (PPSet.of_list l1, PPSet.of_list l2))
+  fun ~top_k ppaths ->
+  List.sort (PPSet.to_list ppaths) ~compare:(fun pp1 pp2 ->
+      -compare_int pp1.pp_score pp2.pp_score
+  )
+  |> (fun l -> List.split_n l top_k)
+  |> (fun (l1, l2) -> (PPSet.of_list l1, PPSet.of_list l2))
 (* function select_pp end *)
 
 let expand_pp : m_view:Se.SSGraph.mci_view -> Res.PPath.t -> PPSet.t =
@@ -53,7 +53,7 @@ let refute :
     Smt.Solver.t ->
     Tz.mich_v Tz.cc ->
     Res.PPath.t ->
-    (Res.PPath.t * Smt.Model.t) option =
+    Res.PPath.t option * Smt.Model.t option =
    let open Smt in
    let open Tz in
    let open MState in
@@ -63,14 +63,17 @@ let refute :
         (equal_mich_cut_category
            (get_first_ss ppath.pp_mstate).ss_start_mci.mci_cutcat MCC_trx_entry
         )
-   then None
-   else (
-     let (vc : mich_f) = gen_refute_vc istrg ppath.pp_mstate |> TzUtil.opt_mf in
-     let ((sat : Solver.satisfiability), (m_opt : Smt.Model.t option)) =
-        check_sat ctx slvr vc
-     in
-     if Solver.is_sat sat then Some (ppath, Option.value_exn m_opt) else None
-   )
+   then (None, None)
+   else
+     ( Some ppath,
+       let (vc : mich_f) =
+          gen_refute_vc istrg ppath.pp_mstate |> TzUtil.opt_mf
+       in
+       let ((sat : Solver.satisfiability), (m_opt : Smt.Model.t option)) =
+          check_sat ctx slvr vc
+       in
+       if Solver.is_sat sat then Some (Option.value_exn m_opt) else None
+     )
 (* function refute end *)
 
 (******************************************************************************)
@@ -93,23 +96,41 @@ let naive_run_ppath_escape_condition : Res.config -> Res.PPath.t -> bool =
 (* function naive_run_ppath_escape_condition end *)
 
 let naive_run_ppath_atomic_action :
-    Res.config -> Res.PPath.t -> PPSet.t * (Res.PPath.t * Smt.Model.t) option =
+    Res.config ->
+    Res.PPath.t ->
+    PPSet.t * PPSet.t * (Res.PPath.t * Smt.Model.t) option =
    let open Res in
    fun cfg ppath ->
    if naive_run_ppath_escape_condition cfg ppath
-   then (PPSet.singleton ppath, None)
+   then (PPSet.empty, PPSet.singleton ppath, None)
    else (
      (* 1. Get expanded paths *)
      let (expanded_ppaths : PPSet.t) = expand_pp ~m_view:cfg.cfg_m_view ppath in
      (* 2. Try to refute them *)
-     let (r_opt : (Res.PPath.t * Smt.Model.t) option) =
-        PPSet.fold expanded_ppaths ~init:None ~f:(fun r_opt eppath ->
+     let ((total_paths : PPSet.t), (r_opt : (Res.PPath.t * Smt.Model.t) option))
+         =
+        PPSet.fold expanded_ppaths ~init:(PPSet.empty, None)
+          ~f:(fun (t_paths, r_opt) eppath ->
             if Option.is_some r_opt
-            then r_opt
-            else refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg eppath
+            then (t_paths, r_opt)
+            else (
+              let ( (total_path_opt : PPath.t option),
+                    (model_opt : Smt.Model.t option)
+                  ) =
+                 refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg eppath
+              in
+              if Option.is_none total_path_opt
+              then (t_paths, r_opt)
+              else (
+                let (total_path : PPath.t) = Option.value_exn total_path_opt in
+                ( PPSet.add t_paths total_path,
+                  Option.map model_opt ~f:(fun model -> (total_path, model))
+                )
+              )
+            )
         )
      in
-     (expanded_ppaths, r_opt)
+     (total_paths, expanded_ppaths, r_opt)
    )
 (* function naive_run_ppath_atomic_action end *)
 
@@ -147,24 +168,27 @@ let naive_run_qres_atomic_action : Res.config -> Res.qres -> Res.qres =
         select_pp ~top_k:cfg.cfg_ppath_k qres.qr_exp_ppaths
      in
      (* 3. Expand and try to refute each selected paths *)
-     let ( (qr_rft_ppath : (PPath.t * Smt.Model.t) option),
-           (qr_exp_ppaths : PPSet.t),
+     let ( (qr_total_ppaths : PPSet.t),
+            (qr_exp_ppaths : PPSet.t),
+           (qr_rft_ppath : (PPath.t * Smt.Model.t) option),
            (qr_exp_cnt : int)
          ) =
         PPSet.fold selected_ppaths
-          ~init:(None, unselected_ppaths, qres.qr_exp_cnt)
-          ~f:(fun (r_opt, acc_ppaths, acc_cnt) ppath ->
+          ~init:(qres.qr_total_ppaths, unselected_ppaths, None, qres.qr_exp_cnt)
+          ~f:(fun (t_paths, acc_ppaths, r_opt, acc_cnt) ppath ->
             if Option.is_some r_opt
-            then (r_opt, PPSet.add acc_ppaths ppath, acc_cnt)
+            then (t_paths, PPSet.add acc_ppaths ppath, r_opt, acc_cnt)
             else (
-              let ( (expanded_ppaths : PPSet.t),
+              let ( (new_t_paths : PPSet.t),
+                    (expanded_ppaths : PPSet.t),
                     (r_opt : (PPath.t * Smt.Model.t) option)
                   ) =
                  naive_run_ppath_atomic_action cfg ppath
               in
               let (new_ppath_cnt : int) = PPSet.length expanded_ppaths in
-              ( r_opt,
-                PPSet.union acc_ppaths expanded_ppaths,
+              ( PPSet.union t_paths new_t_paths,
+                  PPSet.union acc_ppaths expanded_ppaths,
+                r_opt,
                 acc_cnt + new_ppath_cnt
               )
             )
@@ -172,7 +196,7 @@ let naive_run_qres_atomic_action : Res.config -> Res.qres -> Res.qres =
      in
      if Option.is_some qr_rft_ppath
      then
-       { qres with qr_rft_flag = RF_r; qr_rft_ppath; qr_exp_ppaths; qr_exp_cnt }
+       { qres with qr_rft_flag = RF_r; qr_total_ppaths; qr_exp_ppaths; qr_rft_ppath; qr_exp_cnt }
      else { qres with qr_exp_ppaths; qr_exp_cnt }
    )
 (* function naive_run_qres_atomic_action end *)

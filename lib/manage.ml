@@ -26,17 +26,35 @@ let initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    fun cfg res ->
    let (r_qr_lst : Res.qres list) =
       List.map res.r_qr_lst ~f:(fun qres ->
-          let (r_opt : (Res.PPath.t * Smt.Model.t) option) =
-             PPSet.fold qres.qr_exp_ppaths ~init:None ~f:(fun r_opt eppath ->
+          let ( (qr_total_ppaths : PPSet.t),
+                (qr_rft_ppath : (Res.PPath.t * Smt.Model.t) option)
+              ) =
+             PPSet.fold qres.qr_exp_ppaths ~init:(qres.qr_total_ppaths, None)
+               ~f:(fun (t_paths, r_opt) eppath ->
                  if Option.is_some r_opt
-                 then r_opt
-                 else
-                   Refute.refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg
-                     eppath
+                 then (t_paths, r_opt)
+                 else (
+                   let ( (total_path_opt : PPath.t option),
+                         (model_opt : Smt.Model.t option)
+                       ) =
+                      Refute.refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
+                        cfg.cfg_istrg eppath
+                   in
+                   if Option.is_none total_path_opt
+                   then (t_paths, r_opt)
+                   else (
+                     let (total_path : PPath.t) =
+                        Option.value_exn total_path_opt
+                     in
+                     ( PPSet.add t_paths total_path,
+                       Option.map model_opt ~f:(fun model -> (total_path, model))
+                     )
+                   )
+                 )
              )
           in
-          if Option.is_some r_opt
-          then { qres with qr_rft_flag = RF_r; qr_rft_ppath = r_opt }
+          if Option.is_some qr_rft_ppath
+          then { qres with qr_rft_flag = RF_r; qr_total_ppaths; qr_rft_ppath }
           else qres
       )
    in

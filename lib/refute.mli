@@ -35,7 +35,7 @@ val refute :
   Smt.Solver.t ->
   Tz.mich_v Tz.cc ->
   Res.PPath.t ->
-  (Res.PPath.t * Smt.Model.t) option
+  Res.PPath.t option * Smt.Model.t option
 
 (******************************************************************************)
 (******************************************************************************)
@@ -48,7 +48,9 @@ val refute :
 val naive_run_ppath_escape_condition : Res.config -> Res.PPath.t -> bool
 
 val naive_run_ppath_atomic_action :
-  Res.config -> Res.PPath.t -> PPSet.t * (Res.PPath.t * Smt.Model.t) option
+  Res.config ->
+  Res.PPath.t ->
+  PPSet.t * PPSet.t * (Res.PPath.t * Smt.Model.t) option
 
 (* Query Result ***************************************************************)
 

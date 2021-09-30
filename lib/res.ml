@@ -82,6 +82,8 @@ type qres = {
   (* Query States *)
   qr_unk_qs : SSet.t;
   (* Partial Paths and Invariant Candidates *)
+  (* for debugging *) qr_validated_ppaths : PPSet.t;
+  (* for debugging *) qr_total_ppaths : PPSet.t;
   qr_exp_ppaths : PPSet.t;
   qr_prec_map : MFSSet.t SMYMap.t;
   qr_rft_ppath : (PPath.t * Smt.Model.t) option;
