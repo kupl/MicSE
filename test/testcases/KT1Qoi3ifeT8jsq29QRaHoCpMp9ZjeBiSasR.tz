@@ -1,0 +1,125 @@
+# Key Hash: KT1Qoi3ifeT8jsq29QRaHoCpMp9ZjeBiSasR
+# Code Hash: 2ade5b81b1e62793dd9073ba8b26be2bd57c6239906fe867340ff5761810befc
+# Balance: 751.432008 (21.03.03. ACCESSED)
+storage
+  (pair (pair (key_hash %journaliere)
+              (pair (pair (mutez %fonds_restant) (int %duree_de_blocage))
+                    (pair %file (list (pair timestamp mutez)) (list (pair timestamp mutez)))))
+        (pair (key_hash %maitresse) (pair %sel nat nat))) ;
+parameter
+  (or (unit %default)
+      (or (pair %appel_clef_maitresse
+             (pair (key %clef_publique) signature)
+             (or (pair (pair (key_hash %journaliere)
+                             (pair (pair (mutez %fonds_restant) (int %duree_de_blocage))
+                                   (pair %file (list (pair timestamp mutez)) (list (pair timestamp mutez)))))
+                       (key_hash %nouvelle_clef_maitresse))
+                 (pair (lambda unit (list operation)) (key_hash %nouvelle_clef_publique))))
+          (pair %transfer
+             (pair (list %beneficiaires (pair (mutez %montant) (contract %beneficiaire unit)))
+                   (key_hash %novelle_clef_journaliere))
+             (pair (key %clef_publique) signature)))) ;
+code { UNPAPAIR ;
+       IF_RIGHT
+         { IF_LEFT
+             { DIP { SWAP } ;
+               SWAP ;
+               UNPAIR ;
+               DIP { SWAP ;
+                     UNPAIR ;
+                     DIP { DUP ;
+                           PACK ;
+                           DIP { DIP { UNPAIR ;
+                                       DUP ;
+                                       DIP { PUSH nat 2 ; ADD ; PAIR } ;
+                                       PACK ;
+                                       CHAIN_ID ;
+                                       SELF ;
+                                       PAIR ;
+                                       PACK ;
+                                       CONCAT } ;
+                                 SWAP } ;
+                           CONCAT ;
+                           DUP } ;
+                     UNPAIR ;
+                     DUP ;
+                     HASH_KEY } ;
+               ASSERT_CMPEQ ;
+               CHECK_SIGNATURE ;
+               IF { DROP } { FAILWITH } ;
+               IF_LEFT
+                 { UNPAIR ; DIP { PAIR ; SWAP ; DROP } ; NIL operation }
+                 { UNPAIR ; DIP { PAIR ; SWAP } ; UNIT ; EXEC } }
+             { DIP { UNPAPAIR } ;
+               UNPAIR ;
+               DUP ;
+               PACK ;
+               DIP { UNPAIR ; DIP { SWAP } } ;
+               SWAP ;
+               DIP { DIP { DIP { SWAP } ;
+                           SWAP ;
+                           DIP { UNPAIR ; DUP ; HASH_KEY } ;
+                           ASSERT_CMPEQ ;
+                           DIG 5 ;
+                           UNPAIR ;
+                           DIP { UNPAIR ; DIP { DUP ; PUSH nat 2 ; ADD } ; PAIR } ;
+                           PAIR ;
+                           DUG 6 ;
+                           PACK ;
+                           CHAIN_ID ;
+                           SELF ;
+                           PAIR ;
+                           PACK ;
+                           CONCAT } ;
+                     CONCAT ;
+                     SWAP ;
+                     DIP { SWAP ; DIP { DUP } } ;
+                     CHECK_SIGNATURE ;
+                     IF { DROP } { FAILWITH } ;
+                     DIP { UNPAIR ;
+                           SWAP ;
+                           DIP { SWAP ;
+                                 UNPAIR ;
+                                 PUSH bool True ;
+                                 LOOP { IF_CONS
+                                          { DUP ;
+                                            CAR ;
+                                            NOW ;
+                                            IFCMPGE
+                                              { CDR ; SWAP ; DIP { SWAP ; DIP { ADD } } ; PUSH bool True }
+                                              { CONS ; PUSH bool False } }
+                                          { IF_CONS
+                                              { NIL (pair timestamp mutez) ;
+                                                SWAP ;
+                                                CONS ;
+                                                SWAP ;
+                                                ITER { CONS } ;
+                                                NIL (pair timestamp mutez) ;
+                                                SWAP ;
+                                                PUSH bool True }
+                                              { NIL (pair timestamp mutez) ; DUP ; PUSH bool False } } } ;
+                                 DIP { SWAP } ;
+                                 SWAP } } ;
+                     PUSH mutez 0 ;
+                     NIL operation } ;
+               ITER { UNPAIR ;
+                      DUP ;
+                      DIP { UNIT ; TRANSFER_TOKENS ; CONS } ;
+                      SWAP ;
+                      DIP { SWAP ; ADD } } ;
+               DIP { SWAP ;
+                     DIP { SWAP ;
+                           DUP ;
+                           NOW ;
+                           ADD ;
+                           SWAP ;
+                           DIP { DIP { SWAP } ;
+                                 SWAP ;
+                                 DIP { SWAP ; DUP ; DIP { SWAP ; PAIR ; SWAP ; DIP { CONS } ; PAIR } } ;
+                                 SUB } ;
+                           SWAP ;
+                           PAIR ;
+                           PAIR } ;
+                     PAIR } } }
+         { DROP ; NIL operation } ;
+       PAPAIR }
