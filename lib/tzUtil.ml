@@ -235,7 +235,7 @@ let rec mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f =
   | MF_and fl -> MF_and (List.map fl ~f:r) |> mapf
   | MF_or fl -> MF_or (List.map fl ~f:r) |> mapf
   | MF_eq _ -> mapf mf
-  | MF_imply (f1, f2) -> MF_imply (r f1, mapf f2) |> mapf
+  | MF_imply (f1, f2) -> MF_imply (r f1, r f2) |> mapf
   (* MicSE Branch *)
   | MF_is_true _ -> mapf mf
   | MF_is_none _ -> mapf mf
