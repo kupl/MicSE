@@ -192,6 +192,7 @@ module Encoder = struct
      | MV_unlift_left v1cc -> ZOr.read_content_left (eov v1cc)
      | MV_unlift_right v1cc -> ZOr.read_content_right (eov v1cc)
      | MV_hd_l v1cc -> ZList.read_head (eov v1cc)
+     | MV_exec (v1cc, v2cc) -> ZLambda.create_exec (eov v2cc) (eov v1cc)
      (*************************************************************************)
      (* Integer                                                               *)
      (*************************************************************************)
@@ -386,10 +387,10 @@ module Encoder = struct
      (*************************************************************************)
      (* List                                                                  *)
      (*************************************************************************)
-     | MV_lit_list (t1cc, vcc_lst) ->
+     | MV_lit_list (_, vcc_lst) ->
        List.fold_right vcc_lst
          ~f:(fun vcc expr -> ZList.create_cons ~content:(eov vcc) expr)
-         ~init:(ZList.create_expr_nil (sot t1cc))
+         ~init:(ZList.create_expr_nil sort)
      | MV_nil _ -> ZList.create_expr_nil sort
      | MV_cons (v1cc, v2cc) -> ZList.create_cons ~content:(eov v1cc) (eov v2cc)
      | MV_tl_l v1cc -> ZList.read_tail (eov v1cc)
@@ -490,7 +491,7 @@ module Encoder = struct
      | MV_ref_cont t1cc ->
        Expr.create_var ctx (sot t1cc)
          ~name:("MV_ref_cont_" ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx))
-     | MV_sigma_tmplm _ -> Not_Implemented |> raise
+     | MV_sigma_tmplm v1cc -> fv (sexp_of_ccp_loc v1cc.cc_loc |> SexpUtil.to_string)
   (* function cv_mv end *)
 
   and cv_mvcc :
