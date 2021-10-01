@@ -1917,7 +1917,13 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    | MI_lambda (t1, t2, i) ->
      push_bmstack ~v:(MV_lit_lambda (t1, t2, i) |> gen_custom_cc inst) ss
      |> running_ss_to_sr ctxt_sr
-   (* | MI_exec -> TODO *)
+   | MI_exec ->
+     update_top_2_bmstack_and_constraint
+       ~f:(fun (h1, h2) ->
+         let v = MV_exec (h1, h2) |> gen_custom_cc inst in
+         ([ v ], michv_maybe_mtznat_constraints ~ctx ~v))
+       ss
+     |> running_ss_to_sr ctxt_sr
    | MI_dip_n (zn, i) ->
      let n : int = Bigint.to_int_exn zn in
      let dipped_ss =
@@ -2429,7 +2435,9 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        ~f:(fun h -> [ MV_address_of_contract h |> gen_custom_cc inst ])
        ss
      |> running_ss_to_sr ctxt_sr
-   (* | MI_chain_id -> TODO *)
+   | MI_chain_id ->
+     push_bmstack ss ~v:(MV_lit_chain_id "TzChain" |> gen_custom_cc inst)
+     |> running_ss_to_sr ctxt_sr
    | MI_unpair ->
      (* let _ = (* DEBUG *) print_endline "unpair enter" in *)
      update_top_1_bmstack_and_constraint

@@ -101,6 +101,7 @@ and mich_v =
   | MV_unlift_left          of mich_v cc (* ('a, 'b) or -> 'a *)
   | MV_unlift_right         of mich_v cc (* ('a, 'b) or -> 'b *)
   | MV_hd_l                 of mich_v cc (* 'a list -> 'a *)
+  | MV_exec                 of mich_v cc * mich_v cc (* 'param * ('param, 'ret) lambda -> 'ret *)
   (*************************************************************************)
   (* Integer                                                               *)
   (*************************************************************************)

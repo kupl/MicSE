@@ -22,6 +22,7 @@ let rec mvcc_map_innerfst : mapf:(mich_v -> mich_v) -> mich_v cc -> mich_v cc =
   | MV_unlift_left v -> MV_unlift_left (r v) |> fc
   | MV_unlift_right v -> MV_unlift_right (r v) |> fc
   | MV_hd_l v -> MV_hd_l (r v) |> fc
+  | MV_exec (v1, v2) -> MV_exec (r v1, r v2) |> fc
   (*************************************************************************)
   (* Integer                                                               *)
   (*************************************************************************)
@@ -330,6 +331,7 @@ let rec mvcc_fold_innerfst :
   | MV_unlift_left v -> fc1 (fun x -> MV_unlift_left x) v
   | MV_unlift_right v -> fc1 (fun x -> MV_unlift_right x) v
   | MV_hd_l v -> fc1 (fun x -> MV_hd_l x) v
+  | MV_exec (v1, v2) -> fc2 (fun x y -> MV_exec (x, y)) v1 v2
   (*************************************************************************)
   (* Integer                                                               *)
   (*************************************************************************)
@@ -707,6 +709,12 @@ let typ_of_val : mich_v cc -> mich_t cc =
        |> function
        | MT_list t -> t
        | _         -> err ()
+     )
+     | MV_exec (_, v2) -> (
+       (typ_of_val_i v2).cc_v
+       |> function
+       | MT_lambda (_, t2) -> t2
+       | _                 -> err ()
      )
      (****************************************************************************)
      (* Integer                                                                  *)
