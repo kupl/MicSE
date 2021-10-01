@@ -24,6 +24,9 @@ module QIDMap : module type of Core.Map.Make (Tz.QId_cmp)
 (* Set of Tz.sym_state *)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 
+(* Set of Inv.cand *)
+module CSet : module type of Core.Set.Make (Inv.Cand_cmp)
+
 (* Set of Inv.inv_map *)
 module InvSet : module type of Core.Set.Make (Inv.InvMap_cmp)
 
@@ -76,7 +79,7 @@ type qres = {
   (* debugging *) qr_validated_ppaths : PPath.t list;
   (* debugging *) qr_total_ppaths : (PPath.t * Smt.Solver.satisfiability) list;
   qr_exp_ppaths : PPSet.t;
-  qr_prec_map : MFSSet.t SMYMap.t;
+  qr_prec_map : CSet.t SMYMap.t;
   qr_rft_ppath : (PPath.t * Smt.Model.t) option;
   (* Count expanding_ppaths *)
   qr_exp_cnt : int;
@@ -174,7 +177,7 @@ val string_of_res_rough : config -> res -> string
 
 val string_of_res : config -> res -> string
 
-val find_precond : MFSSet.t SMYMap.t -> key:MState.summary -> MFSSet.t
+val find_precond : CSet.t SMYMap.t -> key:MState.summary -> CSet.t
 
 val update_precond :
-  MFSSet.t SMYMap.t -> key:MState.summary -> data:MFSSet.t -> MFSSet.t SMYMap.t
+  CSet.t SMYMap.t -> key:MState.summary -> data:CSet.t -> CSet.t SMYMap.t

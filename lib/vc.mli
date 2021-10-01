@@ -4,15 +4,6 @@ exception VcError of string
 
 (******************************************************************************)
 (******************************************************************************)
-(* Common Datatypes                                                           *)
-(******************************************************************************)
-(******************************************************************************)
-
-(* Set of Tz.mich_f *)
-module MFSet : module type of Core.Set.Make (Tz.MichF_cmp)
-
-(******************************************************************************)
-(******************************************************************************)
 (* Smt Encoder                                                                *)
 (******************************************************************************)
 (******************************************************************************)
@@ -60,15 +51,15 @@ val apply_inv_at_start :
   sctx:Tz.mich_sym_ctxt ->
   Tz.mich_cut_info ->
   Tz.sym_image ->
-  MFSet.t ->
-  Tz.mich_f list
+  Tz.mich_f ->
+  Tz.mich_f
 
 val apply_inv_at_block :
   sctx:Tz.mich_sym_ctxt ->
   Tz.mich_cut_info ->
   Tz.sym_image ->
-  MFSet.t ->
-  Tz.mich_f list
+  Tz.mich_f ->
+  Tz.mich_f
 
 (******************************************************************************)
 (******************************************************************************)
@@ -78,15 +69,9 @@ val apply_inv_at_block :
 
 (* Strongest Postcondition ****************************************************)
 
-val gen_sp : Tz.mich_f list -> Tz.sym_state -> Tz.mich_f
+val gen_sp : Tz.sym_state -> Tz.mich_f -> Tz.mich_f
 
-val gen_sp_from_ms : Tz.mich_f list -> MState.t -> Tz.mich_f
-
-(* Invariant ******************************************************************)
-
-val get_start_inv : Inv.inv_map -> Tz.sym_state -> Tz.mich_f list
-
-val get_block_inv : Inv.inv_map -> Tz.sym_state -> Tz.mich_f list
+val gen_sp_from_ms : MState.t -> Tz.mich_f -> Tz.mich_f
 
 (* Verification Condition *****************************************************)
 
@@ -96,14 +81,14 @@ val gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f
 
 val gen_inductiveness_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f
 
-val gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f
+val gen_preservation_vc : Inv.cand -> MState.t -> Tz.mich_f
 
 val gen_initial_inv_vc :
   Inv.inv_map -> Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.mich_f
 
 val gen_refute_vc : Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f
 
-val gen_precond_vc : MFSet.t -> MState.t -> Tz.mich_f
+val gen_precond_vc : Inv.cand -> MState.t -> Tz.mich_f
 
 (******************************************************************************)
 (******************************************************************************)
@@ -126,4 +111,4 @@ val check_sat :
   Tz.mich_f ->
   Smt.Solver.satisfiability * Smt.Model.t option
 
-val is_fset_sat : Smt.Ctx.t -> Smt.Solver.t -> MFSet.t -> bool
+val is_cand_sat : Smt.Ctx.t -> Smt.Solver.t -> Inv.cand -> bool

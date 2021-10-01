@@ -47,8 +47,8 @@ let check_failed :
           equal_r_mich_cut_info mp_start rmci
           || equal_r_mich_cut_info mp_block rmci
        then (
-         let (cp_start : MFSet.t) = find_inv_by_rmci imap mp_start in
-         let (cp_block : MFSet.t) = find_inv_by_rmci imap mp_block in
+         let (cp_start : cand) = find_inv_by_rmci imap mp_start in
+         let (cp_block : cand) = find_inv_by_rmci imap mp_block in
          is_already_failed_by_rmci failed_cp { mp_start; mp_block }
            { cp_start; cp_block }
        )
@@ -111,8 +111,8 @@ let add_failed :
    let (mcip : mci_pair) =
       cvt_mci_pair (state.ss_start_mci, state.ss_block_mci)
    in
-   let (cand_start : MFSet.t) = find_inv_by_rmci failed mcip.mp_start in
-   let (cand_block : MFSet.t) = find_inv_by_rmci failed mcip.mp_block in
+   let (cand_start : cand) = find_inv_by_rmci failed mcip.mp_start in
+   let (cand_block : cand) = find_inv_by_rmci failed mcip.mp_block in
    let (candp : cand_pair) = cvt_cand_pair (cand_start, cand_block) in
    let (new_failed_cp : failed_cp) =
       add_failed_cp failed_cp ~key:mcip ~value:candp
@@ -151,7 +151,7 @@ let rec combinate :
    else (
      (* 1. Target MCI for combinate *)
      let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
-     let (cands : MFSet.t list) =
+     let (cands : cand list) =
         find_top_score_ordered_cand_by_rmci ~remove_unflaged:true targets rmci
      in
      let (remains : cand_map) = RMCIMap.remove targets rmci in
@@ -237,7 +237,7 @@ let rec naive_run_wlst_atomic_action :
                      str
                      ^ Printf.sprintf "RMCI: %s\n\t%s\n"
                          (key |> Tz.sexp_of_r_mich_cut_info |> Sexp.to_string)
-                         (data
+                         (data.c_fmla
                          |> MFSet.to_list
                          |> List.map ~f:(fun f ->
                                 f
@@ -255,7 +255,7 @@ let rec naive_run_wlst_atomic_action :
        (* 3-1-2. Update candidates *)
        let (new_cands : cand_map) =
           strengthen_cand_map cands new_imap
-            ~is_fset_sat:(Vc.is_fset_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr)
+            ~is_cand_sat:(Vc.is_cand_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr)
        in
        (* 3-1-3. Update combinations *)
        let (new_combs : InvSet.t) =

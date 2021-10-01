@@ -17,6 +17,9 @@ module RMCIMap : module type of Core.Map.Make (Tz.RMichCutInfo_cmp)
 (* Set of Tz.mich_v Tz.cc *)
 module MVSet : module type of Core.Set.Make (Tz.MichVCC_cmp)
 
+(* Set of Tz.mich_f *)
+module MFSet : module type of Core.Set.Make (Tz.MichF_cmp)
+
 (* Set of Tz.sym_state & Set of Tz.mich_cut_info *)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 
@@ -60,7 +63,7 @@ type igdts_map = igdt_sets RMCIMap.t [@@deriving sexp, compare, equal]
 (******************************************************************************)
 (******************************************************************************)
 
-val fold_precond_lst : igdt list -> Tz.mich_f
+val fold_precond_lst : igdt list -> MFSet.t
 
 val tmap_from_iset : ISet.t -> ISet.t MTMap.t
 

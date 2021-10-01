@@ -26,6 +26,9 @@ module QIDMap = Map.Make (Tz.QId_cmp)
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
 
+(* Set of Inv.cand *)
+module CSet = Set.Make (Inv.Cand_cmp)
+
 (* Set of Inv.inv_map *)
 module InvSet = Set.Make (Inv.InvMap_cmp)
 
@@ -82,7 +85,7 @@ type qres = {
   (* debugging *) qr_validated_ppaths : PPath.t list;
   (* debugging *) qr_total_ppaths : (PPath.t * Smt.Solver.satisfiability) list;
   qr_exp_ppaths : PPSet.t;
-  qr_prec_map : MFSSet.t SMYMap.t;
+  qr_prec_map : CSet.t SMYMap.t;
   qr_rft_ppath : (PPath.t * Smt.Model.t) option;
   (* Count expanding_ppaths *)
   qr_exp_cnt : int;
@@ -188,7 +191,7 @@ let init_res : config -> res =
      r_inv = Inv.gen_true_inv_map cfg_se_res;
      r_cands =
        Inv.gen_initial_cand_map
-         ~is_fset_sat:(is_fset_sat cfg_smt_ctxt cfg_smt_slvr)
+         ~is_cand_sat:(is_cand_sat cfg_smt_ctxt cfg_smt_slvr)
          cfg_qid_set cfg_imap;
      r_wlst = init_worklist ();
    }
@@ -371,22 +374,19 @@ let string_of_res : config -> res -> string =
    String.concat ~sep:"\n" [ ""; head; conf; summ; finf; prvd; rftd; fail ]
 (* function string_of_res end *)
 
-let find_precond : MFSSet.t SMYMap.t -> key:MState.summary -> MFSSet.t =
+let find_precond : CSet.t SMYMap.t -> key:MState.summary -> CSet.t =
   fun pmap ~key ->
   SMYMap.find pmap key
   |> function
-  | None      -> MFSSet.empty
-  | Some fset -> fset
+  | None      -> CSet.empty
+  | Some cset -> cset
 (* function find_precond end *)
 
 let update_precond :
-    MFSSet.t SMYMap.t ->
-    key:MState.summary ->
-    data:MFSSet.t ->
-    MFSSet.t SMYMap.t =
+    CSet.t SMYMap.t -> key:MState.summary -> data:CSet.t -> CSet.t SMYMap.t =
   fun pmap ~key ~data ->
   SMYMap.update pmap key ~f:(function
   | None      -> data
-  | Some fset -> MFSSet.union fset data
+  | Some cset -> CSet.union cset data
   )
 (* function update_precond end *)

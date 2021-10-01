@@ -45,11 +45,33 @@ module ISet = Set.Make (Igdt.IGDT_cmp)
 
 (******************************************************************************)
 (******************************************************************************)
+(* Invariant Candidates                                                       *)
+(******************************************************************************)
+(******************************************************************************)
+
+type cand = {
+  c_fmla : MFSet.t;
+  c_cond : MFSet.t;
+}
+[@@deriving sexp, compare, equal]
+
+module Cand_cmp = struct
+  type t = cand [@@deriving sexp, compare]
+end
+
+(* Set of cand *)
+module CSet = Set.Make (Cand_cmp)
+
+(* Map of cand *)
+module CMap = Map.Make (Cand_cmp)
+
+(******************************************************************************)
+(******************************************************************************)
 (* Invariants                                                                 *)
 (******************************************************************************)
 (******************************************************************************)
 
-type inv_map = MFSet.t RMCIMap.t [@@deriving sexp, compare, equal]
+type inv_map = cand RMCIMap.t [@@deriving sexp, compare, equal]
 
 module InvMap_cmp = struct
   type t = inv_map [@@deriving sexp, compare]
@@ -60,11 +82,11 @@ module InvSet = Set.Make (InvMap_cmp)
 
 (******************************************************************************)
 (******************************************************************************)
-(* Invariant Candidates                                                       *)
+(* Map of Invariant Candidates                                                *)
 (******************************************************************************)
 (******************************************************************************)
 
-type cands = (bool * int QIDMap.t) MFSMap.t [@@deriving sexp, compare, equal]
+type cands = (bool * int QIDMap.t) CMap.t [@@deriving sexp, compare, equal]
 
 type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
@@ -81,8 +103,8 @@ type mci_pair = {
 [@@deriving sexp, compare, equal]
 
 type cand_pair = {
-  cp_start : MFSet.t;
-  cp_block : MFSet.t;
+  cp_start : cand;
+  cp_block : cand;
 }
 [@@deriving sexp, compare, equal]
 
@@ -143,12 +165,6 @@ let combination_self : ISet.t -> size:int -> ILSet.t =
   combination set_lst
 (* function combination_self end *)
 
-module MFOPT_cmp = struct
-  type t = Tz.mich_f option [@@deriving sexp, compare]
-end
-
-module MFOSet = Set.Make (MFOPT_cmp)
-
 (* filter_symmetry {[a; a;]; [a; b;]; [a; c;] [b; a;]; [b; b;]; [b; c;]; [c; a;]; [c; b;]; [c; c;];} === {[a; b;]; [a; c;]; [b; c;];}  *)
 (* This function is only working at ingredient list size 2 *)
 let filter_symmetry : ILSet.t -> ILSet.t =
@@ -179,6 +195,29 @@ let filter_equal : ILSet.t -> ILSet.t =
     )
 (* function filter_equal end *)
 
+let gen_cand_by_fmla : ?cond:MFSet.t -> Tz.mich_f -> cand =
+  fun ?(cond = MFSet.empty) fmla ->
+  { c_fmla = MFSet.singleton fmla; c_cond = cond }
+(* function gen_cand_by_fmla end *)
+
+let join_cands : cand -> cand -> cand =
+  fun cand1 cand2 ->
+  {
+    c_fmla = MFSet.union cand1.c_fmla cand2.c_fmla;
+    c_cond = MFSet.union cand1.c_cond cand2.c_cond;
+  }
+(* function join_cand end *)
+
+let fmla_of_cand_pre : cand -> Tz.mich_f =
+  (fun cand -> MF_and (MFSet.union cand.c_cond cand.c_fmla |> MFSet.to_list))
+(* function fmla_of_cand_pre end *)
+
+let fmla_of_cand_post : cand -> Tz.mich_f =
+  fun cand ->
+  MF_imply
+    (MF_and (MFSet.to_list cand.c_cond), MF_and (MFSet.to_list cand.c_fmla))
+(* function fmla_of_cand_pre end *)
+
 (******************************************************************************)
 (* Invariant Candidate Templates                                              *)
 (******************************************************************************)
@@ -191,7 +230,7 @@ let gen_template :
     f:((Tz.mich_t * Tz.mich_v Tz.cc) list -> Tz.mich_f option) ->
     Igdt.igdt_sets ->
     Tz.mich_t Tz.cc list list ->
-    MFSet.t =
+    CSet.t =
    let open Tz in
    let open Igdt in
    fun ?(except_lit_only = true) ?(target_mode = `Normal) ~f igdt_map
@@ -230,18 +269,18 @@ let gen_template :
           | `Asymm     -> filter_symmetry
           | `Asymm_rfl -> filter_equal
        in
-       MFOSet.map target_comb ~f:(fun c_lst ->
+       ILSet.fold target_comb ~init:CSet.empty ~f:(fun acc c_lst ->
            f (List.map c_lst ~f:(fun i -> (i.ig_typ.cc_v, i.ig_value)))
            |> function
-           | None   -> None
-           | Some f -> Some (MF_and [ f; fold_precond_lst c_lst ])
+           | None      -> acc
+           | Some fmla ->
+             CSet.add acc (gen_cand_by_fmla fmla ~cond:(fold_precond_lst c_lst))
        )
-       |> MFSet.filter_map ~f:Fun.id
    )
-   |> MFSet.union_list
+   |> CSet.union_list
 (* function gen_template end *)
 
-let tmp_eq : Igdt.igdt_sets -> MFSet.t =
+let tmp_eq : Igdt.igdt_sets -> CSet.t =
    let open Tz in
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
@@ -252,14 +291,16 @@ let tmp_eq : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~target_mode:`Asymm ~f:(fun tvl ->
        match tvl with
-       | [ (_, v1); (_, v2) ] when not (equal_cc equal_mich_v v1 v2) ->
-         Some (MF_eq (gctx v1, gctx v2))
+       | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 ->
+         if not (equal_cc equal_mich_v v1 v2)
+         then Some (MF_eq (gctx v1, gctx v2))
+         else None
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_eq : wrong ingredient length" |> raise
    )
 (* function tmp_eq end *)
 
-let tmp_ge : Igdt.igdt_sets -> MFSet.t =
+let tmp_ge : Igdt.igdt_sets -> CSet.t =
    let open Tz in
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
@@ -270,12 +311,10 @@ let tmp_ge : Igdt.igdt_sets -> MFSet.t =
    in
    let (zero_mtz : mich_v cc) = gen_dummy_cc (MV_lit_mutez Bigint.zero) in
    let (zero_nat : mich_v cc) = gen_dummy_cc (MV_lit_nat Bigint.zero) in
-   let (zero : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
    let equal_mich_v_cc = equal_cc equal_mich_v in
    let make_ge : mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2) ->
-     let (cmp : mich_v cc) = gen_dummy_cc (MV_compare (v1, v2)) in
-     Some (MF_is_true (gctx (gen_dummy_cc (MV_geq_ib (cmp, zero)))))
+     Some (MF_is_true (gctx (gen_dummy_cc (MV_geq_ib (v1, v2)))))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -285,37 +324,37 @@ let tmp_ge : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~f:(fun tvl ->
        match tvl with
-       | [ (MT_mutez, v1); (MT_mutez, v2) ]
-         when (not (equal_cc equal_mich_v v1 v2))
-              && (not (equal_mich_v_cc v1 max_mtz))
-              && not (equal_mich_v_cc v2 zero_mtz) ->
-         make_ge (v1, v2)
-       | [ (MT_nat, v1); (MT_nat, v2) ]
-         when (not (equal_cc equal_mich_v v1 v2))
-              && not (equal_mich_v_cc v2 zero_nat) ->
-         make_ge (v1, v2)
-       | [ (MT_string, v1); (MT_string, v2) ]
-         when (not (equal_cc equal_mich_v v1 v2))
-              && not (equal_mich_v_cc v2 empty_str) ->
-         make_ge (v1, v2)
-       | [ (t1, v1); (t2, v2) ]
-         when equal_mich_t t1 t2 && not (equal_cc equal_mich_v v1 v2) ->
-         make_ge (v1, v2)
+       | [ (MT_mutez, v1); (MT_mutez, v2) ] ->
+         if (not (equal_cc equal_mich_v v1 v2))
+            && (not (equal_mich_v_cc v1 max_mtz))
+            && not (equal_mich_v_cc v2 zero_mtz)
+         then make_ge (v1, v2)
+         else None
+       | [ (MT_nat, v1); (MT_nat, v2) ] ->
+         if (not (equal_cc equal_mich_v v1 v2))
+            && not (equal_mich_v_cc v2 zero_nat)
+         then make_ge (v1, v2)
+         else None
+       | [ (MT_string, v1); (MT_string, v2) ] ->
+         if (not (equal_cc equal_mich_v v1 v2))
+            && not (equal_mich_v_cc v2 empty_str)
+         then make_ge (v1, v2)
+         else None
+       | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 ->
+         if not (equal_cc equal_mich_v v1 v2) then make_ge (v1, v2) else None
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
    )
 (* function tmp_ge end *)
 
-let tmp_gt : Igdt.igdt_sets -> MFSet.t =
+let tmp_gt : Igdt.igdt_sets -> CSet.t =
    let open Tz in
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
-   let (zero : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
    let make_gt : mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2) ->
-     let (cmp : mich_v cc) = gen_dummy_cc (MV_compare (v1, v2)) in
-     Some (MF_is_true (gctx (gen_dummy_cc (MV_gt_ib (cmp, zero)))))
+     Some (MF_is_true (gctx (gen_dummy_cc (MV_gt_ib (v1, v2)))))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -325,14 +364,14 @@ let tmp_gt : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~f:(fun tvl ->
        match tvl with
-       | [ (_, v1); (_, v2) ] when not (equal_cc equal_mich_v v1 v2) ->
-         make_gt (v1, v2)
+       | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 ->
+         if not (equal_cc equal_mich_v v1 v2) then make_gt (v1, v2) else None
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_gt : wrong ingredient length" |> raise
    )
 (* function tmp_gt end *)
 
-let tmp_add_2_eq : Igdt.igdt_sets -> MFSet.t =
+let tmp_add_2_eq : Igdt.igdt_sets -> CSet.t =
    let open Tz in
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
@@ -351,18 +390,19 @@ let tmp_add_2_eq : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~f:(fun tvl ->
        match tvl with
-       | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3) ]
-         when (not (equal_cc equal_mich_v v1 v3))
-              && (not (equal_cc equal_mich_v v2 v3))
-              && (not (equal_cc equal_mich_v v1 zero))
-              && not (equal_cc equal_mich_v v2 zero) ->
-         make_add_2_eq_mtz (v1, v2, v3)
+       | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3) ] ->
+         if (not (equal_cc equal_mich_v v1 v3))
+            && (not (equal_cc equal_mich_v v2 v3))
+            && (not (equal_cc equal_mich_v v1 zero))
+            && not (equal_cc equal_mich_v v2 zero)
+         then make_add_2_eq_mtz (v1, v2, v3)
+         else None
        | [ (_, _); (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_add_2_eq : wrong ingredient length" |> raise
    )
 (* function tmp_add_2_eq end *)
 
-let tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t =
+let tmp_add_3_eq : Igdt.igdt_sets -> CSet.t =
    let open Tz in
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
@@ -384,14 +424,15 @@ let tmp_add_3_eq : Igdt.igdt_sets -> MFSet.t =
    in
    gen_template igdt_map target_types ~f:(fun tvl ->
        match tvl with
-       | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3); (MT_mutez, v4) ]
-         when (not (equal_cc equal_mich_v v1 v4))
-              && (not (equal_cc equal_mich_v v2 v4))
-              && (not (equal_cc equal_mich_v v3 v4))
-              && (not (equal_cc equal_mich_v v1 zero))
-              && (not (equal_cc equal_mich_v v2 zero))
-              && not (equal_cc equal_mich_v v3 zero) ->
-         make_add_3_eq_mtz (v1, v2, v3, v4)
+       | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3); (MT_mutez, v4) ] ->
+         if (not (equal_cc equal_mich_v v1 v4))
+            && (not (equal_cc equal_mich_v v2 v4))
+            && (not (equal_cc equal_mich_v v3 v4))
+            && (not (equal_cc equal_mich_v v1 zero))
+            && (not (equal_cc equal_mich_v v2 zero))
+            && not (equal_cc equal_mich_v v3 zero)
+         then make_add_3_eq_mtz (v1, v2, v3, v4)
+         else None
        | [ (_, _); (_, _); (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_add_3_eq : wrong ingredient length" |> raise
    )
@@ -407,8 +448,8 @@ let cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair =
    { mp_start = get_reduced_mci mci1; mp_block = get_reduced_mci mci2 }
 (* function cvt_mci_pair end *)
 
-let cvt_cand_pair : MFSet.t * MFSet.t -> cand_pair =
-  (fun (fset1, fset2) -> { cp_start = fset1; cp_block = fset2 })
+let cvt_cand_pair : cand * cand -> cand_pair =
+  (fun (cand1, cand2) -> { cp_start = cand1; cp_block = cand2 })
 (* function cvt_cand_pair end *)
 
 (* Invariants *****************************************************************)
@@ -424,7 +465,7 @@ let gen_true_inv_map : Se.se_result -> inv_map =
       )
    |> RMCISet.union_list
    |> RMCISet.to_list
-   |> List.map ~f:(fun rmci -> (rmci, MFSet.singleton MF_true))
+   |> List.map ~f:(fun rmci -> (rmci, gen_cand_by_fmla MF_true))
    |> RMCIMap.of_alist
    |> function
    | `Ok mmm            -> mmm
@@ -438,7 +479,7 @@ let gen_initial_inv_map : Se.se_result -> inv_map =
   (fun se_res -> gen_true_inv_map se_res)
 (* function gen_initial_inv_map end *)
 
-let find_inv_by_rmci : inv_map -> Tz.r_mich_cut_info -> MFSet.t =
+let find_inv_by_rmci : inv_map -> Tz.r_mich_cut_info -> cand =
   fun imap rmci ->
   RMCIMap.find imap rmci
   |> function
@@ -449,16 +490,16 @@ let find_inv_by_rmci : inv_map -> Tz.r_mich_cut_info -> MFSet.t =
     |> raise
 (* function find_inv_map end *)
 
-let find_inv : inv_map -> Tz.mich_cut_info -> MFSet.t =
+let find_inv : inv_map -> Tz.mich_cut_info -> cand =
   (fun imap mci -> find_inv_by_rmci imap (TzUtil.get_reduced_mci mci))
 (* function find_inv_map end *)
 
-let update_inv_map :
-    inv_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> inv_map =
-  fun imap ~key:rmci ~value:fset ->
+let update_inv_map : inv_map -> key:Tz.r_mich_cut_info -> value:cand -> inv_map
+    =
+  fun imap ~key:rmci ~value:cand ->
   RMCIMap.update imap rmci ~f:(function
-  | Some inv -> MFSet.union inv fset
-  | None     -> fset
+  | Some inv -> join_cands inv cand
+  | None     -> cand
   )
 (* function update_inv_map end *)
 
@@ -466,7 +507,7 @@ let merge_inv_map : inv_map -> inv_map -> inv_map =
   fun imap1 imap2 ->
   RMCIMap.merge imap1 imap2 ~f:(fun ~key:_ opt ->
       match opt with
-      | `Both (inv1, inv2) -> Some (MFSet.union inv1 inv2)
+      | `Both (inv1, inv2) -> Some (join_cands inv1 inv2)
       | `Left inv1         -> Some inv1
       | `Right inv2        -> Some inv2
   )
@@ -478,8 +519,8 @@ let strengthen_inv_map : InvSet.t -> inv_map -> InvSet.t =
 
 let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
   fun imap mcip candp ->
-  let (inv_start : MFSet.t) = find_inv_by_rmci imap mcip.mp_start in
-  let (inv_block : MFSet.t) = find_inv_by_rmci imap mcip.mp_block in
+  let (inv_start : cand) = find_inv_by_rmci imap mcip.mp_start in
+  let (inv_block : cand) = find_inv_by_rmci imap mcip.mp_block in
   let (inv_cp : cand_pair) = cvt_cand_pair (inv_start, inv_block) in
   equal_cand_pair candp inv_cp
 (* function check_contain_pair end *)
@@ -487,8 +528,8 @@ let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
 (* Invariant Candidates *******************************************************)
 
 let gen_initial_cand_map :
-    is_fset_sat:(MFSet.t -> bool) -> QIDSet.t -> Igdt.igdts_map -> cand_map =
-  fun ~is_fset_sat qset igdt_map ->
+    is_cand_sat:(cand -> bool) -> QIDSet.t -> Igdt.igdts_map -> cand_map =
+  fun ~is_cand_sat qset igdt_map ->
   let (default_score : int QIDMap.t) =
      QIDSet.to_list qset
      |> List.map ~f:(fun rmci -> (rmci, -1))
@@ -497,13 +538,12 @@ let gen_initial_cand_map :
   RMCIMap.map igdt_map ~f:(fun igdt_sets ->
       [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
-      |> MFSet.union_list
-      |> MFSet.fold ~init:MFSMap.empty ~f:(fun acc_cmap fmla ->
-             let (fset : MFSet.t) = MFSet.singleton fmla in
-             if not (is_fset_sat fset)
+      |> CSet.union_list
+      |> CSet.fold ~init:CMap.empty ~f:(fun acc_cmap cand ->
+             if not (is_cand_sat cand)
              then acc_cmap
              else
-               MFSMap.add acc_cmap ~key:fset ~data:(true, default_score)
+               CMap.add acc_cmap ~key:cand ~data:(true, default_score)
                |> function
                | `Duplicate ->
                  InvError "gen_initial_cand_map : duplicate key" |> raise
@@ -517,7 +557,7 @@ let find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands =
   RMCIMap.find cmap rmci
   |> function
   | Some sss -> sss
-  | None     -> MFSMap.empty
+  | None     -> CMap.empty
 (* function cand_map_find end *)
 
 let find_cand : cand_map -> Tz.mich_cut_info -> cands =
@@ -525,22 +565,22 @@ let find_cand : cand_map -> Tz.mich_cut_info -> cands =
 (* function cand_map_find end *)
 
 let get_score_by_rmci :
-    cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> qid:Tz.qid -> int =
+    cand_map -> key:Tz.r_mich_cut_info -> value:cand -> qid:Tz.qid -> int =
   fun cmap ~key ~value ~qid ->
-  MFSMap.find (find_cand_by_rmci cmap key) value
+  CMap.find (find_cand_by_rmci cmap key) value
   |> function
   | Some (_, smap) -> QIDMap.find_exn smap qid
   | None           -> InvError "get_score : wrong value" |> raise
 (* function get_score_by_rmci end *)
 
 let get_score :
-    cand_map -> key:Tz.mich_cut_info -> value:MFSet.t -> qid:Tz.qid -> int =
+    cand_map -> key:Tz.mich_cut_info -> value:cand -> qid:Tz.qid -> int =
   fun cmap ~key ~value ~qid ->
   get_score_by_rmci cmap ~key:(TzUtil.get_reduced_mci key) ~value ~qid
 (* function get_score end *)
 
 let find_top_score_ordered_cand_by_rmci :
-    ?remove_unflaged:bool -> cand_map -> Tz.r_mich_cut_info -> MFSet.t list =
+    ?remove_unflaged:bool -> cand_map -> Tz.r_mich_cut_info -> cand list =
    let top_score : int QIDMap.t -> int =
      fun smap ->
      QIDMap.to_alist smap
@@ -555,8 +595,8 @@ let find_top_score_ordered_cand_by_rmci :
    in
    fun ?(remove_unflaged = false) cmap rmci ->
    find_cand_by_rmci cmap rmci
-   |> (if remove_unflaged then MFSMap.filter ~f:fst else Fun.id)
-   |> MFSMap.to_alist
+   |> (if remove_unflaged then CMap.filter ~f:fst else Fun.id)
+   |> CMap.to_alist
    |> List.sort ~compare:(fun (_, (_, smap1)) (_, (_, smap2)) ->
           -compare_int (top_score smap1) (top_score smap2)
       )
@@ -564,7 +604,7 @@ let find_top_score_ordered_cand_by_rmci :
 (* function find_top_score_ordered_cand_by_rmci end *)
 
 let find_top_score_ordered_cand :
-    ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> MFSet.t list =
+    ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> cand list =
   fun ?(remove_unflaged = false) cmap mci ->
   find_top_score_ordered_cand_by_rmci ~remove_unflaged cmap
     (TzUtil.get_reduced_mci mci)
@@ -575,11 +615,11 @@ let find_ordered_cand_by_rmci :
     cand_map ->
     Tz.r_mich_cut_info ->
     Tz.qid ->
-    MFSet.t list =
+    cand list =
   fun ?(remove_unflaged = false) cmap rmci qid ->
   find_cand_by_rmci cmap rmci
-  |> (if remove_unflaged then MFSMap.filter ~f:fst else Fun.id)
-  |> MFSMap.to_alist
+  |> (if remove_unflaged then CMap.filter ~f:fst else Fun.id)
+  |> CMap.to_alist
   |> List.sort ~compare:(fun (_, (_, smap1)) (_, (_, smap2)) ->
          -compare_int (QIDMap.find_exn smap1 qid) (QIDMap.find_exn smap2 qid)
      )
@@ -587,11 +627,8 @@ let find_ordered_cand_by_rmci :
 (* function find_ordered_cand_by_rmci end *)
 
 let find_ordered_cand :
-    ?remove_unflaged:bool ->
-    cand_map ->
-    Tz.mich_cut_info ->
-    Tz.qid ->
-    MFSet.t list =
+    ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> Tz.qid -> cand list
+    =
   fun ?(remove_unflaged = false) cmap mci qid ->
   find_ordered_cand_by_rmci ~remove_unflaged cmap
     (TzUtil.get_reduced_mci mci)
@@ -604,7 +641,7 @@ let find_cand_top_k_by_rmci :
     cand_map ->
     Tz.r_mich_cut_info ->
     Tz.qid ->
-    MFSet.t list =
+    cand list =
   fun ?(remove_unflaged = false) ~top_k cmap rmci qid ->
   find_ordered_cand_by_rmci ~remove_unflaged cmap rmci qid
   |> (fun lst -> List.split_n lst top_k)
@@ -617,7 +654,7 @@ let find_cand_top_k :
     cand_map ->
     Tz.mich_cut_info ->
     Tz.qid ->
-    MFSet.t list =
+    cand list =
   fun ?(remove_unflaged = false) ~top_k cmap mci qid ->
   find_cand_top_k_by_rmci ~remove_unflaged ~top_k cmap
     (TzUtil.get_reduced_mci mci)
@@ -625,20 +662,19 @@ let find_cand_top_k :
 (* function find_cand_map_top_k end *)
 
 let strengthen_cand_map :
-    is_fset_sat:(MFSet.t -> bool) -> cand_map -> inv_map -> cand_map =
-  fun ~is_fset_sat cmap imap ->
+    is_cand_sat:(cand -> bool) -> cand_map -> inv_map -> cand_map =
+  fun ~is_cand_sat cmap imap ->
   RMCIMap.mapi cmap ~f:(fun ~key:rmci ~data:cset ->
-      let (cur_inv : MFSet.t) = find_inv_by_rmci imap rmci in
-      MFSMap.fold cset ~init:MFSMap.empty
-        ~f:(fun ~key ~data:(f1, s1) new_cmap ->
-          if MFSet.equal cur_inv key
+      let (cur_inv : cand) = find_inv_by_rmci imap rmci in
+      CMap.fold cset ~init:CMap.empty ~f:(fun ~key ~data:(f1, s1) new_cmap ->
+          if equal_cand cur_inv key
           then new_cmap
           else (
-            let (fset : MFSet.t) = MFSet.union cur_inv key in
-            if not (is_fset_sat fset)
+            let (cand : cand) = join_cands cur_inv key in
+            if not (is_cand_sat cand)
             then new_cmap
             else
-              MFSMap.update new_cmap fset ~f:(function
+              CMap.update new_cmap cand ~f:(function
               | None          -> (f1, s1)
               | Some (f2, s2) -> (f1 && f2, s2)
               )
@@ -650,14 +686,14 @@ let strengthen_cand_map :
 let score_cand :
     cand_map ->
     key:Tz.r_mich_cut_info ->
-    value:MFSet.t ->
+    value:cand ->
     qid:Tz.qid ->
     point:int ->
     cand_map =
   fun cmap ~key ~value ~qid ~point ->
   RMCIMap.update cmap key ~f:(function
   | Some cands ->
-    MFSMap.update cands value ~f:(function
+    CMap.update cands value ~f:(function
     | Some (flag, smap) ->
       ( flag,
         QIDMap.update smap qid ~f:(function
@@ -671,12 +707,11 @@ let score_cand :
   )
 (* function score_cand end *)
 
-let unflag_cand :
-    cand_map -> key:Tz.r_mich_cut_info -> value:MFSet.t -> cand_map =
+let unflag_cand : cand_map -> key:Tz.r_mich_cut_info -> value:cand -> cand_map =
   fun cmap ~key ~value ->
   RMCIMap.update cmap key ~f:(function
   | Some cands ->
-    MFSMap.update cands value ~f:(function
+    CMap.update cands value ~f:(function
     | Some (_, score) -> (false, score)
     | None            -> InvError "score_cand : wrong cand" |> raise
     )
@@ -708,12 +743,9 @@ let is_already_failed_by_rmci : failed_cp -> mci_pair -> cand_pair -> bool =
 (* function is_already_failed_by_rmci end *)
 
 let is_already_failed :
-    failed_cp ->
-    Tz.mich_cut_info * Tz.mich_cut_info ->
-    MFSet.t * MFSet.t ->
-    bool =
-  fun fmap mcip fsetp ->
-  is_already_failed_by_rmci fmap (cvt_mci_pair mcip) (cvt_cand_pair fsetp)
+    failed_cp -> Tz.mich_cut_info * Tz.mich_cut_info -> cand * cand -> bool =
+  fun fmap mcip candp ->
+  is_already_failed_by_rmci fmap (cvt_mci_pair mcip) (cvt_cand_pair candp)
 (* function is_already_failed end *)
 
 let add_failed_cp : failed_cp -> key:mci_pair -> value:cand_pair -> failed_cp =

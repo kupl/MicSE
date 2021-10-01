@@ -6,15 +6,6 @@ open! Core
 
 (******************************************************************************)
 (******************************************************************************)
-(* Common Datatypes                                                           *)
-(******************************************************************************)
-(******************************************************************************)
-
-(* Set of Tz.mich_f *)
-module MFSet = Set.Make (Tz.MichF_cmp)
-
-(******************************************************************************)
-(******************************************************************************)
 (* Smt Encoder                                                                *)
 (******************************************************************************)
 (******************************************************************************)
@@ -491,7 +482,8 @@ module Encoder = struct
      | MV_ref_cont t1cc ->
        Expr.create_var ctx (sot t1cc)
          ~name:("MV_ref_cont_" ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx))
-     | MV_sigma_tmplm v1cc -> fv (sexp_of_ccp_loc v1cc.cc_loc |> SexpUtil.to_string)
+     | MV_sigma_tmplm v1cc ->
+       fv (sexp_of_ccp_loc v1cc.cc_loc |> SexpUtil.to_string)
   (* function cv_mv end *)
 
   and cv_mvcc :
@@ -849,11 +841,11 @@ let apply_inv_at_start :
     sctx:Tz.mich_sym_ctxt ->
     Tz.mich_cut_info ->
     Tz.sym_image ->
-    MFSet.t ->
-    Tz.mich_f list =
+    Tz.mich_f ->
+    Tz.mich_f =
    let open Tz in
    let open TzUtil in
-   fun ~sctx mci si fset ->
+   fun ~sctx mci si inv ->
    let (mapf : mich_v -> mich_v) = function
    | MV_ref (_, msc2) -> (
      match msc2 with
@@ -892,29 +884,23 @@ let apply_inv_at_start :
    )
    | mv               -> mv
    in
-   MFSet.to_list fset
-   |> List.map ~f:(fun fmla ->
-          mf_map_innerfst
-            ~mapf:
-              (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
-                   {
-                     ctx_i = sctx;
-                     ctx_v = mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v;
-                   }
-               )
-              )
-            fmla
-      )
+   mf_map_innerfst
+     ~mapf:
+       (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
+            { ctx_i = sctx; ctx_v = mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v }
+        )
+       )
+     inv
 
 let apply_inv_at_block :
     sctx:Tz.mich_sym_ctxt ->
     Tz.mich_cut_info ->
     Tz.sym_image ->
-    MFSet.t ->
-    Tz.mich_f list =
+    Tz.mich_f ->
+    Tz.mich_f =
    let open Tz in
    let open TzUtil in
-   fun ~sctx mci si fset ->
+   fun ~sctx mci si inv ->
    let (mapf : mich_v -> mich_v) = function
    | MV_ref (_, msc2) -> (
      match msc2 with
@@ -944,19 +930,13 @@ let apply_inv_at_block :
    )
    | mv               -> mv
    in
-   MFSet.to_list fset
-   |> List.map ~f:(fun fmla ->
-          mf_map_innerfst
-            ~mapf:
-              (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
-                   {
-                     ctx_i = sctx;
-                     ctx_v = mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v;
-                   }
-               )
-              )
-            fmla
-      )
+   mf_map_innerfst
+     ~mapf:
+       (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
+            { ctx_i = sctx; ctx_v = mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v }
+        )
+       )
+     inv
 (* function apply_inv_at_start end *)
 
 (******************************************************************************)
@@ -967,41 +947,29 @@ let apply_inv_at_block :
 
 (* Strongest Postcondition ****************************************************)
 
-let gen_sp : Tz.mich_f list -> Tz.sym_state -> Tz.mich_f =
+let gen_sp : Tz.sym_state -> Tz.mich_f -> Tz.mich_f =
    let open Tz in
-   (fun precond sstate -> MF_and (precond @ sstate.ss_constraints))
+   (fun sstate precond -> MF_and (precond :: sstate.ss_constraints))
 (* function gen_sp end *)
 
-let gen_sp_from_ms : Tz.mich_f list -> MState.t -> Tz.mich_f =
+let gen_sp_from_ms : MState.t -> Tz.mich_f -> Tz.mich_f =
    let open Tz in
    let open MState in
-   (fun precond mstate -> MF_and (precond @ get_constraint mstate))
+   (fun mstate precond -> MF_and (precond :: get_constraint mstate))
 (* function gen_sp_from_ms end *)
-
-(* Invariant ******************************************************************)
-
-let get_start_inv : Inv.inv_map -> Tz.sym_state -> Tz.mich_f list =
-   let open Tz in
-   fun imap sstate ->
-   Inv.find_inv imap sstate.ss_start_mci
-   |> apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
-        sstate.ss_start_si
-(* function get_start_inv end *)
-
-let get_block_inv : Inv.inv_map -> Tz.sym_state -> Tz.mich_f list =
-   let open Tz in
-   fun imap sstate ->
-   Inv.find_inv imap sstate.ss_block_mci
-   |> apply_inv_at_block ~sctx:sstate.ss_id sstate.ss_block_mci
-        sstate.ss_block_si
-(* function get_block_inv end *)
 
 (* Verification Condition *****************************************************)
 
 let gen_query_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
    let open Tz in
    fun imap sstate ->
-   let (sp : mich_f) = gen_sp (get_start_inv imap sstate) sstate in
+   let (start_inv : mich_f) =
+      Inv.find_inv imap sstate.ss_start_mci
+      |> Inv.fmla_of_cand_pre
+      |> apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
+           sstate.ss_start_si
+   in
+   let (sp : mich_f) = gen_sp sstate start_inv in
    let (query : mich_f) =
       property_of_query ~sctx:sstate.ss_id sstate.ss_block_mci
         sstate.ss_block_si
@@ -1015,7 +983,13 @@ let gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f =
    fun imap mstate ->
    let (start_state : sym_state) = get_first_ss mstate in
    let (block_state : sym_state) = get_last_ss mstate in
-   let (sp : mich_f) = gen_sp_from_ms (get_start_inv imap start_state) mstate in
+   let (start_inv : mich_f) =
+      Inv.find_inv imap start_state.ss_start_mci
+      |> Inv.fmla_of_cand_pre
+      |> apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
+           start_state.ss_start_si
+   in
+   let (sp : mich_f) = gen_sp_from_ms mstate start_inv in
    let (query : mich_f) =
       property_of_query ~sctx:block_state.ss_id block_state.ss_block_mci
         block_state.ss_block_si
@@ -1026,31 +1000,45 @@ let gen_query_vc_from_ms : Inv.inv_map -> MState.t -> Tz.mich_f =
 let gen_inductiveness_vc : Inv.inv_map -> Tz.sym_state -> Tz.mich_f =
    let open Tz in
    fun imap sstate ->
-   let (sp : mich_f) = gen_sp (get_start_inv imap sstate) sstate in
-   MF_imply (sp, MF_and (get_block_inv imap sstate))
+   let (start_inv : mich_f) =
+      Inv.find_inv imap sstate.ss_start_mci
+      |> Inv.fmla_of_cand_pre
+      |> apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
+           sstate.ss_start_si
+   in
+   let (block_inv : mich_f) =
+      Inv.find_inv imap sstate.ss_block_mci
+      |> Inv.fmla_of_cand_post
+      |> apply_inv_at_block ~sctx:sstate.ss_id sstate.ss_block_mci
+           sstate.ss_block_si
+   in
+   let (sp : mich_f) = gen_sp sstate start_inv in
+   MF_imply (sp, block_inv)
 (* function gen_inductiveness_vc end *)
 
-let gen_preservation_vc : MFSet.t -> MState.t -> Tz.mich_f =
+let gen_preservation_vc : Inv.cand -> MState.t -> Tz.mich_f =
    let open Tz in
    let open TzUtil in
    let open MState in
-   fun fset mstate ->
+   fun cand mstate ->
    let (start_state : sym_state) = get_first_ss mstate in
    let (block_state : sym_state) = get_last_ss mstate in
    if equal_r_mich_cut_info
         (get_reduced_mci start_state.ss_start_mci)
         (get_reduced_mci block_state.ss_block_mci)
    then (
-     let (start_fmla : mich_f list) =
-        apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
-          start_state.ss_start_si fset
+     let (start_fmla : mich_f) =
+        Inv.fmla_of_cand_pre cand
+        |> apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
+             start_state.ss_start_si
      in
-     let (block_fmla : mich_f list) =
-        apply_inv_at_block ~sctx:block_state.ss_id block_state.ss_block_mci
-          block_state.ss_block_si fset
+     let (block_fmla : mich_f) =
+        Inv.fmla_of_cand_post cand
+        |> apply_inv_at_block ~sctx:block_state.ss_id block_state.ss_block_mci
+             block_state.ss_block_si
      in
-     let (sp : mich_f) = gen_sp_from_ms start_fmla mstate in
-     MF_imply (sp, MF_and block_fmla)
+     let (sp : mich_f) = gen_sp_from_ms mstate start_fmla in
+     MF_imply (sp, block_fmla)
    )
    else VcError "gen_preservation_vc : wrong merged state" |> raise
 (* function gen_preservation_vc end *)
@@ -1067,7 +1055,12 @@ let gen_initial_inv_vc :
         apply_initial_storage ~sctx:sstate.ss_id sstate.ss_start_mci
           sstate.ss_start_si init_strg
      in
-     let (trx_inv : mich_f) = MF_and (get_start_inv imap sstate) in
+     let (trx_inv : mich_f) =
+        Inv.find_inv imap sstate.ss_start_mci
+        |> Inv.fmla_of_cand_post
+        |> apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
+             sstate.ss_start_si
+     in
      MF_imply (init_strg_fmla, trx_inv)
    )
    else VcError "gen_initial_inv_vc : wrong state" |> raise
@@ -1083,7 +1076,7 @@ let gen_refute_vc : Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f =
       apply_initial_storage ~sctx:start_state.ss_id start_state.ss_start_mci
         start_state.ss_start_si init_strg
    in
-   let (sp : mich_f) = gen_sp_from_ms [ init_strg_fmla ] mstate in
+   let (sp : mich_f) = gen_sp_from_ms mstate init_strg_fmla in
    let (query : mich_f) =
       property_of_query ~sctx:block_state.ss_id block_state.ss_block_mci
         block_state.ss_block_si
@@ -1091,17 +1084,18 @@ let gen_refute_vc : Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f =
    MF_not (MF_imply (sp, query))
 (* function gen_refute_vc end *)
 
-let gen_precond_vc : MFSet.t -> MState.t -> Tz.mich_f =
+let gen_precond_vc : Inv.cand -> MState.t -> Tz.mich_f =
    let open Tz in
    let open MState in
    fun prec mstate ->
    let (start_state : sym_state) = get_first_ss mstate in
    let (block_state : sym_state) = get_last_ss mstate in
-   let (prec_lst : mich_f list) =
-      apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
-        start_state.ss_start_si prec
+   let (prec_lst : mich_f) =
+      Inv.fmla_of_cand_pre prec
+      |> apply_inv_at_start ~sctx:start_state.ss_id start_state.ss_start_mci
+           start_state.ss_start_si
    in
-   let (sp : mich_f) = gen_sp_from_ms prec_lst mstate in
+   let (sp : mich_f) = gen_sp_from_ms mstate prec_lst in
    let (query : mich_f) =
       property_of_query ~sctx:block_state.ss_id block_state.ss_block_mci
         block_state.ss_block_si
@@ -1145,10 +1139,11 @@ let check_sat :
    Solver.check_sat solver ctx fmla
 (* function check_validity end *)
 
-let is_fset_sat : Smt.Ctx.t -> Smt.Solver.t -> MFSet.t -> bool =
+let is_cand_sat : Smt.Ctx.t -> Smt.Solver.t -> Inv.cand -> bool =
    let open Smt in
-   fun ctx solver fset ->
-   let (cand : Tz.mich_f) = Tz.MF_and (MFSet.to_list fset) in
-   let ((sat : Solver.satisfiability), _) = check_sat ctx solver cand in
+   fun ctx solver cand ->
+   let ((sat : Solver.satisfiability), _) =
+      Inv.fmla_of_cand_post cand |> check_sat ctx solver
+   in
    Solver.is_sat sat
-(* function is_fset_sat end *)
+(* function is_cand_sat end *)

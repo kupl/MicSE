@@ -19,6 +19,9 @@ module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 (* Set of Tz.mich_v Tz.cc *)
 module MVSet = Set.Make (Tz.MichVCC_cmp)
 
+(* Set of Tz.mich_f *)
+module MFSet = Set.Make (Tz.MichF_cmp)
+
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
 
@@ -64,13 +67,13 @@ type igdts_map = igdt_sets RMCIMap.t [@@deriving sexp, compare, equal]
 
 let dummy_ctx : Tz.mich_sym_ctxt = []
 
-let fold_precond_lst : igdt list -> Tz.mich_f =
+let fold_precond_lst : igdt list -> MFSet.t =
    let open Tz in
    fun igdt_lst ->
-   let (prec_lst : Tz.mich_f list) =
-      List.map igdt_lst ~f:(fun igdt -> igdt.ig_precond_lst) |> List.join
-   in
-   if List.is_empty prec_lst then MF_true else MF_and prec_lst
+   List.map igdt_lst ~f:(fun igdt -> igdt.ig_precond_lst)
+   |> List.join
+   |> MFSet.of_list
+(* function fold_precond_lst end *)
 
 let tmap_from_iset : ISet.t -> ISet.t MTMap.t =
    let open Tz in
