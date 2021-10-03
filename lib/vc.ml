@@ -887,7 +887,10 @@ let apply_inv_at_start :
    mf_map_innerfst
      ~mapf:
        (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
-            { ctx_i = sctx; ctx_v = mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v }
+            let (_, (ctx_v : mich_v cc)) =
+               mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v |> opt_mvcc ~ctx:sctx
+            in
+            { ctx_i = sctx; ctx_v }
         )
        )
      inv
@@ -926,18 +929,21 @@ let apply_inv_at_block :
      | MCC_lb_map  -> (List.hd_exn si.si_map_exit).cc_v
      | MCC_lb_iter -> (List.hd_exn si.si_iter).cc_v
      | _           ->
-       VcError "apply_inv_at_start : MV_ref_cont : wrong reference" |> raise
+       VcError "apply_inv_at_block : MV_ref_cont : wrong reference" |> raise
    )
    | mv               -> mv
    in
    mf_map_innerfst
      ~mapf:
        (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
-            { ctx_i = sctx; ctx_v = mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v }
+            let (_, (ctx_v : mich_v cc)) =
+               mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v |> opt_mvcc ~ctx:sctx
+            in
+            { ctx_i = sctx; ctx_v }
         )
        )
      inv
-(* function apply_inv_at_start end *)
+(* function apply_inv_at_block end *)
 
 (******************************************************************************)
 (******************************************************************************)
