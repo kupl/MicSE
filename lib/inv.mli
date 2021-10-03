@@ -153,6 +153,8 @@ val gen_cand_by_fmla : ?cond:MFSet.t -> Tz.mich_f -> cand
 
 val join_cands : cand -> cand -> cand
 
+val is_subcand : cand -> of_:cand -> bool
+
 val fmla_of_cand_pre : cand -> Tz.mich_f
 
 val fmla_of_cand_post : cand -> Tz.mich_f
@@ -197,8 +199,7 @@ val find_inv_by_rmci : inv_map -> Tz.r_mich_cut_info -> cand
 
 val find_inv : inv_map -> Tz.mich_cut_info -> cand
 
-val update_inv_map :
-  inv_map -> key:Tz.r_mich_cut_info -> value:cand -> inv_map
+val update_inv_map : inv_map -> key:Tz.r_mich_cut_info -> value:cand -> inv_map
 
 val merge_inv_map : inv_map -> inv_map -> inv_map
 
@@ -215,6 +216,10 @@ val find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands
 
 val find_cand : cand_map -> Tz.mich_cut_info -> cands
 
+val mem_by_rmci : cand_map -> key:Tz.r_mich_cut_info -> value:cand -> bool
+
+val mem : cand_map -> key:Tz.mich_cut_info -> value:cand -> bool
+
 val get_score_by_rmci :
   cand_map -> key:Tz.r_mich_cut_info -> value:cand -> qid:Tz.qid -> int
 
@@ -228,18 +233,10 @@ val find_top_score_ordered_cand :
   ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> cand list
 
 val find_ordered_cand_by_rmci :
-  ?remove_unflaged:bool ->
-  cand_map ->
-  Tz.r_mich_cut_info ->
-  Tz.qid ->
-  cand list
+  ?remove_unflaged:bool -> cand_map -> Tz.r_mich_cut_info -> Tz.qid -> cand list
 
 val find_ordered_cand :
-  ?remove_unflaged:bool ->
-  cand_map ->
-  Tz.mich_cut_info ->
-  Tz.qid ->
-  cand list
+  ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> Tz.qid -> cand list
 
 val find_cand_top_k_by_rmci :
   ?remove_unflaged:bool ->
@@ -268,8 +265,7 @@ val score_cand :
   point:int ->
   cand_map
 
-val unflag_cand :
-  cand_map -> key:Tz.r_mich_cut_info -> value:cand -> cand_map
+val unflag_cand : cand_map -> key:Tz.r_mich_cut_info -> value:cand -> cand_map
 
 (* Failed Candidate Pair ******************************************************)
 

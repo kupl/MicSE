@@ -208,6 +208,10 @@ let join_cands : cand -> cand -> cand =
   }
 (* function join_cand end *)
 
+let is_subcand : cand -> of_:cand -> bool =
+  (fun cand1 ~of_ -> MFSet.is_subset cand1.c_fmla ~of_:of_.c_fmla)
+(* function is_subcand end *)
+
 let fmla_of_cand_pre : cand -> Tz.mich_f =
   (fun cand -> MF_and (MFSet.union cand.c_cond cand.c_fmla |> MFSet.to_list))
 (* function fmla_of_cand_pre end *)
@@ -563,6 +567,15 @@ let find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands =
 let find_cand : cand_map -> Tz.mich_cut_info -> cands =
   (fun cmap mci -> find_cand_by_rmci cmap (TzUtil.get_reduced_mci mci))
 (* function cand_map_find end *)
+
+let mem_by_rmci : cand_map -> key:Tz.r_mich_cut_info -> value:cand -> bool =
+  (fun cmap ~key ~value -> Map.mem (find_cand_by_rmci cmap key) value)
+(* function mem_by_rmci end *)
+
+let mem : cand_map -> key:Tz.mich_cut_info -> value:cand -> bool =
+  fun cmap ~key ~value ->
+  mem_by_rmci cmap ~key:(TzUtil.get_reduced_mci key) ~value
+(* function mem end *)
 
 let get_score_by_rmci :
     cand_map -> key:Tz.r_mich_cut_info -> value:cand -> qid:Tz.qid -> int =
