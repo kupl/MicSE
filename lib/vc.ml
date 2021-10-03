@@ -1143,7 +1143,7 @@ let is_cand_sat : Smt.Ctx.t -> Smt.Solver.t -> Inv.cand -> bool =
    let open Smt in
    fun ctx solver cand ->
    let ((sat : Solver.satisfiability), _) =
-      Inv.fmla_of_cand_post cand |> check_sat ctx solver
+      Inv.fmla_of_cand_pre cand |> check_sat ctx solver
    in
    Solver.is_sat sat
 (* function is_cand_sat end *)
