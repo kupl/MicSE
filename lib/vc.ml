@@ -85,11 +85,13 @@ module Encoder = struct
      let eov v1cc = cv_mvcc ~sctx ctx v1cc in
      (* syntax sugar *)
      let (sort : Sort.t) = sov (gdc value) in
-     let fv prefix =
+     let fv arg_lst =
         let (field : string) =
            match sexp_of_mich_v value with
-           | Sexp.List [ Sexp.Atom s; _ ] -> s
-           | _ -> VcError "" |> raise
+           | Sexp.List (Sexp.Atom s :: _) -> s
+           | s ->
+             VcError ("Encoder : cv_mv : fv : " ^ (s |> SexpUtil.to_string))
+             |> raise
         in
         Expr.create_var ctx sort
           ~name:
@@ -97,8 +99,11 @@ module Encoder = struct
             ^ "_"
             ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
             ^ "_"
-            ^ prefix
-            ^ ""
+            ^ (List.map arg_lst ~f:(fun vcc ->
+                   sexp_of_ccp_loc vcc.cc_loc |> SexpUtil.to_string
+               )
+              |> String.concat ~sep:"_"
+              )
             )
      in
      match value with
@@ -230,7 +235,7 @@ module Encoder = struct
      | MV_xor_nnn (v1cc, v2cc) -> ZNat.create_xor ctx (eov v1cc) (eov v2cc)
      | MV_size_s _ -> Not_Implemented |> raise
      | MV_size_m _ -> Not_Implemented |> raise
-     | MV_size_l v1cc -> fv (sexp_of_ccp_loc v1cc.cc_loc |> SexpUtil.to_string)
+     | MV_size_l v1cc -> fv [ v1cc ]
      | MV_size_str v1cc -> ZStr.create_size ctx (eov v1cc)
      | MV_size_b _ -> Not_Implemented |> raise
      (*************************************************************************)
@@ -264,7 +269,7 @@ module Encoder = struct
        Formula.if_then_else ctx
          ~if_:(Formula.create_is_list_nil (eov v1cc))
          ~then_:(ZMutez.create_expr ctx 0)
-         ~else_:(fv (sexp_of_ccp_loc v1cc.cc_loc |> SexpUtil.to_string))
+         ~else_:(fv [ v1cc ])
      (****************************************************************************)
      (* Bool                                                                     *)
      (****************************************************************************)
@@ -283,7 +288,7 @@ module Encoder = struct
        ZSet.read_mem ctx ~content:(eov v1cc) (eov v2cc)
      | MV_mem_xmb (v1cc, v2cc) -> ZMap.read_mem ctx ~key:(eov v1cc) (eov v2cc)
      | MV_mem_xbmb (v1cc, v2cc) -> ZMap.read_mem ctx ~key:(eov v1cc) (eov v2cc)
-     | MV_check_signature _ -> Not_Implemented |> raise
+     | MV_check_signature (v1cc, v2cc, v3cc) -> fv [ v1cc; v2cc; v3cc ]
      (*************************************************************************)
      (* Key Hash                                                              *)
      (*************************************************************************)
@@ -483,7 +488,7 @@ module Encoder = struct
        Expr.create_var ctx (sot t1cc)
          ~name:("MV_ref_cont_" ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx))
      | MV_sigma_tmplm v1cc ->
-       fv (sexp_of_ccp_loc v1cc.cc_loc |> SexpUtil.to_string)
+       fv [ v1cc ]
   (* function cv_mv end *)
 
   and cv_mvcc :
