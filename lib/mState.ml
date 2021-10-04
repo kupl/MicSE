@@ -273,7 +273,7 @@ let stack_equality_fmlas :
          in
          ( MF_and (List.map2_exn m1 m2t ~f:eqf),
            MF_and (List.map2_exn i1t i2t ~f:eqf),
-           match (typ_of_val m2h).cc_v with
+           match (typ_of_val i2h).cc_v with
            | MT_list _ -> eqf i1h (MV_cons (m2h, i2h) |> gen_dummy_cc)
            | MT_set _  ->
              MF_and
