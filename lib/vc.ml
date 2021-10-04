@@ -188,7 +188,7 @@ module Encoder = struct
      | MV_unlift_left v1cc -> ZOr.read_content_left (eov v1cc)
      | MV_unlift_right v1cc -> ZOr.read_content_right (eov v1cc)
      | MV_hd_l v1cc -> ZList.read_head (eov v1cc)
-     | MV_exec (v1cc, v2cc) -> ZLambda.create_exec (eov v2cc) (eov v1cc)
+     | MV_exec (v1cc, v2cc) -> ZLambda.create_exec (eov v1cc) (eov v2cc)
      (*************************************************************************)
      (* Integer                                                               *)
      (*************************************************************************)
