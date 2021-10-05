@@ -138,6 +138,19 @@ end
 
 module ILSet = Set.Make (IGDTL_cmp)
 
+(* shuffle [a; b; c;] === {[a; b; c;]; [a; c; b;]; [b; a; c;]; [b; c; a;]; [c; a; b;]; [c; b; a;];} *)
+let rec shuffle : Igdt.igdt list -> ILSet.t =
+  fun il ->
+  if List.is_empty il
+  then ILSet.empty
+  else
+    List.mapi il ~f:(fun idx i ->
+        let (fst : Igdt.igdt list), (hd_snd : Igdt.igdt list) = List.split_n il idx in
+        shuffle (fst @ (List.tl_exn hd_snd)) |> ILSet.map ~f:(fun new_il -> i :: new_il)
+    )
+    |> ILSet.union_list
+(* function shuffle end *)
+
 (* combination [{1; 2;}; {a; b;}; ...] === {[1; a; ...]; [1; b; ...]; [2; a; ...]; [2; b; ...];} *)
 let combination : ISet.t list -> ILSet.t =
   fun set_lst ->
@@ -168,16 +181,27 @@ let combination_self : ISet.t -> size:int -> ILSet.t =
 
 (* filter_symmetry {[a; a;]; [a; b;]; [a; c;] [b; a;]; [b; b;]; [b; c;]; [c; a;]; [c; b;]; [c; c;];} === {[a; b;]; [a; c;]; [b; c;];}  *)
 (* This function is only working at ingredient list size 2 *)
-let filter_symmetry : ILSet.t -> ILSet.t =
-  fun ilset ->
-  if ILSet.is_empty ilset
-  then ilset
-  else if List.length (ILSet.choose_exn ilset) > 2
-  then ilset
-  else
-    ILSet.fold ilset ~init:ILSet.empty ~f:(fun acc il ->
-        if ILSet.mem acc (List.rev il) then acc else ILSet.add acc il
-    )
+let filter_symmetry : int -> ILSet.t -> ILSet.t =
+   let open Igdt in
+   fun pos ilset ->
+   if ILSet.is_empty ilset
+   then ilset
+   else
+     ILSet.fold ilset ~init:(ILSet.empty, ILSet.empty)
+       ~f:(fun (acc_removed, acc_il) il ->
+         if ILSet.mem acc_removed il
+         then (acc_removed, acc_il)
+         else (
+           let ((shuffle_i : igdt list), (normal_i : igdt list)) =
+              List.split_n il pos
+           in
+           let (new_removed : ILSet.t) =
+              shuffle shuffle_i |> ILSet.map ~f:(fun il -> il @ normal_i)
+           in
+           (ILSet.union acc_removed new_removed, ILSet.add acc_il il)
+         )
+     )
+     |> snd
 (* function filter_symmetry end *)
 
 (* filter_equal {[a; a;]; [a; b;]; [a; c;] [b; a;]; [b; b;]; [b; c;]; [c; a;]; [c; b;]; [c; c;];} === {[a; b;]; [a; c;] [b; a;]; [b; c;]; [c; a;]; [c; b;];}  *)
@@ -232,7 +256,7 @@ let dummy_ctx : Tz.mich_sym_ctxt = []
 
 let gen_template :
     ?except_lit_only:bool ->
-    ?target_mode:[ `Normal | `Asymm | `Asymm_rfl ] ->
+    ?target_mode:[ `Normal | `Asymm     of int | `Asymm_rfl ] ->
     f:((Tz.mich_t * Tz.mich_v Tz.cc) list -> Tz.mich_f option) ->
     Igdt.igdt_sets ->
     Tz.mich_t Tz.cc list list ->
@@ -272,7 +296,7 @@ let gen_template :
           |>
           match target_mode with
           | `Normal    -> Fun.id
-          | `Asymm     -> filter_symmetry
+          | `Asymm n   -> filter_symmetry n
           | `Asymm_rfl -> filter_equal
        in
        ILSet.fold target_comb ~init:CSet.empty ~f:(fun acc c_lst ->
@@ -298,7 +322,7 @@ let tmp_eq : Igdt.igdt_sets -> CSet.t =
    let (target_types : Tz.mich_t Tz.cc list list) =
       MTMap.keys igdt_map |> List.map ~f:(fun t -> List.init 2 ~f:(fun _ -> t))
    in
-   gen_template igdt_map target_types ~target_mode:`Asymm ~f:(fun tvl ->
+   gen_template igdt_map target_types ~target_mode:(`Asymm 2) ~f:(fun tvl ->
        match tvl with
        | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 ->
          if not (equal_cc equal_mich_v v1 v2)
@@ -331,26 +355,18 @@ let tmp_ge : Igdt.igdt_sets -> CSet.t =
           List.init 2 ~f:(fun _ -> gen_dummy_cc t)
       )
    in
-   gen_template igdt_map target_types ~f:(fun tvl ->
+   gen_template igdt_map target_types ~target_mode:`Asymm_rfl ~f:(fun tvl ->
        match tvl with
        | [ (MT_mutez, v1); (MT_mutez, v2) ] ->
-         if (not (equal_cc equal_mich_v v1 v2))
-            && (not (equal_mich_v_cc v1 max_mtz))
+         if (not (equal_mich_v_cc v1 max_mtz))
             && not (equal_mich_v_cc v2 zero_mtz)
          then make_ge (v1, v2)
          else None
        | [ (MT_nat, v1); (MT_nat, v2) ] ->
-         if (not (equal_cc equal_mich_v v1 v2))
-            && not (equal_mich_v_cc v2 zero_nat)
-         then make_ge (v1, v2)
-         else None
+         if equal_mich_v_cc v2 zero_nat then make_ge (v1, v2) else None
        | [ (MT_string, v1); (MT_string, v2) ] ->
-         if (not (equal_cc equal_mich_v v1 v2))
-            && not (equal_mich_v_cc v2 empty_str)
-         then make_ge (v1, v2)
-         else None
-       | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 ->
-         if not (equal_cc equal_mich_v v1 v2) then make_ge (v1, v2) else None
+         if equal_mich_v_cc v2 empty_str then make_ge (v1, v2) else None
+       | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 -> make_ge (v1, v2)
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
    )
@@ -371,10 +387,9 @@ let tmp_gt : Igdt.igdt_sets -> CSet.t =
           List.init 2 ~f:(fun _ -> gen_dummy_cc t)
       )
    in
-   gen_template igdt_map target_types ~f:(fun tvl ->
+   gen_template igdt_map target_types ~target_mode:`Asymm_rfl ~f:(fun tvl ->
        match tvl with
-       | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 ->
-         if not (equal_cc equal_mich_v v1 v2) then make_gt (v1, v2) else None
+       | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 -> make_gt (v1, v2)
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_gt : wrong ingredient length" |> raise
    )
@@ -397,7 +412,7 @@ let tmp_add_2_eq : Igdt.igdt_sets -> CSet.t =
           List.init 3 ~f:(fun _ -> gen_dummy_cc t)
       )
    in
-   gen_template igdt_map target_types ~f:(fun tvl ->
+   gen_template igdt_map target_types ~target_mode:(`Asymm 2) ~f:(fun tvl ->
        match tvl with
        | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3) ] ->
          if (not (equal_cc equal_mich_v v1 v3))
@@ -431,7 +446,7 @@ let tmp_add_3_eq : Igdt.igdt_sets -> CSet.t =
           List.init 4 ~f:(fun _ -> gen_dummy_cc t)
       )
    in
-   gen_template igdt_map target_types ~f:(fun tvl ->
+   gen_template igdt_map target_types ~target_mode:(`Asymm 3) ~f:(fun tvl ->
        match tvl with
        | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3); (MT_mutez, v4) ] ->
          if (not (equal_cc equal_mich_v v1 v4))

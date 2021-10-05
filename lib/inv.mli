@@ -137,6 +137,9 @@ end
 
 module ILSet : module type of Core.Set.Make (IGDTL_cmp)
 
+(* shuffle [a; b; c;] === {[a; b; c;]; [a; c; b;]; [b; a; c;]; [b; c; a;]; [c; a; b;]; [c; b; a;];} *)
+val shuffle : Igdt.igdt list -> ILSet.t
+
 (* combination [{1; 2;}; {a; b;}; ...] === {[1; a; ...]; [1; b; ...]; [2; a; ...]; [2; b; ...];} *)
 val combination : ISet.t list -> ILSet.t
 
@@ -145,7 +148,7 @@ val combination_self : ISet.t -> size:int -> ILSet.t
 
 (* filter_symmetry {[a; a;]; [a; b;]; [a; c;] [b; a;]; [b; b;]; [b; c;]; [c; a;]; [c; b;]; [c; c;];} === {[a; b;]; [a; c;]; [b; c;];}  *)
 (* This function is only working at ingredient list size 2 *)
-val filter_symmetry : ILSet.t -> ILSet.t
+val filter_symmetry : int -> ILSet.t -> ILSet.t
 
 (* filter_equal {[a; a;]; [a; b;]; [a; c;] [b; a;]; [b; b;]; [b; c;]; [c; a;]; [c; b;]; [c; c;];} === {[a; b;]; [a; c;] [b; a;]; [b; c;]; [c; a;]; [c; b;];}  *)
 val filter_equal : ILSet.t -> ILSet.t
@@ -166,7 +169,7 @@ val fmla_of_cand_post : cand -> Tz.mich_f
 
 val gen_template :
   ?except_lit_only:bool ->
-  ?target_mode:[ `Normal | `Asymm | `Asymm_rfl ] ->
+  ?target_mode:[ `Normal | `Asymm     of int | `Asymm_rfl ] ->
   f:((Tz.mich_t * Tz.mich_v Tz.cc) list -> Tz.mich_f option) ->
   Igdt.igdt_sets ->
   Tz.mich_t Tz.cc list list ->
