@@ -50,6 +50,7 @@ module ISet : module type of Core.Set.Make (Igdt.IGDT_cmp)
 type cand = {
   c_fmla : MFSet.t;
   c_cond : MFSet.t;
+  c_igdt : ISet.t;
 }
 [@@deriving sexp, compare, equal]
 
@@ -149,7 +150,7 @@ val filter_symmetry : ILSet.t -> ILSet.t
 (* filter_equal {[a; a;]; [a; b;]; [a; c;] [b; a;]; [b; b;]; [b; c;]; [c; a;]; [c; b;]; [c; c;];} === {[a; b;]; [a; c;] [b; a;]; [b; c;]; [c; a;]; [c; b;];}  *)
 val filter_equal : ILSet.t -> ILSet.t
 
-val gen_cand_by_fmla : ?cond:MFSet.t -> Tz.mich_f -> cand
+val gen_cand_by_fmla : ?cond:MFSet.t -> ?igdt:ISet.t -> Tz.mich_f -> cand
 
 val join_cands : cand -> cand -> cand
 

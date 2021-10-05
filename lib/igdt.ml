@@ -145,15 +145,14 @@ let collect_igdt_from_option : igdt -> ISet.t * ISet.t =
         MF_not (MF_is_none (gctx cur_val)) :: cur_plst
      in
      (* values *)
-     let ((opt_prec_unlifted : mich_f list), (val_unlifted : mich_v cc)) =
-        gen_custom_cc cur_val (MV_unlift_option cur_val)
-        |> opt_mvcc ~ctx:dummy_ctx
+     let (val_unlifted : mich_v cc) =
+        match cur_val.cc_v with
+        | MV_some v1cc -> v1cc
+        | _            -> gen_custom_cc cur_val (MV_unlift_option cur_val)
      in
-     let ((opt_prec_none : mich_f list), (val_none : mich_v cc)) =
-        gen_custom_cc cur_val (MV_none t1cc) |> opt_mvcc ~ctx:dummy_ctx
-     in
-     let ((opt_prec_some : mich_f list), (val_some : mich_v cc)) =
-        gen_custom_cc cur_val (MV_some val_unlifted) |> opt_mvcc ~ctx:dummy_ctx
+     let (val_none : mich_v cc) = gen_custom_cc cur_val (MV_none t1cc) in
+     let (val_some : mich_v cc) =
+        gen_custom_cc cur_val (MV_some val_unlifted)
      in
      (* ingredients *)
      let (igdt_unlifted : igdt) =
@@ -161,22 +160,14 @@ let collect_igdt_from_option : igdt -> ISet.t * ISet.t =
           cur_igdt with
           ig_value = val_unlifted;
           ig_typ = t1cc;
-          ig_precond_lst = opt_prec_unlifted @ prec_some;
+          ig_precond_lst = prec_some;
         }
      in
      let (igdt_none : igdt) =
-        {
-          cur_igdt with
-          ig_value = val_none;
-          ig_precond_lst = opt_prec_none @ prec_none;
-        }
+        { cur_igdt with ig_value = val_none; ig_precond_lst = prec_none }
      in
      let (igdt_some : igdt) =
-        {
-          cur_igdt with
-          ig_value = val_some;
-          ig_precond_lst = opt_prec_some @ prec_some;
-        }
+        { cur_igdt with ig_value = val_some; ig_precond_lst = prec_some }
      in
      (ISet.of_list [ igdt_unlifted ], ISet.of_list [ igdt_none; igdt_some ])
    | _              -> IgdtError "collect_igdt_from_option : _" |> raise
@@ -192,22 +183,25 @@ let collect_igdt_from_pair : igdt -> ISet.t * ISet.t =
    match cur_typ.cc_v with
    | MT_pair (t1cc, t2cc) ->
      (* values *)
-     let ((opt_prec_fst : mich_f list), (val_fst : mich_v cc)) =
-        gen_custom_cc cur_val (MV_car cur_val) |> opt_mvcc ~ctx:dummy_ctx
+     let (val_fst : mich_v cc) =
+        match cur_val.cc_v with
+        | MV_pair (v1cc, _) -> v1cc
+        | _                 -> gen_custom_cc cur_val (MV_car cur_val)
      in
-     let ((opt_prec_snd : mich_f list), (val_snd : mich_v cc)) =
-        gen_custom_cc cur_val (MV_cdr cur_val) |> opt_mvcc ~ctx:dummy_ctx
+     let (val_snd : mich_v cc) =
+        match cur_val.cc_v with
+        | MV_pair (_, v2cc) -> v2cc
+        | _                 -> gen_custom_cc cur_val (MV_cdr cur_val)
      in
-     let ((opt_prec_pair : mich_f list), (val_pair : mich_v cc)) =
+     let (val_pair : mich_v cc) =
         gen_custom_cc cur_val (MV_pair (val_fst, val_snd))
-        |> opt_mvcc ~ctx:dummy_ctx
      in
      (* ingredients *)
      let (igdt_fst : igdt) =
         {
           cur_igdt with
           ig_value = val_fst;
-          ig_precond_lst = opt_prec_fst @ cur_plst;
+          ig_precond_lst = cur_plst;
           ig_typ = t1cc;
         }
      in
@@ -215,16 +209,12 @@ let collect_igdt_from_pair : igdt -> ISet.t * ISet.t =
         {
           cur_igdt with
           ig_value = val_snd;
-          ig_precond_lst = opt_prec_snd @ cur_plst;
+          ig_precond_lst = cur_plst;
           ig_typ = t2cc;
         }
      in
      let (igdt_pair : igdt) =
-        {
-          cur_igdt with
-          ig_value = val_pair;
-          ig_precond_lst = opt_prec_pair @ cur_plst;
-        }
+        { cur_igdt with ig_value = val_pair; ig_precond_lst = cur_plst }
      in
      (ISet.of_list [ igdt_fst; igdt_snd ], ISet.of_list [ igdt_pair ])
    | _                    -> IgdtError "collect_igdt_from_pair : _" |> raise
@@ -247,25 +237,21 @@ let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
         MF_not (MF_is_left (gctx cur_val)) :: cur_plst
      in
      (* values *)
-     let ( (opt_prec_left_unlifted : mich_f list),
-           (val_left_unlifted : mich_v cc)
-         ) =
-        gen_custom_cc cur_val (MV_unlift_left cur_val)
-        |> opt_mvcc ~ctx:dummy_ctx
+     let (val_left_unlifted : mich_v cc) =
+        match cur_val.cc_v with
+        | MV_left (_, v2cc) -> v2cc
+        | _                 -> gen_custom_cc cur_val (MV_unlift_left cur_val)
      in
-     let ( (opt_prec_right_unlifted : mich_f list),
-           (val_right_unlifted : mich_v cc)
-         ) =
-        gen_custom_cc cur_val (MV_unlift_right cur_val)
-        |> opt_mvcc ~ctx:dummy_ctx
+     let (val_right_unlifted : mich_v cc) =
+        match cur_val.cc_v with
+        | MV_right (_, v2cc) -> v2cc
+        | _                  -> gen_custom_cc cur_val (MV_unlift_right cur_val)
      in
-     let ((opt_prec_left : mich_f list), (val_left : mich_v cc)) =
+     let (val_left : mich_v cc) =
         gen_custom_cc cur_val (MV_left (cur_typ, val_left_unlifted))
-        |> opt_mvcc ~ctx:dummy_ctx
      in
-     let ((opt_prec_right : mich_f list), (val_right : mich_v cc)) =
+     let (val_right : mich_v cc) =
         gen_custom_cc cur_val (MV_right (cur_typ, val_right_unlifted))
-        |> opt_mvcc ~ctx:dummy_ctx
      in
      (* ingredients *)
      let (igdt_left_unlifted : igdt) =
@@ -273,7 +259,7 @@ let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
           cur_igdt with
           ig_value = val_left_unlifted;
           ig_typ = t1cc;
-          ig_precond_lst = opt_prec_left_unlifted @ prec_left;
+          ig_precond_lst = prec_left;
         }
      in
      let (igdt_right_unlifted : igdt) =
@@ -281,22 +267,14 @@ let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
           cur_igdt with
           ig_value = val_right_unlifted;
           ig_typ = t2cc;
-          ig_precond_lst = opt_prec_right_unlifted @ prec_right;
+          ig_precond_lst = prec_right;
         }
      in
      let (igdt_left : igdt) =
-        {
-          cur_igdt with
-          ig_value = val_left;
-          ig_precond_lst = opt_prec_left @ prec_left;
-        }
+        { cur_igdt with ig_value = val_left; ig_precond_lst = prec_left }
      in
      let (igdt_right : igdt) =
-        {
-          cur_igdt with
-          ig_value = val_right;
-          ig_precond_lst = opt_prec_right @ prec_right;
-        }
+        { cur_igdt with ig_value = val_right; ig_precond_lst = prec_right }
      in
      ( ISet.of_list [ igdt_left_unlifted; igdt_right_unlifted ],
        ISet.of_list [ igdt_left; igdt_right ]
@@ -398,6 +376,7 @@ let collect_igdt_from_nat : igdt -> ISet.t * ISet.t =
 
 let collect_igdt_from_igdt : igdt -> ISet.t =
    let open Tz in
+   let open TzUtil in
    let rec collect_from_igdt_i : ISet.t -> igdt -> ISet.t =
      fun acc_set cur_igdt ->
      let (target_set, cur_igdt_set) : ISet.t * ISet.t =
@@ -414,8 +393,21 @@ let collect_igdt_from_igdt : igdt -> ISet.t =
         (* Other Terminal Types *)
         | _ -> (ISet.empty, ISet.singleton cur_igdt)
      in
+     let (new_igdt_set : ISet.t) =
+        ISet.map cur_igdt_set ~f:(fun cur_igdt ->
+            (* optimized values *)
+            let ((opt_plst_igdt : mich_f list), (val_igdt : mich_v cc)) =
+               cur_igdt.ig_value |> opt_mvcc ~ctx:dummy_ctx
+            in
+            {
+              cur_igdt with
+              ig_value = val_igdt;
+              ig_precond_lst = opt_plst_igdt @ cur_igdt.ig_precond_lst;
+            }
+        )
+     in
      ISet.fold target_set
-       ~init:(ISet.union acc_set cur_igdt_set)
+       ~init:(ISet.union acc_set new_igdt_set)
        ~f:collect_from_igdt_i
    in
    (* inner-function collect_from_igdt_i end *)

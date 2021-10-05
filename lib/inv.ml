@@ -52,6 +52,7 @@ module ISet = Set.Make (Igdt.IGDT_cmp)
 type cand = {
   c_fmla : MFSet.t;
   c_cond : MFSet.t;
+  c_igdt : ISet.t;
 }
 [@@deriving sexp, compare, equal]
 
@@ -195,9 +196,9 @@ let filter_equal : ILSet.t -> ILSet.t =
     )
 (* function filter_equal end *)
 
-let gen_cand_by_fmla : ?cond:MFSet.t -> Tz.mich_f -> cand =
-  fun ?(cond = MFSet.empty) fmla ->
-  { c_fmla = MFSet.singleton fmla; c_cond = cond }
+let gen_cand_by_fmla : ?cond:MFSet.t -> ?igdt:ISet.t -> Tz.mich_f -> cand =
+  fun ?(cond = MFSet.empty) ?(igdt = ISet.empty) fmla ->
+  { c_fmla = MFSet.singleton fmla; c_cond = cond; c_igdt = igdt }
 (* function gen_cand_by_fmla end *)
 
 let join_cands : cand -> cand -> cand =
@@ -205,6 +206,7 @@ let join_cands : cand -> cand -> cand =
   {
     c_fmla = MFSet.union cand1.c_fmla cand2.c_fmla;
     c_cond = MFSet.union cand1.c_cond cand2.c_cond;
+    c_igdt = ISet.union cand1.c_igdt cand2.c_igdt;
   }
 (* function join_cand end *)
 
