@@ -215,7 +215,7 @@ let is_subcand : cand -> of_:cand -> bool =
 (* function is_subcand end *)
 
 let fmla_of_cand_pre : cand -> Tz.mich_f =
-  (fun cand -> MF_and (MFSet.union cand.c_cond cand.c_fmla |> MFSet.to_list))
+  (fun cand -> MF_and (MFSet.to_list cand.c_fmla @ MFSet.to_list cand.c_cond))
 (* function fmla_of_cand_pre end *)
 
 let fmla_of_cand_post : cand -> Tz.mich_f =
