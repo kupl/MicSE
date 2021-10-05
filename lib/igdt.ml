@@ -285,24 +285,15 @@ let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
 let collect_igdt_from_list : igdt -> ISet.t * ISet.t =
    let open Tz in
    let open TzUtil in
-   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
    fun cur_igdt ->
    let (cur_val : mich_v cc) = cur_igdt.ig_value in
-   let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in
    let (sigma_lst : mich_v cc list) = TzUtil.sigma_of_cont cur_val in
    if List.is_empty sigma_lst
    then (ISet.empty, ISet.empty)
    else (
      let (igdt_set : ISet.t) =
         List.map sigma_lst ~f:(fun val_cons ->
-            (* preconditions *)
-            let (prec_cons : mich_f list) =
-               MF_is_cons (gctx cur_val) :: cur_plst
-            in
-            let (prec_nil : mich_f list) =
-               MF_not (MF_is_cons (gctx cur_val)) :: cur_plst
-            in
             (* values *)
             let (val_nil : mich_v cc) =
                gen_custom_cc cur_val (MV_lit_mutez Bigint.zero)
@@ -311,22 +302,17 @@ let collect_igdt_from_list : igdt -> ISet.t * ISet.t =
             let (typ_sigma : mich_t cc) = gen_custom_cc cur_val MT_mutez in
             (* ingredients *)
             let (igdt_cons : igdt) =
-               {
-                 cur_igdt with
-                 ig_value = val_cons;
-                 ig_typ = typ_sigma;
-                 ig_precond_lst = prec_cons;
-               }
+               { cur_igdt with ig_value = val_cons; ig_typ = typ_sigma }
             in
             let (igdt_nil : igdt) =
-               {
-                 cur_igdt with
-                 ig_value = val_nil;
-                 ig_typ = typ_sigma;
-                 ig_precond_lst = prec_nil;
-               }
+               { cur_igdt with ig_value = val_nil; ig_typ = typ_sigma }
             in
-            ISet.of_list [ igdt_cons; igdt_nil ]
+            (match cur_val.cc_v with
+            | MV_nil _ -> [ igdt_nil ]
+            | MV_lit_list (_, lst) when List.length lst = 0 -> [ igdt_nil ]
+            | MV_lit_list (_, _) -> [ igdt_cons ]
+            | _ -> [ igdt_cons; igdt_nil ])
+            |> ISet.of_list
         )
         |> ISet.union_list
      in

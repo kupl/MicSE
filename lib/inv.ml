@@ -280,7 +280,10 @@ let gen_template :
            |> function
            | None      -> acc
            | Some fmla ->
-             CSet.add acc (gen_cand_by_fmla fmla ~cond:(fold_precond_lst c_lst))
+             CSet.add acc
+               (gen_cand_by_fmla fmla ~cond:(fold_precond_lst c_lst)
+                  ~igdt:(ISet.of_list c_lst)
+               )
        )
    )
    |> CSet.union_list
