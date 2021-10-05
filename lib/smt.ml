@@ -2408,6 +2408,8 @@ module Formula = struct
     (fun ctx fmla -> [ create_not ctx fmla ])
   (* function to_val_check end *)
 
+  let to_string : t -> string = (fun expr -> Z3.Expr.to_string expr)
+
   let compare : t -> t -> int = (fun expr1 expr2 -> Z3.Expr.compare expr1 expr2)
 
   let equal : t -> t -> bool = (fun expr1 expr2 -> Z3.Expr.equal expr1 expr2)

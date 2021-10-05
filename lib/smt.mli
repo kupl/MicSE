@@ -811,6 +811,8 @@ module Formula : sig
 
   val to_val_check : Ctx.t -> t -> Expr.t list
 
+  val to_string : t -> string
+
   val compare : t -> t -> int
 
   val equal : t -> t -> bool
