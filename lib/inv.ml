@@ -380,7 +380,7 @@ let tmp_add_2_eq : Igdt.igdt_sets -> CSet.t =
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
-   let (zero : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
+   let (zero_mtz : mich_v cc) = gen_dummy_cc (MV_lit_mutez Bigint.zero) in
    let make_add_2_eq_mtz : mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3) ->
      let (add : mich_v cc) = gen_dummy_cc (MV_add_mmm (v1, v2)) in
@@ -397,8 +397,8 @@ let tmp_add_2_eq : Igdt.igdt_sets -> CSet.t =
        | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3) ] ->
          if (not (equal_cc equal_mich_v v1 v3))
             && (not (equal_cc equal_mich_v v2 v3))
-            && (not (equal_cc equal_mich_v v1 zero))
-            && not (equal_cc equal_mich_v v2 zero)
+            && (not (equal_cc equal_mich_v v1 zero_mtz))
+            && not (equal_cc equal_mich_v v2 zero_mtz)
          then make_add_2_eq_mtz (v1, v2, v3)
          else None
        | [ (_, _); (_, _); (_, _) ] -> None
@@ -411,7 +411,7 @@ let tmp_add_3_eq : Igdt.igdt_sets -> CSet.t =
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
-   let (zero : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
+   let (zero_mtz : mich_v cc) = gen_dummy_cc (MV_lit_mutez Bigint.zero) in
    let make_add_3_eq_mtz :
        mich_v cc * mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3, v4) ->
@@ -432,9 +432,9 @@ let tmp_add_3_eq : Igdt.igdt_sets -> CSet.t =
          if (not (equal_cc equal_mich_v v1 v4))
             && (not (equal_cc equal_mich_v v2 v4))
             && (not (equal_cc equal_mich_v v3 v4))
-            && (not (equal_cc equal_mich_v v1 zero))
-            && (not (equal_cc equal_mich_v v2 zero))
-            && not (equal_cc equal_mich_v v3 zero)
+            && (not (equal_cc equal_mich_v v1 zero_mtz))
+            && (not (equal_cc equal_mich_v v2 zero_mtz))
+            && not (equal_cc equal_mich_v v3 zero_mtz)
          then make_add_3_eq_mtz (v1, v2, v3, v4)
          else None
        | [ (_, _); (_, _); (_, _); (_, _) ] -> None
