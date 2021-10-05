@@ -83,13 +83,13 @@ module SSGraph = struct
          |> (* 1. use symstate's start-rmci - symstate is start-rmci's successor *)
          (fun m ->
            RMCIMap.update m start_rmci ~f:(function
-           | None      -> empty_cp
+           | None      -> { empty_cp with succ = SSet.singleton ss }
            | Some pspr -> { pspr with succ = SSet.add pspr.succ ss }
            ))
          |> (* 2. use symstate's block-rmci - symstate is block-rmci's predecessor *)
          fun m ->
          RMCIMap.update m block_rmci ~f:(function
-         | None      -> empty_cp
+         | None      -> { empty_cp with pred = SSet.singleton ss }
          | Some pspr -> { pspr with pred = SSet.add pspr.pred ss }
          )
      )
