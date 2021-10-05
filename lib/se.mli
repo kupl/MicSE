@@ -1,5 +1,7 @@
 (* Se is a symbolic execution module based on Tz.sym_state definition *)
 
+exception SeError of string
+
 (* Set of Tz.sym_state & Set of Tz.mich_cut_info *)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 

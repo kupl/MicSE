@@ -1,5 +1,7 @@
 (* Se is a symbolic execution module based on Tz.sym_state definition *)
 
+exception SeError of string
+
 open! Core
 
 (* Set of Tz.sym_state & Set of Tz.mich_cut_info *)
@@ -232,6 +234,67 @@ let ge_balance_amount_in_non_trx_entry_constraint :
    fun ~ctx ~amount_v ~balance_v ->
    MF_is_true
      (gen_mich_v_ctx ~ctx (MV_geq_ib (balance_v, amount_v) |> gen_dummy_cc))
+
+let sigma_constraint_of_list_nil :
+    ctx:Tz.mich_sym_ctxt -> lst:Tz.mich_v Tz.cc -> Tz.mich_f list =
+   let open Tz in
+   let open TzUtil in
+   fun ~ctx ~lst ->
+   let (sigma_lst : mich_v cc list) = sigma_of_cont lst in
+   List.map sigma_lst ~f:(fun sigma ->
+       let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
+       let (zero_ctx : mich_v_cc_ctx) =
+          gen_mich_v_ctx ~ctx (gen_dummy_cc (MV_lit_mutez Bigint.zero))
+       in
+       MF_eq (sigma_ctx, zero_ctx)
+   )
+(* function sigma_constraint_of_list_nil end *)
+
+let sigma_constraint_of_list_cons :
+    ctx:Tz.mich_sym_ctxt ->
+    lst:Tz.mich_v Tz.cc ->
+    hd:Tz.mich_v Tz.cc ->
+    tl:Tz.mich_v Tz.cc ->
+    Tz.mich_f list =
+   let open Tz in
+   let open TzUtil in
+   fun ~ctx ~lst ~hd ~tl ->
+   let (sigma_lst : mich_v cc list) = sigma_of_cont lst in
+   let (sigma_tl : mich_v cc list) = sigma_of_cont tl in
+   List.map2 sigma_lst sigma_tl ~f:(fun sigma new_sigma ->
+       let ((acc_f_lst : mich_f list), (elem_value : mich_v cc)) =
+          (acc_of_sigma ~sigma ~ctx) hd
+       in
+       let (addition : mich_v cc) =
+          gen_custom_cc new_sigma (MV_add_mmm (elem_value, new_sigma))
+       in
+       let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
+       let (new_sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx addition in
+       MF_eq (sigma_ctx, new_sigma_ctx) :: acc_f_lst
+   )
+   |> function
+   | Ok fll          -> List.join fll
+   | Unequal_lengths ->
+     SeError "sigma_constraint_of_list_cons : Unequal_lengths" |> raise
+(* function sigma_constraint_of_list_cons end *)
+
+let add_sigma_constraint_of_list_cons :
+    ctx:Tz.mich_sym_ctxt ->
+    lst:Tz.mich_v Tz.cc ->
+    hd:Tz.mich_v Tz.cc ->
+    tl:Tz.mich_v Tz.cc ->
+    Tz.sym_state ->
+    Tz.sym_state =
+  fun ~ctx ~lst ~hd ~tl ss ->
+  add_constraints ~c:(sigma_constraint_of_list_cons ~ctx ~lst ~hd ~tl) ss
+(* function add_sigma_constraint_of_list_cons end *)
+
+let add_sigma_constraint_of_list_nil :
+    ctx:Tz.mich_sym_ctxt -> lst:Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.sym_state
+    =
+  fun ~ctx ~lst ss ->
+  add_constraints ~c:(sigma_constraint_of_list_nil ~ctx ~lst) ss
+(* function add_sigma_constraint_of_list_nil end *)
 
 (******************************************************************************)
 (* Symbolic Run Instruction                                                   *)
@@ -682,12 +745,15 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
      in
      se_result_pointwise_union then_br_sr else_br_sr
    | MI_nil t ->
-     push_bmstack ~v:(MV_nil t |> gen_custom_cc inst) ss
+     let (lst : mich_v cc) = MV_nil t |> gen_custom_cc inst in
+     push_bmstack ~v:lst ss
+     |> add_sigma_constraint_of_list_nil ~ctx ~lst
      |> running_ss_to_sr ctxt_sr
    | MI_cons ->
-     update_top_2_bmstack
-       ~f:(fun (x, y) -> [ MV_cons (x, y) |> gen_custom_cc inst ])
-       ss
+     let ((hd : mich_v cc), (tl : mich_v cc)) = get_bmstack_2 ss in
+     let (lst : mich_v cc) = MV_cons (hd, tl) |> gen_custom_cc inst in
+     update_top_2_bmstack ~f:(fun _ -> [ lst ]) ss
+     |> add_sigma_constraint_of_list_cons ~ctx ~lst ~hd ~tl
      |> running_ss_to_sr ctxt_sr
    | MI_if_cons (i1, i2) ->
      (* IF_CONS receives list-container only *)
@@ -707,6 +773,8 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
              ~tv:(typ_of_val unlifted_cond_value_hd, unlifted_cond_value_hd)
         |> add_nat_constraint_if_it_is ~ctx
              ~tv:(typ_of_val unlifted_cond_value_hd, unlifted_cond_value_hd)
+        |> add_sigma_constraint_of_list_cons ~ctx ~lst:cond_value
+             ~hd:unlifted_cond_value_hd ~tl:unlifted_cond_value_tl
         (* It is important to update sid of else-branch symbolic-state *)
         |> (fun ssss -> run_inst_i i1 (ctxt_sr, ssss))
      in
@@ -726,6 +794,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
            else_br_base_ss
            |> update_top_1_bmstack ~f:(fun _ -> [])
            |> add_constraints ~c:[ eb_cond_constraint ]
+           |> add_sigma_constraint_of_list_nil ~ctx ~lst:cond_value
         in
         run_inst_i i2 (ctxt_sr, else_br_ss)
      in

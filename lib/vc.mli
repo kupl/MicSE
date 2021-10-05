@@ -37,7 +37,7 @@ val get_hd2 : 'a list -> 'a * 'a
 val property_of_query :
   sctx:Tz.mich_sym_ctxt -> Tz.mich_cut_info -> Tz.sym_image -> Tz.mich_f
 
-val apply_initial_storage :
+val fmla_for_initial_storage :
   sctx:Tz.mich_sym_ctxt ->
   Tz.mich_cut_info ->
   Tz.sym_image ->
@@ -58,6 +58,14 @@ val apply_inv_at_block :
   sctx:Tz.mich_sym_ctxt ->
   Tz.mich_cut_info ->
   Tz.sym_image ->
+  Tz.mich_f ->
+  Tz.mich_f
+
+val apply_inv_with_initial_storage :
+  sctx:Tz.mich_sym_ctxt ->
+  Tz.mich_cut_info ->
+  Tz.sym_image ->
+  Tz.mich_v Tz.cc ->
   Tz.mich_f ->
   Tz.mich_f
 

@@ -311,15 +311,13 @@ let collect_igdt_from_list : igdt -> ISet.t * ISet.t =
    (* syntax sugar *)
    fun cur_igdt ->
    let (cur_val : mich_v cc) = cur_igdt.ig_value in
-   let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
    let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in
-   match cur_typ.cc_v with
-   | MT_list t1cc ->
-     let (sigma_set : ISet.t) =
-        match t1cc.cc_v with
-        | MT_pair (t11cc, t12cc) -> (
-          match (t11cc.cc_v, t12cc.cc_v) with
-          | (MT_timestamp, MT_mutez) ->
+   let (sigma_lst : mich_v cc list) = TzUtil.sigma_of_cont cur_val in
+   if List.is_empty sigma_lst
+   then (ISet.empty, ISet.empty)
+   else (
+     let (igdt_set : ISet.t) =
+        List.map sigma_lst ~f:(fun val_cons ->
             (* preconditions *)
             let (prec_cons : mich_f list) =
                MF_is_cons (gctx cur_val) :: cur_plst
@@ -328,9 +326,6 @@ let collect_igdt_from_list : igdt -> ISet.t * ISet.t =
                MF_not (MF_is_cons (gctx cur_val)) :: cur_plst
             in
             (* values *)
-            let (val_cons : mich_v cc) =
-               gen_custom_cc cur_val (MV_sigma_tmplm cur_val)
-            in
             let (val_nil : mich_v cc) =
                gen_custom_cc cur_val (MV_lit_mutez Bigint.zero)
             in
@@ -354,12 +349,11 @@ let collect_igdt_from_list : igdt -> ISet.t * ISet.t =
                }
             in
             ISet.of_list [ igdt_cons; igdt_nil ]
-          | _                        -> ISet.empty
         )
-        | _                      -> ISet.empty
+        |> ISet.union_list
      in
-     (ISet.empty, ISet.add sigma_set cur_igdt)
-   | _            -> IgdtError "collect_igdt_from_list : _" |> raise
+     (ISet.empty, ISet.add igdt_set cur_igdt)
+   )
 (* function collect_igdt_from_list end *)
 
 let collect_igdt_from_mutez : igdt -> ISet.t * ISet.t =

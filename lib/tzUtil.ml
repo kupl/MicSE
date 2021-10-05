@@ -1433,6 +1433,42 @@ let mtz_of_op : ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc option
 (* function mtz_of_op end *)
 
 (******************************************************************************)
+(* Sigma                                                                      *)
+(******************************************************************************)
+
+let sigma_of_cont : mich_v cc -> mich_v cc list =
+  fun vcc ->
+  match (typ_of_val vcc).cc_v with
+  | MT_list t1cc -> (
+    match t1cc.cc_v with
+    | MT_pair (t11cc, t12cc) -> (
+      match (t11cc.cc_v, t12cc.cc_v) with
+      | (MT_timestamp, MT_mutez) -> [ gen_custom_cc vcc (MV_sigma_tmplm vcc) ]
+      | _                        -> []
+    )
+    | _                      -> []
+  )
+  | _            -> TzError "sigma_of_cont : _" |> raise
+(* function sigma_of_cont end *)
+
+let acc_of_sigma :
+    sigma:mich_v cc -> ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc
+    =
+  fun ~sigma ~ctx vcc ->
+  let gcc value_cc = gen_custom_cc vcc value_cc in
+  match sigma.cc_v with
+  | MV_sigma_tmplm _ -> (
+    match (typ_of_val vcc).cc_v with
+    | MT_pair (t11cc, t12cc)
+      when equal_mich_t t11cc.cc_v MT_timestamp
+           && equal_mich_t t12cc.cc_v MT_mutez ->
+      gcc (MV_cdr vcc) |> opt_mvcc ~ctx
+    | _ -> TzError "acc_of_sigma : MV_sigma_tmplm : _" |> raise
+  )
+  | _                -> TzError "acc_of_sigma : _" |> raise
+(* function acc_of_sigma end *)
+
+(******************************************************************************)
 (******************************************************************************)
 (* Michelson to Tz                                                            *)
 (******************************************************************************)

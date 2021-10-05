@@ -105,6 +105,20 @@ module Encoder = struct
               |> String.concat ~sep:"_"
               )
             )
+        (* inner-function fv end *)
+     in
+     let sigma_to_expr lst =
+        match lst.cc_v with
+        | MV_lit_list (_, v_lst) ->
+          if List.is_empty v_lst
+          then ZMutez.create_expr ctx 0
+          else
+            List.map v_lst ~f:(fun v ->
+                acc_of_sigma ~sigma:(gdc value) ~ctx:sctx v |> snd |> eov
+            )
+            |> ZMutez.create_add_lst ctx
+        | _                      -> fv [ lst ]
+        (* inner-function sigma_to_expr end *)
      in
      match value with
      (*************************************************************************)
@@ -487,8 +501,7 @@ module Encoder = struct
      | MV_ref_cont t1cc ->
        Expr.create_var ctx (sot t1cc)
          ~name:("MV_ref_cont_" ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx))
-     | MV_sigma_tmplm v1cc ->
-       fv [ v1cc ]
+     | MV_sigma_tmplm v1cc -> sigma_to_expr v1cc
   (* function cv_mv end *)
 
   and cv_mvcc :
@@ -789,7 +802,7 @@ let property_of_query :
    | _            -> VcError "gen_query_property : wrong mci" |> raise
 (* function property_of_query end *)
 
-let apply_initial_storage :
+let fmla_for_initial_storage :
     sctx:Tz.mich_sym_ctxt ->
     Tz.mich_cut_info ->
     Tz.sym_image ->
@@ -805,7 +818,7 @@ let apply_initial_storage :
      MF_eq
        (gen_mich_v_ctx sym_strg ~ctx:sctx, gen_mich_v_ctx init_strg ~ctx:sctx)
    | _             -> VcError "apply_initial_storage : wrong mci" |> raise
-(* function apply_initial_storage end *)
+(* function fmla_for_initial_storage end *)
 
 let subst_mf_rules :
     mapf_vcc:(Tz.mich_v_cc_ctx -> Tz.mich_v_cc_ctx) -> Tz.mich_f -> Tz.mich_f =
@@ -899,6 +912,8 @@ let apply_inv_at_start :
         )
        )
      inv
+   |> opt_mf
+(* function apply_inv_at_start end *)
 
 let apply_inv_at_block :
     sctx:Tz.mich_sym_ctxt ->
@@ -948,7 +963,39 @@ let apply_inv_at_block :
         )
        )
      inv
+   |> opt_mf
 (* function apply_inv_at_block end *)
+
+let apply_inv_with_initial_storage :
+    sctx:Tz.mich_sym_ctxt ->
+    Tz.mich_cut_info ->
+    Tz.sym_image ->
+    Tz.mich_v Tz.cc ->
+    Tz.mich_f ->
+    Tz.mich_f =
+   let open Tz in
+   let open TzUtil in
+   fun ~sctx mci si init_strg inv ->
+   match mci.mci_cutcat with
+   | MCC_trx_entry ->
+     let (mapf : mich_v -> mich_v) = function
+     | MV_ref (_, MSC_mich_stack 0) -> MV_pair (si.si_param.ti_param, init_strg)
+     | mv -> mv
+     in
+     mf_map_innerfst
+       ~mapf:
+         (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
+              let (_, (ctx_v : mich_v cc)) =
+                 mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v |> opt_mvcc ~ctx:sctx
+              in
+              { ctx_i = sctx; ctx_v }
+          )
+         )
+       inv
+     |> opt_mf
+   | _             ->
+     VcError "apply_inv_with_initial_storage : wrong mci" |> raise
+(* function apply_inv_with_initial_storage end *)
 
 (******************************************************************************)
 (******************************************************************************)
@@ -1063,16 +1110,12 @@ let gen_initial_inv_vc :
       | _             -> false
    then (
      let (init_strg_fmla : mich_f) =
-        apply_initial_storage ~sctx:sstate.ss_id sstate.ss_start_mci
-          sstate.ss_start_si init_strg
-     in
-     let (trx_inv : mich_f) =
         Inv.find_inv imap sstate.ss_start_mci
         |> Inv.fmla_of_cand_post
-        |> apply_inv_at_start ~sctx:sstate.ss_id sstate.ss_start_mci
-             sstate.ss_start_si
+        |> apply_inv_with_initial_storage ~sctx:sstate.ss_id sstate.ss_start_mci
+             sstate.ss_start_si init_strg
      in
-     MF_imply (init_strg_fmla, trx_inv)
+     init_strg_fmla
    )
    else VcError "gen_initial_inv_vc : wrong state" |> raise
 (* function gen_initial_inv_vc end *)
@@ -1084,7 +1127,7 @@ let gen_refute_vc : Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f =
    let (start_state : sym_state) = get_first_ss mstate in
    let (block_state : sym_state) = get_last_ss mstate in
    let (init_strg_fmla : mich_f) =
-      apply_initial_storage ~sctx:start_state.ss_id start_state.ss_start_mci
+      fmla_for_initial_storage ~sctx:start_state.ss_id start_state.ss_start_mci
         start_state.ss_start_si init_strg
    in
    let (sp : mich_f) = gen_sp_from_ms mstate init_strg_fmla in
