@@ -1111,7 +1111,7 @@ let gen_initial_inv_vc :
    then (
      let (init_strg_fmla : mich_f) =
         Inv.find_inv imap sstate.ss_start_mci
-        |> Inv.fmla_of_cand_post
+        |> Inv.fmla_of_cand_pre
         |> apply_inv_with_initial_storage ~sctx:sstate.ss_id sstate.ss_start_mci
              sstate.ss_start_si init_strg
      in
@@ -1201,3 +1201,26 @@ let is_cand_sat : Smt.Ctx.t -> Smt.Solver.t -> Inv.cand -> bool =
    in
    Solver.is_sat sat
 (* function is_cand_sat end *)
+
+let do_cand_sat_istrg :
+    Smt.Ctx.t ->
+    Smt.Solver.t ->
+    Tz.mich_v Tz.cc ->
+    Tz.sym_state ->
+    Tz.r_mich_cut_info ->
+    Inv.cand ->
+    bool =
+   let open Tz in
+   let open Smt in
+   fun ctx solver istrg istate rmci cand ->
+   if not (equal_r_mich_cut_category rmci.rmci_cutcat RMCC_trx)
+   then true
+   else (
+     let (vc : mich_f) =
+        Inv.fmla_of_cand_post cand
+        |> apply_inv_with_initial_storage ~sctx:istate.ss_id istate.ss_start_mci
+             istate.ss_start_si istrg
+     in
+     let ((vld : Solver.validity), _) = check_val ctx solver vc in
+     Solver.is_val vld
+   )

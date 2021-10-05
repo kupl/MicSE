@@ -537,19 +537,22 @@ let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
 (* Invariant Candidates *******************************************************)
 
 let gen_initial_cand_map :
-    is_cand_sat:(cand -> bool) -> QIDSet.t -> Igdt.igdts_map -> cand_map =
-  fun ~is_cand_sat qset igdt_map ->
+    is_cand_sat:(cand -> bool) ->
+    do_cand_sat_istrg:(Tz.r_mich_cut_info -> cand -> bool) ->
+    QIDSet.t ->
+    Igdt.igdts_map ->
+    cand_map =
+  fun ~is_cand_sat ~do_cand_sat_istrg qset igdt_map ->
   let (default_score : int QIDMap.t) =
      QIDSet.to_list qset
      |> List.map ~f:(fun rmci -> (rmci, -1))
      |> QIDMap.of_alist_exn
   in
-  RMCIMap.map igdt_map ~f:(fun igdt_sets ->
-      [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
+  RMCIMap.mapi igdt_map ~f:(fun ~key:rmci ~data:igdt_sets ->
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> CSet.union_list
       |> CSet.fold ~init:CMap.empty ~f:(fun acc_cmap cand ->
-             if not (is_cand_sat cand)
+             if (not (is_cand_sat cand)) || not (do_cand_sat_istrg rmci cand)
              then acc_cmap
              else
                CMap.add acc_cmap ~key:cand ~data:(true, default_score)

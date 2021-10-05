@@ -120,3 +120,12 @@ val check_sat :
   Smt.Solver.satisfiability * Smt.Model.t option
 
 val is_cand_sat : Smt.Ctx.t -> Smt.Solver.t -> Inv.cand -> bool
+
+val do_cand_sat_istrg :
+  Smt.Ctx.t ->
+  Smt.Solver.t ->
+  Tz.mich_v Tz.cc ->
+  Tz.sym_state ->
+  Tz.r_mich_cut_info ->
+  Inv.cand ->
+  bool

@@ -211,7 +211,11 @@ val check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool
 (* Invariant Candidates *******************************************************)
 
 val gen_initial_cand_map :
-  is_cand_sat:(cand -> bool) -> QIDSet.t -> Igdt.igdts_map -> cand_map
+  is_cand_sat:(cand -> bool) ->
+  do_cand_sat_istrg:(Tz.r_mich_cut_info -> cand -> bool) ->
+  QIDSet.t ->
+  Igdt.igdts_map ->
+  cand_map
 
 val find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands
 

@@ -172,7 +172,7 @@ let init_worklist : unit -> worklist =
 let init_res : config -> res =
    let open Se in
    let open Vc in
-   fun { cfg_se_res; cfg_qid_set; cfg_imap; cfg_smt_ctxt; cfg_smt_slvr; _ } ->
+   fun { cfg_se_res; cfg_qid_set; cfg_imap; cfg_smt_ctxt; cfg_smt_slvr; cfg_istrg; cfg_istate; _ } ->
    let (acc_qsmap : SSet.t QIDMap.t) =
       SSet.fold cfg_se_res.sr_queries ~init:QIDMap.empty ~f:(fun acc_qsmap qs ->
           QIDMap.update acc_qsmap (TzUtil.qid_of_mci_exn qs.ss_block_mci)
@@ -192,6 +192,7 @@ let init_res : config -> res =
      r_cands =
        Inv.gen_initial_cand_map
          ~is_cand_sat:(is_cand_sat cfg_smt_ctxt cfg_smt_slvr)
+         ~do_cand_sat_istrg:(do_cand_sat_istrg cfg_smt_ctxt cfg_smt_slvr cfg_istrg cfg_istate)
          cfg_qid_set cfg_imap;
      r_wlst = init_worklist ();
    }

@@ -38,7 +38,6 @@ val check_failed :
 val check_inductiveness :
   Smt.Ctx.t ->
   Smt.Solver.t ->
-  Tz.mich_v Tz.cc ->
   SSet.t ->
   Inv.inv_map ->
   (Inv.inv_map, Tz.sym_state) Result.t

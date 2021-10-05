@@ -48,7 +48,7 @@ code { UNPAPAIR ;
                CHECK_SIGNATURE ;
                IF { DROP } { FAILWITH } ;
                IF_LEFT
-                 { UNPAIR ; DIP { PAIR ; SWAP ; DROP } ; NIL operation }
+                 { CDR ; PAIR ; SWAP ; NIL operation }
                  { UNPAIR ; DIP { PAIR ; SWAP } ; UNIT ; EXEC } }
              { DIP { UNPAPAIR } ;
                UNPAIR ;
