@@ -142,11 +142,14 @@ module ILSet = Set.Make (IGDTL_cmp)
 let rec shuffle : Igdt.igdt list -> ILSet.t =
   fun il ->
   if List.is_empty il
-  then ILSet.empty
+  then ILSet.singleton []
   else
     List.mapi il ~f:(fun idx i ->
-        let (fst : Igdt.igdt list), (hd_snd : Igdt.igdt list) = List.split_n il idx in
-        shuffle (fst @ (List.tl_exn hd_snd)) |> ILSet.map ~f:(fun new_il -> i :: new_il)
+        let ((fst : Igdt.igdt list), (hd_snd : Igdt.igdt list)) =
+           List.split_n il idx
+        in
+        shuffle (fst @ List.tl_exn hd_snd)
+        |> ILSet.map ~f:(fun new_il -> i :: new_il)
     )
     |> ILSet.union_list
 (* function shuffle end *)
