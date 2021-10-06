@@ -196,7 +196,7 @@ module Setting = struct
               )
     then raise (Arg.Bad "bad range of precondition-random-rate")
     else if (* 4. check range validity of status_interval *)
-            Option.is_some !(query_pick.value)
+            Option.is_some !(status_interval.value)
             && not (0 <= Option.value_exn !(status_interval.value))
     then raise (Arg.Bad "bad range of status-interval")
     else ()
