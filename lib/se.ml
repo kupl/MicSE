@@ -244,7 +244,7 @@ let sigma_constraint_of_list_nil :
    List.map sigma_lst ~f:(fun sigma ->
        let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
        let (zero_ctx : mich_v_cc_ctx) =
-          gen_mich_v_ctx ~ctx (gen_dummy_cc (MV_lit_mutez Bigint.zero))
+          gen_mich_v_ctx ~ctx (gen_custom_cc sigma (MV_lit_mutez Bigint.zero))
        in
        MF_eq (sigma_ctx, zero_ctx)
    )
