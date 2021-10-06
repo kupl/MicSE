@@ -246,8 +246,12 @@ let sigma_constraint_of_list_nil :
        let (zero_ctx : mich_v_cc_ctx) =
           gen_mich_v_ctx ~ctx (gen_custom_cc sigma (MV_lit_mutez Bigint.zero))
        in
-       MF_eq (sigma_ctx, zero_ctx)
+       [
+         MF_eq (sigma_ctx, zero_ctx);
+         mtz_constraint_if_it_is_or_true ~ctx ~tv:(typ_of_val sigma, sigma);
+       ]
    )
+   |> List.join
 (* function sigma_constraint_of_list_nil end *)
 
 let sigma_constraint_of_list_cons :
@@ -270,7 +274,14 @@ let sigma_constraint_of_list_cons :
        in
        let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
        let (new_sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx addition in
-       MF_eq (sigma_ctx, new_sigma_ctx) :: acc_f_lst
+       [
+         MF_eq (sigma_ctx, new_sigma_ctx);
+         mtz_constraint_if_it_is_or_true ~ctx ~tv:(typ_of_val sigma, sigma);
+         mtz_constraint_if_it_is_or_true ~ctx
+           ~tv:(typ_of_val new_sigma, new_sigma);
+         mtz_constraint_if_it_is_or_true ~ctx ~tv:(typ_of_val addition, addition);
+       ]
+       @ acc_f_lst
    )
    |> function
    | Ok fll          -> List.join fll

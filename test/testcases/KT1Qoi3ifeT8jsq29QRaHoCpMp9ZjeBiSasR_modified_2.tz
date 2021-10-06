@@ -90,7 +90,9 @@ code { UNPAPAIR ;
                                                 SWAP ;
                                                 CONS ;
                                                 SWAP ;
-                                                ITER { CONS } ;
+                                                PUSH bool True ;
+                                                LOOP { IF_CONS { SWAP ; DIP { CONS } ; PUSH bool True } { NIL (pair timestamp mutez) ; PUSH bool False } } ;
+                                                IF_CONS { FAILWITH } {  } ;
                                                 NIL (pair timestamp mutez) ;
                                                 SWAP ;
                                                 PUSH bool True }
