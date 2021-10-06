@@ -9,11 +9,12 @@ exception VcError of string
 (******************************************************************************)
 
 module Encoder : sig
-  val cv_mt : Smt.Ctx.t -> Tz.mich_t -> Smt.Sort.t
+  val cv_mtcc_i : Smt.Ctx.t -> Tz.mich_t Tz.cc -> Smt.Sort.t
 
   val cv_mtcc : Smt.Ctx.t -> Tz.mich_t Tz.cc -> Smt.Sort.t
 
-  val cv_mv : sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v -> Smt.Expr.t
+  val cv_mvcc_i :
+    sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t
 
   val cv_mvcc :
     sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t

@@ -13,39 +13,37 @@ open! Core
 module Encoder = struct
   exception Not_Implemented
 
-  let rec cv_mt : Smt.Ctx.t -> Tz.mich_t -> Smt.Sort.t =
+  let rec cv_mtcc_i : Smt.Ctx.t -> Tz.mich_t Tz.cc -> Smt.Sort.t =
      let open Tz in
-     let open TzUtil in
      let open Smt in
-     fun ctx typ ->
-     let gdc typ = gen_dummy_cc typ in
+     fun ctx typ_cc ->
      let sot typ_cc = cv_mtcc ctx typ_cc in
      (* syntax sugar *)
-     match typ with
+     match typ_cc.cc_v with
      | MT_key                  -> ZKey.create_sort ctx
      | MT_unit                 -> ZUnit.create_sort ctx
      | MT_signature            -> ZSig.create_sort ctx
      | MT_option t1cc          ->
-       ZOption.create_sort ctx ~typ:(gdc typ) ~content_sort:(sot t1cc)
+       ZOption.create_sort ctx ~typ:typ_cc ~content_sort:(sot t1cc)
      | MT_list t1cc            ->
-       ZList.create_sort ctx ~typ:(gdc typ) ~content_sort:(sot t1cc)
+       ZList.create_sort ctx ~typ:typ_cc ~content_sort:(sot t1cc)
      | MT_set t1cc             ->
-       ZSet.create_sort ctx ~typ:(gdc typ) ~content_sort:(sot t1cc)
+       ZSet.create_sort ctx ~typ:typ_cc ~content_sort:(sot t1cc)
      | MT_operation            -> ZOperation.create_sort ctx
      | MT_contract t1cc        ->
-       ZContract.create_sort ctx ~typ:(gdc typ) ~content_sort:(sot t1cc)
+       ZContract.create_sort ctx ~typ:typ_cc ~content_sort:(sot t1cc)
      | MT_pair (t1cc, t2cc)    ->
-       ZPair.create_sort ctx ~typ:(gdc typ) ~content_sort:(sot t1cc, sot t2cc)
+       ZPair.create_sort ctx ~typ:typ_cc ~content_sort:(sot t1cc, sot t2cc)
      | MT_or (t1cc, t2cc)      ->
-       ZOr.create_sort ctx ~typ:(gdc typ) ~content_sort:(sot t1cc, sot t2cc)
+       ZOr.create_sort ctx ~typ:typ_cc ~content_sort:(sot t1cc, sot t2cc)
      | MT_lambda (t1cc, t2cc)  ->
-       ZLambda.create_sort ctx ~typ:(gdc typ) ~domain_sort:(sot t1cc)
+       ZLambda.create_sort ctx ~typ:typ_cc ~domain_sort:(sot t1cc)
          ~range_sort:(sot t2cc)
      | MT_map (t1cc, t2cc)     ->
-       ZMap.create_sort ctx ~typ:(gdc typ) ~key_sort:(sot t1cc)
+       ZMap.create_sort ctx ~typ:typ_cc ~key_sort:(sot t1cc)
          ~data_body_sort:(sot t2cc)
      | MT_big_map (t1cc, t2cc) ->
-       ZMap.create_sort ctx ~typ:(gdc typ) ~key_sort:(sot t1cc)
+       ZMap.create_sort ctx ~typ:typ_cc ~key_sort:(sot t1cc)
          ~data_body_sort:(sot t2cc)
      | MT_chain_id             -> ZStr.create_sort ctx
      | MT_int                  -> ZInt.create_sort ctx
@@ -62,7 +60,7 @@ module Encoder = struct
   and cv_mtcc : Smt.Ctx.t -> Tz.mich_t Tz.cc -> Smt.Sort.t =
      let open Tz in
      fun ctx typ_cc ->
-     try cv_mt ctx typ_cc.cc_v with
+     try cv_mtcc_i ctx typ_cc with
      | Z3.Error s ->
        VcError
          (s
@@ -73,21 +71,21 @@ module Encoder = struct
        |> raise
   (* function cv_mtcc end *)
 
-  let rec cv_mv : sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v -> Smt.Expr.t
-      =
+  let rec cv_mvcc_i :
+      sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t =
      let open Tz in
      let open TzUtil in
      let open Smt in
-     fun ~sctx ctx value ->
-     let gdc v1 = gen_dummy_cc v1 in
+     fun ~sctx ctx value_cc ->
+     let gcc v1 = gen_custom_cc value_cc v1 in
      let sot t1cc = cv_mtcc ctx t1cc in
      let sov v1cc = cv_mtcc ctx (typ_of_val v1cc) in
      let eov v1cc = cv_mvcc ~sctx ctx v1cc in
      (* syntax sugar *)
-     let (sort : Sort.t) = sov (gdc value) in
+     let (sort : Sort.t) = sov value_cc in
      let fv arg_lst =
         let (field : string) =
-           match sexp_of_mich_v value with
+           match sexp_of_mich_v value_cc.cc_v with
            | Sexp.List (Sexp.Atom s :: _) -> s
            | s ->
              VcError ("Encoder : cv_mv : fv : " ^ (s |> SexpUtil.to_string))
@@ -100,7 +98,7 @@ module Encoder = struct
             ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
             ^ "_"
             ^ (List.map arg_lst ~f:(fun vcc ->
-                   sexp_of_ccp_loc vcc.cc_loc |> SexpUtil.to_string
+                   sexp_of_mich_v vcc.cc_v |> SexpUtil.to_string
                )
               |> String.concat ~sep:"_"
               )
@@ -114,13 +112,13 @@ module Encoder = struct
           then ZMutez.create_expr ctx 0
           else
             List.map v_lst ~f:(fun v ->
-                acc_of_sigma ~sigma:(gdc value) ~ctx:sctx v |> snd |> eov
+                acc_of_sigma ~sigma:value_cc ~ctx:sctx v |> snd |> eov
             )
             |> ZMutez.create_add_lst ctx
         | _                      -> fv [ lst ]
         (* inner-function sigma_to_expr end *)
      in
-     match value with
+     match value_cc.cc_v with
      (*************************************************************************)
      (* Symbol & Polymorphic                                                  *)
      (*************************************************************************)
@@ -365,7 +363,7 @@ module Encoder = struct
      | MV_ediv_mnmm (v1cc, v2cc)
      | MV_ediv_mmnm (v1cc, v2cc) ->
        let ((expr1 : Expr.t), (expr2 : Expr.t)) = (eov v1cc, eov v2cc) in
-       let (typ : mich_t cc) = typ_of_val (gdc value) in
+       let (typ : mich_t cc) = typ_of_val value_cc in
        let (sort : Sort.t) = sot typ in
        Formula.if_then_else ctx
          ~if_:(Formula.create_eq ctx expr2 (ZInt.create_expr ctx 0))
@@ -454,7 +452,7 @@ module Encoder = struct
      (* Map                                                                   *)
      (*************************************************************************)
      | MV_lit_map (t1cc, t2cc, vcc_pair_lst) ->
-       let (sort2 : Sort.t) = MT_option t2cc |> gdc |> sot in
+       let (sort2 : Sort.t) = MT_option t2cc |> gcc |> sot in
        List.fold vcc_pair_lst
          ~init:
            (ZMap.create_expr_empty_map ctx ~key_sort:(sot t1cc) ~data_sort:sort2)
@@ -463,7 +461,7 @@ module Encoder = struct
              ~data:(ZOption.create_expr_some sort2 (eov v2cc))
              expr)
      | MV_empty_map (t1cc, t2cc) ->
-       let (sort2 : Sort.t) = MT_option t2cc |> gdc |> sot in
+       let (sort2 : Sort.t) = MT_option t2cc |> gcc |> sot in
        ZMap.create_expr_empty_map ctx ~key_sort:(sot t1cc) ~data_sort:sort2
      | MV_update_xomm (v1cc, v2cc, v3cc) ->
        ZMap.update ctx ~key:(eov v1cc) ~data:(eov v2cc) (eov v3cc)
@@ -471,7 +469,7 @@ module Encoder = struct
      (* Big Map                                                               *)
      (*************************************************************************)
      | MV_lit_big_map (t1cc, t2cc, vcc_pair_lst) ->
-       let (sort2 : Sort.t) = MT_option t2cc |> gdc |> sot in
+       let (sort2 : Sort.t) = MT_option t2cc |> gcc |> sot in
        List.fold vcc_pair_lst
          ~init:
            (ZMap.create_expr_empty_map ctx ~key_sort:(sot t1cc) ~data_sort:sort2)
@@ -480,7 +478,7 @@ module Encoder = struct
              ~data:(ZOption.create_expr_some sort2 (eov v2cc))
              expr)
      | MV_empty_big_map (t1cc, t2cc) ->
-       let (sort2 : Sort.t) = MT_option t2cc |> gdc |> sot in
+       let (sort2 : Sort.t) = MT_option t2cc |> gcc |> sot in
        ZMap.create_expr_empty_map ctx ~key_sort:(sot t1cc) ~data_sort:sort2
      | MV_update_xobmbm (v1cc, v2cc, v3cc) ->
        ZMap.update ctx ~key:(eov v1cc) ~data:(eov v2cc) (eov v3cc)
@@ -508,7 +506,7 @@ module Encoder = struct
       sctx:Tz.mich_sym_ctxt -> Smt.Ctx.t -> Tz.mich_v Tz.cc -> Smt.Expr.t =
      let open Tz in
      fun ~sctx ctx value_cc ->
-     try cv_mv ~sctx ctx value_cc.cc_v with
+     try cv_mvcc_i ~sctx ctx value_cc with
      | Not_Implemented ->
        VcError
          ("Not Implemented : "
