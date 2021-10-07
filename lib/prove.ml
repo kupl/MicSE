@@ -70,12 +70,9 @@ let check_inductiveness :
        if Result.is_error inductive
        then inductive
        else (
-         let (cond1 : bool) =
-            let (vc : mich_f) = gen_inductiveness_vc imap bs |> TzUtil.opt_mf in
-            let ((vld : Solver.validity), _) = check_val ctx slvr vc in
-            Solver.is_val vld
-         in
-         if not cond1 then Result.fail bs else inductive
+         let (vc : mich_f) = gen_inductiveness_vc imap bs |> TzUtil.opt_mf in
+         let ((vld : Solver.validity), _) = check_val ctx slvr vc in
+         if not (Solver.is_val vld) then Result.fail bs else inductive
        )
    )
 (* function check_inductiveness end *)
