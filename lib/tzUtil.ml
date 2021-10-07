@@ -1452,17 +1452,60 @@ let mtz_of_op : ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc option
 let sigma_of_cont : mich_v cc -> mich_v cc list =
   fun vcc ->
   match (typ_of_val vcc).cc_v with
-  | MT_list t1cc -> (
-    match t1cc.cc_v with
-    | MT_pair (t11cc, t12cc) -> (
-      match (t11cc.cc_v, t12cc.cc_v) with
-      | (MT_timestamp, MT_mutez) ->
-        [ gen_custom_cc vcc (MV_sigma_tmp_l_m2 vcc) ]
-      | _                        -> []
-    )
-    | _                      -> []
+  | MT_list tcc             -> (
+    match tcc.cc_v with
+    | MT_pair (t1cc, t2cc)
+      when equal_mich_t t1cc.cc_v MT_timestamp
+           && equal_mich_t t2cc.cc_v MT_mutez ->
+      [ gen_custom_cc vcc (MV_sigma_tmp_l_m2 vcc) ]
+    | _ -> []
   )
-  | _            -> TzError "sigma_of_cont : _" |> raise
+  | MT_map (ktcc, vtcc)     -> (
+    match (ktcc.cc_v, vtcc.cc_v) with
+    | ( MT_nat,
+        MT_pair
+          ( { cc_v = MT_pair (t221cc, t222cc); _ },
+            { cc_v = MT_pair (t223cc, t224cc); _ }
+          )
+      )
+      when equal_mich_t t221cc.cc_v MT_mutez
+           && equal_mich_t t222cc.cc_v MT_string
+           && equal_mich_t t223cc.cc_v MT_nat
+           && equal_mich_t t224cc.cc_v MT_bool ->
+      [ gen_custom_cc vcc (MV_sigma_mspnbpp_nm_m1 vcc) ]
+    | _ -> []
+  )
+  | MT_big_map (ktcc, vtcc) -> (
+    match (ktcc.cc_v, vtcc.cc_v) with
+    | ( MT_address,
+        MT_pair
+          ( { cc_v = MT_pair (t1cc, { cc_v = MT_map (t21cc, t22cc); _ }); _ },
+            { cc_v = MT_pair (t3cc, t4cc); _ }
+          )
+      )
+      when equal_mich_t t1cc.cc_v MT_mutez
+           && equal_mich_t t3cc.cc_v MT_nat
+           && equal_mich_t t4cc.cc_v MT_nat -> (
+      match (t21cc.cc_v, t22cc.cc_v) with
+      | ( MT_nat,
+          MT_pair
+            ( { cc_v = MT_pair (t221cc, t222cc); _ },
+              { cc_v = MT_pair (t223cc, t224cc); _ }
+            )
+        )
+        when equal_mich_t t221cc.cc_v MT_mutez
+             && equal_mich_t t222cc.cc_v MT_string
+             && equal_mich_t t223cc.cc_v MT_nat
+             && equal_mich_t t224cc.cc_v MT_bool ->
+        [
+          gen_custom_cc vcc (MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 vcc);
+          gen_custom_cc vcc (MV_sigma_mmspnbppnmpnnpp_abm_m1 vcc);
+        ]
+      | _ -> []
+    )
+    | _ -> []
+  )
+  | _                       -> TzError "sigma_of_cont : _" |> raise
 (* function sigma_of_cont end *)
 
 let acc_of_sigma :
@@ -1473,13 +1516,82 @@ let acc_of_sigma :
   match sigma.cc_v with
   | MV_sigma_tmp_l_m2 _ -> (
     match (typ_of_val vcc).cc_v with
-    | MT_pair (t11cc, t12cc)
-      when equal_mich_t t11cc.cc_v MT_timestamp
-           && equal_mich_t t12cc.cc_v MT_mutez ->
+    | MT_pair (t1cc, t2cc)
+      when equal_mich_t t1cc.cc_v MT_timestamp
+           && equal_mich_t t2cc.cc_v MT_mutez ->
       gcc (MV_cdr vcc) |> opt_mvcc ~ctx
-    | _ -> TzError "acc_of_sigma : MV_sigma_tmplm : _" |> raise
+    | _ -> TzError "acc_of_sigma : MV_sigma_tmp_l_m2 : _" |> raise
   )
-  | _                   -> TzError "acc_of_sigma : _" |> raise
+  | MV_sigma_mmspnbppnmpnnpp_abm_m1 _ -> (
+    match (typ_of_val vcc).cc_v with
+    | MT_pair
+        ( { cc_v = MT_pair (t1cc, { cc_v = MT_map (t21cc, t22cc); _ }); _ },
+          { cc_v = MT_pair (t3cc, t4cc); _ }
+        )
+      when equal_mich_t t1cc.cc_v MT_mutez
+           && equal_mich_t t3cc.cc_v MT_nat
+           && equal_mich_t t4cc.cc_v MT_nat -> (
+      match (t21cc.cc_v, t22cc.cc_v) with
+      | ( MT_nat,
+          MT_pair
+            ( { cc_v = MT_pair (t221cc, t222cc); _ },
+              { cc_v = MT_pair (t223cc, t224cc); _ }
+            )
+        )
+        when equal_mich_t t221cc.cc_v MT_mutez
+             && equal_mich_t t222cc.cc_v MT_string
+             && equal_mich_t t223cc.cc_v MT_nat
+             && equal_mich_t t224cc.cc_v MT_bool ->
+        gcc (MV_car (gcc (MV_car vcc))) |> opt_mvcc ~ctx
+      | _ ->
+        TzError "acc_of_sigma : MV_sigma_mmspnbppnmpnnpp_abm_m1 : _" |> raise
+    )
+    | _ -> TzError "acc_of_sigma : MV_sigma_mmspnbppnmpnnpp_abm_m1 : _" |> raise
+  )
+  | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 _ -> (
+    match (typ_of_val vcc).cc_v with
+    | MT_pair
+        ( { cc_v = MT_pair (t1cc, { cc_v = MT_map (t21cc, t22cc); _ }); _ },
+          { cc_v = MT_pair (t3cc, t4cc); _ }
+        )
+      when equal_mich_t t1cc.cc_v MT_mutez
+           && equal_mich_t t3cc.cc_v MT_nat
+           && equal_mich_t t4cc.cc_v MT_nat -> (
+      match (t21cc.cc_v, t22cc.cc_v) with
+      | ( MT_nat,
+          MT_pair
+            ( { cc_v = MT_pair (t221cc, t222cc); _ },
+              { cc_v = MT_pair (t223cc, t224cc); _ }
+            )
+        )
+        when equal_mich_t t221cc.cc_v MT_mutez
+             && equal_mich_t t222cc.cc_v MT_string
+             && equal_mich_t t223cc.cc_v MT_nat
+             && equal_mich_t t224cc.cc_v MT_bool ->
+        gcc (MV_sigma_mspnbpp_nm_m1 (gcc (MV_cdr (gcc (MV_car vcc)))))
+        |> opt_mvcc ~ctx
+      | _ ->
+        TzError "acc_of_sigma : MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 : _"
+        |> raise
+    )
+    | _ ->
+      TzError "acc_of_sigma : MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 : _"
+      |> raise
+  )
+  | MV_sigma_mspnbpp_nm_m1 _ -> (
+    match (typ_of_val vcc).cc_v with
+    | MT_pair
+        ( { cc_v = MT_pair (t221cc, t222cc); _ },
+          { cc_v = MT_pair (t223cc, t224cc); _ }
+        )
+      when equal_mich_t t221cc.cc_v MT_mutez
+           && equal_mich_t t222cc.cc_v MT_string
+           && equal_mich_t t223cc.cc_v MT_nat
+           && equal_mich_t t224cc.cc_v MT_bool ->
+      gcc (MV_car (gcc (MV_car vcc))) |> opt_mvcc ~ctx
+    | _ -> TzError "acc_of_sigma : MV_sigma_mspnbpp_nm_m1 : _" |> raise
+  )
+  | _ -> TzError "acc_of_sigma : _" |> raise
 (* function acc_of_sigma end *)
 
 (******************************************************************************)

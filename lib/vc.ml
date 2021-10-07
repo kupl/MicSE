@@ -88,7 +88,7 @@ module Encoder = struct
            match sexp_of_mich_v value_cc.cc_v with
            | Sexp.List (Sexp.Atom s :: _) -> s
            | s ->
-             VcError ("Encoder : cv_mv : fv : " ^ (s |> SexpUtil.to_string))
+             VcError ("Encoder : cv_mvcc_i : fv : " ^ (s |> SexpUtil.to_string))
              |> raise
         in
         Expr.create_var ctx sort
@@ -104,19 +104,6 @@ module Encoder = struct
               )
             )
         (* inner-function fv end *)
-     in
-     let sigma_to_expr lst =
-        match lst.cc_v with
-        | MV_lit_list (_, v_lst) ->
-          if List.is_empty v_lst
-          then ZMutez.create_expr ctx 0
-          else
-            List.map v_lst ~f:(fun v ->
-                acc_of_sigma ~sigma:value_cc ~ctx:sctx v |> snd |> eov
-            )
-            |> ZMutez.create_add_lst ctx
-        | _                      -> fv [ lst ]
-        (* inner-function sigma_to_expr end *)
      in
      match value_cc.cc_v with
      (*************************************************************************)
@@ -499,10 +486,10 @@ module Encoder = struct
      | MV_ref_cont t1cc ->
        Expr.create_var ctx (sot t1cc)
          ~name:("MV_ref_cont_" ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx))
-     | MV_sigma_tmp_l_m2 v1cc -> sigma_to_expr v1cc
-     | MV_sigma_mmspnbppnmpnnpp_abm_m1 v1cc -> sigma_to_expr v1cc
-     | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v1cc -> sigma_to_expr v1cc
-     | MV_sigma_mspnbpp_nm_m1 v1cc -> sigma_to_expr v1cc
+     | MV_sigma_tmp_l_m2 v1cc -> fv [ v1cc ]
+     | MV_sigma_mmspnbppnmpnnpp_abm_m1 v1cc -> fv [ v1cc ]
+     | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v1cc -> fv [ v1cc ]
+     | MV_sigma_mspnbpp_nm_m1 v1cc -> fv [ v1cc ]
   (* function cv_mv end *)
 
   and cv_mvcc :
