@@ -366,9 +366,9 @@ let tmp_ge : Igdt.igdt_sets -> CSet.t =
          then make_ge (v1, v2)
          else None
        | [ (MT_nat, v1); (MT_nat, v2) ] ->
-         if equal_mich_v_cc v2 zero_nat then make_ge (v1, v2) else None
+         if not (equal_mich_v_cc v2 zero_nat) then make_ge (v1, v2) else None
        | [ (MT_string, v1); (MT_string, v2) ] ->
-         if equal_mich_v_cc v2 empty_str then make_ge (v1, v2) else None
+         if not (equal_mich_v_cc v2 empty_str) then make_ge (v1, v2) else None
        | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 -> make_ge (v1, v2)
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
