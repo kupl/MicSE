@@ -882,11 +882,25 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
           let tb_ss_id = [ ctxt_sr.sr_sid_counter ] in
           (* 3.1. construct entry sym-state *)
           let tb_entry_ss : sym_state =
+             let bsi = blocked_state.ss_block_si in
              let tb_trx_image : trx_image =
                 blocked_state.ss_block_si.si_param
              in
+             let tb_container_v =
+                MV_symbol
+                  ( container_t,
+                    MSC_map_entry_stack (List.length bsi.si_map_entry)
+                  )
+                |> gen_custom_cc inst
+             in
+             let tb_out_container_v =
+                MV_symbol
+                  ( out_container_t,
+                    MSC_map_exit_stack (List.length bsi.si_map_exit)
+                  )
+                |> gen_custom_cc inst
+             in
              let (tb_entry_si, tb_entry_constraints) : sym_image * mich_f list =
-                let bsi = blocked_state.ss_block_si in
                 let ctx = tb_ss_id in
                 let ccmaker = gen_custom_cc inst in
                 let (michst, michct) =
@@ -939,58 +953,21 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                    @ amount_balance_mutez_constraints ~ctx
                        ~amount_v:tb_trx_image.ti_amount ~balance_v ~bc_balance_v
                 in
-                let elem_v =
-                   MV_symbol (elem_t, MSC_mich_stack (List.length michst))
-                   |> gen_custom_cc inst
-                in
-                let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
-                let mapkey_v : mich_v cc list =
+                let (mapkey_v, mapkey_ct) : mich_v cc list * mich_f list =
                    match container_t.cc_v with
                    | MT_map (kt, _) ->
-                     [
-                       MV_symbol
-                         (kt, MSC_map_mapkey_stack (List.length mapkeyst))
-                       |> gen_custom_cc inst;
-                     ]
-                   | _              -> []
-                in
-                (* no need to check & add constraints of tb_container_v or tb_out_container_v *)
-                let tb_container_v =
-                   MV_symbol
-                     (container_t, MSC_map_entry_stack (List.length mapentryst))
-                   |> gen_custom_cc inst
-                in
-                let tb_out_container_v =
-                   MV_symbol
-                     ( out_container_t,
-                       MSC_map_exit_stack (List.length mapexitst)
-                     )
-                   |> gen_custom_cc inst
-                in
-                let mapkey_ct : mich_f list =
-                   (* Precondition : container's type is map *)
-                   match container_t.cc_v with
-                   | MT_map _ ->
-                     let mapkey = List.hd_exn mapkey_v in
-                     [
-                       (* 1. key is not the key of the container *)
-                       MF_not
-                         (MF_is_true
-                            (MV_mem_xmb (mapkey, tb_container_v)
-                            |> gen_dummy_cc
-                            |> gen_mich_v_ctx ~ctx
-                            )
-                         );
-                       (* 2. CAR(elem_v) is equal to mapkey_v *)
-                       MF_eq
-                         ( MV_car elem_v |> gen_dummy_cc |> gen_mich_v_ctx ~ctx,
-                           mapkey |> gen_mich_v_ctx ~ctx
-                         );
-                     ]
-                   | _        -> []
+                     let v =
+                        MV_symbol
+                          ( kt,
+                            MSC_map_mapkey_stack (List.length bsi.si_map_mapkey)
+                          )
+                        |> gen_custom_cc inst
+                     in
+                     ([ v ], michv_maybe_mtznat_constraints ~ctx ~v)
+                   | _              -> ([], [ MF_true ])
                 in
                 ( {
-                    si_mich = elem_v :: michst;
+                    si_mich = michst;
                     si_dip = dipst;
                     si_map_entry = tb_container_v :: mapentryst;
                     si_map_exit = tb_out_container_v :: mapexitst;
@@ -1006,9 +983,68 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   @ mapexitct
                   @ mapkeyct
                   @ iterct
-                  @ elem_ct
                   @ mapkey_ct
                   @ constraints_abp
+                )
+             in
+             let (tb_block_si, tb_block_constraints) : sym_image * mich_f list =
+                let elem_v =
+                   MV_symbol
+                     (elem_t, MSC_mich_stack (List.length tb_entry_si.si_mich))
+                   |> gen_custom_cc inst
+                in
+                let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
+                let (tb_container_blocksi_v, tb_container_blocksi_ct)
+                      : mich_v cc * mich_f list =
+                   match container_t.cc_v with
+                   | MT_map (_, mapelem_t) ->
+                     let key_v = List.hd_exn tb_entry_si.si_map_mapkey in
+                     ( MV_update_xomm
+                         ( key_v,
+                           MV_none mapelem_t |> gen_custom_cc inst,
+                           tb_container_v
+                         )
+                       |> gen_custom_cc inst,
+                       [
+                         MF_eq
+                           ( {
+                               ctx_i = ctx;
+                               ctx_v =
+                                 MV_get_xmoy (key_v, tb_container_v)
+                                 |> gen_custom_cc inst;
+                             },
+                             {
+                               ctx_i = ctx;
+                               ctx_v = MV_cdr elem_v |> gen_custom_cc inst;
+                             }
+                           );
+                       ]
+                       @ michv_maybe_mtznat_constraints ~ctx ~v:key_v
+                     )
+                   | MT_list _             ->
+                     ( MV_tl_l tb_container_v |> gen_custom_cc inst,
+                       [
+                         MF_eq
+                           ( {
+                               ctx_i = ctx;
+                               ctx_v =
+                                 MV_hd_l tb_container_v |> gen_custom_cc inst;
+                             },
+                             { ctx_i = ctx; ctx_v = elem_v }
+                           );
+                       ]
+                     )
+                   | _                     ->
+                     failwith "run_inst_i : MI_map : tb_container_blocksi_v"
+                in
+                ( {
+                    tb_entry_si with
+                    si_mich = elem_v :: tb_entry_si.si_mich;
+                    si_map_entry =
+                      tb_container_blocksi_v
+                      :: List.tl_exn tb_entry_si.si_map_entry;
+                  },
+                  elem_ct @ tb_container_blocksi_ct
                 )
              in
              {
@@ -1016,8 +1052,8 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                ss_start_mci = thenbr_mci;
                ss_block_mci = thenbr_mci;
                ss_start_si = tb_entry_si;
-               ss_block_si = tb_entry_si;
-               ss_constraints = tb_entry_constraints;
+               ss_block_si = tb_block_si;
+               ss_constraints = tb_entry_constraints @ tb_block_constraints;
              }
           in
           (* be aware - between "after tb_symstate construction" and "before run-inst",
@@ -1030,13 +1066,37 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
              run_inst_i i (ctxt_sr, tb_entry_ss)
           in
           (* 3.3. transform running states to blocked states *)
+          let tb_exit_container_block_v : sym_image -> mich_v cc =
+            fun { si_mich; si_map_exit; si_map_mapkey; _ } ->
+            let ec = List.hd_exn si_map_exit in
+            let ev = List.hd_exn si_mich in
+            match (typ_of_val ec).cc_v with
+            | MT_map _  ->
+              MV_update_xomm
+                (List.hd_exn si_map_mapkey, MV_some ev |> gen_custom_cc inst, ec)
+              |> gen_custom_cc inst
+            | MT_list _ -> MV_cons (ev, ec) |> gen_custom_cc inst
+            | _         ->
+              failwith "run_inst_i : MI_map : tb_exit_container_block_v"
+          in
           {
             tb_sr_result_raw with
             sr_running = SSet.empty;
             sr_blocked =
               SSet.union
                 (SSet.map tb_sr_result_raw.sr_running ~f:(fun rss ->
-                     { rss with ss_block_mci = thenbr_mci }
+                     {
+                       rss with
+                       ss_block_si =
+                         {
+                           rss.ss_block_si with
+                           si_mich = List.tl_exn rss.ss_block_si.si_mich;
+                           si_map_exit =
+                             tb_exit_container_block_v rss.ss_block_si
+                             :: List.tl_exn rss.ss_block_si.si_map_exit;
+                         };
+                       ss_block_mci = thenbr_mci;
+                     }
                  )
                 )
                 tb_sr_result_raw.sr_blocked;
@@ -1190,8 +1250,13 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
              let tb_trx_image : trx_image =
                 blocked_state.ss_block_si.si_param
              in
+             let bsi = blocked_state.ss_block_si in
+             let tb_container_v =
+                MV_symbol
+                  (container_t, MSC_iter_stack (List.length bsi.si_map_entry))
+                |> gen_custom_cc inst
+             in
              let (tb_entry_si, tb_entry_constraints) : sym_image * mich_f list =
-                let bsi = blocked_state.ss_block_si in
                 let ctx = tb_ss_id in
                 let ccmaker = gen_custom_cc inst in
                 let (michst, michct) =
@@ -1244,35 +1309,30 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                    @ amount_balance_mutez_constraints ~ctx
                        ~amount_v:tb_trx_image.ti_amount ~balance_v ~bc_balance_v
                 in
-                let elem_v =
-                   MV_symbol (elem_t, MSC_mich_stack (List.length michst))
-                   |> gen_custom_cc inst
-                in
-                let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
-                let tb_container_v =
-                   MV_symbol
-                     (container_t, MSC_iter_stack (List.length mapentryst))
-                   |> gen_custom_cc inst
-                in
-                let mapkey_ct : mich_f list =
-                   (* Precondition : container's type is map *)
-                   match container_t.cc_v with
-                   | MT_map _ ->
-                     let mapkey = MV_car elem_v |> gen_custom_cc inst in
-                     [
-                       (* 1. key is not the key of the container *)
-                       MF_not
-                         (MF_is_true
-                            (MV_mem_xmb (mapkey, tb_container_v)
-                            |> gen_dummy_cc
-                            |> gen_mich_v_ctx ~ctx
-                            )
-                         );
-                     ]
-                   | _        -> []
-                in
+                (* let elem_v =
+                      MV_symbol (elem_t, MSC_mich_stack (List.length michst))
+                      |> gen_custom_cc inst
+                   in *)
+                (* let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in *)
+                (* let mapkey_ct : mich_f list =
+                      (* Precondition : container's type is map *)
+                      match container_t.cc_v with
+                      | MT_map _ ->
+                        let mapkey = MV_car elem_v |> gen_custom_cc inst in
+                        [
+                          (* 1. key is not the key of the container *)
+                          MF_not
+                            (MF_is_true
+                               (MV_mem_xmb (mapkey, tb_container_v)
+                               |> gen_dummy_cc
+                               |> gen_mich_v_ctx ~ctx
+                               )
+                            );
+                        ]
+                      | _        -> []
+                   in *)
                 ( {
-                    si_mich = elem_v :: michst;
+                    si_mich = michst;
                     si_dip = dipst;
                     si_map_entry = mapentryst;
                     si_map_exit = mapexitst;
@@ -1288,9 +1348,85 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   @ mapexitct
                   @ mapkeyct
                   @ iterct
-                  @ elem_ct
-                  @ mapkey_ct
+                  (* @ elem_ct *)
+                  (* @ mapkey_ct *)
                   @ constraints_abp
+                )
+             in
+             let (tb_block_si, tb_block_constraints) : sym_image * mich_f list =
+                let elem_v =
+                   MV_symbol
+                     (elem_t, MSC_mich_stack (List.length tb_entry_si.si_mich))
+                   |> gen_custom_cc inst
+                in
+                let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
+                let (tb_container_blocksi_v, tb_container_blocksi_ct)
+                      : mich_v cc * mich_f list =
+                   match container_t.cc_v with
+                   | MT_map (_, mapelem_t) ->
+                     let key_v = MV_car elem_v |> gen_custom_cc inst in
+                     ( MV_update_xomm
+                         ( key_v,
+                           MV_none mapelem_t |> gen_custom_cc inst,
+                           tb_container_v
+                         )
+                       |> gen_custom_cc inst,
+                       [
+                         MF_eq
+                           ( {
+                               ctx_i = ctx;
+                               ctx_v =
+                                 MV_get_xmoy (key_v, tb_container_v)
+                                 |> gen_custom_cc inst;
+                             },
+                             {
+                               ctx_i = ctx;
+                               ctx_v = MV_cdr elem_v |> gen_custom_cc inst;
+                             }
+                           );
+                       ]
+                       @ michv_maybe_mtznat_constraints ~ctx ~v:key_v
+                     )
+                   | MT_set _              ->
+                     ( MV_update_xbss
+                         ( elem_v,
+                           MV_lit_bool true |> gen_custom_cc inst,
+                           tb_container_v
+                         )
+                       |> gen_custom_cc inst,
+                       [
+                         MF_is_true
+                           {
+                             ctx_i = ctx;
+                             ctx_v =
+                               MV_mem_xsb (elem_v, tb_container_v)
+                               |> gen_custom_cc inst;
+                           };
+                       ]
+                     )
+                   | MT_list _             ->
+                     ( MV_tl_l tb_container_v |> gen_custom_cc inst,
+                       [
+                         MF_eq
+                           ( {
+                               ctx_i = ctx;
+                               ctx_v =
+                                 MV_hd_l tb_container_v |> gen_custom_cc inst;
+                             },
+                             { ctx_i = ctx; ctx_v = elem_v }
+                           );
+                       ]
+                     )
+                   | _                     ->
+                     failwith "run_inst_i : MI_iter : tb_container_blocksi_v"
+                in
+                ( {
+                    tb_entry_si with
+                    si_mich = elem_v :: tb_entry_si.si_mich;
+                    si_iter =
+                      tb_container_blocksi_v :: List.tl_exn tb_entry_si.si_iter;
+                  },
+                  elem_ct @ tb_container_blocksi_ct
                 )
              in
              {
@@ -1298,8 +1434,8 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                ss_start_mci = thenbr_mci;
                ss_block_mci = thenbr_mci;
                ss_start_si = tb_entry_si;
-               ss_block_si = tb_entry_si;
-               ss_constraints = tb_entry_constraints;
+               ss_block_si = tb_block_si;
+               ss_constraints = tb_entry_constraints @ tb_block_constraints;
              }
           in
           (* be aware - between "after tb_symstate construction" and "before run-inst",
