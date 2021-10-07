@@ -222,7 +222,12 @@ let rec mvcc_map_innerfst : mapf:(mich_v -> mich_v) -> mich_v cc -> mich_v cc =
   (*************************************************************************)
   | MV_ref _ -> fc argv
   | MV_ref_cont _ -> fc argv
-  | MV_sigma_tmplm v -> MV_sigma_tmplm (r v) |> fc
+  | MV_sigma_tmp_l_m2 v -> MV_sigma_tmp_l_m2 (r v) |> fc
+  | MV_sigma_mmspnbppnmpnnpp_abm_m1 v ->
+    MV_sigma_mmspnbppnmpnnpp_abm_m1 (r v) |> fc
+  | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v ->
+    MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 (r v) |> fc
+  | MV_sigma_mspnbpp_nm_m1 v -> MV_sigma_mspnbpp_nm_m1 (r v) |> fc
 (* function mvcc_map_innerfst end *)
 
 let rec mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f =
@@ -575,7 +580,12 @@ let rec mvcc_fold_innerfst :
   (*************************************************************************)
   | MV_ref _ -> fc0 mvcc
   | MV_ref_cont _ -> fc0 mvcc
-  | MV_sigma_tmplm v -> fc1 (fun x -> MV_sigma_tmplm x) v
+  | MV_sigma_tmp_l_m2 v -> fc1 (fun x -> MV_sigma_tmp_l_m2 x) v
+  | MV_sigma_mmspnbppnmpnnpp_abm_m1 v ->
+    fc1 (fun x -> MV_sigma_mmspnbppnmpnnpp_abm_m1 x) v
+  | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v ->
+    fc1 (fun x -> MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 x) v
+  | MV_sigma_mspnbpp_nm_m1 v -> fc1 (fun x -> MV_sigma_mspnbpp_nm_m1 x) v
 (* function mvcc_fold_innerfst end *)
 
 (******************************************************************************)
@@ -956,7 +966,10 @@ let typ_of_val : mich_v cc -> mich_t cc =
      (****************************************************************************)
      | MV_ref (t1, _) -> t1
      | MV_ref_cont t1 -> t1
-     | MV_sigma_tmplm _ -> gen_cc MT_mutez
+     | MV_sigma_tmp_l_m2 _ -> gen_cc MT_mutez
+     | MV_sigma_mmspnbppnmpnnpp_abm_m1 _ -> gen_cc MT_mutez
+     | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 _ -> gen_cc MT_mutez
+     | MV_sigma_mspnbpp_nm_m1 _ -> gen_cc MT_mutez
      (* inner-function typ_of_val_i end *)
    in
    (fun v -> typ_of_val_i v)
@@ -1443,7 +1456,8 @@ let sigma_of_cont : mich_v cc -> mich_v cc list =
     match t1cc.cc_v with
     | MT_pair (t11cc, t12cc) -> (
       match (t11cc.cc_v, t12cc.cc_v) with
-      | (MT_timestamp, MT_mutez) -> [ gen_custom_cc vcc (MV_sigma_tmplm vcc) ]
+      | (MT_timestamp, MT_mutez) ->
+        [ gen_custom_cc vcc (MV_sigma_tmp_l_m2 vcc) ]
       | _                        -> []
     )
     | _                      -> []
@@ -1457,7 +1471,7 @@ let acc_of_sigma :
   fun ~sigma ~ctx vcc ->
   let gcc value_cc = gen_custom_cc vcc value_cc in
   match sigma.cc_v with
-  | MV_sigma_tmplm _ -> (
+  | MV_sigma_tmp_l_m2 _ -> (
     match (typ_of_val vcc).cc_v with
     | MT_pair (t11cc, t12cc)
       when equal_mich_t t11cc.cc_v MT_timestamp
@@ -1465,7 +1479,7 @@ let acc_of_sigma :
       gcc (MV_cdr vcc) |> opt_mvcc ~ctx
     | _ -> TzError "acc_of_sigma : MV_sigma_tmplm : _" |> raise
   )
-  | _                -> TzError "acc_of_sigma : _" |> raise
+  | _                   -> TzError "acc_of_sigma : _" |> raise
 (* function acc_of_sigma end *)
 
 (******************************************************************************)

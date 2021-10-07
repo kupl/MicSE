@@ -499,7 +499,10 @@ module Encoder = struct
      | MV_ref_cont t1cc ->
        Expr.create_var ctx (sot t1cc)
          ~name:("MV_ref_cont_" ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx))
-     | MV_sigma_tmplm v1cc -> sigma_to_expr v1cc
+     | MV_sigma_tmp_l_m2 v1cc -> sigma_to_expr v1cc
+     | MV_sigma_mmspnbppnmpnnpp_abm_m1 v1cc -> sigma_to_expr v1cc
+     | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v1cc -> sigma_to_expr v1cc
+     | MV_sigma_mspnbpp_nm_m1 v1cc -> sigma_to_expr v1cc
   (* function cv_mv end *)
 
   and cv_mvcc :
