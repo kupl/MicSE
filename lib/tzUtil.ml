@@ -954,7 +954,7 @@ let typ_of_val : mich_v cc -> mich_t cc =
      | MV_update_xobmbm (v1, v2, _) -> (
        (typ_of_val_i v1, (typ_of_val_i v2).cc_v)
        |> function
-       | (t1, MT_option t2) -> gen_cc (MT_map (t1, t2))
+       | (t1, MT_option t2) -> gen_cc (MT_big_map (t1, t2))
        | _                  -> err ()
      )
      (****************************************************************************)
