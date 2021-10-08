@@ -1076,8 +1076,8 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   )
                 |> gen_custom_cc inst
              in
+             let ctx = tb_ss_id in
              let (tb_entry_si, tb_entry_constraints) : sym_image * mich_f list =
-                let ctx = tb_ss_id in
                 let ccmaker = gen_custom_cc inst in
                 let (michst, michct) =
                    generate_symstack
@@ -1174,41 +1174,45 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                       : mich_v cc * mich_f list =
                    match container_t.cc_v with
                    | MT_map (_, mapelem_t) ->
-                     let key_v = List.hd_exn tb_entry_si.si_map_mapkey in
-                     ( MV_update_xomm
-                         ( key_v,
-                           MV_none mapelem_t |> gen_custom_cc inst,
-                           tb_container_v
-                         )
-                       |> gen_custom_cc inst,
-                       [
-                         MF_eq
-                           ( {
-                               ctx_i = ctx;
-                               ctx_v =
-                                 MV_get_xmoy (key_v, tb_container_v)
-                                 |> gen_custom_cc inst;
-                             },
-                             {
-                               ctx_i = ctx;
-                               ctx_v = MV_cdr elem_v |> gen_custom_cc inst;
-                             }
-                           );
-                       ]
-                       @ michv_maybe_mtznat_constraints ~ctx ~v:key_v
+                     let (key : mich_v cc) =
+                        List.hd_exn tb_entry_si.si_map_mapkey
+                     in
+                     let (value : mich_v cc) =
+                        MV_cdr elem_v |> gen_custom_cc inst
+                     in
+                     let (updated_map : mich_v cc) =
+                        MV_update_xomm
+                          ( key,
+                            MV_none mapelem_t |> gen_custom_cc inst,
+                            tb_container_v
+                          )
+                        |> gen_custom_cc inst
+                     in
+                     let (get : mich_v cc) =
+                        MV_get_xmoy (key, tb_container_v) |> gen_custom_cc inst
+                     in
+                     let (mem : mich_v cc) =
+                        MV_mem_xmb (key, tb_container_v) |> gen_custom_cc inst
+                     in
+                     ( updated_map,
+                       MF_eq (gen_mich_v_ctx ~ctx get, gen_mich_v_ctx ~ctx value)
+                       :: MF_is_true (gen_mich_v_ctx ~ctx mem)
+                       :: michv_maybe_mtznat_constraints ~ctx ~v:key
+                       @ sigma_constraint_of_map_update ~ctx ~map:tb_container_v
+                           ~key ~value ~updated_map
                      )
                    | MT_list _             ->
-                     ( MV_tl_l tb_container_v |> gen_custom_cc inst,
-                       [
-                         MF_eq
-                           ( {
-                               ctx_i = ctx;
-                               ctx_v =
-                                 MV_hd_l tb_container_v |> gen_custom_cc inst;
-                             },
-                             { ctx_i = ctx; ctx_v = elem_v }
-                           );
-                       ]
+                     let (hd : mich_v cc) =
+                        MV_hd_l tb_container_v |> gen_custom_cc inst
+                     in
+                     let (tl : mich_v cc) =
+                        MV_tl_l tb_container_v |> gen_custom_cc inst
+                     in
+                     ( tl,
+                       MF_eq (gen_mich_v_ctx ~ctx hd, gen_mich_v_ctx ~ctx elem_v)
+                       :: MF_is_cons (gen_mich_v_ctx ~ctx tb_container_v)
+                       :: sigma_constraint_of_list_cons ~ctx ~lst:tb_container_v
+                            ~hd ~tl
                      )
                    | _                     ->
                      failwith "run_inst_i : MI_map : tb_container_blocksi_v"
@@ -1286,9 +1290,9 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        let eb_symstate : sym_state =
           let eb_ss_id = [ ctxt_sr.sr_sid_counter ] in
           let eb_trx_image : trx_image = blocked_state.ss_block_si.si_param in
+          let ctx = eb_ss_id in
           let (eb_entry_si, eb_entry_constraints) : sym_image * mich_f list =
              let bsi = blocked_state.ss_block_si in
-             let ctx = eb_ss_id in
              let ccmaker = gen_custom_cc inst in
              let (michst, michct) =
                 generate_symstack
@@ -1432,8 +1436,8 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                   (container_t, MSC_iter_stack (List.length bsi.si_map_entry))
                 |> gen_custom_cc inst
              in
+             let ctx = tb_ss_id in
              let (tb_entry_si, tb_entry_constraints) : sym_image * mich_f list =
-                let ctx = tb_ss_id in
                 let ccmaker = gen_custom_cc inst in
                 let (michst, michct) =
                    generate_symstack
@@ -1540,58 +1544,60 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                       : mich_v cc * mich_f list =
                    match container_t.cc_v with
                    | MT_map (_, mapelem_t) ->
-                     let key_v = MV_car elem_v |> gen_custom_cc inst in
-                     ( MV_update_xomm
-                         ( key_v,
-                           MV_none mapelem_t |> gen_custom_cc inst,
-                           tb_container_v
-                         )
-                       |> gen_custom_cc inst,
-                       [
-                         MF_eq
-                           ( {
-                               ctx_i = ctx;
-                               ctx_v =
-                                 MV_get_xmoy (key_v, tb_container_v)
-                                 |> gen_custom_cc inst;
-                             },
-                             {
-                               ctx_i = ctx;
-                               ctx_v = MV_cdr elem_v |> gen_custom_cc inst;
-                             }
-                           );
-                       ]
-                       @ michv_maybe_mtznat_constraints ~ctx ~v:key_v
+                     let (key : mich_v cc) =
+                        MV_car elem_v |> gen_custom_cc inst
+                     in
+                     let (value : mich_v cc) =
+                        MV_cdr elem_v |> gen_custom_cc inst
+                     in
+                     let (updated_map : mich_v cc) =
+                        MV_update_xomm
+                          ( key,
+                            MV_none mapelem_t |> gen_custom_cc inst,
+                            tb_container_v
+                          )
+                        |> gen_custom_cc inst
+                     in
+                     let (get : mich_v cc) =
+                        MV_get_xmoy (key, tb_container_v) |> gen_custom_cc inst
+                     in
+                     let (mem : mich_v cc) =
+                        MV_mem_xmb (key, tb_container_v) |> gen_custom_cc inst
+                     in
+                     ( updated_map,
+                       MF_eq (gen_mich_v_ctx ~ctx get, gen_mich_v_ctx ~ctx value)
+                       :: MF_is_true (gen_mich_v_ctx ~ctx mem)
+                       :: MF_not (MF_is_none (gen_mich_v_ctx ~ctx get))
+                       :: michv_maybe_mtznat_constraints ~ctx ~v:key
+                       @ sigma_constraint_of_map_update ~ctx ~map:tb_container_v
+                           ~key ~value ~updated_map
                      )
                    | MT_set _              ->
-                     ( MV_update_xbss
-                         ( elem_v,
-                           MV_lit_bool true |> gen_custom_cc inst,
-                           tb_container_v
-                         )
-                       |> gen_custom_cc inst,
-                       [
-                         MF_is_true
-                           {
-                             ctx_i = ctx;
-                             ctx_v =
-                               MV_mem_xsb (elem_v, tb_container_v)
-                               |> gen_custom_cc inst;
-                           };
-                       ]
-                     )
+                     let (mem : mich_v cc) =
+                        MV_mem_xsb (elem_v, tb_container_v)
+                        |> gen_custom_cc inst
+                     in
+                     let (updated_set : mich_v cc) =
+                        MV_update_xbss
+                          ( elem_v,
+                            MV_lit_bool true |> gen_custom_cc inst,
+                            tb_container_v
+                          )
+                        |> gen_custom_cc inst
+                     in
+                     (updated_set, [ MF_is_true (gen_mich_v_ctx ~ctx mem) ])
                    | MT_list _             ->
-                     ( MV_tl_l tb_container_v |> gen_custom_cc inst,
-                       [
-                         MF_eq
-                           ( {
-                               ctx_i = ctx;
-                               ctx_v =
-                                 MV_hd_l tb_container_v |> gen_custom_cc inst;
-                             },
-                             { ctx_i = ctx; ctx_v = elem_v }
-                           );
-                       ]
+                     let (hd : mich_v cc) =
+                        MV_hd_l tb_container_v |> gen_custom_cc inst
+                     in
+                     let (tl : mich_v cc) =
+                        MV_tl_l tb_container_v |> gen_custom_cc inst
+                     in
+                     ( tl,
+                       MF_eq (gen_mich_v_ctx ~ctx hd, gen_mich_v_ctx ~ctx elem_v)
+                       :: MF_is_cons (gen_mich_v_ctx ~ctx tb_container_v)
+                       :: sigma_constraint_of_list_cons ~ctx ~lst:tb_container_v
+                            ~hd ~tl
                      )
                    | _                     ->
                      failwith "run_inst_i : MI_iter : tb_container_blocksi_v"
@@ -1644,9 +1650,9 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        let eb_symstate : sym_state =
           let eb_ss_id = [ ctxt_sr.sr_sid_counter ] in
           let eb_trx_image : trx_image = blocked_state.ss_block_si.si_param in
+          let ctx = eb_ss_id in
           let (eb_entry_si, eb_entry_constraints) : sym_image * mich_f list =
              let bsi = blocked_state.ss_block_si in
-             let ctx = eb_ss_id in
              let ccmaker = gen_custom_cc inst in
              let (michst, michct) =
                 generate_symstack
