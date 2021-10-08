@@ -48,6 +48,18 @@ let expand_pp : m_view:Se.SSGraph.mci_view -> Res.PPath.t -> PPSet.t =
    )
 (* function expand_pp end *)
 
+let check_sat : Smt.Ctx.t -> Smt.Solver.t -> PPSet.t -> PPSet.t =
+   let open Tz in
+   let open Smt in
+   let open Vc in
+   fun ctx slvr ppaths ->
+   PPSet.filter ppaths ~f:(fun ppath ->
+       let (vc : mich_f) = Vc.gen_sp_from_ms ppath.pp_mstate Tz.MF_true in
+       let ((sat : Solver.satisfiability), _) = check_sat ctx slvr vc in
+       Smt.Solver.is_sat sat
+   )
+(* function check_sat end *)
+
 let refute :
     Smt.Ctx.t ->
     Smt.Solver.t ->
@@ -105,53 +117,42 @@ let naive_run_ppath_atomic_action :
    if naive_run_ppath_escape_condition cfg ppath
    then ([], PPSet.singleton ppath, None)
    else (
-     (* 0. if the given ppath is unsat, do not expanding and refuting *)
-     let satcheck_result : bool =
-        Vc.check_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
-          (Vc.gen_sp_from_ms ppath.pp_mstate Tz.MF_true)
-        |> fst
-        |> Smt.Solver.is_sat
+     (* 1. Get expanded paths *)
+     let (expanded_ppaths : PPSet.t) = expand_pp ~m_view:cfg.cfg_m_view ppath in
+     (* 2. Filter unsatisfiable paths *)
+     let (sat_ppaths : PPSet.t) =
+        check_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr expanded_ppaths
      in
-     if not satcheck_result
-     then ([], PPSet.empty, None)
-     else (
-       (* 1. Get expanded paths *)
-       let (expanded_ppaths : PPSet.t) =
-          expand_pp ~m_view:cfg.cfg_m_view ppath
-       in
-       (* 2. Try to refute them *)
-       let ( (total_paths : (PPath.t * Smt.Solver.satisfiability) list),
-             (r_opt : (Res.PPath.t * Smt.Model.t) option)
-           ) =
-          PPSet.fold expanded_ppaths ~init:([], None)
-            ~f:(fun (t_paths, r_opt) eppath ->
-              if Option.is_some r_opt
+     (* 2. Try to refute them *)
+     let ( (total_paths : (PPath.t * Smt.Solver.satisfiability) list),
+           (r_opt : (Res.PPath.t * Smt.Model.t) option)
+         ) =
+        PPSet.fold sat_ppaths ~init:([], None)
+          ~f:(fun (t_paths, r_opt) eppath ->
+            if Option.is_some r_opt
+            then (t_paths, r_opt)
+            else (
+              let ( (total_path_opt :
+                      (PPath.t * Smt.Solver.satisfiability) option
+                      ),
+                    (model_opt : Smt.Model.t option)
+                  ) =
+                 refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg eppath
+              in
+              if Option.is_none total_path_opt
               then (t_paths, r_opt)
               else (
-                let ( (total_path_opt :
-                        (PPath.t * Smt.Solver.satisfiability) option
-                        ),
-                      (model_opt : Smt.Model.t option)
-                    ) =
-                   refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg eppath
+                let (total_path : PPath.t * Smt.Solver.satisfiability) =
+                   Option.value_exn total_path_opt
                 in
-                if Option.is_none total_path_opt
-                then (t_paths, r_opt)
-                else (
-                  let (total_path : PPath.t * Smt.Solver.satisfiability) =
-                     Option.value_exn total_path_opt
-                  in
-                  ( total_path :: t_paths,
-                    Option.map model_opt ~f:(fun model ->
-                        (fst total_path, model)
-                    )
-                  )
+                ( total_path :: t_paths,
+                  Option.map model_opt ~f:(fun model -> (fst total_path, model))
                 )
               )
-          )
-       in
-       (total_paths, expanded_ppaths, r_opt)
-     )
+            )
+        )
+     in
+     (total_paths, sat_ppaths, r_opt)
    )
 (* function naive_run_ppath_atomic_action end *)
 
