@@ -105,6 +105,39 @@ module Encoder = struct
             )
         (* inner-function fv end *)
      in
+     let eos cont =
+        let (zero : Expr.t) =
+           match (typ_of_val value_cc).cc_v with
+           | MT_mutez -> ZMutez.create_expr ctx 0
+           | MT_nat   -> ZNat.create_expr ctx 0
+           | MT_int   -> ZInt.create_expr ctx 0
+           | _        -> VcError "" |> raise
+        in
+        let acc elem =
+           acc_of_sigma ~sigma:value_cc ~ctx:sctx elem |> snd |> eov
+        in
+        let sum lst =
+           if List.is_empty lst
+           then zero
+           else
+             List.map lst ~f:acc
+             |>
+             match (typ_of_val value_cc).cc_v with
+             | MT_mutez -> ZMutez.create_add_lst ctx
+             | MT_nat   -> ZMutez.create_add_lst ctx
+             | MT_int   -> ZMutez.create_add_lst ctx
+             | _        -> VcError "" |> raise
+        in
+        match cont.cc_v with
+        | MV_nil _ -> zero
+        | MV_empty_map _ -> zero
+        | MV_empty_big_map _ -> zero
+        | MV_lit_list (_, vlst) -> sum vlst
+        | MV_lit_map (_, _, kvlst) -> sum (List.map kvlst ~f:snd)
+        | MV_lit_big_map (_, _, kvlst) -> sum (List.map kvlst ~f:snd)
+        | _ -> fv [ cont ]
+        (* inner-function eos end *)
+     in
      match value_cc.cc_v with
      (*************************************************************************)
      (* Symbol & Polymorphic                                                  *)
@@ -486,10 +519,10 @@ module Encoder = struct
      | MV_ref_cont t1cc ->
        Expr.create_var ctx (sot t1cc)
          ~name:("MV_ref_cont_" ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx))
-     | MV_sigma_tmp_l_m2 v1cc -> fv [ v1cc ]
-     | MV_sigma_mmspnbppnmpnnpp_abm_m1 v1cc -> fv [ v1cc ]
-     | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v1cc -> fv [ v1cc ]
-     | MV_sigma_mspnbpp_nm_m1 v1cc -> fv [ v1cc ]
+     | MV_sigma_tmp_l_m2 v1cc -> eos v1cc
+     | MV_sigma_mmspnbppnmpnnpp_abm_m1 v1cc -> eos v1cc
+     | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v1cc -> eos v1cc
+     | MV_sigma_mspnbpp_nm_m1 v1cc -> eos v1cc
   (* function cv_mv end *)
 
   and cv_mvcc :
