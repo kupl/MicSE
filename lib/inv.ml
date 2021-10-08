@@ -568,8 +568,7 @@ let gen_initial_cand_map :
      |> QIDMap.of_alist_exn
   in
   RMCIMap.mapi igdt_map ~f:(fun ~key:rmci ~data:igdt_sets ->
-      (* [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ] *)
-      [tmp_add_3_eq]
+      [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> CSet.union_list
       |> CSet.fold ~init:CMap.empty ~f:(fun acc_cmap cand ->
