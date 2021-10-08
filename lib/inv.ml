@@ -87,7 +87,8 @@ module InvSet = Set.Make (InvMap_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
-type cands = (bool * int QIDMap.t) CMap.t [@@deriving sexp, compare, equal]
+type cands = (bool * (int * int) QIDMap.t) CMap.t
+[@@deriving sexp, compare, equal]
 
 type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
@@ -561,13 +562,14 @@ let gen_initial_cand_map :
     Igdt.igdts_map ->
     cand_map =
   fun ~is_cand_sat ~do_cand_sat_istrg qset igdt_map ->
-  let (default_score : int QIDMap.t) =
+  let (default_score : (int * int) QIDMap.t) =
      QIDSet.to_list qset
-     |> List.map ~f:(fun rmci -> (rmci, -1))
+     |> List.map ~f:(fun rmci -> (rmci, (0, 0)))
      |> QIDMap.of_alist_exn
   in
   RMCIMap.mapi igdt_map ~f:(fun ~key:rmci ~data:igdt_sets ->
-      [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ]
+      (* [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq ] *)
+      [tmp_add_3_eq]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> CSet.union_list
       |> CSet.fold ~init:CMap.empty ~f:(fun acc_cmap cand ->
@@ -609,7 +611,7 @@ let get_score_by_rmci :
   fun cmap ~key ~value ~qid ->
   CMap.find (find_cand_by_rmci cmap key) value
   |> function
-  | Some (_, smap) -> QIDMap.find_exn smap qid
+  | Some (_, smap) -> QIDMap.find_exn smap qid |> fst
   | None           -> InvError "get_score : wrong value" |> raise
 (* function get_score_by_rmci end *)
 
@@ -621,10 +623,12 @@ let get_score :
 
 let find_top_score_ordered_cand_by_rmci :
     ?remove_unflaged:bool -> cand_map -> Tz.r_mich_cut_info -> cand list =
-   let top_score : int QIDMap.t -> int =
+   let top_score : (int * int) QIDMap.t -> int * int =
      fun smap ->
      QIDMap.to_alist smap
-     |> List.max_elt ~compare:(fun (_, s1) (_, s2) -> -compare_int s1 s2)
+     |> List.max_elt ~compare:(fun (_, s1) (_, s2) ->
+            -compare_int (fst s1) (fst s2)
+        )
      |> function
      | None        ->
        InvError
@@ -638,7 +642,7 @@ let find_top_score_ordered_cand_by_rmci :
    |> (if remove_unflaged then CMap.filter ~f:fst else Fun.id)
    |> CMap.to_alist
    |> List.sort ~compare:(fun (_, (_, smap1)) (_, (_, smap2)) ->
-          -compare_int (top_score smap1) (top_score smap2)
+          -compare_int (top_score smap1 |> fst) (top_score smap2 |> fst)
       )
    |> List.map ~f:fst
 (* function find_top_score_ordered_cand_by_rmci end *)
@@ -652,51 +656,66 @@ let find_top_score_ordered_cand :
 
 let find_ordered_cand_by_rmci :
     ?remove_unflaged:bool ->
+    ?remove_not_precond:bool ->
     cand_map ->
     Tz.r_mich_cut_info ->
     Tz.qid ->
     cand list =
-  fun ?(remove_unflaged = false) cmap rmci qid ->
+  fun ?(remove_unflaged = false) ?(remove_not_precond = false) cmap rmci qid ->
   find_cand_by_rmci cmap rmci
   |> (if remove_unflaged then CMap.filter ~f:fst else Fun.id)
+  |> ( if remove_not_precond
+     then CMap.filter ~f:(fun c -> QIDMap.find_exn (snd c) qid |> snd = 0)
+     else Fun.id
+     )
   |> CMap.to_alist
   |> List.sort ~compare:(fun (_, (_, smap1)) (_, (_, smap2)) ->
-         -compare_int (QIDMap.find_exn smap1 qid) (QIDMap.find_exn smap2 qid)
+         -compare_int
+            (QIDMap.find_exn smap1 qid |> fst)
+            (QIDMap.find_exn smap2 qid |> fst)
      )
   |> List.map ~f:fst
 (* function find_ordered_cand_by_rmci end *)
 
 let find_ordered_cand :
-    ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> Tz.qid -> cand list
-    =
-  fun ?(remove_unflaged = false) cmap mci qid ->
-  find_ordered_cand_by_rmci ~remove_unflaged cmap
+    ?remove_unflaged:bool ->
+    ?remove_not_precond:bool ->
+    cand_map ->
+    Tz.mich_cut_info ->
+    Tz.qid ->
+    cand list =
+  fun ?(remove_unflaged = false) ?(remove_not_precond = false) cmap mci qid ->
+  find_ordered_cand_by_rmci ~remove_unflaged ~remove_not_precond cmap
     (TzUtil.get_reduced_mci mci)
     qid
 (* function find_ordered_cand end *)
 
 let find_cand_top_k_by_rmci :
     ?remove_unflaged:bool ->
+    ?remove_not_precond:bool ->
     top_k:int ->
     cand_map ->
     Tz.r_mich_cut_info ->
     Tz.qid ->
     cand list =
-  fun ?(remove_unflaged = false) ~top_k cmap rmci qid ->
-  find_ordered_cand_by_rmci ~remove_unflaged cmap rmci qid
+  fun ?(remove_unflaged = false) ?(remove_not_precond = false) ~top_k cmap rmci
+      qid ->
+  find_ordered_cand_by_rmci ~remove_unflaged ~remove_not_precond cmap rmci qid
   |> (fun lst -> List.split_n lst top_k)
   |> fst
 (* function finc_cand_map_top_k_by_tmci end *)
 
 let find_cand_top_k :
     ?remove_unflaged:bool ->
+    ?remove_not_precond:bool ->
     top_k:int ->
     cand_map ->
     Tz.mich_cut_info ->
     Tz.qid ->
     cand list =
-  fun ?(remove_unflaged = false) ~top_k cmap mci qid ->
-  find_cand_top_k_by_rmci ~remove_unflaged ~top_k cmap
+  fun ?(remove_unflaged = false) ?(remove_not_precond = false) ~top_k cmap mci
+      qid ->
+  find_cand_top_k_by_rmci ~remove_unflaged ~remove_not_precond ~top_k cmap
     (TzUtil.get_reduced_mci mci)
     qid
 (* function find_cand_map_top_k end *)
@@ -723,12 +742,12 @@ let strengthen_cand_map :
   )
 (* function strengthen_cand_map *)
 
-let score_cand :
+let update_score_by_rmci :
     cand_map ->
     key:Tz.r_mich_cut_info ->
     value:cand ->
     qid:Tz.qid ->
-    point:int ->
+    point:int * int ->
     cand_map =
   fun cmap ~key ~value ~qid ~point ->
   RMCIMap.update cmap key ~f:(function
@@ -737,15 +756,15 @@ let score_cand :
     | Some (flag, smap) ->
       ( flag,
         QIDMap.update smap qid ~f:(function
-        | Some score -> score + point
-        | None       -> point
+        | Some (prec, fail) -> (prec + fst point, fail + snd point)
+        | None              -> point
         )
       )
-    | None              -> InvError "score_cand : wrong cand" |> raise
+    | None              -> InvError "update_score_by_rmci : wrong cand" |> raise
     )
-  | None       -> InvError "score_cand : wrong mci" |> raise
+  | None       -> InvError "update_score_by_rmci : wrong mci" |> raise
   )
-(* function score_cand end *)
+(* function update_score_by_rmci end *)
 
 let unflag_cand : cand_map -> key:Tz.r_mich_cut_info -> value:cand -> cand_map =
   fun cmap ~key ~value ->

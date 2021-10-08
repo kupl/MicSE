@@ -85,7 +85,8 @@ module InvSet : module type of Core.Set.Make (InvMap_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
-type cands = (bool * int QIDMap.t) CMap.t [@@deriving sexp, compare, equal]
+type cands = (bool * (int * int) QIDMap.t) CMap.t
+[@@deriving sexp, compare, equal]
 
 type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
@@ -241,13 +242,24 @@ val find_top_score_ordered_cand :
   ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> cand list
 
 val find_ordered_cand_by_rmci :
-  ?remove_unflaged:bool -> cand_map -> Tz.r_mich_cut_info -> Tz.qid -> cand list
+  ?remove_unflaged:bool ->
+  ?remove_not_precond:bool ->
+  cand_map ->
+  Tz.r_mich_cut_info ->
+  Tz.qid ->
+  cand list
 
 val find_ordered_cand :
-  ?remove_unflaged:bool -> cand_map -> Tz.mich_cut_info -> Tz.qid -> cand list
+  ?remove_unflaged:bool ->
+  ?remove_not_precond:bool ->
+  cand_map ->
+  Tz.mich_cut_info ->
+  Tz.qid ->
+  cand list
 
 val find_cand_top_k_by_rmci :
   ?remove_unflaged:bool ->
+  ?remove_not_precond:bool ->
   top_k:int ->
   cand_map ->
   Tz.r_mich_cut_info ->
@@ -256,6 +268,7 @@ val find_cand_top_k_by_rmci :
 
 val find_cand_top_k :
   ?remove_unflaged:bool ->
+  ?remove_not_precond:bool ->
   top_k:int ->
   cand_map ->
   Tz.mich_cut_info ->
@@ -265,12 +278,12 @@ val find_cand_top_k :
 val strengthen_cand_map :
   is_cand_sat:(cand -> bool) -> cand_map -> inv_map -> cand_map
 
-val score_cand :
+val update_score_by_rmci :
   cand_map ->
   key:Tz.r_mich_cut_info ->
   value:cand ->
   qid:Tz.qid ->
-  point:int ->
+  point:int * int ->
   cand_map
 
 val unflag_cand : cand_map -> key:Tz.r_mich_cut_info -> value:cand -> cand_map
