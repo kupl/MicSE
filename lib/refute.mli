@@ -14,6 +14,9 @@ module MSSet : module type of Core.Set.Make (MState)
 (* Map of Tz.mich_cut_info *)
 module MCIMap : module type of Core.Map.Make (Tz.MichCutInfo_cmp)
 
+(* Map of Tz.r_mich_cut_info *)
+module RMCIMap : module type of Core.Map.Make (Tz.RMichCutInfo_cmp)
+
 (* Set of Tz.sym_state *)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 
@@ -25,6 +28,9 @@ module PPSet : module type of Core.Set.Make (Res.PPath)
 (* Refuter                                                                    *)
 (******************************************************************************)
 (******************************************************************************)
+
+val separate_ppset_in_length_increasing_order :
+  Res.PPSet.t -> Res.PPath.t list RMCIMap.t
 
 val select_pp : top_k:int -> PPSet.t -> PPSet.t * PPSet.t
 
@@ -50,7 +56,9 @@ val naive_run_ppath_escape_condition : Res.config -> Res.PPath.t -> bool
 val naive_run_ppath_atomic_action :
   Res.config ->
   Res.PPath.t ->
-  (Res.PPath.t * Smt.Solver.satisfiability) list * PPSet.t * (Res.PPath.t * Smt.Model.t) option
+  (Res.PPath.t * Smt.Solver.satisfiability) list
+  * PPSet.t
+  * (Res.PPath.t * Smt.Model.t) option
 
 (* Query Result ***************************************************************)
 

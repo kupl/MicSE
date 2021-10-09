@@ -16,6 +16,9 @@ module MSSet = Set.Make (MState)
 (* Map of Tz.mich_cut_info *)
 module MCIMap = Map.Make (Tz.MichCutInfo_cmp)
 
+(* Map of Tz.r_mich_cut_info *)
+module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
+
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
 
@@ -28,13 +31,50 @@ module PPSet = Set.Make (Res.PPath)
 (******************************************************************************)
 (******************************************************************************)
 
+let separate_ppset_in_length_increasing_order :
+    Res.PPSet.t -> Res.PPath.t list RMCIMap.t =
+   let open Res in
+   let open Inv in
+   (* Design note : it recieves rmciset to fill empty-list even if there are no ppath start with it.
+      So the caller can use "RMCIMap.find_exn" freely without worry about exceptions *)
+   fun ppset ->
+   let accumulated_map =
+      PPSet.fold ppset ~init:RMCIMap.empty ~f:(fun accmap ppath ->
+          let start_rmci =
+             (MState.get_first_ss ppath.pp_mstate).ss_start_mci
+             |> TzUtil.get_reduced_mci
+          in
+          RMCIMap.update accmap start_rmci ~f:(function
+          | None   -> [ ppath ]
+          | Some l -> ppath :: l
+          )
+      )
+   in
+   let sorted_map =
+      let compare : PPath.t -> PPath.t -> int =
+        fun pp1 pp2 ->
+        compare_int
+          (MState.get_length pp1.pp_mstate)
+          (MState.get_length pp2.pp_mstate)
+      in
+      RMCIMap.map accumulated_map ~f:(List.sort ~compare)
+   in
+   sorted_map
+(* function separate_ppset_in_length_increasing_order end *)
+
 let select_pp : top_k:int -> PPSet.t -> PPSet.t * PPSet.t =
-  fun ~top_k ppaths ->
-  List.sort (PPSet.to_list ppaths) ~compare:(fun pp1 pp2 ->
-      -compare_int pp1.pp_score pp2.pp_score
-  )
-  |> (fun l -> List.split_n l top_k)
-  |> (fun (l1, l2) -> (PPSet.of_list l1, PPSet.of_list l2))
+   let open Res in
+   fun ~top_k ppaths ->
+   let (rmcipmap : PPath.t list RMCIMap.t) =
+      separate_ppset_in_length_increasing_order ppaths
+   in
+   let (selected_ppaths : PPSet.t) =
+      RMCIMap.fold rmcipmap ~init:PPSet.empty ~f:(fun ~key:_ ~data pset ->
+          let (lst : PPath.t list) = List.take data top_k in
+          List.fold lst ~init:pset ~f:PPSet.add
+      )
+   in
+   (selected_ppaths, PPSet.diff ppaths selected_ppaths)
 (* function select_pp end *)
 
 let expand_pp : m_view:Se.SSGraph.mci_view -> Res.PPath.t -> PPSet.t =
