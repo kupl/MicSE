@@ -42,6 +42,8 @@ val check_inductiveness :
   Inv.inv_map ->
   (Inv.inv_map, Tz.sym_state) Result.t
 
+val check_number_of_cands : Tz.qid -> Inv.cand_map -> bool
+
 val add_failed :
   Inv.failed_cp * InvSet.t ->
   Tz.sym_state ->

@@ -77,6 +77,18 @@ let check_inductiveness :
    )
 (* function check_inductiveness end *)
 
+let check_number_of_cands : Tz.qid -> Inv.cand_map -> bool =
+   let open Inv in
+   fun qid cmap ->
+   RMCIMap.for_alli cmap ~f:(fun ~key ~data:_ ->
+       let (cands : cand list) =
+          find_top_score_ordered_cand_by_rmci ~remove_unflaged:true
+            ~remove_not_precond:true cmap key qid
+       in
+       List.length cands > 0
+   )
+(* function check_number_of_cands end *)
+
 let add_failed :
     Inv.failed_cp * InvSet.t ->
     Tz.sym_state ->
@@ -311,13 +323,22 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    in
    (* 1. Generate combinations *)
    let (wl_combs : InvSet.t) =
-      let (max_comb : int) = List.length qid_lst * cfg.cfg_comb_k in
+      let (len : int) =
+         List.count res.r_qr_lst ~f:(fun qres ->
+             equal_prover_flag qres.qr_prv_flag PF_u
+         )
+      in
+      let (max_comb : int) = len * cfg.cfg_comb_k in
       List.fold qid_lst ~init:res.r_wlst.wl_combs ~f:(fun combs qid ->
-          let (threshold : int) =
-             Int.max (InvSet.length combs + cfg.cfg_comb_k) max_comb
-          in
-          combinate threshold qid cfg.cfg_se_res.sr_blocked res.r_wlst.wl_failcp
-            res.r_inv res.r_cands combs res.r_inv
+          if not (check_number_of_cands qid res.r_cands)
+          then combs
+          else (
+            let (threshold : int) =
+               Int.min (InvSet.length combs + cfg.cfg_comb_k) max_comb
+            in
+            combinate threshold qid cfg.cfg_se_res.sr_blocked
+              res.r_wlst.wl_failcp res.r_inv res.r_cands combs res.r_inv
+          )
       )
    in
    if InvSet.length wl_combs <= 0
