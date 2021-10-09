@@ -103,6 +103,7 @@ let add_failed :
 
 let rec combinate :
     int ->
+    Tz.qid ->
     SSet.t ->
     Inv.failed_cp ->
     Inv.inv_map ->
@@ -112,9 +113,9 @@ let rec combinate :
     InvSet.t =
    let open Inv in
    let open Res in
-   fun threshold bsset failed_cp cinv targets combs acc_imap ->
+   fun threshold qid bsset failed_cp cinv targets combs acc_imap ->
    let next_comb : Inv.cand_map -> InvSet.t -> Inv.inv_map -> InvSet.t =
-      combinate threshold bsset failed_cp cinv
+      combinate threshold qid bsset failed_cp cinv
    in
    (* syntax sugar *)
    if InvSet.length combs >= threshold
@@ -128,7 +129,8 @@ let rec combinate :
      (* 1. Target MCI for combinate *)
      let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
      let (cands : cand list) =
-        find_top_score_ordered_cand_by_rmci ~remove_unflaged:true targets rmci
+        find_top_score_ordered_cand_by_rmci ~remove_unflaged:true
+          ~remove_not_precond:true targets rmci qid
      in
      let (remains : cand_map) = RMCIMap.remove targets rmci in
      (* 2. Combinate candidates *)
@@ -304,10 +306,19 @@ let naive_run_qres_atomic_action :
 let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    let open Res in
    fun cfg res ->
+   let (qid_lst : Tz.qid list) =
+      List.map res.r_qr_lst ~f:(fun { qr_qid; _ } -> qr_qid)
+   in
    (* 1. Generate combinations *)
    let (wl_combs : InvSet.t) =
-      combinate cfg.cfg_comb_k cfg.cfg_se_res.sr_blocked res.r_wlst.wl_failcp
-        res.r_inv res.r_cands res.r_wlst.wl_combs res.r_inv
+      let (max_comb : int) = List.length qid_lst * cfg.cfg_comb_k in
+      List.fold qid_lst ~init:res.r_wlst.wl_combs ~f:(fun combs qid ->
+          let (threshold : int) =
+             Int.max (InvSet.length combs + cfg.cfg_comb_k) max_comb
+          in
+          combinate threshold qid cfg.cfg_se_res.sr_blocked res.r_wlst.wl_failcp
+            res.r_inv res.r_cands combs res.r_inv
+      )
    in
    if InvSet.length wl_combs <= 0
    then

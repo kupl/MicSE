@@ -50,6 +50,7 @@ val add_failed :
 
 val combinate :
   int ->
+  Tz.qid ->
   SSet.t ->
   Inv.failed_cp ->
   Inv.inv_map ->
