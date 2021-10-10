@@ -1,5 +1,45 @@
-type t [@@deriving sexp, compare, equal]
-(* type t = (Tz.sym_state * Tz.mich_f list) list [@@deriving sexp, compare, equal] *)
+(* MState : State merge *)
+
+(******************************************************************************)
+(******************************************************************************)
+(* Common Datatypes                                                           *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* Set of Igdt.igdt *)
+module ISet : module type of Core.Set.Make (Igdt.IGDT_cmp)
+
+(******************************************************************************)
+(******************************************************************************)
+(* Constraint from Merging                                                    *)
+(******************************************************************************)
+(******************************************************************************)
+
+val eq_fmla :
+  Tz.mich_sym_ctxt * Tz.mich_v Tz.cc ->
+  Tz.mich_sym_ctxt * Tz.mich_v Tz.cc ->
+  Tz.mich_f list
+
+val trx_image_equality_fmla :
+  Tz.mich_sym_ctxt ->
+  Tz.mich_sym_ctxt ->
+  Tz.trx_image ->
+  Tz.trx_image ->
+  Tz.mich_f list
+
+val stack_equality_fmlas :
+  Tz.mich_sym_ctxt * Tz.mich_sym_ctxt ->
+  Tz.mich_cut_category * Tz.mich_cut_category ->
+  Tz.sym_image * Tz.sym_image ->
+  Tz.mich_f list
+
+(******************************************************************************)
+(******************************************************************************)
+(* Merged State                                                               *)
+(******************************************************************************)
+(******************************************************************************)
+
+type t = (Tz.sym_state * Tz.mich_f list) list [@@deriving sexp, compare, equal]
 
 type summary = {
   sm_rmci : Tz.r_mich_cut_info;
