@@ -69,6 +69,11 @@ val opt_mf_rules : mich_f -> mich_f
 
 val opt_mf : mich_f -> mich_f
 
+val mvcc_subst_mf_rules :
+  mapf:(mich_v_cc_ctx -> mich_v_cc_ctx) -> mich_f -> mich_f
+
+val mvcc_subst_mf : mapf:(mich_v_cc_ctx -> mich_v_cc_ctx) -> mich_f -> mich_f
+
 val mtz_constriant_if_it_is_or_true :
   ctx:mich_sym_ctxt -> tv:mich_t cc * mich_v cc -> mich_f
 
@@ -148,6 +153,8 @@ val mtz_of_op : ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc option
 (******************************************************************************)
 (* Sigma                                                                      *)
 (******************************************************************************)
+
+val is_sigma : mich_v cc -> bool
 
 val sigma_of_cont : mich_v cc -> mich_v cc list
 

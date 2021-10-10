@@ -93,14 +93,12 @@ module Encoder = struct
         in
         Expr.create_var ctx sort
           ~name:
-            (field
-            ^ "_"
-            ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
-            ^ "_"
+            (Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
+            ^ field
             ^ (List.map arg_lst ~f:(fun vcc ->
                    sexp_of_mich_v vcc.cc_v |> SexpUtil.to_string
                )
-              |> String.concat ~sep:"_"
+              |> String.concat
               )
             )
         (* inner-function fv end *)
@@ -135,7 +133,7 @@ module Encoder = struct
         | MV_lit_list (_, vlst) -> sum vlst
         | MV_lit_map (_, _, kvlst) -> sum (List.map kvlst ~f:snd)
         | MV_lit_big_map (_, _, kvlst) -> sum (List.map kvlst ~f:snd)
-        | _ -> fv [ cont ]
+        | _ -> fv [ cont |> opt_mvcc ~ctx:sctx |> snd ]
         (* inner-function eos end *)
      in
      match value_cc.cc_v with
@@ -145,9 +143,8 @@ module Encoder = struct
      | MV_symbol (t1, c2) ->
        Expr.create_var ctx (sot t1)
          ~name:
-           (Sexp.to_string (sexp_of_mich_sym_category c2)
-           ^ "_"
-           ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
+           (Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
+           ^ Sexp.to_string (sexp_of_mich_sym_category c2)
            )
      | MV_car v1cc -> (
        match v1cc.cc_v with
@@ -512,9 +509,8 @@ module Encoder = struct
      | MV_ref (t1cc, c2) ->
        Expr.create_var ctx (sot t1cc)
          ~name:
-           (Sexp.to_string (sexp_of_mich_sym_category c2)
-           ^ "_"
-           ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
+           (Sexp.to_string (sexp_of_mich_sym_ctxt sctx)
+           ^ Sexp.to_string (sexp_of_mich_sym_category c2)
            )
      | MV_ref_cont t1cc ->
        Expr.create_var ctx (sot t1cc)
@@ -841,37 +837,6 @@ let fmla_for_initial_storage :
    | _             -> VcError "apply_initial_storage : wrong mci" |> raise
 (* function fmla_for_initial_storage end *)
 
-let subst_mf_rules :
-    mapf_vcc:(Tz.mich_v_cc_ctx -> Tz.mich_v_cc_ctx) -> Tz.mich_f -> Tz.mich_f =
-  fun ~mapf_vcc mf ->
-  match mf with
-  (* Logical Formula *)
-  | MF_eq (v1, v2) -> MF_eq (mapf_vcc v1, mapf_vcc v2)
-  (* MicSE Branch *)
-  | MF_is_true v1 -> MF_is_true (mapf_vcc v1)
-  | MF_is_none v1 -> MF_is_none (mapf_vcc v1)
-  | MF_is_left v1 -> MF_is_left (mapf_vcc v1)
-  | MF_is_cons v1 -> MF_is_cons (mapf_vcc v1)
-  (* MicSE Datatype Constraint *)
-  | MF_mutez_bound v1 -> MF_mutez_bound (mapf_vcc v1)
-  | MF_nat_bound v1 -> MF_nat_bound (mapf_vcc v1)
-  (* Custom Formula for verifiying *)
-  | MF_add_mmm_no_overflow (v1, v2) ->
-    MF_add_mmm_no_overflow (mapf_vcc v1, mapf_vcc v2)
-  | MF_sub_mmm_no_underflow (v1, v2) ->
-    MF_sub_mmm_no_underflow (mapf_vcc v1, mapf_vcc v2)
-  | MF_mul_mnm_no_overflow (v1, v2) ->
-    MF_mul_mnm_no_overflow (mapf_vcc v1, mapf_vcc v2)
-  | MF_mul_nmm_no_overflow (v1, v2) ->
-    MF_mul_nmm_no_overflow (mapf_vcc v1, mapf_vcc v2)
-  | MF_shiftL_nnn_rhs_in_256 (v1, v2) ->
-    MF_shiftL_nnn_rhs_in_256 (mapf_vcc v1, mapf_vcc v2)
-  | MF_shiftR_nnn_rhs_in_256 (v1, v2) ->
-    MF_shiftR_nnn_rhs_in_256 (mapf_vcc v1, mapf_vcc v2)
-  (* Others *)
-  | _ -> mf
-(* function subst_mf_rules end *)
-
 let get_from_stack : Tz.mich_v Tz.cc list -> loc:int -> Tz.mich_v Tz.cc =
   (fun stack ~loc -> List.nth_exn stack (List.length stack - loc - 1))
 (* function get_from_stack end *)
@@ -923,16 +888,12 @@ let apply_inv_at_start :
    )
    | mv               -> mv
    in
-   mf_map_innerfst
-     ~mapf:
-       (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
-            let (_, (ctx_v : mich_v cc)) =
-               mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v |> opt_mvcc ~ctx:sctx
-            in
-            { ctx_i = sctx; ctx_v }
-        )
-       )
-     inv
+   mvcc_subst_mf inv ~mapf:(fun mvcc_ctx ->
+       let (_, (ctx_v : mich_v cc)) =
+          mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v |> opt_mvcc ~ctx:sctx
+       in
+       gen_mich_v_ctx ~ctx:sctx ctx_v
+   )
    |> opt_mf
 (* function apply_inv_at_start end *)
 
@@ -974,16 +935,12 @@ let apply_inv_at_block :
    )
    | mv               -> mv
    in
-   mf_map_innerfst
-     ~mapf:
-       (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
-            let (_, (ctx_v : mich_v cc)) =
-               mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v |> opt_mvcc ~ctx:sctx
-            in
-            { ctx_i = sctx; ctx_v }
-        )
-       )
-     inv
+   mvcc_subst_mf inv ~mapf:(fun mvcc_ctx ->
+       let (_, (ctx_v : mich_v cc)) =
+          mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v |> opt_mvcc ~ctx:sctx
+       in
+       gen_mich_v_ctx ~ctx:sctx ctx_v
+   )
    |> opt_mf
 (* function apply_inv_at_block end *)
 
@@ -1003,16 +960,12 @@ let apply_inv_with_initial_storage :
      | MV_ref (_, MSC_mich_stack 0) -> MV_pair (si.si_param.ti_param, init_strg)
      | mv -> mv
      in
-     mf_map_innerfst
-       ~mapf:
-         (subst_mf_rules ~mapf_vcc:(fun mvcc_ctx ->
-              let (_, (ctx_v : mich_v cc)) =
-                 mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v |> opt_mvcc ~ctx:sctx
-              in
-              { ctx_i = sctx; ctx_v }
-          )
-         )
-       inv
+     mvcc_subst_mf inv ~mapf:(fun mvcc_ctx ->
+         let (_, (ctx_v : mich_v cc)) =
+            mvcc_map_innerfst ~mapf mvcc_ctx.ctx_v |> opt_mvcc ~ctx:sctx
+         in
+         gen_mich_v_ctx ~ctx:sctx ctx_v
+     )
      |> opt_mf
    | _             ->
      VcError "apply_inv_with_initial_storage : wrong mci" |> raise

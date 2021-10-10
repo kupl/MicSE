@@ -45,9 +45,6 @@ val fmla_for_initial_storage :
   Tz.mich_v Tz.cc ->
   Tz.mich_f
 
-val subst_mf_rules :
-  mapf_vcc:(Tz.mich_v_cc_ctx -> Tz.mich_v_cc_ctx) -> Tz.mich_f -> Tz.mich_f
-
 val apply_inv_at_start :
   sctx:Tz.mich_sym_ctxt ->
   Tz.mich_cut_info ->

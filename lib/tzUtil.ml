@@ -1030,6 +1030,38 @@ let opt_mf_rules : mich_f -> mich_f =
 
 let opt_mf : mich_f -> mich_f = mf_map_innerfst ~mapf:opt_mf_rules
 
+let mvcc_subst_mf_rules :
+    mapf:(mich_v_cc_ctx -> mich_v_cc_ctx) -> mich_f -> mich_f =
+  fun ~mapf mf ->
+  match mf with
+  (* Logical Formula *)
+  | MF_eq (v1, v2) -> MF_eq (mapf v1, mapf v2)
+  (* MicSE Branch *)
+  | MF_is_true v1 -> MF_is_true (mapf v1)
+  | MF_is_none v1 -> MF_is_none (mapf v1)
+  | MF_is_left v1 -> MF_is_left (mapf v1)
+  | MF_is_cons v1 -> MF_is_cons (mapf v1)
+  (* MicSE Datatype Constraint *)
+  | MF_mutez_bound v1 -> MF_mutez_bound (mapf v1)
+  | MF_nat_bound v1 -> MF_nat_bound (mapf v1)
+  (* Custom Formula for verifiying *)
+  | MF_add_mmm_no_overflow (v1, v2) -> MF_add_mmm_no_overflow (mapf v1, mapf v2)
+  | MF_sub_mmm_no_underflow (v1, v2) ->
+    MF_sub_mmm_no_underflow (mapf v1, mapf v2)
+  | MF_mul_mnm_no_overflow (v1, v2) -> MF_mul_mnm_no_overflow (mapf v1, mapf v2)
+  | MF_mul_nmm_no_overflow (v1, v2) -> MF_mul_nmm_no_overflow (mapf v1, mapf v2)
+  | MF_shiftL_nnn_rhs_in_256 (v1, v2) ->
+    MF_shiftL_nnn_rhs_in_256 (mapf v1, mapf v2)
+  | MF_shiftR_nnn_rhs_in_256 (v1, v2) ->
+    MF_shiftR_nnn_rhs_in_256 (mapf v1, mapf v2)
+  (* Others *)
+  | _ -> mf
+(* function mvcc_subst_mf_rules end *)
+
+let mvcc_subst_mf : mapf:(mich_v_cc_ctx -> mich_v_cc_ctx) -> mich_f -> mich_f =
+  (fun ~mapf f1 -> mf_map_innerfst ~mapf:(mvcc_subst_mf_rules ~mapf) f1)
+(* function mvcc_subst_mf end *)
+
 (* Duplicated constraint generator from Se module *)
 let mtz_constriant_if_it_is_or_true :
     ctx:mich_sym_ctxt -> tv:mich_t cc * mich_v cc -> mich_f =
@@ -1448,6 +1480,16 @@ let mtz_of_op : ctx:mich_sym_ctxt -> mich_v cc -> mich_f list * mich_v cc option
 (******************************************************************************)
 (* Sigma                                                                      *)
 (******************************************************************************)
+
+let is_sigma : mich_v cc -> bool =
+  fun vcc ->
+  match vcc.cc_v with
+  | MV_sigma_tmp_l_m2 _ -> true
+  | MV_sigma_mmspnbppnmpnnpp_abm_m1 _ -> true
+  | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 _ -> true
+  | MV_sigma_mspnbpp_nm_m1 _ -> true
+  | _ -> false
+(* function is_sigma end *)
 
 let sigma_of_cont : mich_v cc -> mich_v cc list =
   fun vcc ->
