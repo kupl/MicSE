@@ -328,7 +328,7 @@ let collect_igdt_of_sigma : igdt -> ISet.t * ISet.t =
         )
         |> ISet.union_list
      in
-     (ISet.empty, ISet.add igdt_set cur_igdt)
+     (igdt_set, ISet.singleton cur_igdt)
    )
 (* function collect_igdt_of_sigma end *)
 
