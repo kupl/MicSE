@@ -86,7 +86,7 @@ val collect_igdt_from_pair : igdt -> ISet.t * ISet.t
 
 val collect_igdt_from_or : igdt -> ISet.t * ISet.t
 
-val collect_igdt_from_list : igdt -> ISet.t * ISet.t
+val collect_igdt_of_sigma : igdt -> ISet.t * ISet.t
 
 val collect_igdt_from_igdt : igdt -> ISet.t
 
