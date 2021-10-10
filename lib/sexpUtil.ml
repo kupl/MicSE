@@ -16,8 +16,11 @@ let rec tz_cc_sexp_form : Sexp.t -> Sexp.t =
 let rec tz_remove_ctx_i_ctx_v : Sexp.t -> Sexp.t =
    let open Sexp in
    function
-   | List [ List [ Atom "ctx_i"; _ ]; List [ Atom "ctx_v"; body ] ] ->
-     tz_remove_ctx_i_ctx_v body
+   | List [ List [ Atom "ctx_i"; ctx ]; List [ Atom "ctx_v"; body ] ] -> (
+     match tz_remove_ctx_i_ctx_v body with
+     | List l      -> List (ctx :: l)
+     | Atom _ as s -> List [ ctx; s ]
+   )
    | Atom _ as s -> s
    | List sl -> List (List.map ~f:tz_remove_ctx_i_ctx_v sl)
 
