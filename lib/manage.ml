@@ -26,15 +26,23 @@ let initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    fun cfg res ->
    let (r_qr_lst : Res.qres list) =
       List.map res.r_qr_lst ~f:(fun qres ->
-          let ( (qr_total_ppaths : (Res.PPath.t * Smt.Solver.satisfiability) list),
+          let (qr_exp_ppaths : PPSet.t) =
+             Refute.check_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
+               qres.qr_exp_ppaths
+          in
+          let ( (qr_total_ppaths :
+                  (Res.PPath.t * Smt.Solver.satisfiability) list
+                  ),
                 (qr_rft_ppath : (Res.PPath.t * Smt.Model.t) option)
               ) =
-             PPSet.fold qres.qr_exp_ppaths ~init:(qres.qr_total_ppaths, None)
+             PPSet.fold qr_exp_ppaths ~init:(qres.qr_total_ppaths, None)
                ~f:(fun (t_paths, r_opt) eppath ->
                  if Option.is_some r_opt
                  then (t_paths, r_opt)
                  else (
-                   let ( (total_path_opt : (PPath.t * Smt.Solver.satisfiability) option),
+                   let ( (total_path_opt :
+                           (PPath.t * Smt.Solver.satisfiability) option
+                           ),
                          (model_opt : Smt.Model.t option)
                        ) =
                       Refute.refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
@@ -46,15 +54,24 @@ let initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res =
                      let (total_path : PPath.t * Smt.Solver.satisfiability) =
                         Option.value_exn total_path_opt
                      in
-                     ( total_path::t_paths,
-                       Option.map model_opt ~f:(fun model -> (fst total_path, model))
+                     ( total_path :: t_paths,
+                       Option.map model_opt ~f:(fun model ->
+                           (fst total_path, model)
+                       )
                      )
                    )
                  )
              )
           in
           if Option.is_some qr_rft_ppath
-          then { qres with qr_rft_flag = RF_r; qr_total_ppaths; qr_rft_ppath }
+          then
+            {
+              qres with
+              qr_rft_flag = RF_r;
+              qr_exp_ppaths;
+              qr_total_ppaths;
+              qr_rft_ppath;
+            }
           else qres
       )
    in

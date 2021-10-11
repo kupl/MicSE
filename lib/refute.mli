@@ -36,6 +36,8 @@ val select_pp : top_k:int -> PPSet.t -> PPSet.t * PPSet.t
 
 val expand_pp : m_view:Se.SSGraph.mci_view -> Res.PPath.t -> PPSet.t
 
+val check_sat : Smt.Ctx.t -> Smt.Solver.t -> PPSet.t -> PPSet.t
+
 val refute :
   Smt.Ctx.t ->
   Smt.Solver.t ->
