@@ -337,3 +337,100 @@ let rec naive_run : Res.config -> Res.res -> Res.res =
   then res
   else naive_run cfg (naive_run_res_atomic_action cfg res)
 (* function naive_run end *)
+
+(******************************************************************************)
+(******************************************************************************)
+(* Refuting with Parametric Path Selection Enabled                            *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* NOTE : pick_func return (picked-ppaths, unpicked-ppaths) pair.
+          Dead paths (unsatisfiable paths) should not put in picked-ppaths.
+          (neither in unpicked-ppaths, but unknown paths whether dead or not can be
+          put in unpicked-ppaths)
+*)
+type pick_func = PPSet.t -> PPSet.t * PPSet.t
+
+let guided_run_qres_escape_condition = naive_run_qres_escape_condition
+
+let guided_run_qres : Res.config -> pick_f:pick_func -> Res.qres -> Res.qres =
+  fun cfg ~pick_f qres ->
+  (* 1. Escape Conditions *)
+  if (* 1.1. Escape when (Timeout || (R-flag <> RF_u) || (P-flag = PF_p)) *)
+     guided_run_qres_escape_condition cfg qres
+  then qres
+  else if (* 1.2. If Size(exp-ppaths) == 0, set refuter-flag to "failed" *)
+          PPSet.is_empty qres.qr_exp_ppaths
+  then { qres with qr_rft_flag = RF_f }
+  else (
+    (* 2. Pick paths to expand *)
+    let (picked_paths, unpicked_paths) : PPSet.t * PPSet.t =
+       pick_f qres.qr_exp_ppaths
+    in
+    (* 3. Expand picked paths *)
+    let expanded_paths : PPSet.t =
+       PPSet.fold picked_paths ~init:PPSet.empty ~f:(fun acc pp ->
+           PPSet.union (expand_pp ~m_view:cfg.cfg_m_view pp) acc
+       )
+    in
+    (* 4. For each expanded paths, check refutability *)
+    let (total_ppaths, rft_ppath_opt)
+          : (Res.PPath.t * Smt.Solver.satisfiability) list
+            * (Res.PPath.t * Smt.Model.t) option =
+       let f (tpl_acc, rftopt_acc) pp =
+          (* 4.f.1. Check escape condition
+                  - Check if already refuted path found
+                  - No timeout check
+          *)
+          if Option.is_some rftopt_acc
+          then (tpl_acc, rftopt_acc)
+          else (
+            (* 4.f.2. check refutability *)
+            match refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg pp with
+            | (Some tp, Some mdl) -> (tp :: tpl_acc, Some (pp, mdl))
+            | (Some tp, None)     -> (tp :: tpl_acc, None)
+            | (None, _)           ->
+              (tpl_acc, rftopt_acc) (* (None, None) case exists only *)
+          )
+       in
+       PPSet.fold expanded_paths ~init:([], None) ~f
+    in
+    (* Last. return value construction *)
+    let qr_total_ppaths = total_ppaths @ qres.qr_total_ppaths
+    and qr_exp_ppaths = PPSet.union expanded_paths unpicked_paths
+    and qr_rft_ppath = rft_ppath_opt
+    and qr_exp_cnt : int = PPSet.length expanded_paths + qres.qr_exp_cnt
+    and qr_rft_flag : Res.refuter_flag =
+       match rft_ppath_opt with
+       | None   -> RF_u
+       | Some _ -> RF_r
+    in
+    {
+      qres with
+      qr_rft_flag;
+      qr_total_ppaths;
+      qr_exp_ppaths;
+      qr_rft_ppath;
+      qr_exp_cnt;
+    }
+  )
+
+let guided_run_escape_condition = naive_run_escape_condition
+
+let rec guided_run : Res.config -> pick_f:pick_func -> Res.res -> Res.res =
+  fun cfg ~pick_f res ->
+  let _ = Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res)) in
+  if guided_run_escape_condition cfg res
+  then res
+  else (
+    let new_res : Res.res =
+       {
+         res with
+         r_qr_lst =
+           List.fold_right res.r_qr_lst
+             ~f:(fun qres acc -> guided_run_qres cfg ~pick_f qres :: acc)
+             ~init:[];
+       }
+    in
+    guided_run cfg ~pick_f new_res
+  )

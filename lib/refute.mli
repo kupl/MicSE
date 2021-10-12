@@ -77,3 +77,20 @@ val naive_run_res_atomic_action : Res.config -> Res.res -> Res.res
 val naive_run_escape_condition : Res.config -> Res.res -> bool
 
 val naive_run : Res.config -> Res.res -> Res.res
+
+(******************************************************************************)
+(******************************************************************************)
+(* Refuting with Parametric Path Selection Enabled                            *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* NOTE : pick_func return (picked-ppaths, unpicked-ppaths) pair.
+          Dead paths (unsatisfiable paths) should not put in picked-ppaths.
+          (neither in unpicked-ppaths, but unknown paths whether dead or not can be
+          put in unpicked-ppaths)
+*)
+type pick_func = PPSet.t -> PPSet.t * PPSet.t
+
+val guided_run_qres : Res.config -> pick_f:pick_func -> Res.qres -> Res.qres
+
+val guided_run : Res.config -> pick_f:pick_func -> Res.res -> Res.res
