@@ -580,6 +580,10 @@ type sym_image = {
 
 type sym_state_id = mich_sym_ctxt [@@deriving sexp, compare, equal]
 
+module SymStateID_cmp = struct
+  type t = sym_state_id [@@deriving sexp, compare]
+end
+
 (* entire blockchain symbolic state - designed for single contract verification *)
 type sym_state = {
   ss_id : sym_state_id;

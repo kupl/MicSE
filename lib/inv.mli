@@ -38,6 +38,9 @@ module QIDMap : module type of Core.Map.Make (Tz.QId_cmp)
 (* Set of Tz.sym_state *)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 
+(* Map of Tz.sym_state_id *)
+module SIDMap : module type of Core.Map.Make (Tz.SymStateID_cmp)
+
 (* Set of Igdt.igdt *)
 module ISet : module type of Core.Set.Make (Igdt.IGDT_cmp)
 
@@ -96,15 +99,29 @@ type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 (******************************************************************************)
 (******************************************************************************)
 
-type mci_pair = {
-  mp_start : Tz.r_mich_cut_info;
-  mp_block : Tz.r_mich_cut_info;
-}
-[@@deriving sexp, compare, equal]
-
 type cand_pair = {
   cp_start : cand;
   cp_block : cand;
+}
+[@@deriving sexp, compare, equal]
+
+module CandPair_cmp : sig
+  type t = cand_pair [@@deriving compare, sexp]
+end
+
+module CPSet : module type of Core.Set.Make (CandPair_cmp)
+
+type cp_inductiveness = {
+  ir_valid : CPSet.t;
+  ir_invalid : CPSet.t;
+}
+[@@deriving compare, sexp, equal]
+
+type inductive_info = cp_inductiveness SIDMap.t [@@deriving compare, sexp]
+
+type mci_pair = {
+  mp_start : Tz.r_mich_cut_info;
+  mp_block : Tz.r_mich_cut_info;
 }
 [@@deriving sexp, compare, equal]
 
@@ -112,13 +129,7 @@ module MciPair_cmp : sig
   type t = mci_pair [@@deriving compare, sexp]
 end
 
-module CandPair_cmp : sig
-  type t = cand_pair [@@deriving compare, sexp]
-end
-
 module MPMap : module type of Core.Map.Make (MciPair_cmp)
-
-module CPSet : module type of Core.Set.Make (CandPair_cmp)
 
 type failed_cp = CPSet.t MPMap.t [@@deriving sexp, compare, equal]
 
@@ -290,6 +301,11 @@ val update_score_by_rmci :
 val unflag_cand : cand_map -> key:Tz.r_mich_cut_info -> value:cand -> cand_map
 
 (* Failed Candidate Pair ******************************************************)
+
+val gen_initial_inductive_info_map : SSet.t -> inductive_info
+
+val get_inductiveness_from_bs :
+  inductive_info -> Tz.sym_state -> cp_inductiveness
 
 val gen_initial_failed_cp : unit -> failed_cp
 

@@ -578,6 +578,10 @@ type sym_image = {
 (* entire blockchain symbolic state - designed for single contract verification *)
 type sym_state_id = mich_sym_ctxt [@@deriving sexp, compare, equal]
 
+module SymStateID_cmp : sig
+  type t = sym_state_id [@@deriving sexp, compare]
+end
+
 type sym_state = {
   ss_id : sym_state_id;
   (* location and category where and when the state starts/blocked a symbolic execution *)

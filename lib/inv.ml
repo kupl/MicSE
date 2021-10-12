@@ -40,6 +40,9 @@ module QIDMap = Map.Make (Tz.QId_cmp)
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
 
+(* Map of Tz.sym_state_id *)
+module SIDMap = Map.Make (Tz.SymStateID_cmp)
+
 (* Set of Igdt.igdt *)
 module ISet = Set.Make (Igdt.IGDT_cmp)
 
@@ -94,15 +97,9 @@ type cand_map = cands RMCIMap.t [@@deriving sexp, compare, equal]
 
 (******************************************************************************)
 (******************************************************************************)
-(* Failed Candidate Pair                                                      *)
+(* Inductiveness of Candidates                                                *)
 (******************************************************************************)
 (******************************************************************************)
-
-type mci_pair = {
-  mp_start : Tz.r_mich_cut_info;
-  mp_block : Tz.r_mich_cut_info;
-}
-[@@deriving sexp, compare, equal]
 
 type cand_pair = {
   cp_start : cand;
@@ -110,16 +107,31 @@ type cand_pair = {
 }
 [@@deriving sexp, compare, equal]
 
-module MciPair_cmp = struct
-  type t = mci_pair [@@deriving compare, sexp]
-end
-
 module CandPair_cmp = struct
   type t = cand_pair [@@deriving compare, sexp]
 end
 
-module MPMap = Map.Make (MciPair_cmp)
 module CPSet = Set.Make (CandPair_cmp)
+
+type cp_inductiveness = {
+  ir_valid : CPSet.t;
+  ir_invalid : CPSet.t;
+}
+[@@deriving compare, sexp, equal]
+
+type inductive_info = cp_inductiveness SIDMap.t [@@deriving compare, sexp]
+
+type mci_pair = {
+  mp_start : Tz.r_mich_cut_info;
+  mp_block : Tz.r_mich_cut_info;
+}
+[@@deriving sexp, compare, equal]
+
+module MciPair_cmp = struct
+  type t = mci_pair [@@deriving compare, sexp]
+end
+
+module MPMap = Map.Make (MciPair_cmp)
 
 type failed_cp = CPSet.t MPMap.t [@@deriving sexp, compare, equal]
 
@@ -767,7 +779,23 @@ let unflag_cand : cand_map -> key:Tz.r_mich_cut_info -> value:cand -> cand_map =
 
 (* Failed Candidate Pair ******************************************************)
 
-(* function cvt_cand_pair end *)
+let gen_initial_inductive_info_map : SSet.t -> inductive_info =
+  fun bsset ->
+  SSet.fold bsset ~init:SIDMap.empty ~f:(fun iimap bs ->
+      SIDMap.add_exn iimap ~key:bs.ss_id
+        ~data:{ ir_valid = CPSet.empty; ir_invalid = CPSet.empty }
+  )
+(* function gen_initial_inductive_info_map end *)
+
+let get_inductiveness_from_bs :
+    inductive_info -> Tz.sym_state -> cp_inductiveness =
+  fun iimap bs ->
+  SIDMap.find iimap bs.ss_id
+  |> function
+  | Some cpi -> cpi
+  | None     -> { ir_valid = CPSet.empty; ir_invalid = CPSet.empty }
+(* function get_inductiveness_from_bs end *)
+
 let gen_initial_failed_cp : unit -> failed_cp = (fun () -> MPMap.empty)
 (* function gen_initial_failed_cp end *)
 
