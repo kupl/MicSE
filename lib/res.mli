@@ -95,7 +95,7 @@ end
 
 type worklist = {
   wl_combs : InvSet.t;
-  wl_failcp : Inv.failed_cp;
+  wl_failcp : Inv.inductive_info;
   wl_comb_cnt : int;
 }
 [@@deriving sexp, compare, equal]
@@ -138,7 +138,7 @@ type config = {
 
 val init_qres : Tz.qid -> SSet.t -> qres
 
-val init_worklist : unit -> worklist
+val init_worklist : SSet.t -> worklist
 
 val init_res : config -> res
 

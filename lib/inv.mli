@@ -111,13 +111,16 @@ end
 
 module CPSet : module type of Core.Set.Make (CandPair_cmp)
 
+module CPMap : module type of Core.Map.Make (CandPair_cmp)
+
 type cp_inductiveness = {
   ir_valid : CPSet.t;
   ir_invalid : CPSet.t;
 }
 [@@deriving compare, sexp, equal]
 
-type inductive_info = cp_inductiveness SIDMap.t [@@deriving compare, sexp]
+type inductive_info = cp_inductiveness SIDMap.t
+[@@deriving compare, sexp, equal]
 
 type mci_pair = {
   mp_start : Tz.r_mich_cut_info;
@@ -131,7 +134,8 @@ end
 
 module MPMap : module type of Core.Map.Make (MciPair_cmp)
 
-type failed_cp = CPSet.t MPMap.t [@@deriving sexp, compare, equal]
+type inductive_info_by_mp = bool CPMap.t MPMap.t
+[@@deriving sexp, compare, equal]
 
 (******************************************************************************)
 (******************************************************************************)
@@ -307,15 +311,27 @@ val gen_initial_inductive_info_map : SSet.t -> inductive_info
 val get_inductiveness_from_bs :
   inductive_info -> Tz.sym_state -> cp_inductiveness
 
-val gen_initial_failed_cp : unit -> failed_cp
+val count_each_cands : inductive_info -> Tz.sym_state -> cand -> int * int
 
-val find_failed_cp_by_rmci : failed_cp -> mci_pair -> CPSet.t
+val add_inductiveness :
+  inductive_info -> Tz.sym_state * cand_pair * bool -> inductive_info
 
-val find_failed_cp : failed_cp -> Tz.mich_cut_info * Tz.mich_cut_info -> CPSet.t
+val get_inductive_info_by_mp : inductive_info -> SSet.t -> inductive_info_by_mp
 
-val is_already_failed_by_rmci : failed_cp -> mci_pair -> cand_pair -> bool
+val is_already_succeeded_by_rmci :
+  inductive_info_by_mp -> mci_pair -> cand_pair -> bool
+
+val is_already_succeeded :
+  inductive_info_by_mp ->
+  Tz.mich_cut_info * Tz.mich_cut_info ->
+  cand * cand ->
+  bool
+
+val is_already_failed_by_rmci :
+  inductive_info_by_mp -> mci_pair -> cand_pair -> bool
 
 val is_already_failed :
-  failed_cp -> Tz.mich_cut_info * Tz.mich_cut_info -> cand * cand -> bool
-
-val add_failed_cp : failed_cp -> key:mci_pair -> value:cand_pair -> failed_cp
+  inductive_info_by_mp ->
+  Tz.mich_cut_info * Tz.mich_cut_info ->
+  cand * cand ->
+  bool

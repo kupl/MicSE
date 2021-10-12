@@ -106,7 +106,7 @@ end
 
 type worklist = {
   wl_combs : InvSet.t;
-  wl_failcp : Inv.failed_cp;
+  wl_failcp : Inv.inductive_info;
   wl_comb_cnt : int;
 }
 [@@deriving sexp, compare, equal]
@@ -165,11 +165,11 @@ let init_qres : Tz.qid -> SSet.t -> qres =
   }
 (* function init_qres end *)
 
-let init_worklist : unit -> worklist =
-  fun () ->
+let init_worklist : SSet.t -> worklist =
+  fun bsset ->
   {
     wl_combs = InvSet.empty;
-    wl_failcp = Inv.gen_initial_failed_cp ();
+    wl_failcp = Inv.gen_initial_inductive_info_map bsset;
     wl_comb_cnt = 0;
   }
 (* function init_worklist end *)
@@ -209,7 +209,7 @@ let init_res : config -> res =
          ~do_cand_sat_istrg:
            (do_cand_sat_istrg cfg_smt_ctxt cfg_smt_slvr cfg_istrg cfg_istate)
          cfg_qid_set cfg_imap;
-     r_wlst = init_worklist ();
+     r_wlst = init_worklist cfg_se_res.sr_blocked;
    }
 (* function init_res end *)
 

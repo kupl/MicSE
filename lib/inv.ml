@@ -112,6 +112,7 @@ module CandPair_cmp = struct
 end
 
 module CPSet = Set.Make (CandPair_cmp)
+module CPMap = Map.Make (CandPair_cmp)
 
 type cp_inductiveness = {
   ir_valid : CPSet.t;
@@ -119,7 +120,8 @@ type cp_inductiveness = {
 }
 [@@deriving compare, sexp, equal]
 
-type inductive_info = cp_inductiveness SIDMap.t [@@deriving compare, sexp]
+type inductive_info = cp_inductiveness SIDMap.t
+[@@deriving compare, sexp, equal]
 
 type mci_pair = {
   mp_start : Tz.r_mich_cut_info;
@@ -133,7 +135,8 @@ end
 
 module MPMap = Map.Make (MciPair_cmp)
 
-type failed_cp = CPSet.t MPMap.t [@@deriving sexp, compare, equal]
+type inductive_info_by_mp = bool CPMap.t MPMap.t
+[@@deriving sexp, compare, equal]
 
 (******************************************************************************)
 (******************************************************************************)
@@ -796,36 +799,117 @@ let get_inductiveness_from_bs :
   | None     -> { ir_valid = CPSet.empty; ir_invalid = CPSet.empty }
 (* function get_inductiveness_from_bs end *)
 
-let gen_initial_failed_cp : unit -> failed_cp = (fun () -> MPMap.empty)
-(* function gen_initial_failed_cp end *)
+let count_each_cands : inductive_info -> Tz.sym_state -> cand -> int * int =
+  fun iimap bs cand ->
+  let (cpi : cp_inductiveness) = get_inductiveness_from_bs iimap bs in
+  let (valid_cp : CPSet.t) =
+     CPSet.filter cpi.ir_valid ~f:(fun cp -> equal_cand cp.cp_start cand)
+  in
+  let (invalid_cp : CPSet.t) =
+     CPSet.filter cpi.ir_invalid ~f:(fun cp -> equal_cand cp.cp_start cand)
+  in
+  (CPSet.length valid_cp, CPSet.length invalid_cp)
+(* function count_each_cands end *)
 
-let find_failed_cp_by_rmci : failed_cp -> mci_pair -> CPSet.t =
-  fun fmap rmcip ->
-  MPMap.find fmap rmcip
-  |> function
-  | Some sss -> sss
-  | None     -> CPSet.empty
-(* function find_failed_cp end *)
+let add_inductiveness :
+    inductive_info -> Tz.sym_state * cand_pair * bool -> inductive_info =
+  fun iimap (bs, cp, inductiveness) ->
+  SIDMap.update iimap bs.ss_id ~f:(fun cpi_opt ->
+      let (cpi : cp_inductiveness) =
+         Option.value cpi_opt
+           ~default:{ ir_valid = CPSet.empty; ir_invalid = CPSet.empty }
+      in
+      let (ir_valid : CPSet.t) =
+         if inductiveness then CPSet.add cpi.ir_valid cp else cpi.ir_valid
+      in
+      let (ir_invalid : CPSet.t) =
+         if inductiveness then cpi.ir_invalid else CPSet.add cpi.ir_invalid cp
+      in
+      { ir_valid; ir_invalid }
+  )
+(* function add_inductiveness end *)
 
-let find_failed_cp : failed_cp -> Tz.mich_cut_info * Tz.mich_cut_info -> CPSet.t
+let get_inductive_info_by_mp : inductive_info -> SSet.t -> inductive_info_by_mp
     =
-  (fun fmap mcip -> find_failed_cp_by_rmci fmap (cvt_mci_pair mcip))
-(* function find_failed_cp *)
+   let open Tz in
+   let open TzUtil in
+   fun iimap bsset ->
+   SIDMap.fold iimap ~init:MPMap.empty ~f:(fun ~key ~data acc ->
+       let (bs : sym_state) =
+          find_sym_state_by_id bsset key
+          |> function
+          | Some bs -> bs
+          | None    ->
+            InvError "get_inductive_info_by_mp : wrong sym_state set" |> raise
+       in
+       let (mp : mci_pair) = cvt_mci_pair (bs.ss_start_mci, bs.ss_block_mci) in
+       let (cur_cpmap : bool CPMap.t) =
+          MPMap.find acc mp
+          |> function
+          | Some cpmap -> cpmap
+          | None       -> CPMap.empty
+       in
+       let (valid_updated_cpmap : bool CPMap.t) =
+          CPSet.fold data.ir_valid ~init:cur_cpmap
+            ~f:(fun valid_updated_cpmap cp ->
+              CPMap.update valid_updated_cpmap cp ~f:(function
+              | Some b -> b
+              | None   -> true
+              )
+          )
+       in
+       let (invalid_updated_cpmap : bool CPMap.t) =
+          CPSet.fold data.ir_invalid ~init:valid_updated_cpmap
+            ~f:(fun invalid_updated_cpmap cp ->
+              CPMap.set invalid_updated_cpmap ~key:cp ~data:false
+          )
+       in
+       MPMap.set acc ~key:mp ~data:invalid_updated_cpmap
+   )
+(* function get_inductive_info_by_mp end *)
 
-let is_already_failed_by_rmci : failed_cp -> mci_pair -> cand_pair -> bool =
-  (fun fmap rmcip candp -> CPSet.mem (find_failed_cp_by_rmci fmap rmcip) candp)
+let is_already_succeeded_by_rmci :
+    inductive_info_by_mp -> mci_pair -> cand_pair -> bool =
+  fun iimap' mp cp ->
+  MPMap.find iimap' mp
+  |> function
+  | None       -> false
+  | Some cpmap -> (
+    CPMap.find cpmap cp
+    |> function
+    | Some b -> b
+    | None   -> false
+  )
+(* function is_already_succeeded_by_rmci end *)
+
+let is_already_succeeded :
+    inductive_info_by_mp ->
+    Tz.mich_cut_info * Tz.mich_cut_info ->
+    cand * cand ->
+    bool =
+  fun iimap' mcip candp ->
+  is_already_succeeded_by_rmci iimap' (cvt_mci_pair mcip) (cvt_cand_pair candp)
+(* function is_already_succeeded end *)
+
+let is_already_failed_by_rmci :
+    inductive_info_by_mp -> mci_pair -> cand_pair -> bool =
+  fun iimap' mp cp ->
+  MPMap.find iimap' mp
+  |> function
+  | None       -> false
+  | Some cpmap -> (
+    CPMap.find cpmap cp
+    |> function
+    | Some b -> not b
+    | None   -> false
+  )
 (* function is_already_failed_by_rmci end *)
 
 let is_already_failed :
-    failed_cp -> Tz.mich_cut_info * Tz.mich_cut_info -> cand * cand -> bool =
-  fun fmap mcip candp ->
-  is_already_failed_by_rmci fmap (cvt_mci_pair mcip) (cvt_cand_pair candp)
+    inductive_info_by_mp ->
+    Tz.mich_cut_info * Tz.mich_cut_info ->
+    cand * cand ->
+    bool =
+  fun iimap' mcip candp ->
+  is_already_failed_by_rmci iimap' (cvt_mci_pair mcip) (cvt_cand_pair candp)
 (* function is_already_failed end *)
-
-let add_failed_cp : failed_cp -> key:mci_pair -> value:cand_pair -> failed_cp =
-  fun failed_cp ~key ~value ->
-  MPMap.update failed_cp key ~f:(function
-  | Some cpset -> CPSet.add cpset value
-  | None       -> CPSet.singleton value
-  )
-(* function add_failed_cp end *)

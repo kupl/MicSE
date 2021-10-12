@@ -35,11 +35,15 @@ module InvSet = Set.Make (Inv.InvMap_cmp)
 (******************************************************************************)
 
 let check_failed :
-    SSet.t -> Inv.failed_cp -> Tz.r_mich_cut_info -> Inv.inv_map -> bool =
+    SSet.t ->
+    Inv.inductive_info_by_mp ->
+    Tz.r_mich_cut_info ->
+    Inv.inv_map ->
+    bool =
    let open Tz in
    let open TzUtil in
    let open Inv in
-   fun bsset failed_cp rmci imap ->
+   fun bsset iimap' rmci imap ->
    SSet.exists bsset ~f:(fun bs ->
        let (mp_start : r_mich_cut_info) = get_reduced_mci bs.ss_start_mci in
        let (mp_block : r_mich_cut_info) = get_reduced_mci bs.ss_block_mci in
@@ -49,7 +53,7 @@ let check_failed :
        then (
          let (cp_start : cand) = find_inv_by_rmci imap mp_start in
          let (cp_block : cand) = find_inv_by_rmci imap mp_block in
-         is_already_failed_by_rmci failed_cp { mp_start; mp_block }
+         is_already_failed_by_rmci iimap' { mp_start; mp_block }
            { cp_start; cp_block }
        )
        else false
@@ -90,20 +94,20 @@ let check_number_of_cands : Tz.qid -> Inv.cand_map -> bool =
 (* function check_number_of_cands end *)
 
 let add_failed :
-    Inv.failed_cp * InvSet.t ->
+    Inv.inductive_info * InvSet.t ->
     Tz.sym_state ->
     failed:Inv.inv_map ->
-    Inv.failed_cp * InvSet.t =
+    Inv.inductive_info * InvSet.t =
    let open Inv in
-   fun (failed_cp, combs) state ~failed ->
+   fun (iimap, combs) state ~failed ->
    let (mcip : mci_pair) =
       cvt_mci_pair (state.ss_start_mci, state.ss_block_mci)
    in
    let (cand_start : cand) = find_inv_by_rmci failed mcip.mp_start in
    let (cand_block : cand) = find_inv_by_rmci failed mcip.mp_block in
    let (candp : cand_pair) = cvt_cand_pair (cand_start, cand_block) in
-   let (new_failed_cp : failed_cp) =
-      add_failed_cp failed_cp ~key:mcip ~value:candp
+   let (new_failed_cp : inductive_info) =
+      add_inductiveness iimap (state, candp, false)
    in
    let (new_combs : InvSet.t) =
       InvSet.filter combs ~f:(fun comb ->
@@ -117,7 +121,7 @@ let rec combinate :
     int ->
     Tz.qid ->
     SSet.t ->
-    Inv.failed_cp ->
+    Inv.inductive_info_by_mp ->
     Inv.inv_map ->
     Inv.cand_map ->
     InvSet.t ->
@@ -125,9 +129,9 @@ let rec combinate :
     InvSet.t =
    let open Inv in
    let open Res in
-   fun threshold qid bsset failed_cp cinv targets combs acc_imap ->
+   fun threshold qid bsset iimap' cinv targets combs acc_imap ->
    let next_comb : Inv.cand_map -> InvSet.t -> Inv.inv_map -> InvSet.t =
-      combinate threshold qid bsset failed_cp cinv
+      combinate threshold qid bsset iimap' cinv
    in
    (* syntax sugar *)
    if InvSet.length combs >= threshold
@@ -151,7 +155,7 @@ let rec combinate :
             let (updated_inv : inv_map) =
                update_inv_map acc_imap ~key:rmci ~value:fset
             in
-            if check_failed bsset failed_cp rmci updated_inv
+            if check_failed bsset iimap' rmci updated_inv
             then acc_comb
             else next_comb remains acc_comb updated_inv
         )
@@ -168,6 +172,18 @@ let prove : Smt.Ctx.t -> Smt.Solver.t -> Inv.inv_map -> SSet.t -> SSet.t =
    SSet.filter unk_qs ~f:(fun qs ->
        let (vc : Tz.mich_f) = gen_query_vc imap qs |> TzUtil.opt_mf in
        let ((vld : Solver.validity), _) = check_val ctx slvr vc in
+       (* let _ =
+             (* Debugging info *)
+             Utils.Log.debug (fun m ->
+                 m "prove: %s\n\tVC: %s\n\tModel: %s\n"
+                   (vld |> Solver.string_of_val)
+                   (vc |> Tz.sexp_of_mich_f |> SexpUtil.to_string)
+                   ( if Option.is_some md
+                   then Option.value_exn md |> Model.to_string
+                   else "None"
+                   )
+             )
+          in *)
        not (Solver.is_val vld)
    )
 (* function prove end *)
@@ -262,7 +278,7 @@ let rec naive_run_wlst_atomic_action :
           Result.error inductive |> Option.value ~default:cfg.cfg_istate
        in
        (* 3-2-2. Update failed information *)
-       let ((new_failed_cp : failed_cp), (new_combs : InvSet.t)) =
+       let ((new_failed_cp : inductive_info), (new_combs : InvSet.t)) =
           add_failed (wlst.wl_failcp, wlst.wl_combs) failed_state ~failed:comb
        in
        let (new_wlst : worklist) =
@@ -336,8 +352,12 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
             let (threshold : int) =
                Int.min (InvSet.length combs + cfg.cfg_comb_k) max_comb
             in
+            let (iimap' : Inv.inductive_info_by_mp) =
+               Inv.get_inductive_info_by_mp res.r_wlst.wl_failcp
+                 cfg.cfg_se_res.sr_blocked
+            in
             combinate threshold qid cfg.cfg_se_res.sr_blocked
-              res.r_wlst.wl_failcp res.r_inv res.r_cands combs res.r_inv
+            iimap' res.r_inv res.r_cands combs res.r_inv
           )
       )
    in

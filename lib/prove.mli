@@ -33,7 +33,7 @@ module InvSet : module type of Core.Set.Make (Inv.InvMap_cmp)
 (******************************************************************************)
 
 val check_failed :
-  SSet.t -> Inv.failed_cp -> Tz.r_mich_cut_info -> Inv.inv_map -> bool
+  SSet.t -> Inv.inductive_info_by_mp -> Tz.r_mich_cut_info -> Inv.inv_map -> bool
 
 val check_inductiveness :
   Smt.Ctx.t ->
@@ -45,16 +45,16 @@ val check_inductiveness :
 val check_number_of_cands : Tz.qid -> Inv.cand_map -> bool
 
 val add_failed :
-  Inv.failed_cp * InvSet.t ->
+  Inv.inductive_info * InvSet.t ->
   Tz.sym_state ->
   failed:Inv.inv_map ->
-  Inv.failed_cp * InvSet.t
+  Inv.inductive_info * InvSet.t
 
 val combinate :
   int ->
   Tz.qid ->
   SSet.t ->
-  Inv.failed_cp ->
+  Inv.inductive_info_by_mp ->
   Inv.inv_map ->
   Inv.cand_map ->
   InvSet.t ->
