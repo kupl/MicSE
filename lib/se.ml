@@ -291,8 +291,8 @@ let sigma_constraint_of_map_get :
    let open Tz in
    let open TzUtil in
    fun ~ctx ~map ~key ->
-   (* Design Note: This method for evaluating sigma of map is incomplete. 
-      The sum of elements which get from the map should be less than or equal to sigma of map. 
+   (* Design Note: This method for evaluating sigma of map is incomplete.
+      The sum of elements which get from the map should be less than or equal to sigma of map.
       (i.e., map[A] + map[B] <= ∑map) *)
    let (set_of_sigma_map : mich_v cc list) = sigma_of_cont map in
    List.map set_of_sigma_map ~f:(fun sigma ->
@@ -1614,7 +1614,11 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                         MV_mem_xmb (key, tb_container_v) |> gen_custom_cc inst
                      in
                      ( updated_map,
-                       MF_eq (gen_mich_v_ctx ~ctx get, gen_mich_v_ctx ~ctx value)
+                       MF_eq
+                         ( gen_mich_v_ctx ~ctx
+                             (MV_unlift_option get |> gen_custom_cc inst),
+                           gen_mich_v_ctx ~ctx value
+                         )
                        :: MF_is_true (gen_mich_v_ctx ~ctx mem)
                        :: MF_not (MF_is_none (gen_mich_v_ctx ~ctx get))
                        :: michv_maybe_mtznat_constraints ~ctx ~v:key
