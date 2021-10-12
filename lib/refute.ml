@@ -94,7 +94,7 @@ let check_sat : Smt.Ctx.t -> Smt.Solver.t -> PPSet.t -> PPSet.t =
    let open Vc in
    fun ctx slvr ppaths ->
    PPSet.filter ppaths ~f:(fun ppath ->
-       let (vc : mich_f) = Vc.gen_sp_from_ms ppath.pp_mstate Tz.MF_true in
+       let (vc : mich_f) = Vc.gen_sp_from_ms ppath.pp_mstate MF_true |> TzUtil.opt_mf in
        let ((sat : Solver.satisfiability), _) = check_sat ctx slvr vc in
        Smt.Solver.is_sat sat
    )
@@ -163,7 +163,7 @@ let naive_run_ppath_atomic_action :
      let (sat_ppaths : PPSet.t) =
         check_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr expanded_ppaths
      in
-     (* 2. Try to refute them *)
+     (* 3. Try to refute them *)
      let ( (total_paths : (PPath.t * Smt.Solver.satisfiability) list),
            (r_opt : (Res.PPath.t * Smt.Model.t) option)
          ) =
