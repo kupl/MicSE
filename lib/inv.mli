@@ -238,23 +238,8 @@ val get_score :
 val get_count_by_rmci :
   cand_map -> key:Tz.r_mich_cut_info -> value:cand -> qid:Tz.qid -> int
 
-val find_top_score_ordered_cand_by_rmci :
-  ?remove_unflaged:bool ->
-  ?remove_not_precond:bool ->
-  cand_map ->
-  Tz.r_mich_cut_info ->
-  Tz.qid ->
-  cand list
-
-val find_top_score_ordered_cand :
-  ?remove_unflaged:bool ->
-  ?remove_not_precond:bool ->
-  cand_map ->
-  Tz.mich_cut_info ->
-  Tz.qid ->
-  cand list
-
 val find_ordered_cand_by_rmci :
+  ?order:[ `Increasing | `Decreasing ] ->
   ?remove_unflaged:bool ->
   ?remove_not_precond:bool ->
   cand_map ->
@@ -263,6 +248,7 @@ val find_ordered_cand_by_rmci :
   cand list
 
 val find_ordered_cand :
+  ?order:[ `Increasing | `Decreasing ] ->
   ?remove_unflaged:bool ->
   ?remove_not_precond:bool ->
   cand_map ->
@@ -271,6 +257,7 @@ val find_ordered_cand :
   cand list
 
 val find_cand_top_k_by_rmci :
+  ?order:[ `Increasing | `Decreasing ] ->
   ?remove_unflaged:bool ->
   ?remove_not_precond:bool ->
   top_k:int ->
@@ -280,6 +267,7 @@ val find_cand_top_k_by_rmci :
   cand list
 
 val find_cand_top_k :
+  ?order:[ `Increasing | `Decreasing ] ->
   ?remove_unflaged:bool ->
   ?remove_not_precond:bool ->
   top_k:int ->

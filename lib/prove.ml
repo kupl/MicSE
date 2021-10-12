@@ -82,7 +82,7 @@ let check_number_of_cands : Tz.qid -> Inv.cand_map -> bool =
    fun qid cmap ->
    RMCIMap.for_alli cmap ~f:(fun ~key ~data:_ ->
        let (cands : cand list) =
-          find_top_score_ordered_cand_by_rmci ~remove_unflaged:true
+          find_ordered_cand_by_rmci ~remove_unflaged:true
             ~remove_not_precond:true cmap key qid
        in
        List.length cands > 0
@@ -141,8 +141,8 @@ let rec combinate :
      (* 1. Target MCI for combinate *)
      let (rmci : Tz.r_mich_cut_info) = List.hd_exn (RMCIMap.keys targets) in
      let (cands : cand list) =
-        find_top_score_ordered_cand_by_rmci ~remove_unflaged:true
-          ~remove_not_precond:true targets rmci qid
+        find_ordered_cand_by_rmci ~remove_unflaged:true ~remove_not_precond:true
+          targets rmci qid
      in
      let (remains : cand_map) = RMCIMap.remove targets rmci in
      (* 2. Combinate candidates *)

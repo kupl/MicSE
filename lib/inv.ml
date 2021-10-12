@@ -629,62 +629,16 @@ let get_count_by_rmci :
   | None           -> InvError "get_score : wrong value" |> raise
 (* function get_count_by_rmci end *)
 
-let find_top_score_ordered_cand_by_rmci :
-    ?remove_unflaged:bool ->
-    ?remove_not_precond:bool ->
-    cand_map ->
-    Tz.r_mich_cut_info ->
-    Tz.qid ->
-    cand list =
-   let top_score : (int * int) QIDMap.t -> int * int =
-     fun smap ->
-     QIDMap.to_alist smap
-     |> List.max_elt ~compare:(fun (_, s1) (_, s2) ->
-            -compare_int (fst s1) (fst s2)
-        )
-     |> function
-     | None        ->
-       InvError
-         "find_top_score_ordered_cand_by_rmci : top_score : wrong score map"
-       |> raise
-     | Some (_, s) -> s
-     (* inner-function top_score end *)
-   in
-   fun ?(remove_unflaged = false) ?(remove_not_precond = false) cmap rmci qid ->
-   find_cand_by_rmci cmap rmci
-   |> (if remove_unflaged then CMap.filter ~f:fst else Fun.id)
-   |> ( if remove_not_precond
-      then CMap.filter ~f:(fun c -> QIDMap.find_exn (snd c) qid |> snd = 0)
-      else Fun.id
-      )
-   |> CMap.to_alist
-   |> List.sort ~compare:(fun (_, (_, smap1)) (_, (_, smap2)) ->
-          -compare_int (top_score smap1 |> fst) (top_score smap2 |> fst)
-      )
-   |> List.map ~f:fst
-(* function find_top_score_ordered_cand_by_rmci end *)
-
-let find_top_score_ordered_cand :
-    ?remove_unflaged:bool ->
-    ?remove_not_precond:bool ->
-    cand_map ->
-    Tz.mich_cut_info ->
-    Tz.qid ->
-    cand list =
-  fun ?(remove_unflaged = false) ?(remove_not_precond = false) cmap mci qid ->
-  find_top_score_ordered_cand_by_rmci ~remove_unflaged ~remove_not_precond cmap
-    (TzUtil.get_reduced_mci mci)
-    qid
-(* function find_top_score_ordered_cand_by end *)
-
 let find_ordered_cand_by_rmci :
+    ?order:[ `Increasing | `Decreasing ] ->
     ?remove_unflaged:bool ->
     ?remove_not_precond:bool ->
     cand_map ->
     Tz.r_mich_cut_info ->
     Tz.qid ->
     cand list =
-  fun ?(remove_unflaged = false) ?(remove_not_precond = false) cmap rmci qid ->
+  fun ?(order = `Decreasing) ?(remove_unflaged = false)
+      ?(remove_not_precond = false) cmap rmci qid ->
   find_cand_by_rmci cmap rmci
   |> (if remove_unflaged then CMap.filter ~f:fst else Fun.id)
   |> ( if remove_not_precond
@@ -693,27 +647,34 @@ let find_ordered_cand_by_rmci :
      )
   |> CMap.to_alist
   |> List.sort ~compare:(fun (_, (_, smap1)) (_, (_, smap2)) ->
-         -compare_int
-            (QIDMap.find_exn smap1 qid |> fst)
-            (QIDMap.find_exn smap2 qid |> fst)
+         compare_int
+           (QIDMap.find_exn smap1 qid |> fst)
+           (QIDMap.find_exn smap2 qid |> fst)
+         |>
+         match order with
+         | `Increasing -> Fun.id
+         | `Decreasing -> Int.neg
      )
   |> List.map ~f:fst
 (* function find_ordered_cand_by_rmci end *)
 
 let find_ordered_cand :
+    ?order:[ `Increasing | `Decreasing ] ->
     ?remove_unflaged:bool ->
     ?remove_not_precond:bool ->
     cand_map ->
     Tz.mich_cut_info ->
     Tz.qid ->
     cand list =
-  fun ?(remove_unflaged = false) ?(remove_not_precond = false) cmap mci qid ->
-  find_ordered_cand_by_rmci ~remove_unflaged ~remove_not_precond cmap
+  fun ?(order = `Decreasing) ?(remove_unflaged = false)
+      ?(remove_not_precond = false) cmap mci qid ->
+  find_ordered_cand_by_rmci ~order ~remove_unflaged ~remove_not_precond cmap
     (TzUtil.get_reduced_mci mci)
     qid
 (* function find_ordered_cand end *)
 
 let find_cand_top_k_by_rmci :
+    ?order:[ `Increasing | `Decreasing ] ->
     ?remove_unflaged:bool ->
     ?remove_not_precond:bool ->
     top_k:int ->
@@ -721,14 +682,16 @@ let find_cand_top_k_by_rmci :
     Tz.r_mich_cut_info ->
     Tz.qid ->
     cand list =
-  fun ?(remove_unflaged = false) ?(remove_not_precond = false) ~top_k cmap rmci
-      qid ->
-  find_ordered_cand_by_rmci ~remove_unflaged ~remove_not_precond cmap rmci qid
+  fun ?(order = `Decreasing) ?(remove_unflaged = false)
+      ?(remove_not_precond = false) ~top_k cmap rmci qid ->
+  find_ordered_cand_by_rmci ~order ~remove_unflaged ~remove_not_precond cmap
+    rmci qid
   |> (fun lst -> List.split_n lst top_k)
   |> fst
 (* function finc_cand_map_top_k_by_tmci end *)
 
 let find_cand_top_k :
+    ?order:[ `Increasing | `Decreasing ] ->
     ?remove_unflaged:bool ->
     ?remove_not_precond:bool ->
     top_k:int ->
@@ -736,9 +699,10 @@ let find_cand_top_k :
     Tz.mich_cut_info ->
     Tz.qid ->
     cand list =
-  fun ?(remove_unflaged = false) ?(remove_not_precond = false) ~top_k cmap mci
-      qid ->
-  find_cand_top_k_by_rmci ~remove_unflaged ~remove_not_precond ~top_k cmap
+  fun ?(order = `Decreasing) ?(remove_unflaged = false)
+      ?(remove_not_precond = false) ~top_k cmap mci qid ->
+  find_cand_top_k_by_rmci ~order ~remove_unflaged ~remove_not_precond ~top_k
+    cmap
     (TzUtil.get_reduced_mci mci)
     qid
 (* function find_cand_map_top_k end *)
