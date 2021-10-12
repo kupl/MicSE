@@ -283,6 +283,45 @@ let sigma_constraint_of_map_empty :
    |> List.join
 (* function sigma_constraint_of_map_empty end *)
 
+let sigma_constraint_of_map_get :
+    ctx:Tz.mich_sym_ctxt ->
+    map:Tz.mich_v Tz.cc ->
+    key:Tz.mich_v Tz.cc ->
+    Tz.mich_f list =
+   let open Tz in
+   let open TzUtil in
+   fun ~ctx ~map ~key ->
+   (* Design Note: This method for evaluating sigma of map is incomplete. 
+      The sum of elements which get from the map should be less than or equal to sigma of map. 
+      (i.e., map[A] + map[B] <= ∑map) *)
+   let (set_of_sigma_map : mich_v cc list) = sigma_of_cont map in
+   List.map set_of_sigma_map ~f:(fun sigma ->
+       let (value : mich_v cc) =
+          (match (typ_of_val map).cc_v with
+          | MT_map _     -> MV_get_xmoy (key, map)
+          | MT_big_map _ -> MV_get_xbmo (key, map)
+          | _            ->
+            SeError "sigma_constraint_of_map_get : wrong type" |> raise)
+          |> gen_custom_cc map
+       in
+       let ((acc_elem : mich_f list), (value_elem : mich_v cc)) =
+          MV_unlift_option value
+          |> gen_custom_cc map
+          |> acc_of_sigma ~sigma ~ctx
+       in
+       let (get_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx value in
+       let (leq_ctx : mich_v_cc_ctx) =
+          MV_leq_ib (value_elem, sigma)
+          |> gen_custom_cc sigma
+          |> gen_mich_v_ctx ~ctx
+       in
+       MF_imply
+         (MF_not (MF_is_none get_ctx), MF_and (MF_is_true leq_ctx :: acc_elem))
+       :: michv_maybe_mtznat_constraints ~ctx ~v:sigma
+   )
+   |> List.join
+(* function sigma_constraint_of_map_get end *)
+
 let sigma_constraint_of_list_cons :
     ctx:Tz.mich_sym_ctxt ->
     lst:Tz.mich_v Tz.cc ->
@@ -438,6 +477,16 @@ let add_sigma_constraint_of_map_empty :
   fun ~ctx ~map ss ->
   add_constraints ~c:(sigma_constraint_of_map_empty ~ctx ~map) ss
 (* function add_sigma_constraint_of_map_empty end *)
+
+let add_sigma_constraint_of_map_get :
+    ctx:Tz.mich_sym_ctxt ->
+    map:Tz.mich_v Tz.cc ->
+    key:Tz.mich_v Tz.cc ->
+    Tz.sym_state ->
+    Tz.sym_state =
+  fun ~ctx ~map ~key ss ->
+  add_constraints ~c:(sigma_constraint_of_map_get ~ctx ~map ~key) ss
+(* function add_sigma_constraint_of_map_get end *)
 
 let add_sigma_constraint_of_list_cons :
     ctx:Tz.mich_sym_ctxt ->
@@ -1758,17 +1807,19 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        ss
      |> running_ss_to_sr ctxt_sr
    | MI_get ->
+     let ((key : mich_v cc), (cont : mich_v cc)) = get_bmstack_2 ss in
      update_top_2_bmstack_and_constraint
-       ~f:(fun (h, h2) ->
-         match (typ_of_val h2).cc_v with
+       ~f:(fun _ ->
+         match (typ_of_val cont).cc_v with
          | MT_map _     ->
-           let nv = MV_get_xmoy (h, h2) |> gen_custom_cc inst in
+           let nv = MV_get_xmoy (key, cont) |> gen_custom_cc inst in
            ([ nv ], [])
          | MT_big_map _ ->
-           let nv = MV_get_xbmo (h, h2) |> gen_custom_cc inst in
+           let nv = MV_get_xbmo (key, cont) |> gen_custom_cc inst in
            ([ nv ], [])
          | _            -> failwith "run_inst_i : MI_get : unexpected")
        ss
+     |> add_sigma_constraint_of_map_get ~ctx ~map:cont ~key
      |> running_ss_to_sr ctxt_sr
    | MI_update ->
      let ((key : mich_v cc), (value : mich_v cc), (cont : mich_v cc)) =
