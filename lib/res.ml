@@ -58,18 +58,23 @@ type refuter_flag =
 module PPath = struct
   type t = {
     pp_mstate : MState.t;
-    pp_score : int;
-    pp_checked : bool;
+    pp_satisfiability : Smt.Solver.satisfiability option;
   }
   [@@deriving sexp, compare, equal]
 
   let t_of_ss : Tz.sym_state -> t =
-    (fun ss -> { pp_mstate = MState.init ss; pp_score = 0; pp_checked = false })
+    (fun ss -> { pp_mstate = MState.init ss; pp_satisfiability = None })
   (* function t_of_ss end *)
 
-  let t_of_ms : MState.t -> t =
-    (fun ms -> { pp_mstate = ms; pp_score = 0; pp_checked = false })
-  (* function t_of_ms end *)
+  let satisfiability_fill :
+      Smt.Ctx.t * Smt.Solver.t -> t -> t * Smt.Model.t option =
+    fun (ctx, slvr) ppath ->
+    match ppath.pp_satisfiability with
+    | None   ->
+      let (vc : Tz.mich_f) = Vc.gen_sp_from_ms ppath.pp_mstate Tz.MF_true in
+      let (sat_result, mdl_opt) = Vc.check_sat ctx slvr vc in
+      ({ ppath with pp_satisfiability = Some sat_result }, mdl_opt)
+    | Some _ -> (ppath, None)
 end
 
 module PPSet = Set.Make (PPath)
@@ -172,7 +177,16 @@ let init_worklist : unit -> worklist =
 let init_res : config -> res =
    let open Se in
    let open Vc in
-   fun { cfg_se_res; cfg_qid_set; cfg_imap; cfg_smt_ctxt; cfg_smt_slvr; cfg_istrg; cfg_istate; _ } ->
+   fun {
+         cfg_se_res;
+         cfg_qid_set;
+         cfg_imap;
+         cfg_smt_ctxt;
+         cfg_smt_slvr;
+         cfg_istrg;
+         cfg_istate;
+         _;
+       } ->
    let (acc_qsmap : SSet.t QIDMap.t) =
       SSet.fold cfg_se_res.sr_queries ~init:QIDMap.empty ~f:(fun acc_qsmap qs ->
           QIDMap.update acc_qsmap (TzUtil.qid_of_mci_exn qs.ss_block_mci)
@@ -192,7 +206,8 @@ let init_res : config -> res =
      r_cands =
        Inv.gen_initial_cand_map
          ~is_cand_sat:(is_cand_sat cfg_smt_ctxt cfg_smt_slvr)
-         ~do_cand_sat_istrg:(do_cand_sat_istrg cfg_smt_ctxt cfg_smt_slvr cfg_istrg cfg_istate)
+         ~do_cand_sat_istrg:
+           (do_cand_sat_istrg cfg_smt_ctxt cfg_smt_slvr cfg_istrg cfg_istate)
          cfg_qid_set cfg_imap;
      r_wlst = init_worklist ();
    }

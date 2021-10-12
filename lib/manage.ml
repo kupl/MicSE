@@ -27,7 +27,7 @@ let initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    let (r_qr_lst : Res.qres list) =
       List.map res.r_qr_lst ~f:(fun qres ->
           let (qr_exp_ppaths : PPSet.t) =
-             Refute.check_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
+             Refute.filter_sat_ppaths cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
                qres.qr_exp_ppaths
           in
           let ( (qr_total_ppaths :

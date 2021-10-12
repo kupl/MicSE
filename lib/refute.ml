@@ -83,21 +83,21 @@ let expand_pp : m_view:Se.SSGraph.mci_view -> Res.PPath.t -> PPSet.t =
    fun ~m_view pp ->
    let (pred : SSet.t) = ss_view_pred ~m_view (get_first_ss pp.pp_mstate) in
    let (ems : MSSet.t) = MSSet.map pred ~f:(fun ss -> cons ss pp.pp_mstate) in
-   PPSet.map ems ~f:(fun ems ->
-       { pp_mstate = ems; pp_score = pp.pp_score - 1; pp_checked = false }
-   )
+   PPSet.map ems ~f:(fun ems -> { pp_mstate = ems; pp_satisfiability = None })
 (* function expand_pp end *)
 
-let check_sat : Smt.Ctx.t -> Smt.Solver.t -> PPSet.t -> PPSet.t =
-   let open Tz in
-   let open Smt in
-   let open Vc in
-   fun ctx slvr ppaths ->
-   PPSet.filter ppaths ~f:(fun ppath ->
-       let (vc : mich_f) = Vc.gen_sp_from_ms ppath.pp_mstate MF_true |> TzUtil.opt_mf in
-       let ((sat : Solver.satisfiability), _) = check_sat ctx slvr vc in
-       Smt.Solver.is_sat sat
-   )
+let filter_sat_ppaths : Smt.Ctx.t -> Smt.Solver.t -> PPSet.t -> PPSet.t =
+  fun ctx slvr ppaths ->
+  PPSet.fold ppaths ~init:PPSet.empty ~f:(fun acc ppath ->
+      let (sat_filled_pp, _) =
+         Res.PPath.satisfiability_fill (ctx, slvr) ppath
+      in
+      if equal_option Smt.Solver.equal_satisfiability
+           sat_filled_pp.pp_satisfiability (Some Smt.Solver.SAT)
+      then PPSet.add acc sat_filled_pp
+      else acc
+  )
+
 (* function check_sat end *)
 
 let refute :
@@ -126,6 +126,37 @@ let refute :
      )
    )
 (* function refute end *)
+
+(******************************************************************************)
+(******************************************************************************)
+(* Path-Pick Functions                                                        *)
+(******************************************************************************)
+(******************************************************************************)
+
+module PickFun = struct
+  (* NOTE : pick_func return (picked-ppaths, unpicked-ppaths) pair.
+           Dead paths (unsatisfiable paths) SHOULD NOT BE put in picked-ppaths.
+           (neither in unpicked-ppaths, but unknown paths whether dead or not
+           can be put in unpicked-ppaths)
+  *)
+  type t = Smt.Ctx.t * Smt.Solver.t -> PPSet.t -> PPSet.t * PPSet.t
+end
+(* module PickFun end *)
+
+let pick_short_k_for_each_mci : top_k:int -> PickFun.t =
+   let open Res in
+   fun ~top_k (ctx, slvr) ppaths ->
+   let sat_filtered_ppset = filter_sat_ppaths ctx slvr ppaths in
+   let (rmcipmap : PPath.t list RMCIMap.t) =
+      separate_ppset_in_length_increasing_order sat_filtered_ppset
+   in
+   let (selected_ppaths : PPSet.t) =
+      RMCIMap.fold rmcipmap ~init:PPSet.empty ~f:(fun ~key:_ ~data pset ->
+          let (lst : PPath.t list) = List.take data top_k in
+          List.fold lst ~init:pset ~f:PPSet.add
+      )
+   in
+   (selected_ppaths, PPSet.diff sat_filtered_ppset selected_ppaths)
 
 (******************************************************************************)
 (******************************************************************************)
@@ -161,7 +192,7 @@ let naive_run_ppath_atomic_action :
      let (expanded_ppaths : PPSet.t) = expand_pp ~m_view:cfg.cfg_m_view ppath in
      (* 2. Filter unsatisfiable paths *)
      let (sat_ppaths : PPSet.t) =
-        check_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr expanded_ppaths
+        filter_sat_ppaths cfg.cfg_smt_ctxt cfg.cfg_smt_slvr expanded_ppaths
      in
      (* 3. Try to refute them *)
      let ( (total_paths : (PPath.t * Smt.Solver.satisfiability) list),
@@ -344,16 +375,9 @@ let rec naive_run : Res.config -> Res.res -> Res.res =
 (******************************************************************************)
 (******************************************************************************)
 
-(* NOTE : pick_func return (picked-ppaths, unpicked-ppaths) pair.
-          Dead paths (unsatisfiable paths) should not put in picked-ppaths.
-          (neither in unpicked-ppaths, but unknown paths whether dead or not can be
-          put in unpicked-ppaths)
-*)
-type pick_func = PPSet.t -> PPSet.t * PPSet.t
-
 let guided_run_qres_escape_condition = naive_run_qres_escape_condition
 
-let guided_run_qres : Res.config -> pick_f:pick_func -> Res.qres -> Res.qres =
+let guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres =
   fun cfg ~pick_f qres ->
   (* 1. Escape Conditions *)
   if (* 1.1. Escape when (Timeout || (R-flag <> RF_u) || (P-flag = PF_p)) *)
@@ -365,7 +389,7 @@ let guided_run_qres : Res.config -> pick_f:pick_func -> Res.qres -> Res.qres =
   else (
     (* 2. Pick paths to expand *)
     let (picked_paths, unpicked_paths) : PPSet.t * PPSet.t =
-       pick_f qres.qr_exp_ppaths
+       pick_f (cfg.cfg_smt_ctxt, cfg.cfg_smt_slvr) qres.qr_exp_ppaths
     in
     (* 3. Expand picked paths *)
     let expanded_paths : PPSet.t =
@@ -417,7 +441,7 @@ let guided_run_qres : Res.config -> pick_f:pick_func -> Res.qres -> Res.qres =
 
 let guided_run_escape_condition = naive_run_escape_condition
 
-let rec guided_run : Res.config -> pick_f:pick_func -> Res.res -> Res.res =
+let rec guided_run : Res.config -> pick_f:PickFun.t -> Res.res -> Res.res =
   fun cfg ~pick_f res ->
   let _ = Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res)) in
   if guided_run_escape_condition cfg res
@@ -426,10 +450,7 @@ let rec guided_run : Res.config -> pick_f:pick_func -> Res.res -> Res.res =
     let new_res : Res.res =
        {
          res with
-         r_qr_lst =
-           List.fold_right res.r_qr_lst
-             ~f:(fun qres acc -> guided_run_qres cfg ~pick_f qres :: acc)
-             ~init:[];
+         r_qr_lst = List.map res.r_qr_lst ~f:(guided_run_qres cfg ~pick_f);
        }
     in
     guided_run cfg ~pick_f new_res

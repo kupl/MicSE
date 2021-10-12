@@ -56,14 +56,14 @@ type refuter_flag =
 module PPath : sig
   type t = {
     pp_mstate : MState.t;
-    pp_score : int;
-    pp_checked : bool;
+    pp_satisfiability : Smt.Solver.satisfiability option;
   }
   [@@deriving sexp, compare, equal]
 
   val t_of_ss : Tz.sym_state -> t
 
-  val t_of_ms : MState.t -> t
+  val satisfiability_fill :
+    Smt.Ctx.t * Smt.Solver.t -> t -> t * Smt.Model.t option
 end
 
 module PPSet : module type of Core.Set.Make (PPath)

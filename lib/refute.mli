@@ -36,7 +36,7 @@ val select_pp : top_k:int -> PPSet.t -> PPSet.t * PPSet.t
 
 val expand_pp : m_view:Se.SSGraph.mci_view -> Res.PPath.t -> PPSet.t
 
-val check_sat : Smt.Ctx.t -> Smt.Solver.t -> PPSet.t -> PPSet.t
+val filter_sat_ppaths : Smt.Ctx.t -> Smt.Solver.t -> PPSet.t -> PPSet.t
 
 val refute :
   Smt.Ctx.t ->
@@ -44,6 +44,24 @@ val refute :
   Tz.mich_v Tz.cc ->
   Res.PPath.t ->
   (Res.PPath.t * Smt.Solver.satisfiability) option * Smt.Model.t option
+
+(******************************************************************************)
+(******************************************************************************)
+(* Path-Pick Functions                                                        *)
+(******************************************************************************)
+(******************************************************************************)
+
+module PickFun : sig
+  (* NOTE : pick_func return (picked-ppaths, unpicked-ppaths) pair.
+           Dead paths (unsatisfiable paths) SHOULD NOT BE put in picked-ppaths.
+           (neither in unpicked-ppaths, but unknown paths whether dead or not
+           can be put in unpicked-ppaths)
+  *)
+  type t = Smt.Ctx.t * Smt.Solver.t -> PPSet.t -> PPSet.t * PPSet.t
+end
+(* module PickFun end *)
+
+val pick_short_k_for_each_mci : top_k:int -> PickFun.t
 
 (******************************************************************************)
 (******************************************************************************)
@@ -84,13 +102,6 @@ val naive_run : Res.config -> Res.res -> Res.res
 (******************************************************************************)
 (******************************************************************************)
 
-(* NOTE : pick_func return (picked-ppaths, unpicked-ppaths) pair.
-          Dead paths (unsatisfiable paths) should not put in picked-ppaths.
-          (neither in unpicked-ppaths, but unknown paths whether dead or not can be
-          put in unpicked-ppaths)
-*)
-type pick_func = PPSet.t -> PPSet.t * PPSet.t
+val guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres
 
-val guided_run_qres : Res.config -> pick_f:pick_func -> Res.qres -> Res.qres
-
-val guided_run : Res.config -> pick_f:pick_func -> Res.res -> Res.res
+val guided_run : Res.config -> pick_f:PickFun.t -> Res.res -> Res.res
