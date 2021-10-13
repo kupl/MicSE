@@ -155,6 +155,29 @@ let add_inductive_info :
    )
 (* function add_inductiveness end *)
 
+let print_invariant : Inv.inv_map -> unit =
+   let open Inv in
+   fun imap ->
+   let _ =
+      Utils.Log.info (fun m ->
+          m "> Invariant is updated:\n%s\n"
+            (List.map (RMCIMap.keys imap) ~f:(fun rmci ->
+                 let (inv : cand) = find_inv_by_rmci imap rmci in
+                 Printf.sprintf "\tRMCI: %s\n\t\t%s"
+                   (rmci |> Tz.sexp_of_r_mich_cut_info |> SexpUtil.to_string)
+                   (inv
+                   |> fmla_of_cand_pre
+                   |> Tz.sexp_of_mich_f
+                   |> SexpUtil.to_string
+                   )
+             )
+            |> String.concat ~sep:"\n"
+            )
+      )
+   in
+   ()
+(* function print_invariant end *)
+
 let prove : Smt.Ctx.t -> Smt.Solver.t -> Inv.inv_map -> SSet.t -> SSet.t =
    let open Res in
    let open Smt in
@@ -326,6 +349,7 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
        (* 2-2. There is combinations, and there is invariant *)
        (* 2-2-1. Get invariant *)
        let (r_inv : inv_map) = Option.value_exn imap_opt in
+       let _ = print_invariant r_inv in
        (* 2-2-2. Update candidates *)
        let (r_cands : cand_map) =
           strengthen_cand_map res.r_cands r_inv
