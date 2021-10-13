@@ -57,6 +57,7 @@ module PPath : sig
   type t = {
     pp_mstate : MState.t;
     pp_satisfiability : Smt.Solver.satisfiability option;
+    pp_score : int list option;
   }
   [@@deriving sexp, compare, equal]
 
