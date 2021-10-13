@@ -407,6 +407,29 @@ let guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres =
              (PPSet.length unpicked_paths)
        )
     in
+    let _ =
+       if Option.is_none !Utils.Argument.status_interval
+       then ()
+       else (
+         let _ = Utils.Log.debug (fun m -> m "  List of Picked Paths") in
+         let _ =
+            PPSet.iter picked_paths ~f:(fun pp ->
+                Utils.Log.debug (fun m ->
+                    m "  PathSummary : %s\n        Score : %s"
+                      (MState.get_summary pp.pp_mstate
+                      |> MState.sexp_of_summary
+                      |> Sexp.to_string
+                      )
+                      (pp.pp_score
+                      |> List.sexp_of_t sexp_of_int
+                      |> Sexp.to_string
+                      )
+                )
+            )
+         in
+         ()
+       )
+    in
     (* 3. Expand picked paths *)
     let expanded_paths : PPSet.t =
        PPSet.fold picked_paths ~init:PPSet.empty ~f:(fun acc pp ->
