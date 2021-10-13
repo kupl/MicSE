@@ -396,8 +396,16 @@ let guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres =
   then { qres with qr_rft_flag = RF_f }
   else (
     (* 2. Pick paths to expand *)
+    let _ = Utils.Log.debug (fun m -> m "  Pick-Path Start") in
     let (picked_paths, unpicked_paths) : PPSet.t * PPSet.t =
        pick_f (cfg.cfg_smt_ctxt, cfg.cfg_smt_slvr) qres.qr_exp_ppaths
+    in
+    let _ =
+       Utils.Log.debug (fun m ->
+           m "  Pick-Path End >> #Picked / #Unpicked = %d / %d"
+             (PPSet.length picked_paths)
+             (PPSet.length unpicked_paths)
+       )
     in
     (* 3. Expand picked paths *)
     let expanded_paths : PPSet.t =
