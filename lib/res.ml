@@ -59,13 +59,19 @@ module PPath = struct
   type t = {
     pp_mstate : MState.t;
     pp_satisfiability : Smt.Solver.satisfiability option;
-    pp_score : int list option;
+    pp_score : int list;
+    pp_score_fixed : bool;
   }
   [@@deriving sexp, compare, equal]
 
   let t_of_ss : Tz.sym_state -> t =
     fun ss ->
-    { pp_mstate = MState.init ss; pp_satisfiability = None; pp_score = None }
+    {
+      pp_mstate = MState.init ss;
+      pp_satisfiability = None;
+      pp_score = [ 0 ];
+      pp_score_fixed = false;
+    }
   (* function t_of_ss end *)
 
   let satisfiability_fill :
