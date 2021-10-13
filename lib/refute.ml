@@ -451,8 +451,12 @@ let guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres =
 
 let guided_run_escape_condition = naive_run_escape_condition
 
-let rec guided_run : Res.config -> pick_f:PickFun.t -> Res.res -> Res.res =
-  fun cfg ~pick_f res ->
+let rec guided_run :
+    Res.config ->
+    pick_f_gen:(Res.res -> Tz.qid -> PickFun.t) ->
+    Res.res ->
+    Res.res =
+  fun cfg ~pick_f_gen res ->
   let _ = Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res)) in
   if guided_run_escape_condition cfg res
   then res
@@ -460,8 +464,11 @@ let rec guided_run : Res.config -> pick_f:PickFun.t -> Res.res -> Res.res =
     let new_res : Res.res =
        {
          res with
-         r_qr_lst = List.map res.r_qr_lst ~f:(guided_run_qres cfg ~pick_f);
+         r_qr_lst =
+           List.map res.r_qr_lst ~f:(fun qres ->
+               guided_run_qres cfg ~pick_f:(pick_f_gen res qres.qr_qid) qres
+           );
        }
     in
-    guided_run cfg ~pick_f new_res
+    guided_run cfg ~pick_f_gen new_res
   )

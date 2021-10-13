@@ -104,4 +104,8 @@ val naive_run : Res.config -> Res.res -> Res.res
 
 val guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres
 
-val guided_run : Res.config -> pick_f:PickFun.t -> Res.res -> Res.res
+val guided_run :
+  Res.config ->
+  pick_f_gen:(Res.res -> Tz.qid -> PickFun.t) ->
+  Res.res ->
+  Res.res
