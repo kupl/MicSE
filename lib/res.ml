@@ -162,7 +162,11 @@ type config = {
 
 let init_qres : Tz.qid -> SSet.t -> qres =
   fun qr_qid qr_unk_qs ->
-  let exp_ppaths = PPSet.map qr_unk_qs ~f:PPath.t_of_ss in
+  let exp_ppaths =
+     PPSet.map qr_unk_qs ~f:(fun ss ->
+         PPath.t_of_ss ss |> (fun pp -> { pp with pp_score = [ 200 ] })
+     )
+  in
   {
     qr_qid;
     qr_prv_flag = PF_u;
