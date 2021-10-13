@@ -137,15 +137,15 @@ module Setting = struct
   (* Experiment Mode                                                          *)
   (****************************************************************************)
 
-  let prec_random_rate : int t =
-     let (value : int ref) = ref 50 in
-     let (spec : Arg.spec) = Arg.Set_int value in
+  let set_random_seed : bool t =
+     let (value : bool ref) = ref false in
+     let (spec : Arg.spec) = Arg.Set value in
      let (doc : Arg.doc) =
-        "set random choice rate of precondition (interval: [0, 100])"
+        "set random seed (default: false)"
      in
      {
        value;
-       arg_lst = create_arg_lst [ "--prec_random_rate"; "-pr" ] spec doc;
+       arg_lst = create_arg_lst [ "--random_seed"; "-sr" ] spec doc;
      }
 
   let status_interval : int option t =
@@ -172,7 +172,7 @@ module Setting = struct
      @ inst_count.arg_lst
      @ query_pick.arg_lst
      @ verbose_mode.arg_lst
-     @ prec_random_rate.arg_lst
+     @ set_random_seed.arg_lst
      @ status_interval.arg_lst
 
   let anon_fun : string -> unit =
@@ -189,13 +189,7 @@ module Setting = struct
                || snd (Option.value_exn !(query_pick.value)) < 0
                )
     then raise (Arg.Bad "invalid query picking is inputed")
-    else if (* 3. check range validity of prec_random_rate *)
-            not
-              (0 <= !(prec_random_rate.value)
-              && !(prec_random_rate.value) <= 100
-              )
-    then raise (Arg.Bad "bad range of precondition-random-rate")
-    else if (* 4. check range validity of status_interval *)
+    else if (* 3. check range validity of status_interval *)
             Option.is_some !(status_interval.value)
             && not (0 <= Option.value_exn !(status_interval.value))
     then raise (Arg.Bad "bad range of status-interval")
@@ -254,6 +248,6 @@ let verbose_mode : bool ref = Setting.verbose_mode.value
 (* Experiment Mode                                                          *)
 (****************************************************************************)
 
-let prec_random_rate : int ref = Setting.prec_random_rate.value
+let set_random_seed : bool ref = Setting.set_random_seed.value
 
 let status_interval : int option ref = Setting.status_interval.value

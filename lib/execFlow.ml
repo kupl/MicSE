@@ -13,7 +13,11 @@ let initial_system_setting : string array option -> unit =
   let _ = Utils.Argument.create argv_opt in
   let _ = Utils.Log.create () in
   let _ = Printexc.record_backtrace true in
-  let _ = Random.self_init in
+  let _ =
+     if !Utils.Argument.set_random_seed
+     then Random.self_init ()
+     else Random.init 0
+  in
   ()
 (* function initial_system_setting end *)
 

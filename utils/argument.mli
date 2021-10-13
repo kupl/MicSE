@@ -53,7 +53,7 @@ module Setting : sig
   (* Experiment Mode                                                          *)
   (****************************************************************************)
 
-  val prec_random_rate : int t
+  val set_random_seed : bool t
 
   val status_interval : int option t
 
@@ -108,6 +108,6 @@ val verbose_mode : bool ref
 (* Experiment Mode                                                          *)
 (****************************************************************************)
 
-val prec_random_rate : int ref
+val set_random_seed : bool ref
 
 val status_interval : int option ref
