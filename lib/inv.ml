@@ -785,10 +785,10 @@ let count_each_cands : inductive_info -> Tz.sym_state -> cand -> int * int =
      get_inductiveness_from_bs ~ss_id_normalize:true iimap bs
   in
   let (valid_cp : CPSet.t) =
-     CPSet.filter cpi.ir_valid ~f:(fun cp -> equal_cand cp.cp_start cand)
+     CPSet.filter cpi.ir_valid ~f:(fun cp -> equal_cand cp.cp_block cand)
   in
   let (invalid_cp : CPSet.t) =
-     CPSet.filter cpi.ir_invalid ~f:(fun cp -> equal_cand cp.cp_start cand)
+     CPSet.filter cpi.ir_invalid ~f:(fun cp -> equal_cand cp.cp_block cand)
   in
   (CPSet.length valid_cp, CPSet.length invalid_cp)
 (* function count_each_cands end *)
