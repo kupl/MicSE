@@ -302,6 +302,7 @@ let naive_run_qres_atomic_action : Res.config -> Res.qres -> Res.qres =
          qres with
          qr_rft_flag = RF_r;
          qr_total_ppaths;
+         qr_last_picked_paths = selected_ppaths;
          qr_exp_ppaths;
          qr_rft_ppath;
          qr_exp_cnt;
@@ -428,6 +429,7 @@ let guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres =
     in
     (* Last. return value construction *)
     let qr_total_ppaths = total_ppaths @ qres.qr_total_ppaths
+    and qr_last_picked_paths = picked_paths
     and qr_exp_ppaths = PPSet.union expanded_paths unpicked_paths
     and qr_rft_ppath = rft_ppath_opt
     and qr_exp_cnt : int = PPSet.length expanded_paths + qres.qr_exp_cnt
@@ -440,6 +442,7 @@ let guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres =
       qres with
       qr_rft_flag;
       qr_total_ppaths;
+      qr_last_picked_paths;
       qr_exp_ppaths;
       qr_rft_ppath;
       qr_exp_cnt;

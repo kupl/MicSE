@@ -97,6 +97,7 @@ type qres = {
   (* Partial Paths and Invariant Candidates *)
   (* debugging *) qr_validated_ppaths : PPath.t list;
   (* debugging *) qr_total_ppaths : (PPath.t * Smt.Solver.satisfiability) list;
+  qr_last_picked_paths : PPSet.t;
   qr_exp_ppaths : PPSet.t;
   qr_prec_map : CSet.t SMYMap.t;
   qr_rft_ppath : (PPath.t * Smt.Model.t) option;
@@ -157,6 +158,7 @@ type config = {
 
 let init_qres : Tz.qid -> SSet.t -> qres =
   fun qr_qid qr_unk_qs ->
+  let exp_ppaths = PPSet.map qr_unk_qs ~f:PPath.t_of_ss in
   {
     qr_qid;
     qr_prv_flag = PF_u;
@@ -164,6 +166,7 @@ let init_qres : Tz.qid -> SSet.t -> qres =
     qr_unk_qs;
     qr_validated_ppaths = [];
     qr_total_ppaths = [];
+    qr_last_picked_paths = exp_ppaths;
     qr_exp_ppaths = PPSet.map qr_unk_qs ~f:PPath.t_of_ss;
     qr_prec_map = SMYMap.empty;
     qr_rft_ppath = None;

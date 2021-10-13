@@ -80,6 +80,7 @@ type qres = {
   (* Partial Paths and Invariant Candidates *)
   (* debugging *) qr_validated_ppaths : PPath.t list;
   (* debugging *) qr_total_ppaths : (PPath.t * Smt.Solver.satisfiability) list;
+  qr_last_picked_paths : PPSet.t;
   qr_exp_ppaths : PPSet.t;
   qr_prec_map : CSet.t SMYMap.t;
   qr_rft_ppath : (PPath.t * Smt.Model.t) option;
