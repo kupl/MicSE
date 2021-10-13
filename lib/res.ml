@@ -164,7 +164,8 @@ let init_qres : Tz.qid -> SSet.t -> qres =
   fun qr_qid qr_unk_qs ->
   let exp_ppaths =
      PPSet.map qr_unk_qs ~f:(fun ss ->
-         PPath.t_of_ss ss |> (fun pp -> { pp with pp_score = [ 200 ] })
+         PPath.t_of_ss ss
+         |> (fun pp -> { pp with pp_score = [ 200 ]; pp_score_fixed = true })
      )
   in
   {
