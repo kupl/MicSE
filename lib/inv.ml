@@ -790,10 +790,11 @@ let gen_initial_inductive_info_map : SSet.t -> inductive_info =
   )
 (* function gen_initial_inductive_info_map end *)
 
-let get_inductiveness_from_bs :
+let get_inductiveness_from_bs ?(ss_id_normalize = true) :
     inductive_info -> Tz.sym_state -> cp_inductiveness =
   fun iimap bs ->
-  SIDMap.find iimap bs.ss_id
+  let ss_id = if ss_id_normalize then [ List.hd_exn bs.ss_id ] else bs.ss_id in
+  SIDMap.find iimap ss_id
   |> function
   | Some cpi -> cpi
   | None     -> { ir_valid = CPSet.empty; ir_invalid = CPSet.empty }
@@ -801,7 +802,9 @@ let get_inductiveness_from_bs :
 
 let count_each_cands : inductive_info -> Tz.sym_state -> cand -> int * int =
   fun iimap bs cand ->
-  let (cpi : cp_inductiveness) = get_inductiveness_from_bs iimap bs in
+  let (cpi : cp_inductiveness) =
+     get_inductiveness_from_bs ~ss_id_normalize:true iimap bs
+  in
   let (valid_cp : CPSet.t) =
      CPSet.filter cpi.ir_valid ~f:(fun cp -> equal_cand cp.cp_start cand)
   in

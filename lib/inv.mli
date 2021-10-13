@@ -309,7 +309,7 @@ val unflag_cand : cand_map -> key:Tz.r_mich_cut_info -> value:cand -> cand_map
 val gen_initial_inductive_info_map : SSet.t -> inductive_info
 
 val get_inductiveness_from_bs :
-  inductive_info -> Tz.sym_state -> cp_inductiveness
+  ?ss_id_normalize:bool -> inductive_info -> Tz.sym_state -> cp_inductiveness
 
 val count_each_cands : inductive_info -> Tz.sym_state -> cand -> int * int
 
