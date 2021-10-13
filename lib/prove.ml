@@ -87,6 +87,30 @@ let rec combinate :
    )
 (* function combinate end *)
 
+let check_inductiveness_of_ss :
+    Smt.Ctx.t ->
+    Smt.Solver.t ->
+    Tz.sym_state ->
+    Inv.inductive_info ->
+    Inv.inv_map ->
+    Tz.sym_state * bool =
+   let open Smt in
+   let open Tz in
+   let open Vc in
+   let open Inv in
+   fun ctx slvr bs idtmap imap ->
+   let (cand_start : cand) = find_inv imap bs.ss_start_mci in
+   let (cand_block : cand) = find_inv imap bs.ss_block_mci in
+   let (cp : cand_pair) = cvt_cand_pair (cand_start, cand_block) in
+   if is_already_succeeded idtmap bs cp
+   then (bs, true)
+   else (
+     let (vc : mich_f) = gen_inductiveness_vc imap bs |> TzUtil.opt_mf in
+     let ((vld : Solver.validity), _) = check_val ctx slvr vc in
+     if not (Solver.is_val vld) then (bs, false) else (bs, true)
+   )
+(* function check_inductiveness_of_ss end *)
+
 let check_inductiveness :
     Smt.Ctx.t ->
     Smt.Solver.t ->
@@ -94,9 +118,6 @@ let check_inductiveness :
     Inv.inductive_info ->
     Inv.inv_map ->
     Inv.inv_map option * (Tz.sym_state * bool) list =
-   let open Smt in
-   let open Tz in
-   let open Vc in
    let open Inv in
    fun ctx slvr bsset idtmap imap ->
    SSet.to_list bsset
@@ -104,23 +125,15 @@ let check_inductiveness :
    |> List.fold
         ~init:((Some imap, []), 0)
         ~f:(fun ((imap_opt, idts), cnt) bs ->
-          if cnt > 5 && Option.is_none imap_opt
+          if cnt > 10 && Option.is_none imap_opt
           then ((imap_opt, idts), cnt)
           else (
-            let (cand_start : cand) = find_inv imap bs.ss_start_mci in
-            let (cand_block : cand) = find_inv imap bs.ss_block_mci in
-            let (cp : cand_pair) = cvt_cand_pair (cand_start, cand_block) in
-            if is_already_succeeded idtmap bs cp
-            then ((imap_opt, idts), cnt)
-            else (
-              let (vc : mich_f) =
-                 gen_inductiveness_vc imap bs |> TzUtil.opt_mf
-              in
-              let ((vld : Solver.validity), _) = check_val ctx slvr vc in
-              if not (Solver.is_val vld)
-              then ((None, (bs, false) :: idts), cnt + 1)
-              else ((imap_opt, (bs, true) :: idts), cnt)
-            )
+            let (idt_pair : Tz.sym_state * bool) =
+               check_inductiveness_of_ss ctx slvr bs idtmap imap
+            in
+            if snd idt_pair
+            then ((imap_opt, idt_pair :: idts), cnt)
+            else ((None, idt_pair :: idts), cnt + 1)
           ))
    |> fst
 (* function check_inductiveness end *)
@@ -240,7 +253,11 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    fun cfg res ->
    (* 1. Find invariant *)
    let (qid_lst : Tz.qid list) =
-      List.map res.r_qr_lst ~f:(fun { qr_qid; _ } -> qr_qid)
+      List.filter res.r_qr_lst ~f:(fun { qr_prv_flag; qr_rft_flag; _ } ->
+          equal_prover_flag qr_prv_flag PF_u
+          && not (equal_refuter_flag qr_rft_flag RF_r)
+      )
+      |> List.map ~f:(fun { qr_qid; _ } -> qr_qid)
    in
    let rec find_inv :
        inductive_info * int ->
