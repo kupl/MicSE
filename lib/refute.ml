@@ -459,7 +459,7 @@ let guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres =
 
 let guided_run_escape_condition = naive_run_escape_condition
 
-let rec guided_run :
+let guided_run :
     Res.config ->
     pick_f_gen:(Res.res -> Tz.qid -> PickFun.t) ->
     Res.res ->
@@ -478,5 +478,5 @@ let rec guided_run :
            );
        }
     in
-    guided_run cfg ~pick_f_gen new_res
+    new_res (* guided_run cfg ~pick_f_gen new_res *)
   )
