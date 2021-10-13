@@ -165,7 +165,7 @@ let init_qres : Tz.qid -> SSet.t -> qres =
   let exp_ppaths =
      PPSet.map qr_unk_qs ~f:(fun ss ->
          PPath.t_of_ss ss
-         |> (fun pp -> { pp with pp_score = [ 200 ]; pp_score_fixed = true })
+         |> (fun pp -> { pp with pp_score = [ 100 ]; pp_score_fixed = true })
      )
   in
   {
@@ -175,8 +175,8 @@ let init_qres : Tz.qid -> SSet.t -> qres =
     qr_unk_qs;
     qr_validated_ppaths = [];
     qr_total_ppaths = [];
-    qr_last_picked_paths = exp_ppaths;
-    qr_exp_ppaths = PPSet.map qr_unk_qs ~f:PPath.t_of_ss;
+    qr_last_picked_paths = PPSet.empty;
+    qr_exp_ppaths = exp_ppaths;
     qr_prec_map = SMYMap.empty;
     qr_rft_ppath = None;
     qr_exp_cnt = SSet.length qr_unk_qs;
