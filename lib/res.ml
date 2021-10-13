@@ -257,7 +257,7 @@ let init_config :
     cfg_smt_slvr = Vc.gen_solver cfg_smt_ctxt;
     cfg_ppath_k = 1;
     cfg_cand_k = 2;
-    cfg_comb_k = 10;
+    cfg_comb_k = 50;
   }
 (* function init_config end *)
 
