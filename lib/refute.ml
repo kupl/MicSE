@@ -415,7 +415,7 @@ let guided_run_qres : Res.config -> pick_f:PickFun.t -> Res.qres -> Res.qres =
          let _ =
             PPSet.iter picked_paths ~f:(fun pp ->
                 Utils.Log.debug (fun m ->
-                    m "\nPathSummary : %s\n      Score : %s"
+                    m "\n  PathSummary : %s\n  Score : %s"
                       (MState.get_summary pp.pp_mstate
                       |> MState.sexp_of_summary
                       |> Sexp.to_string
