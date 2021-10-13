@@ -226,7 +226,7 @@ let filter_equal : ILSet.t -> ILSet.t =
 
 let gen_cand_by_fmla : ?cond:MFSet.t -> ?igdt:ISet.t -> Tz.mich_f -> cand =
   fun ?(cond = MFSet.empty) ?(igdt = ISet.empty) fmla ->
-  { c_fmla = MFSet.singleton fmla; c_cond = cond; c_igdt = igdt }
+  { c_fmla = MFSet.of_list [ MF_true; fmla ]; c_cond = cond; c_igdt = igdt }
 (* function gen_cand_by_fmla end *)
 
 let join_cands : cand -> cand -> cand =
