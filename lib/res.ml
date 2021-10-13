@@ -41,6 +41,8 @@ module SMYMap = Map.Make (MState.SMY_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
+(* Flags **********************************************************************)
+
 type prover_flag =
   | PF_p (* proved  *)
   | PF_u (* unknown *)
@@ -54,6 +56,8 @@ type refuter_flag =
   | RF_f
 (* failed - no ppath left to check *)
 [@@deriving sexp, compare, equal]
+
+(* Partial Path ***************************************************************)
 
 module PPath = struct
   type t = {
@@ -87,6 +91,8 @@ end
 
 module PPSet = Set.Make (PPath)
 
+(* Query Result ***************************************************************)
+
 type qres = {
   qr_qid : Tz.qid;
   (* Overall Status *)
@@ -113,20 +119,18 @@ module QRes_cmp = struct
   type t = qres [@@deriving sexp, compare]
 end
 
-type worklist = {
-  wl_combs : InvSet.t;
-  wl_failcp : Inv.inductive_info;
-  wl_comb_cnt : int;
-}
-[@@deriving sexp, compare, equal]
+(* Result *********************************************************************)
 
 type res = {
   r_qr_lst : qres list;
   r_inv : Inv.inv_map;
   r_cands : Inv.cand_map;
-  r_wlst : worklist;
+  r_idts : Inv.inductive_info;
+  r_comb_cnt : int;
 }
 [@@deriving sexp, compare, equal]
+
+(* Configuration **************************************************************)
 
 type config = {
   (* Execution configuration *)
@@ -176,15 +180,6 @@ let init_qres : Tz.qid -> SSet.t -> qres =
   }
 (* function init_qres end *)
 
-let init_worklist : SSet.t -> worklist =
-  fun bsset ->
-  {
-    wl_combs = InvSet.empty;
-    wl_failcp = Inv.gen_initial_inductive_info_map bsset;
-    wl_comb_cnt = 0;
-  }
-(* function init_worklist end *)
-
 let init_res : config -> res =
    let open Se in
    let open Vc in
@@ -220,7 +215,8 @@ let init_res : config -> res =
          ~do_cand_sat_istrg:
            (do_cand_sat_istrg cfg_smt_ctxt cfg_smt_slvr cfg_istrg cfg_istate)
          cfg_qid_set cfg_imap;
-     r_wlst = init_worklist cfg_se_res.sr_blocked;
+     r_idts = Inv.gen_initial_inductive_info_map cfg_se_res.sr_blocked;
+     r_comb_cnt = 0;
    }
 (* function init_res end *)
 
@@ -261,7 +257,7 @@ let init_config :
     cfg_smt_slvr = Vc.gen_solver cfg_smt_ctxt;
     cfg_ppath_k = 1;
     cfg_cand_k = 2;
-    cfg_comb_k = 10;
+    cfg_comb_k = 100;
   }
 (* function init_config end *)
 
@@ -312,7 +308,7 @@ let string_of_res_rough : config -> res -> string =
       )
    in
    let (p, r, u, f, c, e) = (soi p, soi r, soi u, soi f, soi c, soi e) in
-   let b = soi res.r_wlst.wl_comb_cnt in
+   let b = soi res.r_comb_cnt in
    let tstr = "Time = " ^ t in
    let mstr = "Memory = " ^ m in
    let prufstr = "P/R/U/F = " ^ String.concat ~sep:" / " [ p; r; u; f ] in

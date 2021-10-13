@@ -123,21 +123,6 @@ type cp_inductiveness = {
 type inductive_info = cp_inductiveness SIDMap.t
 [@@deriving compare, sexp, equal]
 
-type mci_pair = {
-  mp_start : Tz.r_mich_cut_info;
-  mp_block : Tz.r_mich_cut_info;
-}
-[@@deriving sexp, compare, equal]
-
-module MciPair_cmp = struct
-  type t = mci_pair [@@deriving compare, sexp]
-end
-
-module MPMap = Map.Make (MciPair_cmp)
-
-type inductive_info_by_mp = bool CPMap.t MPMap.t
-[@@deriving sexp, compare, equal]
-
 (******************************************************************************)
 (******************************************************************************)
 (* Utility Functions                                                          *)
@@ -485,12 +470,6 @@ let tmp_add_3_eq : Igdt.igdt_sets -> CSet.t =
 (* Invariants & Invariant Candidates                                          *)
 (******************************************************************************)
 
-let cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair =
-   let open TzUtil in
-   fun (mci1, mci2) ->
-   { mp_start = get_reduced_mci mci1; mp_block = get_reduced_mci mci2 }
-(* function cvt_mci_pair end *)
-
 let cvt_cand_pair : cand * cand -> cand_pair =
   (fun (cand1, cand2) -> { cp_start = cand1; cp_block = cand2 })
 (* function cvt_cand_pair end *)
@@ -560,10 +539,10 @@ let strengthen_inv_map : InvSet.t -> inv_map -> InvSet.t =
   (fun invset imap -> InvSet.map invset ~f:(merge_inv_map imap))
 (* function strengthen_inv_map end *)
 
-let check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool =
-  fun imap mcip candp ->
-  let (inv_start : cand) = find_inv_by_rmci imap mcip.mp_start in
-  let (inv_block : cand) = find_inv_by_rmci imap mcip.mp_block in
+let check_contain_pair : inv_map -> Tz.sym_state -> cand_pair -> bool =
+  fun imap ss candp ->
+  let (inv_start : cand) = find_inv imap ss.ss_start_mci in
+  let (inv_block : cand) = find_inv imap ss.ss_block_mci in
   let (inv_cp : cand_pair) = cvt_cand_pair (inv_start, inv_block) in
   equal_cand_pair candp inv_cp
 (* function check_contain_pair end *)
@@ -832,87 +811,14 @@ let add_inductiveness :
   )
 (* function add_inductiveness end *)
 
-let get_inductive_info_by_mp : inductive_info -> SSet.t -> inductive_info_by_mp
-    =
-   let open Tz in
-   let open TzUtil in
-   fun iimap bsset ->
-   SIDMap.fold iimap ~init:MPMap.empty ~f:(fun ~key ~data acc ->
-       let (bs : sym_state) =
-          find_sym_state_by_id bsset key
-          |> function
-          | Some bs -> bs
-          | None    ->
-            InvError "get_inductive_info_by_mp : wrong sym_state set" |> raise
-       in
-       let (mp : mci_pair) = cvt_mci_pair (bs.ss_start_mci, bs.ss_block_mci) in
-       let (cur_cpmap : bool CPMap.t) =
-          MPMap.find acc mp
-          |> function
-          | Some cpmap -> cpmap
-          | None       -> CPMap.empty
-       in
-       let (valid_updated_cpmap : bool CPMap.t) =
-          CPSet.fold data.ir_valid ~init:cur_cpmap
-            ~f:(fun valid_updated_cpmap cp ->
-              CPMap.update valid_updated_cpmap cp ~f:(function
-              | Some b -> b
-              | None   -> true
-              )
-          )
-       in
-       let (invalid_updated_cpmap : bool CPMap.t) =
-          CPSet.fold data.ir_invalid ~init:valid_updated_cpmap
-            ~f:(fun invalid_updated_cpmap cp ->
-              CPMap.set invalid_updated_cpmap ~key:cp ~data:false
-          )
-       in
-       MPMap.set acc ~key:mp ~data:invalid_updated_cpmap
-   )
-(* function get_inductive_info_by_mp end *)
-
-let is_already_succeeded_by_rmci :
-    inductive_info_by_mp -> mci_pair -> cand_pair -> bool =
-  fun iimap' mp cp ->
-  MPMap.find iimap' mp
-  |> function
-  | None       -> false
-  | Some cpmap -> (
-    CPMap.find cpmap cp
-    |> function
-    | Some b -> b
-    | None   -> false
-  )
-(* function is_already_succeeded_by_rmci end *)
-
-let is_already_succeeded :
-    inductive_info_by_mp ->
-    Tz.mich_cut_info * Tz.mich_cut_info ->
-    cand * cand ->
-    bool =
-  fun iimap' mcip candp ->
-  is_already_succeeded_by_rmci iimap' (cvt_mci_pair mcip) (cvt_cand_pair candp)
+let is_already_succeeded : inductive_info -> Tz.sym_state -> cand_pair -> bool =
+  fun idtmap ss cp ->
+  get_inductiveness_from_bs ~ss_id_normalize:true idtmap ss
+  |> (fun { ir_valid; _ } -> CPSet.mem ir_valid cp)
 (* function is_already_succeeded end *)
 
-let is_already_failed_by_rmci :
-    inductive_info_by_mp -> mci_pair -> cand_pair -> bool =
-  fun iimap' mp cp ->
-  MPMap.find iimap' mp
-  |> function
-  | None       -> false
-  | Some cpmap -> (
-    CPMap.find cpmap cp
-    |> function
-    | Some b -> not b
-    | None   -> false
-  )
-(* function is_already_failed_by_rmci end *)
-
-let is_already_failed :
-    inductive_info_by_mp ->
-    Tz.mich_cut_info * Tz.mich_cut_info ->
-    cand * cand ->
-    bool =
-  fun iimap' mcip candp ->
-  is_already_failed_by_rmci iimap' (cvt_mci_pair mcip) (cvt_cand_pair candp)
+let is_already_failed : inductive_info -> Tz.sym_state -> cand_pair -> bool =
+  fun idtmap ss cp ->
+  get_inductiveness_from_bs ~ss_id_normalize:true idtmap ss
+  |> (fun { ir_invalid; _ } -> CPSet.mem ir_invalid cp)
 (* function is_already_failed end *)

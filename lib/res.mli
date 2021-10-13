@@ -39,6 +39,8 @@ module SMYMap : module type of Core.Map.Make (MState.SMY_cmp)
 (******************************************************************************)
 (******************************************************************************)
 
+(* Flags **********************************************************************)
+
 type prover_flag =
   | PF_p (* proved  *)
   | PF_u (* unknown *)
@@ -52,6 +54,8 @@ type refuter_flag =
   | RF_f
 (* failed - no ppath left to check *)
 [@@deriving sexp, compare, equal]
+
+(* Partial Path ***************************************************************)
 
 module PPath : sig
   type t = {
@@ -69,6 +73,8 @@ module PPath : sig
 end
 
 module PPSet : module type of Core.Set.Make (PPath)
+
+(* Query Result ***************************************************************)
 
 type qres = {
   qr_qid : Tz.qid;
@@ -96,20 +102,18 @@ module QRes_cmp : sig
   type t = qres [@@deriving sexp, compare]
 end
 
-type worklist = {
-  wl_combs : InvSet.t;
-  wl_failcp : Inv.inductive_info;
-  wl_comb_cnt : int;
-}
-[@@deriving sexp, compare, equal]
+(* Result *********************************************************************)
 
 type res = {
   r_qr_lst : qres list;
   r_inv : Inv.inv_map;
   r_cands : Inv.cand_map;
-  r_wlst : worklist;
+  r_idts : Inv.inductive_info;
+  r_comb_cnt : int;
 }
 [@@deriving sexp, compare, equal]
+
+(* Configuration **************************************************************)
 
 type config = {
   (* Execution configuration *)
@@ -140,8 +144,6 @@ type config = {
 (******************************************************************************)
 
 val init_qres : Tz.qid -> SSet.t -> qres
-
-val init_worklist : SSet.t -> worklist
 
 val init_res : config -> res
 

@@ -122,21 +122,6 @@ type cp_inductiveness = {
 type inductive_info = cp_inductiveness SIDMap.t
 [@@deriving compare, sexp, equal]
 
-type mci_pair = {
-  mp_start : Tz.r_mich_cut_info;
-  mp_block : Tz.r_mich_cut_info;
-}
-[@@deriving sexp, compare, equal]
-
-module MciPair_cmp : sig
-  type t = mci_pair [@@deriving compare, sexp]
-end
-
-module MPMap : module type of Core.Map.Make (MciPair_cmp)
-
-type inductive_info_by_mp = bool CPMap.t MPMap.t
-[@@deriving sexp, compare, equal]
-
 (******************************************************************************)
 (******************************************************************************)
 (* Utility functions                                                          *)
@@ -205,8 +190,6 @@ val tmp_add_3_eq : Igdt.igdt_sets -> CSet.t
 (* Invariants & Invariant Candidates                                          *)
 (******************************************************************************)
 
-val cvt_mci_pair : Tz.mich_cut_info * Tz.mich_cut_info -> mci_pair
-
 val cvt_cand_pair : cand * cand -> cand_pair
 
 (* Invariants *****************************************************************)
@@ -225,7 +208,7 @@ val merge_inv_map : inv_map -> inv_map -> inv_map
 
 val strengthen_inv_map : InvSet.t -> inv_map -> InvSet.t
 
-val check_contain_pair : inv_map -> mci_pair -> cand_pair -> bool
+val check_contain_pair : inv_map -> Tz.sym_state -> cand_pair -> bool
 
 (* Invariant Candidates *******************************************************)
 
@@ -316,22 +299,6 @@ val count_each_cands : inductive_info -> Tz.sym_state -> cand -> int * int
 val add_inductiveness :
   inductive_info -> Tz.sym_state * cand_pair * bool -> inductive_info
 
-val get_inductive_info_by_mp : inductive_info -> SSet.t -> inductive_info_by_mp
+val is_already_succeeded : inductive_info -> Tz.sym_state -> cand_pair -> bool
 
-val is_already_succeeded_by_rmci :
-  inductive_info_by_mp -> mci_pair -> cand_pair -> bool
-
-val is_already_succeeded :
-  inductive_info_by_mp ->
-  Tz.mich_cut_info * Tz.mich_cut_info ->
-  cand * cand ->
-  bool
-
-val is_already_failed_by_rmci :
-  inductive_info_by_mp -> mci_pair -> cand_pair -> bool
-
-val is_already_failed :
-  inductive_info_by_mp ->
-  Tz.mich_cut_info * Tz.mich_cut_info ->
-  cand * cand ->
-  bool
+val is_already_failed : inductive_info -> Tz.sym_state -> cand_pair -> bool
