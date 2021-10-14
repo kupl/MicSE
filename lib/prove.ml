@@ -247,45 +247,59 @@ let naive_run_qres_atomic_action :
 
 (* Result *********************************************************************)
 
+let naive_run_find_inv_escape_condition :
+    Res.config -> Res.qres * Inv.inv_map option list * Inv.cand_map -> bool =
+   let open Res in
+   fun { cfg_timer; cfg_memory; _ }
+       ({ qr_qid; qr_prv_flag; qr_rft_flag; _ }, io_lst, cmap) ->
+   if (* 1. Timeout *)
+      Utils.Time.is_timeout cfg_timer
+   then true
+   else if (* 2. Memoryout *)
+           Utils.Memory.is_memoryout cfg_memory
+   then true
+   else if (* 3. Query result is already judged *)
+           equal_refuter_flag qr_rft_flag RF_r
+           || not (equal_prover_flag qr_prv_flag PF_u)
+   then true
+   else if (* 4. Invariant is already found *)
+           List.exists io_lst ~f:(fun io -> Option.is_some io)
+   then true
+   else if (* 5. There is no precondition *)
+           not (check_number_of_cands qr_qid cmap)
+   then true
+   else false
+(* function naive_run_res_escape_condition end *)
+
 let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
    let open Res in
    let open Inv in
    fun cfg res ->
    (* 1. Find invariant *)
-   let (qid_lst : Tz.qid list) =
-      List.filter res.r_qr_lst ~f:(fun { qr_prv_flag; qr_rft_flag; _ } ->
-          equal_prover_flag qr_prv_flag PF_u
-          && not (equal_refuter_flag qr_rft_flag RF_r)
-      )
-      |> List.map ~f:(fun { qr_qid; _ } -> qr_qid)
-   in
    let rec find_inv :
        inductive_info * int ->
        (inv_map option, unit) result * inductive_info * int =
      fun (idts, iter) ->
      (* 1-1-1. Make combination and check inductiveness in each query *)
-     let ( (ior_lst : (inv_map option, unit) result list),
-           (new_idts : inductive_info),
-           _
-         ) =
-        List.permute qid_lst
-        |> List.fold ~init:([], idts, false)
-             ~f:(fun (ior_lst, new_idts, found) qid ->
+     let ((io_lst : inv_map option list), (new_idts : inductive_info)) =
+        List.permute res.r_qr_lst
+        |> List.fold ~init:([], idts) ~f:(fun (io_lst, new_idts) qres ->
                if (* 1-1-1-1. If new invariant is already found, skip other procedure *)
-                  found
-               then (ior_lst, new_idts, found)
+                  naive_run_find_inv_escape_condition cfg
+                    (qres, io_lst, res.r_cands)
+               then (io_lst, new_idts)
                else (
                  (* 1-1-1-2. Make combination from precondition of query *)
                  let (comb_opt : inv_map option) =
-                    if check_number_of_cands qid res.r_cands
+                    if check_number_of_cands qres.qr_qid res.r_cands
                     then
-                      combinate qid cfg.cfg_se_res.sr_blocked new_idts res.r_inv
-                        res.r_cands res.r_inv
+                      combinate qres.qr_qid cfg.cfg_se_res.sr_blocked new_idts
+                        res.r_inv res.r_cands res.r_inv
                     else None
                  in
                  if (* 1-1-1-3. If combination cannot be generated, record its failure *)
                     Option.is_none comb_opt
-                 then (Error () :: ior_lst, new_idts, found)
+                 then (io_lst, new_idts)
                  else (
                    (* 1-1-1-4. Else, check combination's inductiveness *)
                    let (comb : inv_map) = Option.value_exn comb_opt in
@@ -298,32 +312,24 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
                    let (updated_idt : inductive_info) =
                       add_inductive_info new_idts si_lst comb
                    in
-                   (Ok imap_opt :: ior_lst, updated_idt, Option.is_some imap_opt)
+                   (imap_opt :: io_lst, updated_idt)
                  )
                )
            )
      in
      (* 1-1-2. Reduce result of combinating and inductiveness checking *)
      let ((ior : (inv_map option, unit) result), (new_iter : int)) =
-        List.fold ior_lst ~init:(Error (), iter)
-          ~f:(fun (ior, new_iter) new_ior ->
-            if Result.is_error new_ior
-            then (ior, new_iter)
-            else (
-              let (new_io : inv_map option) =
-                 Option.value_exn (Result.ok new_ior)
-              in
-              let (io : inv_map option) =
-                 Option.value (Result.ok ior) ~default:None
-              in
-              match (new_io, io) with
-              | (Some _, Some _) ->
-                PrvError
-                  "naive_run_res_atomic_action : find_inv : ior, new_iter : wrong process"
-                |> raise
-              | (Some _, None)   -> (new_ior, new_iter + 1)
-              | (None, _)        -> (Ok io, new_iter + 1)
-            )
+        List.fold io_lst ~init:(Error (), iter)
+          ~f:(fun (ior, new_iter) new_io ->
+            let (io : inv_map option) =
+               Option.value (Result.ok ior) ~default:None
+            in
+            match (new_io, io) with
+            | (Some _, Some _) ->
+              PrvError
+                "naive_run_res_atomic_action : find_inv : ior, new_iter : wrong process"
+              |> raise
+            | _                -> (Ok new_io, new_iter + 1)
         )
      in
      match ior with
