@@ -316,6 +316,7 @@ and mich_v =
   | MV_sigma_mmspnbppnmpnnpp_abm_m1          of mich_v cc
   | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 of mich_v cc
   | MV_sigma_mspnbpp_nm_m1                   of mich_v cc
+  | MV_sigma_n_am_n1                         of mich_v cc
 (* (timestamp * mutez) list -> mutez *)
 
 and mich_i =
