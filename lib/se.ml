@@ -1226,7 +1226,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      let (key : mich_v cc) =
                         List.hd_exn tb_entry_si.si_map_mapkey
                      in
-                     let (value : mich_v cc) =
+                     let (value_unopt : mich_v cc) =
                         MV_cdr elem_v |> gen_custom_cc inst
                      in
                      let (updated_map : mich_v cc) =
@@ -1244,11 +1244,16 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                         MV_mem_xmb (key, tb_container_v) |> gen_custom_cc inst
                      in
                      ( updated_map,
-                       MF_eq (gen_mich_v_ctx ~ctx get, gen_mich_v_ctx ~ctx value)
+                       MF_eq
+                         ( gen_mich_v_ctx ~ctx get,
+                           gen_mich_v_ctx ~ctx value_unopt
+                         )
                        :: MF_is_true (gen_mich_v_ctx ~ctx mem)
                        :: michv_maybe_mtznat_constraints ~ctx ~v:key
                        @ sigma_constraint_of_map_update ~ctx ~map:tb_container_v
-                           ~key ~value ~updated_map
+                           ~key
+                           ~value:(MV_some value_unopt |> gen_custom_cc inst)
+                           ~updated_map
                      )
                    | MT_list _             ->
                      let (hd : mich_v cc) =
@@ -1596,7 +1601,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      let (key : mich_v cc) =
                         MV_car elem_v |> gen_custom_cc inst
                      in
-                     let (value : mich_v cc) =
+                     let (value_unopt : mich_v cc) =
                         MV_cdr elem_v |> gen_custom_cc inst
                      in
                      let (updated_map : mich_v cc) =
@@ -1617,13 +1622,15 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                        MF_eq
                          ( gen_mich_v_ctx ~ctx
                              (MV_unlift_option get |> gen_custom_cc inst),
-                           gen_mich_v_ctx ~ctx value
+                           gen_mich_v_ctx ~ctx value_unopt
                          )
                        :: MF_is_true (gen_mich_v_ctx ~ctx mem)
                        :: MF_not (MF_is_none (gen_mich_v_ctx ~ctx get))
                        :: michv_maybe_mtznat_constraints ~ctx ~v:key
                        @ sigma_constraint_of_map_update ~ctx ~map:tb_container_v
-                           ~key ~value ~updated_map
+                           ~key
+                           ~value:(MV_some value_unopt |> gen_custom_cc inst)
+                           ~updated_map
                      )
                    | MT_set _              ->
                      let (mem : mich_v cc) =
