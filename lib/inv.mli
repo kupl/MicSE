@@ -294,7 +294,8 @@ val gen_initial_inductive_info_map : SSet.t -> inductive_info
 val get_inductiveness_from_bs :
   ?ss_id_normalize:bool -> inductive_info -> Tz.sym_state -> cp_inductiveness
 
-val count_each_cands : inductive_info -> Tz.sym_state -> cand -> int * int
+val count_each_cands :
+  inductive_info -> Tz.sym_state -> CSet.t * CSet.t -> int * int
 
 val add_inductiveness :
   inductive_info -> Tz.sym_state * cand_pair * bool -> inductive_info

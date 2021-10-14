@@ -779,17 +779,18 @@ let get_inductiveness_from_bs ?(ss_id_normalize = true) :
   | None     -> { ir_valid = CPSet.empty; ir_invalid = CPSet.empty }
 (* function get_inductiveness_from_bs end *)
 
-let count_each_cands : inductive_info -> Tz.sym_state -> cand -> int * int =
-  fun iimap bs cand ->
+let count_each_cands :
+    inductive_info -> Tz.sym_state -> CSet.t * CSet.t -> int * int =
+  fun iimap bs (start_prec_set, block_prec_set) ->
   let (cpi : cp_inductiveness) =
      get_inductiveness_from_bs ~ss_id_normalize:true iimap bs
   in
-  let (valid_cp : CPSet.t) =
-     CPSet.filter cpi.ir_valid ~f:(fun cp -> equal_cand cp.cp_block cand)
+  let check_cp : cand_pair -> bool =
+    fun cp ->
+    CSet.mem start_prec_set cp.cp_start && CSet.mem block_prec_set cp.cp_block
   in
-  let (invalid_cp : CPSet.t) =
-     CPSet.filter cpi.ir_invalid ~f:(fun cp -> equal_cand cp.cp_block cand)
-  in
+  let (valid_cp : CPSet.t) = CPSet.filter cpi.ir_valid ~f:check_cp in
+  let (invalid_cp : CPSet.t) = CPSet.filter cpi.ir_invalid ~f:check_cp in
   (CPSet.length valid_cp, CPSet.length invalid_cp)
 (* function count_each_cands end *)
 
