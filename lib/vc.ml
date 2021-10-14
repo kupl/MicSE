@@ -712,6 +712,7 @@ module Encoder = struct
 
   let rec cv_mf : Smt.Ctx.t -> Tz.mich_f -> Smt.Formula.t =
      let open Tz in
+     let open TzUtil in
      let open Smt in
      fun ctx fmla ->
      let eov { ctx_i; ctx_v } = cv_mvcc ~sctx:ctx_i ctx ctx_v in
@@ -750,6 +751,23 @@ module Encoder = struct
          Formula.create_shift_r_rhs_in_256 ctx (eov v2)
        (* Custom Formula for state merging *)
        | MF_time_leq (v1, v2) -> Formula.create_arith_le ctx (eov v1) (eov v2)
+       (* Custom Formula for represent property *)
+       | MF_all_element_equal_to (v1, v2) -> (
+         match (typ_of_val v1.ctx_v).cc_v with
+         | MT_map (ktcc, _)
+         | MT_big_map (ktcc, _) ->
+           let (key : Expr.t) = Expr.create_dummy ctx (cv_mtcc ctx ktcc) in
+           let (map : Expr.t) = eov v1 in
+           let (value_opt : Expr.t) = ZMap.read_value ctx ~key map in
+           let (value : Expr.t) = ZOption.read_content value_opt in
+           let (mem_f : Formula.t) =
+              Formula.create_is_true ctx (ZMap.read_mem ctx ~key map)
+           in
+           let (elem_f : Formula.t) = Formula.create_is_option_some value_opt in
+           let (prec : Formula.t) = Formula.create_and ctx [ mem_f; elem_f ] in
+           Formula.create_imply ctx prec (Formula.create_eq ctx value (eov v2))
+         | _ -> VcError "Encoder : cv_mf : MF_all_element_equal_to" |> raise
+       )
      with
      | Z3.Error s ->
        VcError

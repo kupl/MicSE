@@ -462,6 +462,8 @@ type mich_f =
   | MF_shiftR_nnn_rhs_in_256 of (mich_v_cc_ctx * mich_v_cc_ctx)
   (* Custom Formula for state merging *)
   | MF_time_leq              of (mich_v_cc_ctx * mich_v_cc_ctx)
+  (* Custom Formula for represent property *)
+  | MF_all_element_equal_to  of (mich_v_cc_ctx * mich_v_cc_ctx) (* ('a, 'b) map * 'b -> formula *)
 [@@deriving sexp, compare, equal]
 
 module MichF_cmp = struct

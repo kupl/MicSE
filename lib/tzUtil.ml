@@ -268,6 +268,8 @@ let rec mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f =
   | MF_shiftR_nnn_rhs_in_256 _ -> mapf mf
   (* Custom Formula for state merging *)
   | MF_time_leq _ -> mapf mf
+  (* Custom Formula for represent property *)
+  | MF_all_element_equal_to _ -> mapf mf
 
 (******************************************************************************)
 (******************************************************************************)
@@ -667,7 +669,10 @@ let symbol_context_swap_michf_recursive : ctx:mich_sym_ctxt -> mich_f -> mich_f
       | MF_shiftR_nnn_rhs_in_256 (v1ctx, v2ctx) ->
         MF_shiftR_nnn_rhs_in_256 (vswap v1ctx, vswap v2ctx)
       (* Custom Formula for state merging *)
-      | MF_time_leq (v1ctx, v2ctx) -> MF_time_leq (vswap v1ctx, vswap v2ctx))
+      | MF_time_leq (v1ctx, v2ctx) -> MF_time_leq (vswap v1ctx, vswap v2ctx)
+      (* Custom Formula for represent property *)
+      | MF_all_element_equal_to (v1ctx, v2ctx) ->
+        MF_all_element_equal_to (vswap v1ctx, vswap v2ctx))
     mf
 
 let sym_state_symbol_context_swap : ctx:mich_sym_ctxt -> sym_state -> sym_state
