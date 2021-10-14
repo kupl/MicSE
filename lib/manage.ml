@@ -116,16 +116,17 @@ let naive_run_escape_condition : Res.config -> Res.res -> bool =
 (* function naive_run_escape_condition end *)
 
 let naive_run : Res.config -> Res.res -> Res.res =
+   let log_report : Res.config -> Res.res -> unit =
+     fun cfg res ->
+     Utils.Log.info (fun m -> m "> Report: %s" (Res.string_of_res_rough cfg res))
+     (* inner-function log_report end *)
+   in
    let rec naive_run_i : Res.config -> Res.res -> Res.res =
      fun cfg res ->
      if naive_run_escape_condition cfg res
      then res
      else (
-       let _ =
-          Utils.Log.info (fun m ->
-              m "> Mid-Report: %s" (Res.string_of_res_rough cfg res)
-          )
-       in
+      let _ = log_report cfg res in
        let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
        let (p_res : Res.res) =
           if Prove.naive_run_escape_condition cfg res
@@ -133,11 +134,7 @@ let naive_run : Res.config -> Res.res -> Res.res =
           else Prove.naive_run_res_atomic_action cfg res
        in
        let _ = Utils.Log.info (fun m -> m "> Prover Turn End") in
-       let _ =
-          Utils.Log.info (fun m ->
-              m "> Mid-Report: %s" (Res.string_of_res_rough cfg p_res)
-          )
-       in
+       let _ = log_report cfg p_res in
        let _ = Utils.Log.info (fun m -> m "> Refuter Turn Start") in
        let (r_res : Res.res) =
           if Refute.naive_run_escape_condition cfg p_res
@@ -150,21 +147,15 @@ let naive_run : Res.config -> Res.res -> Res.res =
    in
    (* inner-function naive_run_i end *)
    fun cfg res ->
-   let _ =
-      Utils.Log.info (fun m ->
-          m "> Init-Report: %s" (Res.string_of_res_rough cfg res)
-      )
-   in
+      let _ = log_report cfg res in
    let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
    let (p_res : Res.res) = initial_prove_run_res_atomic_action cfg res in
    let _ = Utils.Log.info (fun m -> m "> Prover Turn End") in
-   let _ =
-      Utils.Log.info (fun m ->
-          m "> Mid-Report: %s" (Res.string_of_res_rough cfg p_res)
-      )
-   in
+   let _ = log_report cfg p_res in
    let _ = Utils.Log.info (fun m -> m "> Refuter Turn Start") in
    let (r_res : Res.res) = initial_refute_run_res_atomic_action cfg p_res in
    let _ = Utils.Log.info (fun m -> m "> Refuter Turn End") in
-   naive_run_i cfg r_res
+   let (n_res : Res.res) = naive_run_i cfg r_res in
+   let _ = log_report cfg n_res in
+   n_res
 (* function naive_run end *)
