@@ -34,6 +34,11 @@ let parsing : unit -> Mich.program * Mich.data Mich.t option =
      else
        Some (MichParse.parse_data ~filename:!Utils.Argument.input_storage_file)
   in
+  let _ =
+     Utils.Log.info (fun m ->
+         m "> # of Instructions: %d" (Mich.count_inst_pgm pgm)
+     )
+  in
   (pgm, strg_opt)
 (* function parsing end *)
 
