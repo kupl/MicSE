@@ -249,7 +249,7 @@ let init_config :
     cfg_imap = Igdt.get_igdts_map cfg_se_res.sr_blocked cfg_istrg mv_literal_set;
     cfg_smt_ctxt;
     cfg_smt_slvr = Vc.gen_solver cfg_smt_ctxt;
-    cfg_ppath_k = 1;
+    cfg_ppath_k = 2;
     cfg_cand_k = 2;
     cfg_comb_k = 50;
   }
@@ -380,7 +380,40 @@ let string_of_res : config -> res -> string =
    let (rftd : string) =
       Printf.sprintf "<< Refuted >>\n%s"
         (QRSet.to_list cres.qrc_r
-        |> List.map ~f:qres_str
+        |> List.map ~f:(fun qres ->
+               qres_str qres
+               (* ^ Printf.sprintf
+                   "\t> Searched Total Paths: (#: %d)\n\t\t%s\n\t> Validated Paths:\n\t\t%s\n\t> Model:\n%s\n\t> VC:\n%s\n"
+                   (List.length qres.qr_total_ppaths)
+                   (List.map qres.qr_total_ppaths ~f:(fun (ppath, sat) ->
+                        Printf.sprintf "- %s / %d / %s"
+                          (Smt.Solver.string_of_sat sat)
+                          ppath.PPath.pp_score
+                          (MState.get_summary ppath.PPath.pp_mstate
+                          |> MState.sexp_of_summary
+                          |> Sexp.to_string
+                          )
+                    )
+                   |> String.concat ~sep:"\n\t\t"
+                   )
+                   (List.map qres.qr_validated_ppaths ~f:(fun ppath ->
+                        MState.get_summary ppath.PPath.pp_mstate
+                        |> MState.sexp_of_summary
+                        |> Sexp.to_string
+                    )
+                   |> String.concat ~sep:"\n\t\t"
+                   )
+                   (Option.value_exn qres.qr_rft_ppath
+                   |> snd
+                   |> Smt.Model.to_string
+                   )
+                   ((Option.value_exn qres.qr_rft_ppath |> fst).pp_mstate
+                   |> Vc.gen_refute_vc cfg.cfg_istrg
+                   |> Tz.sexp_of_mich_f
+                   |> SexpUtil.tz_cc_sexp_form
+                   |> Sexp.to_string
+                   ) *)
+           )
         |> String.concat ~sep:"\n"
         )
    in
