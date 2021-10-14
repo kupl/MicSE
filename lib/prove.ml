@@ -180,6 +180,7 @@ let print_invariant : Inv.inv_map -> unit =
                    (rmci |> Tz.sexp_of_r_mich_cut_info |> SexpUtil.to_string)
                    (inv
                    |> fmla_of_cand_pre
+                   |> TzUtil.opt_mf
                    |> Tz.sexp_of_mich_f
                    |> SexpUtil.to_string
                    )
