@@ -84,12 +84,7 @@ let expand_pp : m_view:Se.SSGraph.mci_view -> Res.PPath.t -> PPSet.t =
    let (pred : SSet.t) = ss_view_pred ~m_view (get_first_ss pp.pp_mstate) in
    let (ems : MSSet.t) = MSSet.map pred ~f:(fun ss -> cons ss pp.pp_mstate) in
    PPSet.map ems ~f:(fun ems ->
-       {
-         pp_mstate = ems;
-         pp_satisfiability = None;
-         pp_score = pp.pp_score;
-         pp_score_fixed = false;
-       }
+       { pp_mstate = ems; pp_satisfiability = None; pp_score = pp.pp_score }
    )
 (* function expand_pp end *)
 

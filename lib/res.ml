@@ -64,18 +64,12 @@ module PPath = struct
     pp_mstate : MState.t;
     pp_satisfiability : Smt.Solver.satisfiability option;
     pp_score : int list;
-    pp_score_fixed : bool;
   }
   [@@deriving sexp, compare, equal]
 
   let t_of_ss : Tz.sym_state -> t =
     fun ss ->
-    {
-      pp_mstate = MState.init ss;
-      pp_satisfiability = None;
-      pp_score = [ 0 ];
-      pp_score_fixed = false;
-    }
+    { pp_mstate = MState.init ss; pp_satisfiability = None; pp_score = [] }
   (* function t_of_ss end *)
 
   let satisfiability_fill :
@@ -162,12 +156,7 @@ type config = {
 
 let init_qres : Tz.qid -> SSet.t -> qres =
   fun qr_qid qr_unk_qs ->
-  let exp_ppaths =
-     PPSet.map qr_unk_qs ~f:(fun ss ->
-         PPath.t_of_ss ss
-         |> (fun pp -> { pp with pp_score = [ 100 ]; pp_score_fixed = true })
-     )
-  in
+  let exp_ppaths = PPSet.map qr_unk_qs ~f:(fun ss -> PPath.t_of_ss ss) in
   {
     qr_qid;
     qr_prv_flag = PF_u;
