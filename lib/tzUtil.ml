@@ -1060,6 +1060,13 @@ let mvcc_subst_mf_rules :
   fun ~mapf mf ->
   match mf with
   (* Logical Formula *)
+  | MF_true
+  | MF_false
+  | MF_not _
+  | MF_and _
+  | MF_or _
+  | MF_imply _ ->
+    mf
   | MF_eq (v1, v2) -> MF_eq (mapf v1, mapf v2)
   (* MicSE Branch *)
   | MF_is_true v1 -> MF_is_true (mapf v1)
@@ -1079,8 +1086,11 @@ let mvcc_subst_mf_rules :
     MF_shiftL_nnn_rhs_in_256 (mapf v1, mapf v2)
   | MF_shiftR_nnn_rhs_in_256 (v1, v2) ->
     MF_shiftR_nnn_rhs_in_256 (mapf v1, mapf v2)
-  (* Others *)
-  | _ -> mf
+  (* Custom Formula for state merging *)
+  | MF_time_leq (v1, v2) -> MF_time_leq (mapf v1, mapf v2)
+  (* Custom Formula for represent property *)
+  | MF_all_element_equal_to (v1, v2) ->
+    MF_all_element_equal_to (mapf v1, mapf v2)
 (* function mvcc_subst_mf_rules end *)
 
 let mvcc_subst_mf : mapf:(mich_v_cc_ctx -> mich_v_cc_ctx) -> mich_f -> mich_f =
