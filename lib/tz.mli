@@ -450,6 +450,8 @@ type mich_f =
   (* MicSE Datatype Constraint *)
   | MF_mutez_bound           of mich_v_cc_ctx (* (integer arithmetic) 'a -> formula *)
   | MF_nat_bound             of mich_v_cc_ctx (* (integer arithmetic) 'a -> formula *)
+  | MF_map_default_value     of mich_v_cc_ctx (* ('a, 'b) map -> formula *)
+  | MF_set_default_value     of mich_v_cc_ctx (* ('a, 'b) set -> formula *)
   (* Custom Formula for verifiying *)
   | MF_add_mmm_no_overflow   of (mich_v_cc_ctx * mich_v_cc_ctx)
   | MF_sub_mmm_no_underflow  of (mich_v_cc_ctx * mich_v_cc_ctx)

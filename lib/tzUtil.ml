@@ -259,6 +259,8 @@ let rec mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f =
   (* MicSE Datatype Constraint *)
   | MF_mutez_bound _ -> mapf mf
   | MF_nat_bound _ -> mapf mf
+  | MF_map_default_value _ -> mapf mf
+  | MF_set_default_value _ -> mapf mf
   (* Custom Formula for verifiying *)
   | MF_add_mmm_no_overflow _ -> mapf mf
   | MF_sub_mmm_no_underflow _ -> mapf mf
@@ -655,6 +657,8 @@ let symbol_context_swap_michf_recursive : ctx:mich_sym_ctxt -> mich_f -> mich_f
       (* MicSE Datatype Constraint *)
       | MF_mutez_bound vctx -> MF_mutez_bound (vswap vctx)
       | MF_nat_bound vctx -> MF_nat_bound (vswap vctx)
+      | MF_map_default_value vctx -> MF_map_default_value (vswap vctx)
+      | MF_set_default_value vctx -> MF_set_default_value (vswap vctx)
       (* Custom Formula for verifiying *)
       | MF_add_mmm_no_overflow (v1ctx, v2ctx) ->
         MF_add_mmm_no_overflow (vswap v1ctx, vswap v2ctx)
@@ -1076,6 +1080,8 @@ let mvcc_subst_mf_rules :
   (* MicSE Datatype Constraint *)
   | MF_mutez_bound v1 -> MF_mutez_bound (mapf v1)
   | MF_nat_bound v1 -> MF_nat_bound (mapf v1)
+  | MF_map_default_value v1 -> MF_map_default_value (mapf v1)
+  | MF_set_default_value v1 -> MF_set_default_value (mapf v1)
   (* Custom Formula for verifiying *)
   | MF_add_mmm_no_overflow (v1, v2) -> MF_add_mmm_no_overflow (mapf v1, mapf v2)
   | MF_sub_mmm_no_underflow (v1, v2) ->

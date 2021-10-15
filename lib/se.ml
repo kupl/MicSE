@@ -145,7 +145,43 @@ let add_nat_constraint_if_it_is :
   fun ~ctx ~tv ss ->
   add_constraints ~c:[ nat_constraint_if_it_is_or_true ~ctx ~tv ] ss
 
-let michv_maybe_mtznat_constraints :
+let map_constraint_if_it_is_or_true :
+    ctx:Tz.mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+   let open Tz in
+   let open TzUtil in
+   fun ~ctx ~tv:(t, v) ->
+   match t.cc_v with
+   | MT_map _
+   | MT_big_map _ ->
+     MF_map_default_value (gen_mich_v_ctx v ~ctx)
+   | _ -> MF_true
+
+let add_map_constraint_if_it_is :
+    ctx:Tz.mich_sym_ctxt ->
+    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc ->
+    Tz.sym_state ->
+    Tz.sym_state =
+  fun ~ctx ~tv ss ->
+  add_constraints ~c:[ map_constraint_if_it_is_or_true ~ctx ~tv ] ss
+
+let set_constraint_if_it_is_or_true :
+    ctx:Tz.mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f =
+   let open Tz in
+   let open TzUtil in
+   fun ~ctx ~tv:(t, v) ->
+   match t.cc_v with
+   | MT_set _ -> MF_set_default_value (gen_mich_v_ctx v ~ctx)
+   | _        -> MF_true
+
+let add_set_constraint_if_it_is :
+    ctx:Tz.mich_sym_ctxt ->
+    tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc ->
+    Tz.sym_state ->
+    Tz.sym_state =
+  fun ~ctx ~tv ss ->
+  add_constraints ~c:[ set_constraint_if_it_is_or_true ~ctx ~tv ] ss
+
+let michv_typ_constraints :
     ctx:Tz.mich_sym_ctxt -> v:Tz.mich_v Tz.cc -> Tz.mich_f list =
    (* let open Tz in *)
    let open TzUtil in
@@ -154,7 +190,13 @@ let michv_maybe_mtznat_constraints :
    [
      mtz_constraint_if_it_is_or_true ~ctx ~tv;
      nat_constraint_if_it_is_or_true ~ctx ~tv;
+     map_constraint_if_it_is_or_true ~ctx ~tv;
+     set_constraint_if_it_is_or_true ~ctx ~tv;
    ]
+
+let add_typ_constraints :
+    ctx:Tz.mich_sym_ctxt -> v:Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.sym_state =
+  (fun ~ctx ~v ss -> add_constraints ~c:(michv_typ_constraints ~ctx ~v) ss)
 
 let amount_balance_mutez_constraints :
     ctx:Tz.mich_sym_ctxt ->
@@ -253,8 +295,7 @@ let sigma_constraint_of_list_nil :
        in
        let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
        let (zero_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx zero in
-       MF_eq (sigma_ctx, zero_ctx)
-       :: michv_maybe_mtznat_constraints ~ctx ~v:sigma
+       MF_eq (sigma_ctx, zero_ctx) :: michv_typ_constraints ~ctx ~v:sigma
    )
    |> List.join
 (* function sigma_constraint_of_list_nil end *)
@@ -277,8 +318,7 @@ let sigma_constraint_of_map_empty :
        in
        let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
        let (zero_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx zero in
-       MF_eq (sigma_ctx, zero_ctx)
-       :: michv_maybe_mtznat_constraints ~ctx ~v:sigma
+       MF_eq (sigma_ctx, zero_ctx) :: michv_typ_constraints ~ctx ~v:sigma
    )
    |> List.join
 (* function sigma_constraint_of_map_empty end *)
@@ -317,7 +357,7 @@ let sigma_constraint_of_map_get :
        in
        MF_imply
          (MF_not (MF_is_none get_ctx), MF_and (MF_is_true leq_ctx :: acc_elem))
-       :: michv_maybe_mtznat_constraints ~ctx ~v:sigma
+       :: michv_typ_constraints ~ctx ~v:sigma
    )
    |> List.join
 (* function sigma_constraint_of_map_get end *)
@@ -349,9 +389,9 @@ let sigma_constraint_of_list_cons :
        let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
        let (addition_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx addition in
        (MF_eq (sigma_ctx, addition_ctx) :: acc_elem)
-       @ michv_maybe_mtznat_constraints ~ctx ~v:addition
-       @ michv_maybe_mtznat_constraints ~ctx ~v:sigma
-       @ michv_maybe_mtznat_constraints ~ctx ~v:new_sigma
+       @ michv_typ_constraints ~ctx ~v:addition
+       @ michv_typ_constraints ~ctx ~v:sigma
+       @ michv_typ_constraints ~ctx ~v:new_sigma
    )
    |> function
    | Ok fll          -> List.join fll
@@ -432,7 +472,7 @@ let sigma_constraint_of_map_update :
                MF_and
                  ([ MF_eq (old_addition_ctx, new_sigma_ctx) ]
                  @ acc_new_elem
-                 @ michv_maybe_mtznat_constraints ~ctx ~v:old_addition
+                 @ michv_typ_constraints ~ctx ~v:old_addition
                  )
              );
            MF_imply
@@ -440,7 +480,7 @@ let sigma_constraint_of_map_update :
                MF_and
                  ([ MF_eq (sigma_ctx, new_addition_ctx) ]
                  @ acc_old_elem
-                 @ michv_maybe_mtznat_constraints ~ctx ~v:new_addition
+                 @ michv_typ_constraints ~ctx ~v:new_addition
                  )
              );
            MF_imply
@@ -450,13 +490,13 @@ let sigma_constraint_of_map_update :
                  ([ MF_eq (old_addition_ctx, new_addition_ctx) ]
                  @ acc_old_elem
                  @ acc_new_elem
-                 @ michv_maybe_mtznat_constraints ~ctx ~v:old_addition
-                 @ michv_maybe_mtznat_constraints ~ctx ~v:new_addition
+                 @ michv_typ_constraints ~ctx ~v:old_addition
+                 @ michv_typ_constraints ~ctx ~v:new_addition
                  )
              );
          ]
-       :: michv_maybe_mtznat_constraints ~ctx ~v:sigma
-       @ michv_maybe_mtznat_constraints ~ctx ~v:new_sigma
+       :: michv_typ_constraints ~ctx ~v:sigma
+       @ michv_typ_constraints ~ctx ~v:new_sigma
    )
    |> function
    | Ok fll          -> List.join fll
@@ -598,7 +638,7 @@ let run_inst_initial_se_result :
                 (MV_car (List.hd_exn beginning_si.si_mich) |> gen_dummy_cc)
             )
           :: (* 2. If parameter value is mutez or nat, add constraints *)
-             michv_maybe_mtznat_constraints ~ctx ~v:param_v
+             michv_typ_constraints ~ctx ~v:param_v
           @ [
               (* 3. Amount comes from Bc-Balance *)
               mtz_comes_from_constraint ~ctx ~mtz_v:beginning_ti.ti_amount
@@ -767,10 +807,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
      in
      let ctl =
         List.fold vl ~init:[] ~f:(fun accl v ->
-            let tv = (typ_of_val v, v) in
-            mtz_constraint_if_it_is_or_true ~ctx ~tv
-            :: nat_constraint_if_it_is_or_true ~ctx ~tv
-            :: accl
+            michv_typ_constraints ~ctx ~v @ accl
         )
      in
      (vl, ctl)
@@ -850,10 +887,9 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
          | _                  -> failwith "run_inst_i : MI_dug : unexpected"
      )
      |> running_ss_to_sr ctxt_sr
-   | MI_push (t, v) ->
+   | MI_push (_, v) ->
      push_bmstack ss ~v
-     |> add_mtz_constraint_if_it_is ~ctx ~tv:(t, v)
-     |> add_nat_constraint_if_it_is ~ctx ~tv:(t, v)
+     |> add_typ_constraints ~ctx ~v
      |> running_ss_to_sr ctxt_sr
    | MI_some ->
      update_top_1_bmstack ~f:(fun x -> [ MV_some x |> gen_custom_cc inst ]) ss
@@ -894,10 +930,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
            else_br_base_ss
            |> update_top_1_bmstack ~f:(fun _ -> [ unlifted_cond_value ])
            |> add_constraints ~c:[ eb_cond_constraint ]
-           |> add_mtz_constraint_if_it_is ~ctx
-                ~tv:(typ_of_val unlifted_cond_value, unlifted_cond_value)
-           |> add_nat_constraint_if_it_is ~ctx
-                ~tv:(typ_of_val unlifted_cond_value, unlifted_cond_value)
+           |> add_typ_constraints ~ctx ~v:unlifted_cond_value
         in
         run_inst_i i2 (ctxt_sr, else_br_ss)
      in
@@ -911,14 +944,14 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
      update_top_1_bmstack_and_constraint
        ~f:(fun x ->
          let nv = MV_car x |> gen_custom_cc inst in
-         ([ nv ], michv_maybe_mtznat_constraints ~ctx ~v:nv))
+         ([ nv ], michv_typ_constraints ~ctx ~v:nv))
        ss
      |> running_ss_to_sr ctxt_sr
    | MI_cdr ->
      update_top_1_bmstack_and_constraint
        ~f:(fun x ->
          let nv = MV_cdr x |> gen_custom_cc inst in
-         ([ nv ], michv_maybe_mtznat_constraints ~ctx ~v:nv))
+         ([ nv ], michv_typ_constraints ~ctx ~v:nv))
        ss
      |> running_ss_to_sr ctxt_sr
    | MI_left t ->
@@ -943,10 +976,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
         in
         update_top_1_bmstack ~f:(fun _ -> [ unlifted_cond_value ]) ss
         |> add_constraints ~c:[ tb_cond_constraint ]
-        |> add_mtz_constraint_if_it_is ~ctx
-             ~tv:(typ_of_val unlifted_cond_value, unlifted_cond_value)
-        |> add_nat_constraint_if_it_is ~ctx
-             ~tv:(typ_of_val unlifted_cond_value, unlifted_cond_value)
+        |> add_typ_constraints ~ctx ~v:unlifted_cond_value
         |> (fun ssss -> run_inst_i i1 (ctxt_sr, ssss))
      in
      (* IMPORTANT: ctxt_sr name shadowing *)
@@ -968,10 +998,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
            else_br_base_ss
            |> update_top_1_bmstack ~f:(fun _ -> [ unlifted_cond_value ])
            |> add_constraints ~c:[ eb_cond_constraint ]
-           |> add_mtz_constraint_if_it_is ~ctx
-                ~tv:(typ_of_val unlifted_cond_value, unlifted_cond_value)
-           |> add_nat_constraint_if_it_is ~ctx
-                ~tv:(typ_of_val unlifted_cond_value, unlifted_cond_value)
+           |> add_typ_constraints ~ctx ~v:unlifted_cond_value
         in
         run_inst_i i2 (ctxt_sr, else_br_ss)
      in
@@ -1001,10 +1028,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
           ~f:(fun _ -> [ unlifted_cond_value_hd; unlifted_cond_value_tl ])
           ss
         |> add_constraints ~c:[ tb_cond_constraint ]
-        |> add_mtz_constraint_if_it_is ~ctx
-             ~tv:(typ_of_val unlifted_cond_value_hd, unlifted_cond_value_hd)
-        |> add_nat_constraint_if_it_is ~ctx
-             ~tv:(typ_of_val unlifted_cond_value_hd, unlifted_cond_value_hd)
+        |> add_typ_constraints ~ctx ~v:unlifted_cond_value_hd
         |> add_sigma_constraint_of_list_cons ~ctx ~lst:cond_value
              ~hd:unlifted_cond_value_hd ~tl:unlifted_cond_value_tl
         (* It is important to update sid of else-branch symbolic-state *)
@@ -1169,8 +1193,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                 let constraints_abp =
                    ge_balance_amount_in_non_trx_entry_constraint ~ctx
                      ~amount_v:tb_trx_image.ti_amount ~balance_v
-                   :: michv_maybe_mtznat_constraints ~ctx
-                        ~v:tb_trx_image.ti_param
+                   :: michv_typ_constraints ~ctx ~v:tb_trx_image.ti_param
                    @ [
                        mtz_comes_from_constraint ~ctx
                          ~mtz_v:tb_trx_image.ti_amount ~from_v:balance_v;
@@ -1188,7 +1211,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                           )
                         |> gen_custom_cc inst
                      in
-                     ([ v ], michv_maybe_mtznat_constraints ~ctx ~v)
+                     ([ v ], michv_typ_constraints ~ctx ~v)
                    | _              -> ([], [ MF_true ])
                 in
                 ( {
@@ -1218,7 +1241,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      (elem_t, MSC_mich_stack (List.length tb_entry_si.si_mich))
                    |> gen_custom_cc inst
                 in
-                let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
+                let elem_ct = michv_typ_constraints ~ctx ~v:elem_v in
                 let (tb_container_blocksi_v, tb_container_blocksi_ct)
                       : mich_v cc * mich_f list =
                    match container_t.cc_v with
@@ -1249,7 +1272,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                            gen_mich_v_ctx ~ctx value_unopt
                          )
                        :: MF_is_true (gen_mich_v_ctx ~ctx mem)
-                       :: michv_maybe_mtznat_constraints ~ctx ~v:key
+                       :: michv_typ_constraints ~ctx ~v:key
                        @ sigma_constraint_of_map_update ~ctx ~map:tb_container_v
                            ~key
                            ~value:(MV_some value_unopt |> gen_custom_cc inst)
@@ -1389,7 +1412,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
              let constraints_abp =
                 ge_balance_amount_in_non_trx_entry_constraint ~ctx
                   ~amount_v:eb_trx_image.ti_amount ~balance_v
-                :: michv_maybe_mtznat_constraints ~ctx ~v:eb_trx_image.ti_param
+                :: michv_typ_constraints ~ctx ~v:eb_trx_image.ti_param
                 @ [
                     mtz_comes_from_constraint ~ctx ~mtz_v:eb_trx_image.ti_amount
                       ~from_v:balance_v;
@@ -1534,8 +1557,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                 let constraints_abp =
                    ge_balance_amount_in_non_trx_entry_constraint ~ctx
                      ~amount_v:tb_trx_image.ti_amount ~balance_v
-                   :: michv_maybe_mtznat_constraints ~ctx
-                        ~v:tb_trx_image.ti_param
+                   :: michv_typ_constraints ~ctx ~v:tb_trx_image.ti_param
                    @ [
                        mtz_comes_from_constraint ~ctx
                          ~mtz_v:tb_trx_image.ti_amount ~from_v:balance_v;
@@ -1547,7 +1569,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                       MV_symbol (elem_t, MSC_mich_stack (List.length michst))
                       |> gen_custom_cc inst
                    in *)
-                (* let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in *)
+                (* let elem_ct = michv_typ_constraints ~ctx ~v:elem_v in *)
                 (* let mapkey_ct : mich_f list =
                       (* Precondition : container's type is map *)
                       match container_t.cc_v with
@@ -1593,7 +1615,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      (elem_t, MSC_mich_stack (List.length tb_entry_si.si_mich))
                    |> gen_custom_cc inst
                 in
-                let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
+                let elem_ct = michv_typ_constraints ~ctx ~v:elem_v in
                 let (tb_container_blocksi_v, tb_container_blocksi_ct)
                       : mich_v cc * mich_f list =
                    match container_t.cc_v with
@@ -1626,7 +1648,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                          )
                        :: MF_is_true (gen_mich_v_ctx ~ctx mem)
                        :: MF_not (MF_is_none (gen_mich_v_ctx ~ctx get))
-                       :: michv_maybe_mtznat_constraints ~ctx ~v:key
+                       :: michv_typ_constraints ~ctx ~v:key
                        @ sigma_constraint_of_map_update ~ctx ~map:tb_container_v
                            ~key
                            ~value:(MV_some value_unopt |> gen_custom_cc inst)
@@ -1755,7 +1777,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
              let constraints_abp =
                 ge_balance_amount_in_non_trx_entry_constraint ~ctx
                   ~amount_v:eb_trx_image.ti_amount ~balance_v
-                :: michv_maybe_mtznat_constraints ~ctx ~v:eb_trx_image.ti_param
+                :: michv_typ_constraints ~ctx ~v:eb_trx_image.ti_param
                 @ [
                     mtz_comes_from_constraint ~ctx ~mtz_v:eb_trx_image.ti_amount
                       ~from_v:balance_v;
@@ -1963,8 +1985,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                 let constraints_abp =
                    ge_balance_amount_in_non_trx_entry_constraint ~ctx
                      ~amount_v:tb_trx_image.ti_amount ~balance_v
-                   :: michv_maybe_mtznat_constraints ~ctx
-                        ~v:tb_trx_image.ti_param
+                   :: michv_typ_constraints ~ctx ~v:tb_trx_image.ti_param
                    @ [
                        mtz_comes_from_constraint ~ctx
                          ~mtz_v:tb_trx_image.ti_amount ~from_v:balance_v;
@@ -2076,7 +2097,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
              let constraints_abp =
                 ge_balance_amount_in_non_trx_entry_constraint ~ctx
                   ~amount_v:eb_trx_image.ti_amount ~balance_v
-                :: michv_maybe_mtznat_constraints ~ctx ~v:eb_trx_image.ti_param
+                :: michv_typ_constraints ~ctx ~v:eb_trx_image.ti_param
                 @ [
                     mtz_comes_from_constraint ~ctx ~mtz_v:eb_trx_image.ti_amount
                       ~from_v:balance_v;
@@ -2210,8 +2231,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                 let constraints_abp =
                    ge_balance_amount_in_non_trx_entry_constraint ~ctx
                      ~amount_v:tb_trx_image.ti_amount ~balance_v
-                   :: michv_maybe_mtznat_constraints ~ctx
-                        ~v:tb_trx_image.ti_param
+                   :: michv_typ_constraints ~ctx ~v:tb_trx_image.ti_param
                    @ [
                        mtz_comes_from_constraint ~ctx
                          ~mtz_v:tb_trx_image.ti_amount ~from_v:balance_v;
@@ -2223,7 +2243,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                    MV_symbol (left_elem_t, MSC_mich_stack (List.length michst))
                    |> gen_custom_cc inst
                 in
-                let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
+                let elem_ct = michv_typ_constraints ~ctx ~v:elem_v in
                 ( {
                     si_mich = elem_v :: michst;
                     si_dip = dipst;
@@ -2329,7 +2349,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
              let constraints_abp =
                 ge_balance_amount_in_non_trx_entry_constraint ~ctx
                   ~amount_v:eb_trx_image.ti_amount ~balance_v
-                :: michv_maybe_mtznat_constraints ~ctx ~v:eb_trx_image.ti_param
+                :: michv_typ_constraints ~ctx ~v:eb_trx_image.ti_param
                 @ [
                     mtz_comes_from_constraint ~ctx ~mtz_v:eb_trx_image.ti_amount
                       ~from_v:balance_v;
@@ -2341,7 +2361,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                 MV_symbol (right_elem_t, MSC_mich_stack (List.length michst))
                 |> gen_custom_cc inst
              in
-             let elem_ct = michv_maybe_mtznat_constraints ~ctx ~v:elem_v in
+             let elem_ct = michv_typ_constraints ~ctx ~v:elem_v in
              ( {
                  si_mich = elem_v :: michst;
                  si_dip = dipst;
@@ -2391,7 +2411,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
      update_top_2_bmstack_and_constraint
        ~f:(fun (h1, h2) ->
          let v = MV_exec (h1, h2) |> gen_custom_cc inst in
-         ([ v ], michv_maybe_mtznat_constraints ~ctx ~v))
+         ([ v ], michv_typ_constraints ~ctx ~v))
        ss
      |> running_ss_to_sr ctxt_sr
    | MI_dip_n (zn, i) ->
@@ -2470,12 +2490,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
      update_top_1_bmstack_and_constraint
        ~f:(fun h ->
          let mvcc = MV_unpack (t, h) |> gen_custom_cc inst in
-         ( [ mvcc ],
-           [
-             mtz_constraint_if_it_is_or_true ~ctx ~tv:(t, mvcc);
-             nat_constraint_if_it_is_or_true ~ctx ~tv:(t, mvcc);
-           ]
-         ))
+         ([ mvcc ], michv_typ_constraints ~ctx ~v:mvcc))
        ss
      |> running_ss_to_sr ctxt_sr
    | MI_add -> (
@@ -2863,13 +2878,12 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    | MI_amount ->
      let amount_v = ss.ss_block_si.si_param.ti_amount in
      push_bmstack ss ~v:amount_v
-     |> add_mtz_constraint_if_it_is ~ctx ~tv:(MT_mutez |> gen_dummy_cc, amount_v)
+     |> add_typ_constraints ~ctx ~v:amount_v
      |> running_ss_to_sr ctxt_sr
    | MI_balance ->
      let balance_v = ss.ss_block_si.si_balance in
      push_bmstack ss ~v:balance_v
-     |> add_mtz_constraint_if_it_is ~ctx
-          ~tv:(MT_mutez |> gen_dummy_cc, balance_v)
+     |> add_typ_constraints ~ctx ~v:balance_v
      |> running_ss_to_sr ctxt_sr
    | MI_check_signature ->
      update_top_3_bmstack

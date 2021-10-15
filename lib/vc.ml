@@ -736,6 +736,8 @@ module Encoder = struct
        (* MicSE Datatype Constraint *)
        | MF_mutez_bound v1 -> Formula.create_mutez_bound ctx (eov v1)
        | MF_nat_bound v1 -> Formula.create_nat_bound ctx (eov v1)
+       | MF_map_default_value v1 -> Formula.create_map_default_value ctx (eov v1)
+       | MF_set_default_value v1 -> Formula.create_set_default_value ctx (eov v1)
        (* Custom Formula for verifiying *)
        | MF_add_mmm_no_overflow (v1, v2) ->
          Formula.create_add_no_overflow ctx (eov v1) (eov v2)

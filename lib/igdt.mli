@@ -80,13 +80,19 @@ val find_igdt_sets : igdt_sets -> Tz.mich_t Tz.cc -> igdt_delim
 
 val gen_custom_igdt : Tz.mich_v Tz.cc -> igdt
 
+val collect_igdt_of_sigma : igdt -> ISet.t * ISet.t
+
 val collect_igdt_from_option : igdt -> ISet.t * ISet.t
 
 val collect_igdt_from_pair : igdt -> ISet.t * ISet.t
 
 val collect_igdt_from_or : igdt -> ISet.t * ISet.t
 
-val collect_igdt_of_sigma : igdt -> ISet.t * ISet.t
+val collect_igdt_from_lst : igdt -> ISet.t * ISet.t
+
+val collect_igdt_from_map : igdt -> ISet.t * ISet.t
+
+val collect_igdt_from_set : igdt -> ISet.t * ISet.t
 
 val collect_igdt_from_igdt : igdt -> ISet.t
 

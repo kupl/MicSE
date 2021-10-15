@@ -128,6 +128,56 @@ let gen_custom_igdt : Tz.mich_v Tz.cc -> igdt =
   }
 (* function gen_igdt end *)
 
+let collect_igdt_of_sigma : igdt -> ISet.t * ISet.t =
+   let open Tz in
+   let open TzUtil in
+   fun cur_igdt ->
+   let (cur_val : mich_v cc) = cur_igdt.ig_value in
+   let (set_of_sigma : mich_v cc list) = sigma_of_cont cur_val in
+   if List.is_empty set_of_sigma
+   then (ISet.empty, ISet.singleton cur_igdt)
+   else (
+     let (igdt_set : ISet.t) =
+        List.map set_of_sigma ~f:(fun sigma ->
+            (* values *)
+            let (zero : mich_v cc) =
+               (match (typ_of_val sigma).cc_v with
+               | MT_mutez -> MV_lit_mutez Bigint.zero
+               | MT_nat   -> MV_lit_nat Bigint.zero
+               | MT_int   -> MV_lit_int Bigint.zero
+               | _        ->
+                 IgdtError "collect_igdt_of_sigma : not supported" |> raise)
+               |> gen_custom_cc sigma
+            in
+            (* type *)
+            let (typ_sigma : mich_t cc) = typ_of_val sigma in
+            (* ingredients *)
+            let (igdt_sigma : igdt) =
+               { cur_igdt with ig_value = sigma; ig_typ = typ_sigma }
+            in
+            let (igdt_zero : igdt) =
+               { cur_igdt with ig_value = zero; ig_typ = typ_sigma }
+            in
+            (match cur_val.cc_v with
+            | MV_nil _ -> [ igdt_zero ]
+            | MV_lit_list (_, lst) when List.length lst = 0 -> [ igdt_zero ]
+            | MV_empty_map _ -> [ igdt_zero ]
+            | MV_lit_map (_, _, map) when List.length map = 0 -> [ igdt_zero ]
+            | MV_empty_big_map _ -> [ igdt_zero ]
+            | MV_lit_big_map (_, _, map) when List.length map = 0 ->
+              [ igdt_zero ]
+            | MV_lit_list (_, _) -> [ igdt_sigma ]
+            | MV_lit_map (_, _, _) -> [ igdt_sigma ]
+            | MV_lit_big_map (_, _, _) -> [ igdt_sigma ]
+            | _ -> [ igdt_sigma; igdt_zero ])
+            |> ISet.of_list
+        )
+        |> ISet.union_list
+     in
+     (igdt_set, ISet.singleton cur_igdt)
+   )
+(* function collect_igdt_of_sigma end *)
+
 let collect_igdt_from_option : igdt -> ISet.t * ISet.t =
    let open Tz in
    let open TzUtil in
@@ -282,55 +332,98 @@ let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
    | _                  -> IgdtError "collect_igdt_from_or : _" |> raise
 (* function collect_igdt_from_or end *)
 
-let collect_igdt_of_sigma : igdt -> ISet.t * ISet.t =
+let collect_igdt_from_lst : igdt -> ISet.t * ISet.t =
    let open Tz in
-   let open TzUtil in
+   (* syntax sugar *)
    fun cur_igdt ->
    let (cur_val : mich_v cc) = cur_igdt.ig_value in
-   let (set_of_sigma : mich_v cc list) = sigma_of_cont cur_val in
-   if List.is_empty set_of_sigma
-   then (ISet.empty, ISet.singleton cur_igdt)
-   else (
-     let (igdt_set : ISet.t) =
-        List.map set_of_sigma ~f:(fun sigma ->
-            (* values *)
-            let (zero : mich_v cc) =
-               (match (typ_of_val sigma).cc_v with
-               | MT_mutez -> MV_lit_mutez Bigint.zero
-               | MT_nat   -> MV_lit_nat Bigint.zero
-               | MT_int   -> MV_lit_int Bigint.zero
-               | _        ->
-                 IgdtError "collect_igdt_of_sigma : not supported" |> raise)
-               |> gen_custom_cc sigma
-            in
-            (* type *)
-            let (typ_sigma : mich_t cc) = typ_of_val sigma in
-            (* ingredients *)
-            let (igdt_sigma : igdt) =
-               { cur_igdt with ig_value = sigma; ig_typ = typ_sigma }
-            in
-            let (igdt_zero : igdt) =
-               { cur_igdt with ig_value = zero; ig_typ = typ_sigma }
-            in
-            (match cur_val.cc_v with
-            | MV_nil _ -> [ igdt_zero ]
-            | MV_lit_list (_, lst) when List.length lst = 0 -> [ igdt_zero ]
-            | MV_empty_map _ -> [ igdt_zero ]
-            | MV_lit_map (_, _, map) when List.length map = 0 -> [ igdt_zero ]
-            | MV_empty_big_map _ -> [ igdt_zero ]
-            | MV_lit_big_map (_, _, map) when List.length map = 0 ->
-              [ igdt_zero ]
-            | MV_lit_list (_, _) -> [ igdt_sigma ]
-            | MV_lit_map (_, _, _) -> [ igdt_sigma ]
-            | MV_lit_big_map (_, _, _) -> [ igdt_sigma ]
-            | _ -> [ igdt_sigma; igdt_zero ])
-            |> ISet.of_list
-        )
-        |> ISet.union_list
+   let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
+   match cur_typ.cc_v with
+   | MT_list _ ->
+     (* sigma *)
+     let ((tset : ISet.t), (nset : ISet.t)) = collect_igdt_of_sigma cur_igdt in
+     (* literals *)
+     let (tset' : ISet.t) =
+        match cur_val.cc_v with
+        | MV_lit_list (_, vl) ->
+          List.fold vl ~init:tset ~f:(fun tset' vcc ->
+              let (v_igdt : igdt) = gen_custom_igdt vcc in
+              ISet.add tset' v_igdt
+          )
+        | _                   -> tset
      in
-     (igdt_set, ISet.singleton cur_igdt)
-   )
-(* function collect_igdt_of_sigma end *)
+     (tset', nset)
+   | _         -> IgdtError "collect_igdt_from_lst : _" |> raise
+(* function collect_igdt_from_lst end *)
+
+let collect_igdt_from_map : igdt -> ISet.t * ISet.t =
+   let open Tz in
+   let open TzUtil in
+   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* syntax sugar *)
+   fun cur_igdt ->
+   let (cur_val : mich_v cc) = cur_igdt.ig_value in
+   let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
+   let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in
+   match cur_typ.cc_v with
+   | MT_map (_, _)
+   | MT_big_map (_, _) ->
+     (* preconditions *)
+     let (prec_map : mich_f list) =
+        MF_map_default_value (gctx cur_val) :: cur_plst
+     in
+     (* ingredients *)
+     let (igdt_map : igdt) = { cur_igdt with ig_precond_lst = prec_map } in
+     (* sigma *)
+     let ((tset : ISet.t), (nset : ISet.t)) = collect_igdt_of_sigma igdt_map in
+     (* literals *)
+     let (tset' : ISet.t) =
+        match cur_val.cc_v with
+        | MV_lit_big_map (_, _, kvl)
+        | MV_lit_map (_, _, kvl) ->
+          List.fold kvl ~init:tset ~f:(fun tset' (kcc, vcc) ->
+              let (k_igdt : igdt) = gen_custom_igdt kcc in
+              let (v_igdt : igdt) = gen_custom_igdt vcc in
+              ISet.add (ISet.add tset' k_igdt) v_igdt
+          )
+        | _ -> tset
+     in
+     (tset', nset)
+   | _ -> IgdtError "collect_igdt_from_map : _" |> raise
+(* function collect_igdt_from_map end *)
+
+let collect_igdt_from_set : igdt -> ISet.t * ISet.t =
+   let open Tz in
+   let open TzUtil in
+   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* syntax sugar *)
+   fun cur_igdt ->
+   let (cur_val : mich_v cc) = cur_igdt.ig_value in
+   let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
+   let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in
+   match cur_typ.cc_v with
+   | MT_set _ ->
+     (* preconditions *)
+     let (prec_set : mich_f list) =
+        MF_set_default_value (gctx cur_val) :: cur_plst
+     in
+     (* ingredients *)
+     let (igdt_set : igdt) = { cur_igdt with ig_precond_lst = prec_set } in
+     (* sigma *)
+     let ((tset : ISet.t), (nset : ISet.t)) = collect_igdt_of_sigma igdt_set in
+     (* literals *)
+     let (tset' : ISet.t) =
+        match cur_val.cc_v with
+        | MV_lit_set (_, vl) ->
+          List.fold vl ~init:tset ~f:(fun tset' vcc ->
+              let (v_igdt : igdt) = gen_custom_igdt vcc in
+              ISet.add tset' v_igdt
+          )
+        | _                  -> tset
+     in
+     (tset', nset)
+   | _        -> IgdtError "collect_igdt_from_set : _" |> raise
+(* function collect_igdt_from_set end *)
 
 let collect_igdt_from_mutez : igdt -> ISet.t * ISet.t =
    let open Tz in
@@ -384,9 +477,10 @@ let collect_igdt_from_igdt : igdt -> ISet.t =
         | MT_pair _ -> collect_igdt_from_pair cur_igdt
         | MT_or _ -> collect_igdt_from_or cur_igdt
         (* Add Sigma Representation of Each Types *)
-        | MT_list _ -> collect_igdt_of_sigma cur_igdt
-        | MT_map _ -> collect_igdt_of_sigma cur_igdt
-        | MT_big_map _ -> collect_igdt_of_sigma cur_igdt
+        | MT_list _ -> collect_igdt_from_lst cur_igdt
+        | MT_map _ -> collect_igdt_from_map cur_igdt
+        | MT_big_map _ -> collect_igdt_from_map cur_igdt
+        | MT_set _ -> collect_igdt_from_set cur_igdt
         (* Add Special Precondition of Each Types *)
         | MT_mutez -> collect_igdt_from_mutez cur_igdt
         | MT_nat -> collect_igdt_from_nat cur_igdt

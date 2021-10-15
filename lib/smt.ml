@@ -1727,20 +1727,20 @@ module ZMap = struct
     )
   (* function create_sort end *)
 
+  let create_default_value : Ctx.t -> data_sort:Sort.t -> Expr.t =
+    (fun _ ~data_sort -> ZOption.create_expr_none data_sort)
+  (* function read_default_value end *)
+
   let create_expr_empty_map :
       Ctx.t -> key_sort:Sort.t -> data_sort:Sort.t -> Expr.t =
     fun ctx ~key_sort ~data_sort ->
-    let (default_value : Expr.t) = ZOption.create_expr_none data_sort in
+    let (default_value : Expr.t) = create_default_value ctx ~data_sort in
     Z3.Z3Array.mk_const_array (Ctx.read ctx) key_sort default_value
   (* function create_expr_empty_map end *)
 
   let read_value : Ctx.t -> key:Expr.t -> Expr.t -> Expr.t =
     (fun ctx ~key expr1 -> Z3.Z3Array.mk_select (Ctx.read ctx) expr1 key)
   (* function read_value end *)
-
-  let read_default_value : Ctx.t -> Expr.t -> Expr.t =
-    (fun ctx expr1 -> Z3.Z3Array.mk_term_array (Ctx.read ctx) expr1)
-  (* function read_default_value end *)
 
   let update : Ctx.t -> key:Expr.t -> data:Expr.t -> Expr.t -> Expr.t =
     fun ctx ~key ~data expr1 ->
@@ -1770,10 +1770,14 @@ module ZSet = struct
     )
   (* function create_sort end *)
 
+  let create_default_value : Ctx.t -> Expr.t =
+    (fun ctx -> ZBool.create_expr ctx false)
+  (* function read_default_value end *)
+
   let create_expr_empty_set : Ctx.t -> Sort.t -> Expr.t =
     fun ctx sort ->
     let (key_sort : Sort.t) = Z3.Z3Array.get_domain sort in
-    let (default_value : Expr.t) = ZBool.create_expr ctx false in
+    let (default_value : Expr.t) = create_default_value ctx in
     Z3.Z3Array.mk_const_array (Ctx.read ctx) key_sort default_value
   (* function create_expr_empty_set end *)
 
@@ -2400,6 +2404,25 @@ module Formula = struct
      let (max : Expr.t) = ZMutez.create_expr_of_bigint ctx max_rhs in
      create_arith_le ctx expr2 max
   (* function create_shift_l_rhs_in_256 end *)
+
+  let create_map_default_value : Ctx.t -> Expr.t -> t =
+    fun ctx expr1 ->
+    let (data_sort : Sort.t) = Z3.Z3Array.get_range (Expr.read_sort expr1) in
+    let (default_value : Expr.t) =
+       Z3.Z3Array.mk_term_array (Ctx.read ctx) expr1
+    in
+    let (none_value : Expr.t) = ZMap.create_default_value ctx ~data_sort in
+    create_eq ctx default_value none_value
+  (* function create_map_default_value end *)
+
+  let create_set_default_value : Ctx.t -> Expr.t -> t =
+    fun ctx expr1 ->
+    let (default_value : Expr.t) =
+       Z3.Z3Array.mk_term_array (Ctx.read ctx) expr1
+    in
+    let (false_value : Expr.t) = ZSet.create_default_value ctx in
+    create_eq ctx default_value false_value
+  (* function create_set_default_value end *)
 
   let to_sat_check : Ctx.t -> t -> Expr.t list = (fun _ fmla -> [ fmla ])
   (* function to_sat_check end *)

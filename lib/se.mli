@@ -75,8 +75,29 @@ val add_nat_constraint_if_it_is :
   Tz.sym_state ->
   Tz.sym_state
 
-val michv_maybe_mtznat_constraints :
+val map_constraint_if_it_is_or_true :
+  ctx:Tz.mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
+
+val add_map_constraint_if_it_is :
+  ctx:Tz.mich_sym_ctxt ->
+  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc ->
+  Tz.sym_state ->
+  Tz.sym_state
+
+val set_constraint_if_it_is_or_true :
+  ctx:Tz.mich_sym_ctxt -> tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc -> Tz.mich_f
+
+val add_set_constraint_if_it_is :
+  ctx:Tz.mich_sym_ctxt ->
+  tv:Tz.mich_t Tz.cc * Tz.mich_v Tz.cc ->
+  Tz.sym_state ->
+  Tz.sym_state
+
+val michv_typ_constraints :
   ctx:Tz.mich_sym_ctxt -> v:Tz.mich_v Tz.cc -> Tz.mich_f list
+
+val add_typ_constraints :
+  ctx:Tz.mich_sym_ctxt -> v:Tz.mich_v Tz.cc -> Tz.sym_state -> Tz.sym_state
 
 val amount_balance_mutez_constraints :
   ctx:Tz.mich_sym_ctxt ->

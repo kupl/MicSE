@@ -596,12 +596,12 @@ module ZMap : sig
     data_body_sort:Sort.t ->
     Sort.t
 
+  val create_default_value : Ctx.t -> data_sort:Sort.t -> Expr.t
+
   val create_expr_empty_map :
     Ctx.t -> key_sort:Sort.t -> data_sort:Sort.t -> Expr.t
 
   val read_value : Ctx.t -> key:Expr.t -> Expr.t -> Expr.t
-
-  val read_default_value : Ctx.t -> Expr.t -> Expr.t
 
   val update : Ctx.t -> key:Expr.t -> data:Expr.t -> Expr.t -> Expr.t
 
@@ -615,6 +615,8 @@ module ZSet : sig
 
   val create_sort :
     Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t -> Sort.t
+
+  val create_default_value : Ctx.t -> Expr.t
 
   val create_expr_empty_set : Ctx.t -> Sort.t -> Expr.t
 
@@ -806,6 +808,10 @@ module Formula : sig
   val create_shift_l_rhs_in_256 : Ctx.t -> Expr.t -> t
 
   val create_shift_r_rhs_in_256 : Ctx.t -> Expr.t -> t
+
+  val create_map_default_value : Ctx.t -> Expr.t -> t
+
+  val create_set_default_value : Ctx.t -> Expr.t -> t
 
   val to_sat_check : Ctx.t -> t -> Expr.t list
 
