@@ -63,9 +63,11 @@ let rec combinate :
      let (rmci : Tz.r_mich_cut_info) =
         RMCIMap.keys targets |> List.permute |> List.hd_exn
      in
+     let (c_inv_f : cand) = find_inv_by_rmci cinv rmci in
      let (cands : cand list) =
-        find_ordered_cand_by_rmci ~remove_unflaged:true ~remove_not_precond:true
-          targets rmci qid
+        c_inv_f
+        :: find_ordered_cand_by_rmci ~remove_unflaged:true
+             ~remove_not_precond:true targets rmci qid
      in
      let (remains : cand_map) = RMCIMap.remove targets rmci in
      (* 2. Combinate candidates *)
@@ -249,10 +251,9 @@ let naive_run_qres_atomic_action :
 (* Result *********************************************************************)
 
 let naive_run_find_inv_escape_condition :
-    Res.config -> Res.qres * Inv.inv_map option list * Inv.cand_map -> bool =
+    Res.config -> Res.qres * Inv.inv_map option list -> bool =
    let open Res in
-   fun { cfg_timer; cfg_memory; _ }
-       ({ qr_qid; qr_prv_flag; qr_rft_flag; _ }, io_lst, cmap) ->
+   fun { cfg_timer; cfg_memory; _ } ({ qr_prv_flag; qr_rft_flag; _ }, io_lst) ->
    if (* 1. Timeout *)
       Utils.Time.is_timeout cfg_timer
    then true
@@ -265,9 +266,6 @@ let naive_run_find_inv_escape_condition :
    then true
    else if (* 4. Invariant is already found *)
            List.exists io_lst ~f:(fun io -> Option.is_some io)
-   then true
-   else if (* 5. There is no precondition *)
-           not (check_number_of_cands qr_qid cmap)
    then true
    else false
 (* function naive_run_res_escape_condition end *)
@@ -286,8 +284,7 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
         List.permute res.r_qr_lst
         |> List.fold ~init:([], idts) ~f:(fun (io_lst, new_idts) qres ->
                if (* 1-1-1-1. If new invariant is already found, skip other procedure *)
-                  naive_run_find_inv_escape_condition cfg
-                    (qres, io_lst, res.r_cands)
+                  naive_run_find_inv_escape_condition cfg (qres, io_lst)
                then (io_lst, new_idts)
                else (
                  (* 1-1-1-2. Make combination from precondition of query *)
