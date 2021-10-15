@@ -289,7 +289,7 @@ let collect_igdt_of_sigma : igdt -> ISet.t * ISet.t =
    let (cur_val : mich_v cc) = cur_igdt.ig_value in
    let (set_of_sigma : mich_v cc list) = sigma_of_cont cur_val in
    if List.is_empty set_of_sigma
-   then (ISet.empty, ISet.empty)
+   then (ISet.empty, ISet.singleton cur_igdt)
    else (
      let (igdt_set : ISet.t) =
         List.map set_of_sigma ~f:(fun sigma ->
