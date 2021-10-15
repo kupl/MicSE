@@ -286,13 +286,7 @@ let stack_equality_fmlas :
             eqf_cc ctxt1 ctxt1 m1h empty_container
           )
         | (MCC_ln_iter, MCC_lb_iter) ->
-          let (m1h, m1t, _, _) =
-             ( List.hd_exn si1.si_mich,
-               List.tl_exn si1.si_mich,
-               List.hd_exn si2.si_mich,
-               List.tl_exn si2.si_mich
-             )
-          in
+          let (m1h, m1t) = (List.hd_exn si1.si_mich, List.tl_exn si1.si_mich) in
           let (i1, i2h, i2t) =
              (si1.si_iter, List.hd_exn si2.si_iter, List.tl_exn si2.si_iter)
           in
@@ -317,9 +311,7 @@ let stack_equality_fmlas :
             eqf_cc ctxt1 ctxt1 i1h empty_container
           )
         | (MCC_lb_iter, MCC_lb_iter) ->
-          let (m1, _, _) =
-             (si1.si_mich, List.hd_exn si2.si_mich, List.tl_exn si2.si_mich)
-          in
+          let (m1 : mich_v cc list) = si1.si_mich in
           ( List.map2_exn m1 si2.si_mich ~f:eqf |> List.join,
             List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join,
             []
