@@ -1047,7 +1047,7 @@ let opt_mf_rules : mich_f -> mich_f =
   | MF_and fl ->
     (* 0. first, flatten every MF_and inside MF_and *)
     let fl =
-       List.fold_left fl ~init:[] ~f:(fun acc f ->
+       List.fold_right fl ~init:[] ~f:(fun f acc ->
            match f with
            | MF_and f_and_list -> f_and_list @ acc
            | _                 -> f :: acc
