@@ -1211,7 +1211,8 @@ let debug_check_sat :
            let (sat, mdopt) : Smt.Solver.satisfiability * Smt.Model.t option =
               Solver.check_sat solver ctx fmla
            in
-           ((new_flst, (f, sat, mdopt) :: sat_lst), Solver.is_unsat sat)
+           (* ((new_flst, (f, sat, mdopt) :: sat_lst), Solver.is_unsat sat) *)
+           ((new_flst, (f, sat, mdopt) :: sat_lst), Solver.is_sat sat |> not)
          ))
      |> fst
      |> snd
