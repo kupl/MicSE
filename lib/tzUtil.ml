@@ -1045,6 +1045,14 @@ let opt_mf_rules : mich_f -> mich_f =
   (* AND *)
   | MF_and [ f ] -> f
   | MF_and fl ->
+    (* 0. first, flatten every MF_and inside MF_and *)
+    let fl =
+       List.fold_left fl ~init:[] ~f:(fun acc f ->
+           match f with
+           | MF_and f_and_list -> f_and_list @ acc
+           | _                 -> f :: acc
+       )
+    in
     (* 1. remove True values *)
     let fl' = List.filter fl ~f:(fun x -> not (equal_mich_f MF_true x)) in
     if equal_list equal_mich_f fl' []
