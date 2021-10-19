@@ -1188,6 +1188,42 @@ let check_sat :
    Solver.check_sat solver ctx fmla
 (* function check_validity end *)
 
+(* DEBUGGING FUNCTION *)
+let debug_check_sat :
+    Smt.Ctx.t ->
+    Smt.Solver.t ->
+    Tz.mich_f ->
+    (Tz.mich_f * Smt.Solver.satisfiability * Smt.Model.t option) list =
+   let open Tz in
+   let open Smt in
+   fun ctx solver mf ->
+   match mf with
+   | MF_and (hd_f :: fl) ->
+     List.fold fl
+       ~init:(([ hd_f ], []), false)
+       ~f:(fun ((flst, sat_lst), is_unsat) f ->
+         if is_unsat
+         then ((flst, sat_lst), is_unsat)
+         else (
+           let _ = Solver.reset solver in
+           let (new_flst : Tz.mich_f list) = f :: flst in
+           let (fmla : Formula.t) = Encoder.cv_mf ctx (MF_and new_flst) in
+           let (sat, mdopt) : Smt.Solver.satisfiability * Smt.Model.t option =
+              Solver.check_sat solver ctx fmla
+           in
+           ((flst, (f, sat, mdopt) :: sat_lst), Solver.is_unsat sat)
+         ))
+     |> fst
+     |> snd
+   | _ as f              ->
+     let _ = Solver.reset solver in
+     let (fmla : Formula.t) = Encoder.cv_mf ctx f in
+     let (sat, mdopt) : Smt.Solver.satisfiability * Smt.Model.t option =
+        Solver.check_sat solver ctx fmla
+     in
+     [ (f, sat, mdopt) ]
+(* DEBUGGING FUNCTION *)
+
 let is_cand_sat : Smt.Ctx.t -> Smt.Solver.t -> Inv.cand -> bool =
    let open Smt in
    fun ctx solver cand ->

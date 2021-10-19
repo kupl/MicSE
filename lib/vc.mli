@@ -117,6 +117,14 @@ val check_sat :
   Tz.mich_f ->
   Smt.Solver.satisfiability * Smt.Model.t option
 
+(* DEBUGGING FUNCTION *)
+val debug_check_sat :
+  Smt.Ctx.t ->
+  Smt.Solver.t ->
+  Tz.mich_f ->
+  (Tz.mich_f * Smt.Solver.satisfiability * Smt.Model.t option) list
+(* DEBUGGING FUNCTION *)
+
 val is_cand_sat : Smt.Ctx.t -> Smt.Solver.t -> Inv.cand -> bool
 
 val do_cand_sat_istrg :
