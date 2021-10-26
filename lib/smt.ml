@@ -2427,6 +2427,9 @@ module Formula = struct
   let to_sat_check : Ctx.t -> t -> Expr.t list = (fun _ fmla -> [ fmla ])
   (* function to_sat_check end *)
 
+  let to_sat_check_lst : Ctx.t -> t list -> Expr.t list =
+    (fun _ fmla_lst -> fmla_lst)
+
   let to_val_check : Ctx.t -> t -> Expr.t list =
     (fun ctx fmla -> [ create_not ctx fmla ])
   (* function to_val_check end *)
@@ -2503,6 +2506,15 @@ module Solver = struct
     | UNSATISFIABLE -> (UNSAT, None)
     | SATISFIABLE   -> (SAT, Z3.Solver.get_model (read solver))
   (* function check_sat end *)
+
+  let check_sat_lst :
+      t -> Ctx.t -> Formula.t list -> satisfiability * Model.t option =
+    fun solver ctx fmla ->
+    match Z3.Solver.check (read solver) (Formula.to_sat_check_lst ctx fmla) with
+    | UNKNOWN       -> (UNKNOWN, None)
+    | UNSATISFIABLE -> (UNSAT, None)
+    | SATISFIABLE   -> (SAT, Z3.Solver.get_model (read solver))
+  (* function check_sat_lst end *)
 
   let check_val : t -> Ctx.t -> Formula.t -> validity * Model.t option =
     fun solver ctx fmla ->

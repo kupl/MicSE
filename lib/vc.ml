@@ -1130,7 +1130,8 @@ let gen_refute_vc : Tz.mich_v Tz.cc -> MState.t -> Tz.mich_f =
       property_of_query ~sctx:block_state.ss_id block_state.ss_block_mci
         block_state.ss_block_si
    in
-   MF_not (MF_imply (sp, query))
+   (* MF_not (MF_imply (sp, query)) *)
+   MF_and [ sp; MF_not query ]
 (* function gen_refute_vc end *)
 
 let gen_precond_vc : Inv.cand -> MState.t -> Tz.mich_f =
@@ -1174,7 +1175,7 @@ let check_val :
    let _ = Solver.reset solver in
    let (fmla : Formula.t) = Encoder.cv_mf ctx mf in
    Solver.check_val solver ctx fmla
-(* function check_validity end *)
+(* function check_val end *)
 
 let check_sat :
     Smt.Ctx.t ->
@@ -1186,7 +1187,19 @@ let check_sat :
    let _ = Solver.reset solver in
    let (fmla : Formula.t) = Encoder.cv_mf ctx mf in
    Solver.check_sat solver ctx fmla
-(* function check_validity end *)
+(* function check_sat end *)
+
+let check_sat_lst :
+    Smt.Ctx.t ->
+    Smt.Solver.t ->
+    Tz.mich_f list ->
+    Smt.Solver.satisfiability * Smt.Model.t option =
+   let open Smt in
+   fun ctx solver mf_lst ->
+   let _ = Solver.reset solver in
+   let (fmla_lst : Formula.t list) = List.map ~f:(Encoder.cv_mf ctx) mf_lst in
+   Solver.check_sat_lst solver ctx fmla_lst
+(* function check_sat_lst end *)
 
 (* DEBUGGING FUNCTION *)
 let debug_check_sat :

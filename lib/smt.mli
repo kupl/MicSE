@@ -815,6 +815,8 @@ module Formula : sig
 
   val to_sat_check : Ctx.t -> t -> Expr.t list
 
+  val to_sat_check_lst : Ctx.t -> t list -> Expr.t list
+
   val to_val_check : Ctx.t -> t -> Expr.t list
 
   val to_string : t -> string
@@ -872,6 +874,9 @@ module Solver : sig
   val reset : t -> unit
 
   val check_sat : t -> Ctx.t -> Formula.t -> satisfiability * Model.t option
+
+  val check_sat_lst :
+    t -> Ctx.t -> Formula.t list -> satisfiability * Model.t option
 
   val check_val : t -> Ctx.t -> Formula.t -> validity * Model.t option
 

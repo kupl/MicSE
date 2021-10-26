@@ -45,6 +45,13 @@ val refute :
   Res.PPath.t ->
   (Res.PPath.t * Smt.Solver.satisfiability) option * Smt.Model.t option
 
+val refute_lst :
+  Smt.Ctx.t ->
+  Smt.Solver.t ->
+  Tz.mich_v Tz.cc ->
+  Res.PPath.t ->
+  (Res.PPath.t * Smt.Solver.satisfiability) option * Smt.Model.t option
+
 (******************************************************************************)
 (******************************************************************************)
 (* Path-Pick Functions                                                        *)

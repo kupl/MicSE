@@ -129,6 +129,35 @@ let refute :
    )
 (* function refute end *)
 
+let refute_lst :
+    Smt.Ctx.t ->
+    Smt.Solver.t ->
+    Tz.mich_v Tz.cc ->
+    Res.PPath.t ->
+    (Res.PPath.t * Smt.Solver.satisfiability) option * Smt.Model.t option =
+   let open Smt in
+   let open Tz in
+   let open MState in
+   let open Vc in
+   fun ctx slvr istrg ppath ->
+   if not
+        (equal_mich_cut_category
+           (get_first_ss ppath.pp_mstate).ss_start_mci.mci_cutcat MCC_trx_entry
+        )
+   then (None, None)
+   else (
+     let (vc : mich_f) = gen_refute_vc istrg ppath.pp_mstate |> TzUtil.opt_mf in
+     let ((sat : Solver.satisfiability), (m_opt : Smt.Model.t option)) =
+        match vc with
+        | MF_and l -> check_sat_lst ctx slvr l
+        | _        -> check_sat ctx slvr vc
+     in
+     ( Some (ppath, sat),
+       if Solver.is_sat sat then Some (Option.value_exn m_opt) else None
+     )
+   )
+(* function refute end *)
+
 (******************************************************************************)
 (******************************************************************************)
 (* Path-Pick Functions                                                        *)
