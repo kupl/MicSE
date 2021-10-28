@@ -123,7 +123,6 @@ code  { # param-storage disassembly
                             #__MICSE_CHECK { BALANCE; COMPARE; GE; } ;
                             DUP;
                             DIG 4;
-                            SWAP;
                             SUB;
                             DUG 3;
                             # STACK FIGURE ::   
