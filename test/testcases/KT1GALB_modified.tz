@@ -302,20 +302,22 @@ code  { # param-storage disassembly
                             SWAP;
                             DIP
                               {
+                                DUP 10;
+                                ADD;  # head + reward_size
                                 CONS;
                                 DIP
                                   {
                                     DUP 8;
-                                    ADD;
+                                    ADD;  # given_reards + reward_size
                                     DIP
                                       {
                                         DUP 7;
-                                        ADD;
+                                        ADD;  # new_total_deposit + reward_size
                                       } ;
                                   } ;
                               } ;
                             # Expeceted STACK FIGURE ::
-                            #   tail : (head :: new_deposits) : (given_rewards + reward_size) : (new_total_deposit + reward_size) : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            #   tail : ((head + reward_size) :: new_deposits) : (given_rewards + reward_size) : (new_total_deposit + reward_size) : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
                             PUSH bool True;
                           }
                           {
