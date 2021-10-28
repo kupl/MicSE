@@ -151,6 +151,15 @@ let stack_equality_fmlas :
    | (MCC_lb_loop, MCC_ln_loop)
    | (MCC_lb_loop, MCC_lb_loop) ->
      (* NOTE: question here : is (AND []) valid formula ? *)
+     let (ms_hd_c : mich_f list) =
+        let bool_v =
+           match mcc_2 with
+           | MCC_ln_loop -> false
+           | _           -> true
+        in
+        eqf_cc ctxt1 ctxt1 (List.hd_exn si1.si_mich)
+          (MV_lit_bool bool_v |> gen_dummy_cc)
+     in
      let (ms_c : mich_f list) =
         List.map2_exn (List.tl_exn si1.si_mich) si2.si_mich ~f:eqf |> List.join
      and (ds_c : mich_f list) =
@@ -166,7 +175,15 @@ let stack_equality_fmlas :
      and (ti_c : mich_f list) =
         trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param
      in
-     ms_c @ ds_c @ maps_entry_c @ maps_exit_c @ is_c @ b_c @ bcb_c @ ti_c
+     ms_hd_c
+     @ ms_c
+     @ ds_c
+     @ maps_entry_c
+     @ maps_exit_c
+     @ is_c
+     @ b_c
+     @ bcb_c
+     @ ti_c
    (* LOOP-LEFT *)
    | (MCC_ln_loopleft, MCC_ln_loopleft)
    | (MCC_ln_loopleft, MCC_lb_loopleft)
