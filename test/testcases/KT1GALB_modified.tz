@@ -274,7 +274,7 @@ code  { # param-storage disassembly
                     # LOOP (IF_CONS (deposits)) {
                     #   deposits <- tail
                     #   new_deposits <- (head + reward_size) :: new_deposits
-                    #   new_total_deposit <- new_total_deposit + reward_size
+                    #   new_total_deposit <- new_total_deposit + (head + reward_size)
                     #   given_rewards <- given_rewards + reward_size
                     # }
                     # deposits <- new_deposits
@@ -299,6 +299,14 @@ code  { # param-storage disassembly
                         IF_CONS
                           { # Expeceted STACK FIGURE ::
                             #   head : tail : new_deposits : given_rewards : new_total_deposit : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            DUP;
+                            DUG 4;
+                            DIP 4 
+                              {
+                                ADD; # head + new_total_deposit
+                              } ;
+                            # Expeceted STACK FIGURE ::
+                            #   head : tail : new_deposits : given_rewards : (head + new_total_deposit) : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
                             SWAP;
                             DIP
                               {
@@ -308,16 +316,16 @@ code  { # param-storage disassembly
                                 DIP
                                   {
                                     DUP 8;
-                                    ADD;  # given_reards + reward_size
+                                    ADD;  # given_rewards + reward_size
                                     DIP
                                       {
                                         DUP 7;
-                                        ADD;  # new_total_deposit + reward_size
+                                        ADD;  # (head + new_total_deposit) + reward_size
                                       } ;
                                   } ;
                               } ;
                             # Expeceted STACK FIGURE ::
-                            #   tail : ((head + reward_size) :: new_deposits) : (given_rewards + reward_size) : (new_total_deposit + reward_size) : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            #   tail : ((head + reward_size) :: new_deposits) : (given_rewards + reward_size) : (head + new_total_deposit + reward_size) : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
                             PUSH bool True;
                           }
                           {
