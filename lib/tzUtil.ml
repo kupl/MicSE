@@ -232,6 +232,7 @@ let rec mvcc_map_innerfst : mapf:(mich_v -> mich_v) -> mich_v cc -> mich_v cc =
   | MV_ref _ -> fc argv
   | MV_ref_cont _ -> fc argv
   | MV_sigma_tmp_l_m2 v -> MV_sigma_tmp_l_m2 (r v) |> fc
+  | MV_sigma_m_l_m1 v -> MV_sigma_m_l_m1 ( r v) |> fc
   | MV_sigma_mmspnbppnmpnnpp_abm_m1 v ->
     MV_sigma_mmspnbppnmpnnpp_abm_m1 (r v) |> fc
   | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v ->
@@ -595,6 +596,7 @@ let rec mvcc_fold_innerfst :
   | MV_ref _ -> fc0 mvcc
   | MV_ref_cont _ -> fc0 mvcc
   | MV_sigma_tmp_l_m2 v -> fc1 (fun x -> MV_sigma_tmp_l_m2 x) v
+  | MV_sigma_m_l_m1 v -> fc1 (fun x -> MV_sigma_m_l_m1 x) v
   | MV_sigma_mmspnbppnmpnnpp_abm_m1 v ->
     fc1 (fun x -> MV_sigma_mmspnbppnmpnnpp_abm_m1 x) v
   | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v ->
@@ -995,6 +997,7 @@ let typ_of_val : mich_v cc -> mich_t cc =
      | MV_ref (t1, _) -> t1
      | MV_ref_cont t1 -> t1
      | MV_sigma_tmp_l_m2 _ -> gen_cc MT_mutez
+     | MV_sigma_m_l_m1 _ -> gen_cc MT_mutez
      | MV_sigma_mmspnbppnmpnnpp_abm_m1 _ -> gen_cc MT_mutez
      | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 _ -> gen_cc MT_mutez
      | MV_sigma_mspnbpp_nm_m1 _ -> gen_cc MT_mutez
@@ -1534,6 +1537,7 @@ let is_sigma : mich_v cc -> bool =
   fun vcc ->
   match vcc.cc_v with
   | MV_sigma_tmp_l_m2 _ -> true
+  | MV_sigma_m_l_m1 _ -> true
   | MV_sigma_mmspnbppnmpnnpp_abm_m1 _ -> true
   | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 _ -> true
   | MV_sigma_mspnbpp_nm_m1 _ -> true
@@ -1546,6 +1550,7 @@ let sigma_of_cont : mich_v cc -> mich_v cc list =
   match (typ_of_val vcc).cc_v with
   | MT_list tcc             -> (
     match tcc.cc_v with
+    | MT_mutez -> [gen_custom_cc vcc (MV_sigma_m_l_m1 vcc)]
     | MT_pair (t1cc, t2cc)
       when equal_mich_t t1cc.cc_v MT_timestamp
            && equal_mich_t t2cc.cc_v MT_mutez ->
@@ -1614,6 +1619,11 @@ let acc_of_sigma :
            && equal_mich_t t2cc.cc_v MT_mutez ->
       gcc (MV_cdr vcc) |> opt_mvcc ~ctx
     | _ -> TzError "acc_of_sigma : MV_sigma_tmp_l_m2 : _" |> raise
+  )
+  | MV_sigma_m_l_m1 _ -> (
+    match (typ_of_val vcc).cc_v with
+    | MT_mutez -> vcc |> opt_mvcc ~ctx
+    | _ -> TzError "acc_of_sigma : MV_sigma_m_l_m1 : _" |> raise
   )
   | MV_sigma_mmspnbppnmpnnpp_abm_m1 _ -> (
     match (typ_of_val vcc).cc_v with

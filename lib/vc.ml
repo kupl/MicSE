@@ -516,6 +516,7 @@ module Encoder = struct
        Expr.create_var ctx (sot t1cc)
          ~name:("MV_ref_cont_" ^ Sexp.to_string (sexp_of_mich_sym_ctxt sctx))
      | MV_sigma_tmp_l_m2 v1cc -> eos v1cc
+     | MV_sigma_m_l_m1 v1cc -> eos v1cc
      | MV_sigma_mmspnbppnmpnnpp_abm_m1 v1cc -> eos v1cc
      | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v1cc -> eos v1cc
      | MV_sigma_mspnbpp_nm_m1 v1cc -> eos v1cc

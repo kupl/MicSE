@@ -313,6 +313,7 @@ and mich_v =
   | MV_ref                                   of (mich_t cc * mich_sym_category)
   | MV_ref_cont                              of mich_t cc
   | MV_sigma_tmp_l_m2                        of mich_v cc
+  | MV_sigma_m_l_m1                          of mich_v cc
   | MV_sigma_mmspnbppnmpnnpp_abm_m1          of mich_v cc
   | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 of mich_v cc
   | MV_sigma_mspnbpp_nm_m1                   of mich_v cc
