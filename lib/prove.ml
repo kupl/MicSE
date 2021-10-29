@@ -114,7 +114,7 @@ let check_inductiveness :
    let open Tz in
    let open Inv in
    fun ctx slvr bsset idtmap imap ->
-   let (threshold : int) = SSet.length bsset / 4 in
+   let (threshold : int) = SSet.length bsset in
    SSet.to_list bsset
    |> List.permute
    |> List.fold
