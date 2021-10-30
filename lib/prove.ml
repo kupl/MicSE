@@ -10,6 +10,9 @@ open! Core
 (******************************************************************************)
 (******************************************************************************)
 
+(* Set of Tz.r_mich_cut_info *)
+module RMCISet = Set.Make (Tz.RMichCutInfo_cmp)
+
 (* Map of Tz.r_mich_cut_info *)
 module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 
@@ -23,17 +26,25 @@ module SSet = Set.Make (Tz.SymState_cmp)
 (******************************************************************************)
 
 let check_failed :
-    SSet.t -> Inv.inductive_info -> Tz.r_mich_cut_info -> Inv.inv_map -> bool =
+    SSet.t ->
+    Inv.inductive_info ->
+    RMCISet.t ->
+    Tz.r_mich_cut_info ->
+    Inv.inv_map ->
+    bool =
    let open Tz in
    let open TzUtil in
    let open Inv in
-   fun bsset idts rmci imap ->
+   fun bsset idts picked target imap ->
+   let is_target : r_mich_cut_info * r_mich_cut_info -> bool =
+     fun (rmci1, rmci2) ->
+     equal_r_mich_cut_info target rmci1 && RMCISet.mem picked rmci2
+   in
    SSet.exists bsset ~f:(fun bs ->
        let (r_start : r_mich_cut_info) = get_reduced_mci bs.ss_start_mci in
        let (r_block : r_mich_cut_info) = get_reduced_mci bs.ss_block_mci in
        if (* only the target mci *)
-          equal_r_mich_cut_info r_start rmci
-          || equal_r_mich_cut_info r_block rmci
+          is_target (r_start, r_block) || is_target (r_block, r_start)
        then (
          let (cp_start : cand) = find_inv_by_rmci imap r_start in
          let (cp_block : cand) = find_inv_by_rmci imap r_block in
@@ -59,6 +70,11 @@ let rec combinate :
    if RMCIMap.is_empty targets
    then if equal_inv_map cinv acc_imap then None else Some acc_imap
    else (
+     let (picked : RMCISet.t) =
+        RMCISet.diff
+          (RMCIMap.keys acc_imap |> RMCISet.of_list)
+          (RMCIMap.keys targets |> RMCISet.of_list)
+     in
      (* 1. Target MCI for combinate *)
      let (rmci : Tz.r_mich_cut_info) =
         RMCIMap.keys targets |> List.permute |> List.hd_exn
@@ -79,7 +95,7 @@ let rec combinate :
               let (updated_inv : inv_map) =
                  update_inv_map acc_imap ~key:rmci ~value:fset
               in
-              if check_failed bsset idts rmci updated_inv
+              if check_failed bsset idts picked rmci updated_inv
               then new_imap_opt
               else next_comb remains updated_inv
             )
