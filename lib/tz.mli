@@ -128,7 +128,9 @@ and mich_v =
   (*************************************************************************)
   | MV_lit_nat                               of Bigint.t
   | MV_abs_in                                of mich_v cc (* int -> nat *)
+  | MV_mtz_of_nat_mn                         of mich_v cc (* mtz -> nat *)
   | MV_add_nnn                               of mich_v cc * mich_v cc (* nat * nat -> nat *)
+  | MV_add_mnn                               of mich_v cc * mich_v cc (* mtz * nat -> nat *)
   | MV_mul_nnn                               of mich_v cc * mich_v cc (* nat * nat -> nat *)
   | MV_shiftL_nnn                            of mich_v cc * mich_v cc (* nat * nat -> nat *)
   | MV_shiftR_nnn                            of mich_v cc * mich_v cc (* nat * nat -> nat *)

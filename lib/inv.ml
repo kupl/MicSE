@@ -436,30 +436,28 @@ let tmp_add_3_eq : Igdt.igdt_sets -> CSet.t =
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
    let (zero_mtz : mich_v cc) = gen_dummy_cc (MV_lit_mutez Bigint.zero) in
-   let make_add_3_eq_mtz :
+   let (zero_nat : mich_v cc) = gen_dummy_cc (MV_lit_nat Bigint.zero) in
+   let make_add_3_eq_mnnm :
        mich_v cc * mich_v cc * mich_v cc * mich_v cc -> mich_f option =
      fun (v1, v2, v3, v4) ->
      let (add : mich_v cc) =
-        gen_dummy_cc (MV_add_mmm (gen_dummy_cc (MV_add_mmm (v1, v2)), v3))
+        gen_dummy_cc (MV_add_nnn (gen_dummy_cc (MV_add_mnn (v1, v2)), v3))
      in
-     Some (MF_eq (gctx add, gctx v4))
+     Some (MF_eq (gctx add, gctx (gen_dummy_cc (MV_mtz_of_nat_mn v4))))
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
-      List.map [ MT_mutez ] ~f:(fun t ->
-          List.init 4 ~f:(fun _ -> gen_dummy_cc t)
-      )
+      [ [ MT_mutez; MT_nat; MT_nat; MT_mutez ] ]
+      |> List.map ~f:(fun tl -> List.map tl ~f:(fun t -> gen_dummy_cc t))
    in
    gen_template igdt_map target_types ~target_mode:(`Asymm 3) ~f:(fun tvl ->
        match tvl with
-       | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3); (MT_mutez, v4) ] ->
+       | [ (MT_mutez, v1); (MT_nat, v2); (MT_nat, v3); (MT_mutez, v4) ] ->
          if (not (equal_cc equal_mich_v v1 v4))
-            && (not (equal_cc equal_mich_v v2 v4))
-            && (not (equal_cc equal_mich_v v3 v4))
             && (not (equal_cc equal_mich_v v1 zero_mtz))
-            && (not (equal_cc equal_mich_v v2 zero_mtz))
-            && not (equal_cc equal_mich_v v3 zero_mtz)
-         then make_add_3_eq_mtz (v1, v2, v3, v4)
+            && (not (equal_cc equal_mich_v v2 zero_nat))
+            && not (equal_cc equal_mich_v v3 zero_nat)
+         then make_add_3_eq_mnnm (v1, v2, v3, v4)
          else None
        | [ (_, _); (_, _); (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_add_3_eq : wrong ingredient length" |> raise

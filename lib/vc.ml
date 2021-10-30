@@ -121,9 +121,9 @@ module Encoder = struct
              List.map lst ~f:acc
              |>
              match (typ_of_val value_cc).cc_v with
-             | MT_mutez -> ZMutez.create_add_lst ctx
-             | MT_nat   -> ZMutez.create_add_lst ctx
-             | MT_int   -> ZMutez.create_add_lst ctx
+             | MT_mutez -> ZNat.create_add_lst ctx
+             | MT_nat   -> ZNat.create_add_lst ctx
+             | MT_int   -> ZNat.create_add_lst ctx
              | _        -> VcError "" |> raise
         in
         match cont.cc_v with
@@ -251,7 +251,10 @@ module Encoder = struct
      (*************************************************************************)
      | MV_lit_nat lit1 -> ZNat.create_expr_of_bigint ctx lit1
      | MV_abs_in v1cc -> ZNat.create_abs ctx (eov v1cc)
-     | MV_add_nnn (v1cc, v2cc) -> ZNat.create_add ctx (eov v1cc) (eov v2cc)
+     | MV_mtz_of_nat_mn v1cc -> eov v1cc
+     | MV_add_nnn (v1cc, v2cc)
+     | MV_add_mnn (v1cc, v2cc) ->
+       ZNat.create_add ctx (eov v1cc) (eov v2cc)
      | MV_mul_nnn (v1cc, v2cc) -> ZNat.create_mul ctx (eov v1cc) (eov v2cc)
      | MV_shiftL_nnn (v1cc, v2cc) ->
        ZNat.create_shift_l ctx (eov v1cc) (eov v2cc)

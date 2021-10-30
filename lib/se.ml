@@ -282,19 +282,11 @@ let sigma_constraint_of_list_nil :
    let open Tz in
    let open TzUtil in
    fun ~ctx ~lst ->
+   let (zero : mich_v cc) = MV_lit_nat Bigint.zero |> gen_custom_cc lst in
+   let (zero_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx zero in
    let (set_of_sigma_lst : mich_v cc list) = sigma_of_cont lst in
    List.map set_of_sigma_lst ~f:(fun sigma ->
-       let (zero : mich_v cc) =
-          (match (typ_of_val sigma).cc_v with
-          | MT_mutez -> MV_lit_mutez Bigint.zero
-          | MT_nat   -> MV_lit_nat Bigint.zero
-          | MT_int   -> MV_lit_int Bigint.zero
-          | _        ->
-            SeError "sigma_constraint_of_list_nil : not supported" |> raise)
-          |> gen_custom_cc sigma
-       in
        let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
-       let (zero_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx zero in
        MF_eq (sigma_ctx, zero_ctx) :: michv_typ_constraints ~ctx ~v:sigma
    )
    |> List.join
@@ -305,19 +297,11 @@ let sigma_constraint_of_map_empty :
    let open Tz in
    let open TzUtil in
    fun ~ctx ~map ->
+   let (zero : mich_v cc) = MV_lit_nat Bigint.zero |> gen_custom_cc map in
+   let (zero_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx zero in
    let (set_of_sigma_map : mich_v cc list) = sigma_of_cont map in
    List.map set_of_sigma_map ~f:(fun sigma ->
-       let (zero : mich_v cc) =
-          (match (typ_of_val sigma).cc_v with
-          | MT_mutez -> MV_lit_mutez Bigint.zero
-          | MT_nat   -> MV_lit_nat Bigint.zero
-          | MT_int   -> MV_lit_int Bigint.zero
-          | _        ->
-            SeError "sigma_constraint_of_map_empty : not supported" |> raise)
-          |> gen_custom_cc sigma
-       in
        let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
-       let (zero_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx zero in
        MF_eq (sigma_ctx, zero_ctx) :: michv_typ_constraints ~ctx ~v:sigma
    )
    |> List.join
@@ -334,32 +318,54 @@ let sigma_constraint_of_map_get :
    (* Design Note: This method for evaluating sigma of map is incomplete.
       The sum of elements which get from the map should be less than or equal to sigma of map.
       (i.e., map[A] + map[B] <= ∑map) *)
+   let (value : mich_v cc) =
+      (match (typ_of_val map).cc_v with
+      | MT_map _     -> MV_get_xmoy (key, map)
+      | MT_big_map _ -> MV_get_xbmo (key, map)
+      | _            ->
+        SeError "sigma_constraint_of_map_get : wrong type" |> raise)
+      |> gen_custom_cc map
+   in
+   let (none : mich_v cc) = MV_none (typ_of_val value) |> gen_custom_cc value in
+   let (others : mich_v cc) =
+      (match (typ_of_val map).cc_v with
+      | MT_map _     -> MV_update_xomm (key, none, map)
+      | MT_big_map _ -> MV_update_xobmbm (key, none, map)
+      | _            ->
+        SeError "sigma_constraint_of_map_get : wrong type" |> raise)
+      |> gen_custom_cc map
+   in
    let (set_of_sigma_map : mich_v cc list) = sigma_of_cont map in
-   List.map set_of_sigma_map ~f:(fun sigma ->
-       let (value : mich_v cc) =
-          (match (typ_of_val map).cc_v with
-          | MT_map _     -> MV_get_xmoy (key, map)
-          | MT_big_map _ -> MV_get_xbmo (key, map)
-          | _            ->
-            SeError "sigma_constraint_of_map_get : wrong type" |> raise)
-          |> gen_custom_cc map
-       in
+   let (set_of_sigma_others_map : mich_v cc list) = sigma_of_cont others in
+   List.map2 set_of_sigma_map set_of_sigma_others_map
+     ~f:(fun sigma sigma_others ->
        let ((acc_elem : mich_f list), (value_elem : mich_v cc)) =
           MV_unlift_option value
           |> gen_custom_cc map
           |> acc_of_sigma ~sigma ~ctx
        in
        let (get_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx value in
-       let (leq_ctx : mich_v_cc_ctx) =
-          MV_leq_ib (value_elem, sigma)
-          |> gen_custom_cc sigma
+       let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
+       let (add_ctx : mich_v_cc_ctx) =
+          (match (typ_of_val value).cc_v with
+          | MT_int   -> MV_add_iii (value_elem, sigma_others)
+          | MT_nat   -> MV_add_nnn (value_elem, sigma_others)
+          | MT_mutez -> MV_add_mnn (value_elem, sigma_others)
+          | _        ->
+            SeError "sigma_constraint_of_map_get : wrong type" |> raise)
+          |> gen_custom_cc sigma_others
           |> gen_mich_v_ctx ~ctx
        in
        MF_imply
-         (MF_not (MF_is_none get_ctx), MF_and (MF_is_true leq_ctx :: acc_elem))
+         ( MF_not (MF_is_none get_ctx),
+           MF_and (MF_eq (sigma_ctx, add_ctx) :: acc_elem)
+         )
        :: michv_typ_constraints ~ctx ~v:sigma
    )
-   |> List.join
+   |> function
+   | Ok fll          -> List.join fll
+   | Unequal_lengths ->
+     SeError "sigma_constraint_of_list_cons : Unequal_lengths" |> raise
 (* function sigma_constraint_of_map_get end *)
 
 let sigma_constraint_of_list_cons :
@@ -379,9 +385,9 @@ let sigma_constraint_of_list_cons :
        in
        let (addition : mich_v cc) =
           (match (typ_of_val sigma).cc_v with
-          | MT_mutez -> MV_add_mmm (value_elem, new_sigma)
-          | MT_nat   -> MV_add_nnn (value_elem, new_sigma)
           | MT_int   -> MV_add_iii (value_elem, new_sigma)
+          | MT_nat   -> MV_add_nnn (value_elem, new_sigma)
+          | MT_mutez -> MV_add_mnn (value_elem, new_sigma)
           | _        ->
             SeError "sigma_constraint_of_list_cons : not supported" |> raise)
           |> gen_custom_cc new_sigma
@@ -409,20 +415,22 @@ let sigma_constraint_of_map_update :
    let open Tz in
    let open TzUtil in
    fun ~ctx ~map ~key ~value ~updated_map ->
+   let (old_value : mich_v cc) =
+      (match (typ_of_val map).cc_v with
+      | MT_map _     -> MV_get_xmoy (key, map)
+      | MT_big_map _ -> MV_get_xbmo (key, map)
+      | _            ->
+        SeError "sigma_constraint_of_map_update : wrong type" |> raise)
+      |> gen_custom_cc map
+   in
+   let (get_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx old_value in
+   let (update_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx value in
    let (set_of_sigma_map : mich_v cc list) = sigma_of_cont map in
    let (set_of_sigma_updated_map : mich_v cc list) =
       sigma_of_cont updated_map
    in
    List.map2 set_of_sigma_map set_of_sigma_updated_map
      ~f:(fun sigma new_sigma ->
-       let (old_value : mich_v cc) =
-          (match (typ_of_val map).cc_v with
-          | MT_map _     -> MV_get_xmoy (key, map)
-          | MT_big_map _ -> MV_get_xbmo (key, map)
-          | _            ->
-            SeError "sigma_constraint_of_map_update : wrong type" |> raise)
-          |> gen_custom_cc map
-       in
        let ((acc_old_elem : mich_f list), (value_old_elem : mich_v cc)) =
           MV_unlift_option old_value
           |> gen_custom_cc map
@@ -435,7 +443,7 @@ let sigma_constraint_of_map_update :
        in
        let (old_addition : mich_v cc) =
           (match (typ_of_val sigma).cc_v with
-          | MT_mutez -> MV_add_mmm (value_new_elem, sigma)
+          | MT_mutez -> MV_add_mnn (value_new_elem, sigma)
           | MT_nat   -> MV_add_nnn (value_new_elem, sigma)
           | MT_int   -> MV_add_iii (value_new_elem, sigma)
           | _        ->
@@ -444,7 +452,7 @@ let sigma_constraint_of_map_update :
        in
        let (new_addition : mich_v cc) =
           (match (typ_of_val sigma).cc_v with
-          | MT_mutez -> MV_add_mmm (value_old_elem, new_sigma)
+          | MT_mutez -> MV_add_mnn (value_old_elem, new_sigma)
           | MT_nat   -> MV_add_nnn (value_old_elem, new_sigma)
           | MT_int   -> MV_add_iii (value_old_elem, new_sigma)
           | _        ->
@@ -453,8 +461,6 @@ let sigma_constraint_of_map_update :
        in
        let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
        let (new_sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx new_sigma in
-       let (get_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx old_value in
-       let (update_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx value in
        let (old_addition_ctx : mich_v_cc_ctx) =
           gen_mich_v_ctx ~ctx old_addition
        in
