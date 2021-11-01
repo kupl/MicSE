@@ -490,6 +490,41 @@ let tmp_all_elem_eq : Igdt.igdt_sets -> CSet.t =
    )
 (* function tmp_all_elem_eq end *)
 
+let tmp_eq_and_all_elem_eq : Igdt.igdt_sets -> CSet.t =
+   (* This template is what KT1CSfR needs. *)
+   let open Tz in
+   let open TzUtil in
+   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* syntax sugar *)
+   fun igdt_map ->
+   let (target_types : Tz.mich_t Tz.cc list list) =
+      MTMap.keys igdt_map
+      |> List.map ~f:(fun t ->
+             match t.cc_v with
+             | MT_map (_, vtcc)
+             | MT_big_map (_, vtcc) ->
+               [ t; t; t; vtcc ]
+             | _ -> []
+         )
+      |> List.filter ~f:(fun l -> not (List.is_empty l))
+   in
+   gen_template igdt_map target_types ~target_mode:(`Asymm 2) ~f:(fun tvl ->
+       match tvl with
+       | [ (_, v1); (_, v2); (_, v3); (_, v4) ] ->
+         if not (equal_cc equal_mich_v v1 v2)
+         then
+           MF_and
+             [
+               MF_eq (gctx v1, gctx v2);
+               MF_all_element_equal_to (gctx v3, gctx v4);
+             ]
+           |> Option.some
+         else None
+       | _ ->
+         InvError "tmp_eq_and_all_elem_eq : wrong ingredient length" |> raise
+   )
+(* function tmp_eq_and_all_elem_eq end *)
+
 (******************************************************************************)
 (* Invariants & Invariant Candidates                                          *)
 (******************************************************************************)
@@ -586,7 +621,15 @@ let gen_initial_cand_map :
      |> QIDMap.of_alist_exn
   in
   RMCIMap.mapi igdt_map ~f:(fun ~key:rmci ~data:igdt_sets ->
-      [ tmp_eq; tmp_ge; tmp_gt; tmp_add_2_eq; tmp_add_3_eq; tmp_all_elem_eq ]
+      [
+        tmp_eq;
+        tmp_ge;
+        tmp_gt;
+        tmp_add_2_eq;
+        tmp_add_3_eq;
+        tmp_all_elem_eq;
+        tmp_eq_and_all_elem_eq;
+      ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> CSet.union_list
       |> CSet.fold ~init:CMap.empty ~f:(fun acc_cmap cand ->
