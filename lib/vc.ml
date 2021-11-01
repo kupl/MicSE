@@ -771,7 +771,8 @@ module Encoder = struct
            in
            let (elem_f : Formula.t) = Formula.create_is_option_some value_opt in
            let (prec : Formula.t) = Formula.create_and ctx [ mem_f; elem_f ] in
-           Formula.create_imply ctx prec (Formula.create_eq ctx value (eov v2))
+           Formula.create_forall ctx [ key ]
+             (Formula.create_imply ctx prec (Formula.create_eq ctx value (eov v2)))
          | _ -> VcError "Encoder : cv_mf : MF_all_element_equal_to" |> raise
        )
      with

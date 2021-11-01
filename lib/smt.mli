@@ -813,6 +813,8 @@ module Formula : sig
 
   val create_set_default_value : Ctx.t -> Expr.t -> t
 
+  val create_forall : Ctx.t -> Expr.t list -> t -> t
+
   val to_sat_check : Ctx.t -> t -> Expr.t list
 
   val to_sat_check_lst : Ctx.t -> t list -> Expr.t list

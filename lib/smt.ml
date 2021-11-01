@@ -2424,6 +2424,13 @@ module Formula = struct
     create_eq ctx default_value false_value
   (* function create_set_default_value end *)
 
+  let create_forall : Ctx.t -> Expr.t list -> t -> t =
+    fun ctx bound_vars body ->
+    Z3.Quantifier.mk_forall_const (Ctx.read ctx) bound_vars body None [] [] None
+      None
+    |> Z3.Quantifier.expr_of_quantifier
+  (* function create_forall end *)
+
   let to_sat_check : Ctx.t -> t -> Expr.t list = (fun _ fmla -> [ fmla ])
   (* function to_sat_check end *)
 
