@@ -241,6 +241,7 @@ let rec mvcc_map_innerfst : mapf:(mich_v -> mich_v) -> mich_v cc -> mich_v cc =
     MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 (r v) |> fc
   | MV_sigma_mspnbpp_nm_m1 v -> MV_sigma_mspnbpp_nm_m1 (r v) |> fc
   | MV_sigma_n_am_n1 v -> MV_sigma_n_am_n1 (r v) |> fc
+  | MV_sigma_m_am_m1 v -> MV_sigma_m_am_m1 (r v) |> fc
 (* function mvcc_map_innerfst end *)
 
 let rec mf_map_innerfst : mapf:(mich_f -> mich_f) -> mich_f -> mich_f =
@@ -607,6 +608,7 @@ let rec mvcc_fold_innerfst :
     fc1 (fun x -> MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 x) v
   | MV_sigma_mspnbpp_nm_m1 v -> fc1 (fun x -> MV_sigma_mspnbpp_nm_m1 x) v
   | MV_sigma_n_am_n1 v -> fc1 (fun x -> MV_sigma_n_am_n1 x) v
+  | MV_sigma_m_am_m1 v -> fc1 (fun x -> MV_sigma_m_am_m1 x) v
 (* function mvcc_fold_innerfst end *)
 
 (******************************************************************************)
@@ -1008,6 +1010,7 @@ let typ_of_val : mich_v cc -> mich_t cc =
      | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 _ -> gen_cc MT_nat
      | MV_sigma_mspnbpp_nm_m1 _ -> gen_cc MT_nat
      | MV_sigma_n_am_n1 _ -> gen_cc MT_nat
+     | MV_sigma_m_am_m1 _ -> gen_cc MT_nat
      (* inner-function typ_of_val_i end *)
    in
    (fun v -> typ_of_val_i v)
@@ -1022,7 +1025,7 @@ let get_innertyp : mich_t cc -> mich_t cc =
   | MT_contract t ->
     t
   | _ ->
-    TzError ("get_innertyp : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
+    TzError ("get_innertyp : " ^ SexpUtil.to_string (sexp_of_cc sexp_of_mich_t ttt))
     |> Stdlib.raise
 (* function get_innertyp end *)
 
@@ -1036,7 +1039,7 @@ let get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc =
   | MT_big_map (t1, t2) ->
     (t1, t2)
   | _ ->
-    TzError ("get_innertyp2 : " ^ Sexp.to_string (sexp_of_cc sexp_of_mich_t ttt))
+    TzError ("get_innertyp2 : " ^ SexpUtil.to_string (sexp_of_cc sexp_of_mich_t ttt))
     |> Stdlib.raise
 (* function get_innertyp2 end *)
 
@@ -1577,6 +1580,7 @@ let sigma_of_cont : mich_v cc -> mich_v cc list =
            && equal_mich_t t224cc.cc_v MT_bool ->
       [ gen_custom_cc vcc (MV_sigma_mspnbpp_nm_m1 vcc) ]
     | (MT_address, MT_nat) -> [ gen_custom_cc vcc (MV_sigma_n_am_n1 vcc) ]
+    | (MT_address, MT_mutez) -> [ gen_custom_cc vcc (MV_sigma_m_am_m1 vcc) ]
     | _ -> []
   )
   | MT_big_map (ktcc, vtcc) -> (
@@ -1704,6 +1708,11 @@ let acc_of_sigma :
     match (typ_of_val vcc).cc_v with
     | MT_nat -> vcc |> opt_mvcc ~ctx
     | _      -> TzError "acc_of_sigma : MV_sigma_n_am_n1 : _" |> raise
+  )
+  | MV_sigma_m_am_m1 _ -> (
+    match (typ_of_val vcc).cc_v with
+    | MT_mutez -> vcc |> opt_mvcc ~ctx
+    | _      -> TzError "acc_of_sigma : MV_sigma_m_am_m1 : _" |> raise
   )
   | _ -> TzError "acc_of_sigma : _" |> raise
 (* function acc_of_sigma end *)

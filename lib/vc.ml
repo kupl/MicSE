@@ -524,6 +524,7 @@ module Encoder = struct
      | MV_sigma_mmspnbppnmpnnpp_abm_smspnbppnm2 v1cc -> eos v1cc
      | MV_sigma_mspnbpp_nm_m1 v1cc -> eos v1cc
      | MV_sigma_n_am_n1 v1cc -> eos v1cc
+     | MV_sigma_m_am_m1 v1cc -> eos v1cc
   (* function cv_mv end *)
 
   and cv_mvcc :
