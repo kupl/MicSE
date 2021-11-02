@@ -70,11 +70,6 @@ let rec combinate :
    if RMCIMap.is_empty targets
    then if equal_inv_map cinv acc_imap then None else Some acc_imap
    else (
-     let (picked : RMCISet.t) =
-        RMCISet.diff
-          (RMCIMap.keys acc_imap |> RMCISet.of_list)
-          (RMCIMap.keys targets |> RMCISet.of_list)
-     in
      (* 1. Target MCI for combinate *)
      let (rmci : Tz.r_mich_cut_info) =
         RMCIMap.keys targets |> List.permute |> List.hd_exn
@@ -86,6 +81,11 @@ let rec combinate :
              ~remove_not_precond:true targets rmci qid
      in
      let (remains : cand_map) = RMCIMap.remove targets rmci in
+     let (picked : RMCISet.t) =
+        RMCISet.diff
+          (RMCIMap.keys acc_imap |> RMCISet.of_list)
+          (RMCIMap.keys remains |> RMCISet.of_list)
+     in
      (* 2. Combinate candidates *)
      let (new_imap_opt : Inv.inv_map option) =
         List.fold cands ~init:None ~f:(fun new_imap_opt fset ->
