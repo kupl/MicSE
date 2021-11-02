@@ -326,7 +326,9 @@ let sigma_constraint_of_map_get :
         SeError "sigma_constraint_of_map_get : wrong type" |> raise)
       |> gen_custom_cc map
    in
-   let (none : mich_v cc) = MV_none (typ_of_val value) |> gen_custom_cc value in
+   let (none : mich_v cc) =
+      MV_none (typ_of_val value |> get_innertyp) |> gen_custom_cc value
+   in
    let (others : mich_v cc) =
       (match (typ_of_val map).cc_v with
       | MT_map _     -> MV_update_xomm (key, none, map)
@@ -347,7 +349,7 @@ let sigma_constraint_of_map_get :
        let (get_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx value in
        let (sigma_ctx : mich_v_cc_ctx) = gen_mich_v_ctx ~ctx sigma in
        let (add_ctx : mich_v_cc_ctx) =
-          (match (typ_of_val value).cc_v with
+          (match (typ_of_val value_elem).cc_v with
           | MT_int   -> MV_add_iii (value_elem, sigma_others)
           | MT_nat   -> MV_add_nnn (value_elem, sigma_others)
           | MT_mutez -> MV_add_mnn (value_elem, sigma_others)
@@ -361,11 +363,12 @@ let sigma_constraint_of_map_get :
            MF_and (MF_eq (sigma_ctx, add_ctx) :: acc_elem)
          )
        :: michv_typ_constraints ~ctx ~v:sigma
+       @ michv_typ_constraints ~ctx ~v:sigma_others
    )
    |> function
    | Ok fll          -> List.join fll
    | Unequal_lengths ->
-     SeError "sigma_constraint_of_list_cons : Unequal_lengths" |> raise
+     SeError "sigma_constraint_of_map_get : Unequal_lengths" |> raise
 (* function sigma_constraint_of_map_get end *)
 
 let sigma_constraint_of_list_cons :
