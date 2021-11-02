@@ -186,6 +186,10 @@ val tmp_add_2_eq : Igdt.igdt_sets -> CSet.t
 
 val tmp_add_3_eq : Igdt.igdt_sets -> CSet.t
 
+val tmp_all_elem_eq : Igdt.igdt_sets -> CSet.t
+
+val tmp_eq_and_all_elem_eq : Igdt.igdt_sets -> CSet.t
+
 (******************************************************************************)
 (* Invariants & Invariant Candidates                                          *)
 (******************************************************************************)

@@ -285,13 +285,21 @@ let gen_template :
             combination (List.map targets ~f:(fun (_, _, all_set, _) -> all_set))
           else
             List.mapi targets ~f:(fun idx (_, n_set, _, _) ->
-                let ((l_set_lst : ISet.t list), (a_set_lst : ISet.t list)) =
+                let ( (targets_for_lit :
+                        (ISet.t * ISet.t * ISet.t * mich_t cc) list
+                        ),
+                      (targets_for_all :
+                        (ISet.t * ISet.t * ISet.t * mich_t cc) list
+                        )
+                    ) =
                    List.split_n targets idx
-                   |> fun (fst_lst, snd_lst) ->
-                   ( List.map fst_lst ~f:(fun (l_set, _, _, _) -> l_set),
-                     List.tl_exn snd_lst
-                     |> List.map ~f:(fun (_, _, a_set, _) -> a_set)
-                   )
+                   |> (fun (fst_lst, snd_lst) -> (fst_lst, List.tl_exn snd_lst))
+                in
+                let (l_set_lst : ISet.t list) =
+                   List.map targets_for_lit ~f:(fun (l_set, _, _, _) -> l_set)
+                in
+                let (a_set_lst : ISet.t list) =
+                   List.map targets_for_all ~f:(fun (_, _, a_set, _) -> a_set)
                 in
                 combination (List.join [ l_set_lst; [ n_set ]; a_set_lst ])
             )
@@ -355,12 +363,20 @@ let tmp_ge : Igdt.igdt_sets -> CSet.t =
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
-      List.map [ MT_int; MT_nat; MT_mutez; MT_string ] ~f:(fun t ->
-          List.init 2 ~f:(fun _ -> gen_dummy_cc t)
+      List.map
+        [
+          [ MT_int; MT_int ];
+          [ MT_nat; MT_nat ];
+          [ MT_mutez; MT_mutez ];
+          [ MT_string; MT_string ];
+          [ MT_mutez; MT_nat ];
+        ] ~f:(fun tl -> List.map tl ~f:(fun t -> gen_dummy_cc t)
       )
    in
    gen_template igdt_map target_types ~target_mode:`Asymm_rfl ~f:(fun tvl ->
        match tvl with
+       | [ (MT_mutez, v1); (MT_nat, v2) ] ->
+         if not (equal_mich_v_cc v2 zero_nat) then make_ge (v1, v2) else None
        | [ (MT_mutez, v1); (MT_mutez, v2) ] ->
          if (not (equal_mich_v_cc v1 max_mtz))
             && not (equal_mich_v_cc v2 zero_mtz)
