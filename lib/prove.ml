@@ -83,7 +83,7 @@ let rec combinate :
      let (remains : cand_map) = RMCIMap.remove targets rmci in
      let (picked : RMCISet.t) =
         RMCISet.diff
-          (RMCIMap.keys acc_imap |> RMCISet.of_list)
+          (RMCIMap.keys cinv |> RMCISet.of_list)
           (RMCIMap.keys remains |> RMCISet.of_list)
      in
      (* 2. Combinate candidates *)
@@ -159,7 +159,7 @@ let check_inductiveness :
 let check_number_of_cands : Tz.qid -> Inv.cand_map -> bool =
    let open Inv in
    fun qid cmap ->
-   RMCIMap.for_alli cmap ~f:(fun ~key ~data:_ ->
+   RMCIMap.existsi cmap ~f:(fun ~key ~data:_ ->
        let (cands : cand list) =
           find_ordered_cand_by_rmci ~remove_unflaged:true
             ~remove_not_precond:true cmap key qid
