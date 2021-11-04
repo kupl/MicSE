@@ -279,7 +279,7 @@ code  { # param-storage disassembly
                     # }
                     # deposits <- new_deposits
                     # total_deposit <- new_total_deposit
-                    # ASSERT (avail_reward_calc >= given_rewards)
+                    # ASSERT & REQUIRE (avail_reward_calc >= given_rewards)
                     # let fee <- (avail_reward_calc * fee_percent) / 100
                     # ASSERT & REQUIRE (avail_reward_calc >= fee)
                     # fee_acc <- fee_acc + fee
@@ -341,7 +341,12 @@ code  { # param-storage disassembly
                     # Expeceted STACK FIGURE ::
                     #   given_rewards : new_deposits : new_total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
                     DUP 9;
-                    #__MICSE_CHECK { COMPARE; GE; } ;
+                    DUP 2;
+                    DUP 2;
+                    COMPARE;
+                    GE;
+                    #__MICSE_CHECK { DROP 0; } ;
+                    ASSERT;
                     # Expeceted STACK FIGURE ::
                     #   avail_reward_calc : given_rewards : new_deposits : new_total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
                     DUP;
