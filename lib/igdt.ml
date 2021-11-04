@@ -99,9 +99,9 @@ let tmap_merge_with_delim :
   fun ~lit ~non_lit ->
   MTMap.merge lit non_lit ~f:(fun ~key:_ opt ->
       match opt with
-      | `Both (a', b') -> Some { lit = a'; non_lit = b' }
-      | `Left a'       -> Some { lit = a'; non_lit = ISet.empty }
-      | `Right b'      -> Some { lit = ISet.empty; non_lit = b' }
+      | `Both (lit, non_lit) -> Some { lit; non_lit }
+      | `Left lit            -> Some { lit; non_lit = ISet.empty }
+      | `Right non_lit       -> Some { lit = ISet.empty; non_lit }
   )
 (* function tmap_merge end *)
 
@@ -139,37 +139,23 @@ let collect_igdt_of_sigma : igdt -> ISet.t * ISet.t =
    else (
      let (igdt_set : ISet.t) =
         List.map set_of_sigma ~f:(fun sigma ->
-            (* values *)
-            let (zero : mich_v cc) =
-               (match (typ_of_val sigma).cc_v with
-               | MT_mutez -> MV_lit_mutez Bigint.zero
-               | MT_nat   -> MV_lit_nat Bigint.zero
-               | MT_int   -> MV_lit_int Bigint.zero
-               | _        ->
-                 IgdtError "collect_igdt_of_sigma : not supported" |> raise)
-               |> gen_custom_cc sigma
-            in
             (* type *)
             let (typ_sigma : mich_t cc) = typ_of_val sigma in
             (* ingredients *)
             let (igdt_sigma : igdt) =
                { cur_igdt with ig_value = sigma; ig_typ = typ_sigma }
             in
-            let (igdt_zero : igdt) =
-               { cur_igdt with ig_value = zero; ig_typ = typ_sigma }
-            in
             (match cur_val.cc_v with
-            | MV_nil _ -> [ igdt_zero ]
-            | MV_lit_list (_, lst) when List.length lst = 0 -> [ igdt_zero ]
-            | MV_empty_map _ -> [ igdt_zero ]
-            | MV_lit_map (_, _, map) when List.length map = 0 -> [ igdt_zero ]
-            | MV_empty_big_map _ -> [ igdt_zero ]
-            | MV_lit_big_map (_, _, map) when List.length map = 0 ->
-              [ igdt_zero ]
+            | MV_nil _ -> []
+            | MV_lit_list (_, lst) when List.length lst = 0 -> []
+            | MV_empty_map _ -> []
+            | MV_lit_map (_, _, map) when List.length map = 0 -> []
+            | MV_empty_big_map _ -> []
+            | MV_lit_big_map (_, _, map) when List.length map = 0 -> []
             | MV_lit_list (_, _) -> [ igdt_sigma ]
             | MV_lit_map (_, _, _) -> [ igdt_sigma ]
             | MV_lit_big_map (_, _, _) -> [ igdt_sigma ]
-            | _ -> [ igdt_sigma; igdt_zero ])
+            | _ -> [ igdt_sigma ])
             |> ISet.of_list
         )
         |> ISet.union_list
@@ -736,29 +722,22 @@ let get_igdts_map : SSet.t -> Tz.mich_v Tz.cc -> MVSet.t -> igdts_map =
             (get_reduced_mci b.ss_start_mci)
       )
       |> List.map ~f:(fun p_blocked_sset ->
-             let (p_blocked_slst : Tz.sym_state list) =
-                SSet.to_list p_blocked_sset
-             in
              let (cur_rmci : r_mich_cut_info) =
-                get_reduced_mci (List.hd_exn p_blocked_slst).ss_start_mci
+                get_reduced_mci (SSet.choose_exn p_blocked_sset).ss_start_mci
              in
-             let (non_lit_igdt_set : ISet.t) =
-                ISet.union_list (List.map p_blocked_slst ~f:igdt_from_sym_state)
-             in
-             let (lit_igdt_set : ISet.t) =
+             let (l_set : ISet.t) =
                 ISet.union_list [ init_strg_igdt_set; lit_val_igdt_set ]
              in
-             let (non_lit_igdt_tmap : ISet.t MTMap.t) =
-                tmap_from_iset non_lit_igdt_set
+             let (n_set : ISet.t) =
+                SSet.fold p_blocked_sset ~init:ISet.empty ~f:(fun acc bs ->
+                    let (new_n_set : ISet.t) = igdt_from_sym_state bs in
+                    ISet.union acc new_n_set
+                )
              in
-             let (lit_igdt_tmap : ISet.t MTMap.t) =
-                tmap_from_iset lit_igdt_set
-             in
-             let (merged_tmap : igdt_sets) =
-                tmap_merge_with_delim ~lit:lit_igdt_tmap
-                  ~non_lit:non_lit_igdt_tmap
-             in
-             (cur_rmci, merged_tmap)
+             let (lit : ISet.t MTMap.t) = tmap_from_iset l_set in
+             let (non_lit : ISet.t MTMap.t) = tmap_from_iset n_set in
+             let (new_tmap : igdt_sets) = tmap_merge_with_delim ~lit ~non_lit in
+             (cur_rmci, new_tmap)
          )
       |> RMCIMap.of_alist
       |> function
