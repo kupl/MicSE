@@ -155,8 +155,8 @@ let rec shuffle : Igdt.igdt list -> ILSet.t =
     |> ILSet.union_list
 (* function shuffle end *)
 
-(* combination [{1; 2;}; {a; b;}; ...] === {[1; a; ...]; [1; b; ...]; [2; a; ...]; [2; b; ...];} *)
-let combination : ISet.t list -> ILSet.t =
+(* igdt_combination [{1; 2;}; {a; b;}; ...] === {[1; a; ...]; [1; b; ...]; [2; a; ...]; [2; b; ...];} *)
+let igdt_combination : ISet.t list -> ILSet.t =
   fun set_lst ->
   if List.for_all set_lst ~f:(fun i_set -> not (ISet.is_empty i_set))
   then
@@ -174,14 +174,14 @@ let combination : ISet.t list -> ILSet.t =
           |> ILSet.union_list)
       ~init:ILSet.empty
   else ILSet.empty
-(* function combination end *)
+(* function igdt_combination end *)
 
-(* combination_self {a; b;} 2 === {[a; a;]; [a; b;]; [b; a;]; [b; b;];} *)
-let combination_self : ISet.t -> size:int -> ILSet.t =
+(* igdt_combination_self {a; b;} 2 === {[a; a;]; [a; b;]; [b; a;]; [b; b;];} *)
+let igdt_combination_self : ISet.t -> size:int -> ILSet.t =
   fun iset ~size ->
   let (set_lst : ISet.t list) = List.init size ~f:(fun _ -> iset) in
-  combination set_lst
-(* function combination_self end *)
+  igdt_combination set_lst
+(* function igdt_combination_self end *)
 
 (* filter_symmetry {[a; a;]; [a; b;]; [a; c;] [b; a;]; [b; b;]; [b; c;]; [c; a;]; [c; b;]; [c; c;];} === {[a; b;]; [a; c;]; [b; c;];}  *)
 (* This function is only working at ingredient list size 2 *)
@@ -252,6 +252,20 @@ let fmla_of_cand_post : cand -> Tz.mich_f =
     (MF_and (MFSet.to_list cand.c_cond), MF_and (MFSet.to_list cand.c_fmla))
 (* function fmla_of_cand_pre end *)
 
+let cand_combination : CSet.t list -> CSet.t =
+  fun cset_lst ->
+  if List.for_all cset_lst ~f:(fun cset -> not (CSet.is_empty cset))
+  then
+    List.fold cset_lst ~init:CSet.empty ~f:(fun acc_cset cset ->
+        if CSet.is_empty acc_cset
+        then cset
+        else
+          CSet.to_list cset
+          |> List.map ~f:(fun c -> CSet.map acc_cset ~f:(join_cands c))
+          |> CSet.union_list
+    )
+  else CSet.empty
+
 (******************************************************************************)
 (* Invariant Candidate Templates                                              *)
 (******************************************************************************)
@@ -282,7 +296,8 @@ let gen_template :
        let (target_comb : ILSet.t) =
           ( if not except_lit_only
           then
-            combination (List.map targets ~f:(fun (_, _, all_set, _) -> all_set))
+            igdt_combination
+              (List.map targets ~f:(fun (_, _, a_set, _) -> a_set))
           else
             List.mapi targets ~f:(fun idx (_, n_set, _, _) ->
                 let ( (targets_for_lit :
@@ -301,7 +316,7 @@ let gen_template :
                 let (a_set_lst : ISet.t list) =
                    List.map targets_for_all ~f:(fun (_, _, a_set, _) -> a_set)
                 in
-                combination (List.join [ l_set_lst; [ n_set ]; a_set_lst ])
+                igdt_combination (List.join [ l_set_lst; [ n_set ]; a_set_lst ])
             )
             |> ILSet.union_list
           )
@@ -513,32 +528,46 @@ let tmp_eq_and_all_elem_eq : Igdt.igdt_sets -> CSet.t =
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
    fun igdt_map ->
-   let (target_types : Tz.mich_t Tz.cc list list) =
+   let (target_type_pair : (Tz.mich_t Tz.cc list * Tz.mich_t Tz.cc list) list) =
       MTMap.keys igdt_map
       |> List.map ~f:(fun t ->
              match t.cc_v with
              | MT_map (_, vtcc)
              | MT_big_map (_, vtcc) ->
-               [ t; t; t; vtcc ]
-             | _ -> []
+               ([ t; t ], [ t; vtcc ])
+             | _ -> ([], [])
          )
-      |> List.filter ~f:(fun l -> not (List.is_empty l))
+      |> List.filter ~f:(fun (l1, l2) ->
+             not (List.is_empty l1 || List.is_empty l2)
+         )
    in
-   gen_template igdt_map target_types ~target_mode:(`Asymm 2) ~f:(fun tvl ->
-       match tvl with
-       | [ (_, v1); (_, v2); (_, v3); (_, v4) ] ->
-         if not (equal_cc equal_mich_v v1 v2)
-         then
-           MF_and
-             [
-               MF_eq (gctx v1, gctx v2);
-               MF_all_element_equal_to (gctx v3, gctx v4);
-             ]
-           |> Option.some
-         else None
-       | _ ->
-         InvError "tmp_eq_and_all_elem_eq : wrong ingredient length" |> raise
-   )
+   let ( (target_types_1 : Tz.mich_t Tz.cc list list),
+         (target_types_2 : Tz.mich_t Tz.cc list list)
+       ) =
+      List.unzip target_type_pair
+   in
+   let (cands_1 : CSet.t) =
+      gen_template igdt_map target_types_1 ~target_mode:(`Asymm 2)
+        ~f:(fun tvl ->
+          match tvl with
+          | [ (_, v1); (_, v2) ] ->
+            if not (equal_cc equal_mich_v v1 v2)
+            then Some (MF_eq (gctx v1, gctx v2))
+            else None
+          | _                    ->
+            InvError "tmp_eq_and_all_elem_eq : wrong ingredient length" |> raise
+      )
+   in
+   let (cands_2 : CSet.t) =
+      gen_template igdt_map target_types_2 ~f:(fun tvl ->
+          match tvl with
+          | [ (_, v3); (_, v4) ] ->
+            Some (MF_all_element_equal_to (gctx v3, gctx v4))
+          | _                    ->
+            InvError "tmp_eq_and_all_elem_eq : wrong ingredient length" |> raise
+      )
+   in
+   cand_combination [ cands_1; cands_2 ]
 (* function tmp_eq_and_all_elem_eq end *)
 
 (******************************************************************************)

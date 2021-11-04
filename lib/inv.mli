@@ -141,11 +141,11 @@ module ILSet : module type of Core.Set.Make (IGDTL_cmp)
 (* shuffle [a; b; c;] === {[a; b; c;]; [a; c; b;]; [b; a; c;]; [b; c; a;]; [c; a; b;]; [c; b; a;];} *)
 val shuffle : Igdt.igdt list -> ILSet.t
 
-(* combination [{1; 2;}; {a; b;}; ...] === {[1; a; ...]; [1; b; ...]; [2; a; ...]; [2; b; ...];} *)
-val combination : ISet.t list -> ILSet.t
+(* igdt_combination [{1; 2;}; {a; b;}; ...] === {[1; a; ...]; [1; b; ...]; [2; a; ...]; [2; b; ...];} *)
+val igdt_combination : ISet.t list -> ILSet.t
 
-(* combination_self {a; b;} 2 === {[a; a;]; [a; b;]; [b; a;]; [b; b;];} *)
-val combination_self : ISet.t -> size:int -> ILSet.t
+(* igdt_combination_self {a; b;} 2 === {[a; a;]; [a; b;]; [b; a;]; [b; b;];} *)
+val igdt_combination_self : ISet.t -> size:int -> ILSet.t
 
 (* filter_symmetry {[a; a;]; [a; b;]; [a; c;] [b; a;]; [b; b;]; [b; c;]; [c; a;]; [c; b;]; [c; c;];} === {[a; b;]; [a; c;]; [b; c;];}  *)
 (* This function is only working at ingredient list size 2 *)
