@@ -1,0 +1,103 @@
+storage (pair
+          (pair (address %administrator)
+                (pair (map %funding address mutez) (mutez %limit_balance)))
+          (pair (pair (mutez %max_amount) (big_map %metadata string bytes))
+                (pair (timestamp %time_end) (timestamp %time_start))));
+parameter (or (unit %complete) (unit %fund));
+code { UNPAIR ;               # %p : %s
+       IF_LEFT
+         { DROP ;             # %s
+           DUP ;              # %s : %s
+           CAR ;              # car(%s) : %s
+           CAR ;              # %s-administrator : %s
+           SENDER ;           # %sender : %s-administrator : %s
+           COMPARE ;          # compare (%sender, %s-administrator) : %s
+           EQ ;               # compare (%sender, %s-administrator) == 0 : %s
+           IF
+             {}
+             { PUSH string "WrongCondition: sp.sender == self.data.administrator" ;
+               FAILWITH } ;
+           UNPAIR ;           # car(%s) : cdr(%s)
+           UNPAIR ;           # %s-administrator : cdar(%s) : cdr(%s)
+           SWAP ;             # cdar(%s) : %s-administrator : cdr(%s)
+           UNPAIR ;           # %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+           DROP ;             # %s-limit_balance : %s-administrator : cdr(%s)
+           EMPTY_MAP address mutez ; # {} : %s-limit_balance : %s-administrator : cdr(%s)
+           PAIR ;             # ({}, %s-limit_balance) : %s-administrator : cdr(%s)
+           SWAP ;             # %s-administrator : ({}, %s-limit_balance) : cdr(%s)
+           PAIR ;             # (%s-administrator, ({}, %s-limit_balance)) : cdr(%s)
+           PAIR ;             # %s'''
+           NIL operation ;    # [] : %s'''
+           SENDER ;           # %sender : [] : %s'''
+           CONTRACT unit ;    # contract(%sender)_opt : [] : %s'''
+           IF_NONE { PUSH int 67 ; FAILWITH } {} ;
+           BALANCE ;          # %balance : contract(%sender) : [] : %s'''
+           UNIT ;             # () : %balance : contract(%sender) : [] : %s'''
+           TRANSFER_TOKENS ;  # tt((), %balance, contract(%sender)) : [] : %s'''
+           CONS }             # tt((), %balance, contract(%sender)) : [] : %s'''
+         { DROP ;             # %s
+           DUP ;              # %s : %s
+           GET 6 ;            # %s-time_start : %s
+           NOW ;              # %now : %s-time_start : %s
+           COMPARE ;          # compare(%now, %s-time_start) : %s
+           GE ;               # compare(%now, %s-time_start) >= 0 : %s
+           IF {} { PUSH string "SP_EVENT_HAS_NOT_STARTED" ; FAILWITH } ;
+           DUP ;              # %s : %s
+           GET 5 ;            # %s-time_end : %s
+           NOW ;              # %now : %s-time_end : %s
+           COMPARE ;          # compare(%now, %s-time_end) : %s
+           LE ;               # compare(%now, %s-time_end) <= 0 : %s
+           IF {} { PUSH string "SP_EVENT_HAS_ENDED" ; FAILWITH } ;
+           DUP ;              # %s : %s
+           GET 3 ;            # cadr(%s) : %s
+           CAR ;              # %s-max_amount : %s
+           AMOUNT ;           # %amount : %s-max_amount : %s
+           COMPARE ;          # compare(%amount, %s-max_amount) : %s
+           LE ;               # compare(%amount, %s-max_amount) <= 0 : %s
+           IF {} { PUSH string "SP_WRONG_INPUT" ; FAILWITH } ;
+           DUP ;              # %s : %s
+           CAR ;              # car(%s) : %s
+           GET 4 ;            # %s-limit_balance : %s
+           BALANCE ;          # %balance : %s-limit_balance : %s
+           COMPARE ;          # compare(%balance : %s-limit_balance) : %s
+           LE ;               # compare(%balance : %s-limit_balance) <= 0 : %s
+           IF {} { PUSH string "SP_OVER_BALANCE" ; FAILWITH } ;
+           DUP ;              # %s : %s
+           CAR ;              # car(%s) : %s
+           GET 3 ;            # %s-funding : %s
+           SENDER ;           # %sender : %s-funding : %s
+           MEM ;              # mem(%sender : %s-funding) : %s
+           IF
+             { UNPAIR ;       # car(%s) : cdr(%s)
+               UNPAIR ;       # %s-administrator : cdar(%s) : cdr(%s)
+               SWAP ;         # cdar(%s) : %s-administrator : cdr(%s)
+               UNPAIR ;       # %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               DUP ;          # %s-funding : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               SENDER ;       # %sender : %s-funding : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               DUP ;          # %sender : %sender : %s-funding : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               DUG 2 ;        # %sender : %s-funding : %sender : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               GET ;          # %s-funding[%sender]_opt : %sender : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               IF_NONE { PUSH int 60 ; FAILWITH } {} ;
+               AMOUNT ;       # %amount : %s-funding[%sender] : %sender : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               ADD ;          # %amount + %s-funding[%sender] : %sender : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               SOME ;         # Some(%amount + %s-funding[%sender]) : %sender : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               SWAP ;         # %sender : Some(%amount + %s-funding[%sender]) : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               UPDATE ;       # %s-funding' : %s-limit_balance : %s-administrator : cdr(%s)
+               PAIR ;         # (%s-funding', %s-limit_balance) : %s-administrator : cdr(%s)
+               SWAP ;         # %s-administrator : (%s-funding', %s-limit_balance) : cdr(%s)
+               PAIR ;         # (%s-administrator, (%s-funding', %s-limit_balance)) : cdr(%s)
+               PAIR }         # %s'
+             { UNPAIR ;       # car(%s) : cdr(%s)
+               UNPAIR ;       # %s-administrator : cdar(%s) : cdr(%s)
+               SWAP ;         # cdar(%s) : %s-administrator : cdr(%s)
+               UNPAIR ;       # %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               AMOUNT ;       # %amount : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               SOME ;         # Some(%amount) : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               SENDER ;       # %sender : Some(%amount) : %s-funding : %s-limit_balance : %s-administrator : cdr(%s)
+               UPDATE ;       # %s-funding'' : %s-limit_balance : %s-administrator : cdr(%s)
+               PAIR ;         # (%s-funding'', %s-limit_balance) : %s-administrator : cdr(%s)
+               SWAP ;         # %s-administrator : (%s-funding'', %s-limit_balance) : cdr(%s)
+               PAIR ;         # (%s-administrator, (%s-funding'', %s-limit_balance)) : cdr(%s)
+               PAIR } ;       # %s''
+           NIL operation } ;
+       PAIR }

@@ -1,0 +1,15 @@
+parameter (unit);
+storage (nat);
+code 
+  {
+    CDR;                                    # %s
+    PUSH (map nat nat) {(Elt 0 1)};         # {(Elt 0 1);} : %s
+    ITER {
+      CDR;                                  # %value : %s
+      AMOUNT;                               # %amount : %value : %s
+      MUL;                                  # %amount * %value : %s
+      DROP;                                 # %s
+    };
+    NIL operation;                          # [] : %s
+    PAIR;                                   # ([], %s)
+  };

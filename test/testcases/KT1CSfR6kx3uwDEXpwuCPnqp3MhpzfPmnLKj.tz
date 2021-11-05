@@ -20,9 +20,9 @@ code { LAMBDA
            EQ ;
            IF
              { UNIT }
-             { PUSH string "Entrypoint can call only administrator" ; FAILWITH } } ;
-       SWAP ;
-       UNPAIR ;
+             { PUSH string "Entrypoint can call only administrator" ; FAILWITH } } ;        # lambda : %ps
+       SWAP ;                                                                               # %ps : lambda
+       UNPAIR ;                                                                             # %p : %s : lambda
        IF_LEFT
          { IF_LEFT
              { IF_LEFT
@@ -87,46 +87,46 @@ code { LAMBDA
                    DIG 2 ;
                    CONS ;
                    PAIR }
-                 { DROP ;
-                   SWAP ;
-                   DROP ;
-                   NIL operation ;
-                   SWAP ;
-                   DUP ;
-                   DUG 2 ;
-                   CDR ;
-                   CAR ;
-                   ITER { SWAP ;
-                          PAIR ;
-                          SWAP ;
-                          DUP ;
-                          DUG 2 ;
-                          CDR ;
-                          CDR ;
-                          SWAP ;
-                          DUP ;
-                          DUG 2 ;
-                          CDR ;
-                          CDR ;
-                          AMOUNT ;
-                          MUL ;
-                          EDIV ;
-                          IF_NONE { PUSH string "DIV by 0" ; FAILWITH } {} ;
-                          CAR ;
-                          SWAP ;
-                          DUP ;
-                          DUG 2 ;
-                          CDR ;
-                          CAR ;
-                          CONTRACT unit ;
-                          IF_NONE { PUSH string "Not a contract" ; FAILWITH } {} ;
-                          SWAP ;
-                          UNIT ;
-                          TRANSFER_TOKENS ;
-                          SWAP ;
-                          CAR ;
-                          SWAP ;
-                          CONS } ;
+                 { DROP ;                                                                   # %s : lambda
+                   SWAP ;                                                                   # lambda : %s
+                   DROP ;                                                                   # %s
+                   NIL operation ;                                                          # [] : %s
+                   SWAP ;                                                                   # %s : []
+                   DUP ;                                                                    # %s : %s : []
+                   DUG 2 ;                                                                  # %s : [] : %s
+                   CDR ;                                                                    # cdr(%s) : [] : %s
+                   CAR ;                                                                    # %s-shares : [] : %s
+                   ITER { SWAP ;                                                            # [] : (%s-shares.key, %s-shares.value) : %s
+                          PAIR ;                                                            # ([], (%s-shares.key, %s-shares.value)) : %s
+                          SWAP ;                                                            # %s : ([], (%s-shares.key, %s-shares.value))
+                          DUP ;                                                             # %s : %s : ([], (%s-shares.key, %s-shares.value))
+                          DUG 2 ;                                                           # %s : ([], (%s-shares.key, %s-shares.value)) : %s
+                          CDR ;                                                             # cdr(%s) : ([], (%s-shares.key, %s-shares.value)) : %s
+                          CDR ;                                                             # %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          SWAP ;                                                            # ([], (%s-shares.key, %s-shares.value)) : %s-totalShares : %s
+                          DUP ;                                                             # ([], (%s-shares.key, %s-shares.value)) : ([], (%s-shares.key, %s-shares.value)) : %s-totalShares : %s
+                          DUG 2 ;                                                           # ([], (%s-shares.key, %s-shares.value)) : %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          CDR ;                                                             # (%s-shares.key, %s-shares.value) : %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          CDR ;                                                             # %s-shares.value : %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          AMOUNT ;                                                          # %amount : %s-shares.value : %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          MUL ;                                                             # %amount * %s-shares.value : %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          EDIV ;                                                            # ((%amount * %s-shares.value) / %s-totalShares, (%amount * %s-shares.value) mod %s-totalShares)_opt : ([], (%s-shares.key, %s-shares.value)) : %s
+                          IF_NONE { PUSH string "DIV by 0" ; FAILWITH } {} ;                # ((%amount * %s-shares.value) / %s-totalShares, (%amount * %s-shares.value) mod %s-totalShares) : ([], (%s-shares.key, %s-shares.value)) : %s
+                          CAR ;                                                             # (%amount * %s-shares.value) / %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          SWAP ;                                                            # ([], (%s-shares.key, %s-shares.value)) : (%amount * %s-shares.value) / %s-totalShares : %s
+                          DUP ;                                                             # ([], (%s-shares.key, %s-shares.value)) : ([], (%s-shares.key, %s-shares.value)) : (%amount * %s-shares.value) / %s-totalShares : %s
+                          DUG 2 ;                                                           # ([], (%s-shares.key, %s-shares.value)) : (%amount * %s-shares.value) / %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          CDR ;                                                             # (%s-shares.key, %s-shares.value) : (%amount * %s-shares.value) / %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          CAR ;                                                             # %s-shares.key : (%amount * %s-shares.value) / %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          CONTRACT unit ;                                                   # contract(%s-shares.key)_opt : (%amount * %s-shares.value) / %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          IF_NONE { PUSH string "Not a contract" ; FAILWITH } {} ;          # contract(%s-shares.key) : (%amount * %s-shares.value) / %s-totalShares : ([], (%s-shares.key, %s-shares.value)) : %s
+                          SWAP ;                                                            # (%amount * %s-shares.value) / %s-totalShares : contract(%s-shares.key) : ([], (%s-shares.key, %s-shares.value)) : %s
+                          UNIT ;                                                            # () : (%amount * %s-shares.value) / %s-totalShares : contract(%s-shares.key) : ([], (%s-shares.key, %s-shares.value)) : %s
+                          TRANSFER_TOKENS ;                                                 # tt ((), ((%amount * %s-shares.value) / %s-totalShares), contract(%s-shares.key)) : ([], (%s-shares.key, %s-shares.value)) : %s
+                          SWAP ;                                                            # ([], (%s-shares.key, %s-shares.value)) : tt ((), ((%amount * %s-shares.value) / %s-totalShares), contract(%s-shares.key)) : %s
+                          CAR ;                                                             # [] : tt ((), ((%amount * %s-shares.value) / %s-totalShares), contract(%s-shares.key)) : %s
+                          SWAP ;                                                            # tt ((), ((%amount * %s-shares.value) / %s-totalShares), contract(%s-shares.key)) : [] : %s
+                          CONS } ;                                                          # [tt ((), ((%amount * %s-shares.value) / %s-totalShares), contract(%s-shares.key))] : %s
                    PAIR } } }
          { IF_LEFT
              { SWAP ;
