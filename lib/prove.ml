@@ -439,26 +439,33 @@ let naive_run_escape_condition : Res.config -> Res.res -> bool =
 (* function naive_run_escape_condition end *)
 
 let naive_run : Res.config -> Res.res -> Res.res =
+   let log_report : Res.config -> Res.res -> unit =
+     fun cfg res ->
+     Utils.Log.info (fun m -> m "> Report: %s" (Res.string_of_res_rough cfg res))
+     (* inner-function log_report end *)
+   in
    let rec naive_run_i : Res.config -> Res.res -> Res.res =
      fun cfg res ->
-     let _ =
-        (* DEBUGGING INFOs *)
-        Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res))
-     in
      if naive_run_escape_condition cfg res
      then res
-     else naive_run_i cfg (naive_run_res_atomic_action cfg res)
+     else (
+       let _ = log_report cfg res in
+       let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
+       let (p_res : Res.res) = naive_run_res_atomic_action cfg res in
+       let _ = Utils.Log.info (fun m -> m "> Prover Turn End") in
+       naive_run_i cfg p_res
+     )
    in
    (* inner-function naive_run_i end *)
    fun cfg res ->
-   let _ =
-      (* DEBUGGING INFOs *)
-      Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res))
+   let _ = log_report cfg res in
+   let (p_res : Res.res) =
+      let (r_qr_lst : Res.qres list) =
+         List.map res.r_qr_lst ~f:(fun qres ->
+             naive_run_qres_atomic_action cfg res.r_inv qres
+         )
+      in
+      { res with r_qr_lst }
    in
-   let (r_qr_lst : Res.qres list) =
-      List.map res.r_qr_lst ~f:(fun qres ->
-          naive_run_qres_atomic_action cfg res.r_inv qres
-      )
-   in
-   naive_run_i cfg { res with r_qr_lst }
+   naive_run_i cfg p_res
 (* function naive_run end *)

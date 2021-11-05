@@ -126,7 +126,7 @@ let naive_run : Res.config -> Res.res -> Res.res =
      if naive_run_escape_condition cfg res
      then res
      else (
-      let _ = log_report cfg res in
+       let _ = log_report cfg res in
        let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
        let (p_res : Res.res) =
           if Prove.naive_run_escape_condition cfg res
@@ -147,7 +147,7 @@ let naive_run : Res.config -> Res.res -> Res.res =
    in
    (* inner-function naive_run_i end *)
    fun cfg res ->
-      let _ = log_report cfg res in
+   let _ = log_report cfg res in
    let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
    let (p_res : Res.res) = initial_prove_run_res_atomic_action cfg res in
    let _ = Utils.Log.info (fun m -> m "> Prover Turn End") in
