@@ -1284,7 +1284,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                        :: michv_typ_constraints ~ctx ~v:key
                        @ sigma_constraint_of_map_update ~ctx ~map:tb_container_v
                            ~key
-                           ~value:(MV_some value_unopt |> gen_custom_cc inst)
+                           ~value:(MV_none mapelem_t |> gen_custom_cc inst)
                            ~updated_map
                      )
                    | MT_list _             ->
@@ -1660,7 +1660,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                        :: michv_typ_constraints ~ctx ~v:key
                        @ sigma_constraint_of_map_update ~ctx ~map:tb_container_v
                            ~key
-                           ~value:(MV_some value_unopt |> gen_custom_cc inst)
+                           ~value:(MV_none mapelem_t |> gen_custom_cc inst)
                            ~updated_map
                      )
                    | MT_set _              ->
