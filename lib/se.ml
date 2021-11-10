@@ -2454,7 +2454,14 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        se_result_empty with
        sr_terminated = SSet.singleton { ss with ss_block_mci = bmci };
      }
-   (* | MI_cast t -> TODO *)
+   | MI_cast t ->
+     update_top_1_bmstack
+       ~f:(fun x ->
+         if equal_mich_t (typ_of_val x).cc_v t.cc_v
+         then [ x ]
+         else SeError "Not Supported Cast" |> raise)
+       ss
+     |> running_ss_to_sr ctxt_sr
    | MI_rename ->
      update_top_1_bmstack ~f:(fun x -> [ { x with cc_anl = inst.cc_anl } ]) ss
      |> running_ss_to_sr ctxt_sr
