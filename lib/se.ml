@@ -2875,7 +2875,30 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
        ss
      |> running_ss_to_sr ctxt_sr
    (* | MI_create_account -> TODO *)
-   (* | MI_create_contract (t1, t2, i) -> TODO *)
+   | MI_create_contract (t1, t2, i) ->
+     let (lambda : mich_v cc) =
+        let (t_op_list : mich_t cc) =
+           MT_list (gen_custom_cc inst MT_operation) |> gen_custom_cc inst
+        in
+        let (t_input : mich_t cc) = MT_pair (t1, t2) |> gen_custom_cc inst in
+        let (t_output : mich_t cc) =
+           MT_pair (t_op_list, t2) |> gen_custom_cc inst
+        in
+        MV_lit_lambda (t_input, t_output, i) |> gen_custom_cc inst
+     in
+     let (addr : mich_v cc) =
+        MV_symbol (MT_address |> gen_custom_cc inst, MSC_new_contract)
+        |> gen_custom_cc inst
+     in
+     update_top_3_bmstack
+       ~f:(fun (kh_opt, z, s) ->
+         [
+           MV_create_contract (t1, t2, lambda, kh_opt, z, s, addr)
+           |> gen_custom_cc inst;
+           addr;
+         ])
+       ss
+     |> running_ss_to_sr ctxt_sr
    | MI_implicit_account ->
      update_top_1_bmstack
        ~f:(fun h -> [ MV_implicit_account h |> gen_custom_cc inst ])

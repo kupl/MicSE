@@ -773,7 +773,9 @@ module Encoder = struct
            let (elem_f : Formula.t) = Formula.create_is_option_some value_opt in
            let (prec : Formula.t) = Formula.create_and ctx [ mem_f; elem_f ] in
            Formula.create_forall ctx [ key ]
-             (Formula.create_imply ctx prec (Formula.create_eq ctx value (eov v2)))
+             (Formula.create_imply ctx prec
+                (Formula.create_eq ctx value (eov v2))
+             )
          | _ -> VcError "Encoder : cv_mf : MF_all_element_equal_to" |> raise
        )
      with
@@ -878,7 +880,7 @@ let apply_inv_at_start :
    let open TzUtil in
    fun ~sctx mci si inv ->
    let (mapf : mich_v -> mich_v) = function
-   | MV_ref (_, msc2) -> (
+   | MV_ref (t, msc2) -> (
      match msc2 with
      | MSC_contract             -> si.si_param.ti_contract.cc_v
      | MSC_source               -> si.si_param.ti_source.cc_v
@@ -894,6 +896,7 @@ let apply_inv_at_start :
      | MSC_map_exit_stack loc   -> (get_from_stack si.si_map_exit ~loc).cc_v
      | MSC_map_mapkey_stack loc -> (get_from_stack si.si_map_mapkey ~loc).cc_v
      | MSC_iter_stack loc       -> (get_from_stack si.si_iter ~loc).cc_v
+     | _ as msc                 -> MV_symbol (t, msc)
    )
    | MV_ref_cont t1cc -> (
      match mci.mci_cutcat with
@@ -934,7 +937,7 @@ let apply_inv_at_block :
    let open TzUtil in
    fun ~sctx mci si inv ->
    let (mapf : mich_v -> mich_v) = function
-   | MV_ref (_, msc2) -> (
+   | MV_ref (t, msc2) -> (
      match msc2 with
      | MSC_contract             -> si.si_param.ti_contract.cc_v
      | MSC_source               -> si.si_param.ti_source.cc_v
@@ -950,6 +953,7 @@ let apply_inv_at_block :
      | MSC_map_exit_stack loc   -> (get_from_stack si.si_map_exit ~loc).cc_v
      | MSC_map_mapkey_stack loc -> (get_from_stack si.si_map_mapkey ~loc).cc_v
      | MSC_iter_stack loc       -> (get_from_stack si.si_iter ~loc).cc_v
+     | _ as msc                 -> MV_symbol (t, msc)
    )
    | MV_ref_cont _    -> (
      match mci.mci_cutcat with

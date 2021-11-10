@@ -87,6 +87,7 @@ and mich_sym_category =
   | MSC_map_exit_stack   of int
   | MSC_map_mapkey_stack of int
   | MSC_iter_stack       of int
+  | MSC_new_contract
 
 and mich_v =
   (* Michelson Value *)
