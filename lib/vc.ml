@@ -462,9 +462,11 @@ module Encoder = struct
      (*************************************************************************)
      (* Lambda                                                                *)
      (*************************************************************************)
-     | MV_lit_lambda _ -> Not_Implemented |> raise
+     | MV_lit_lambda (t1cc, t2cc, _) ->
+       let (domain_expr : Expr.t) = Expr.create_dummy ctx (sot t1cc) in
+       ZLambda.create_expr sort domain_expr (Expr.create_dummy ctx (sot t2cc))
      | MV_lambda_unknown (t1cc, t2cc) ->
-       let (domain_expr : Expr.t) = ZLambda.create_expr_domain ctx (sot t1cc) in
+       let (domain_expr : Expr.t) = Expr.create_dummy ctx (sot t1cc) in
        ZLambda.create_expr sort domain_expr (Expr.create_dummy ctx (sot t2cc))
      | MV_lambda_closure (v1cc, v2cc) ->
        ZLambda.create_apply ctx (eov v2cc) (eov v1cc)
