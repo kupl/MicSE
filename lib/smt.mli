@@ -648,7 +648,7 @@ module ZContract : sig
   val create_sort :
     Ctx.t -> typ:Tz.mich_t Tz.cc -> content_sort:Sort.t -> Sort.t
 
-  val create_expr : Ctx.t -> Expr.t -> Expr.t
+  val create_expr : Sort.t -> Expr.t -> Expr.t
 
   val create_expr_of_address : Sort.t -> Expr.t -> Expr.t
 

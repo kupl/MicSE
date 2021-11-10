@@ -1932,9 +1932,8 @@ module ZContract = struct
     )
   (* function create_sort end *)
 
-  let create_expr : Ctx.t -> Expr.t -> Expr.t =
-    fun ctx expr_keyhash ->
-    let (sort : Sort.t) = ZUnit.create_sort ctx in
+  let create_expr : Sort.t -> Expr.t -> Expr.t =
+    fun sort expr_keyhash ->
     DataType.create_expr sort ~const_idx:Constant._idx_const_contract
       [ expr_keyhash ]
   (* function create_expr end *)

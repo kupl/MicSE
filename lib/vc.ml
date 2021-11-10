@@ -449,7 +449,7 @@ module Encoder = struct
      | MV_lit_contract (_, v2cc) ->
        ZContract.create_expr_of_address sort (eov v2cc)
      | MV_self _ -> Not_Implemented |> raise
-     | MV_implicit_account v1cc -> ZContract.create_expr ctx (eov v1cc)
+     | MV_implicit_account v1cc -> ZContract.create_expr sort (eov v1cc)
      (*************************************************************************)
      (* Pair                                                                  *)
      (*************************************************************************)
