@@ -85,20 +85,25 @@ MicSE uses these packages.
 | System Package Name | Version |
 | :------------------ | :-----: |
 | make                | ^4.2.1  |
-| ocaml               | =4.10.0 |
-| opam                | ^2.0.4  |
+| ocaml               | =4.12.0 |
+| opam                | ^2.0.5  |
 
 | Opam Package Name |  Version  |
 | :---------------- | :-------: |
-| Batteries         |  ^2.9.0   |
-| Core              |  ^0.14.0  |
-| Dune              |  ^2.4.0   |
-| Menhir            | ^20200624 |
-| Ocamlgraph        |  ^1.8.8   |
-| Ptime             |  ^0.8.5   |
-| Yojson            |  ^1.7.0   |
-| Z3                |  =4.8.9   |
-| Zarith            |   ^1.10   |
+| Batteries         |  =3.3.0   |
+| Core              |  =0.14.1  |
+| Dune              |  =2.4.0   |
+| Menhir            | =20210419 |
+| Ocamlgraph        |  =2.0.0   |
+| Ptime             |  =0.8.5   |
+| Yojson            |  =1.7.0   |
+| Z3                |  =4.8.11  |
+| Zarith            |   =1.12   |
+| OUnit2            |  =2.2.4   |
+| BigNum            | =v0.14.0  |
+| ppx_deriving      |  =5.2.1   |
+| Mtime             |  =1.2.0   |
+| Logs              |  =0.7.0   |
 
 ### Clone, Build
 
