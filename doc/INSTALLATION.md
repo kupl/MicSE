@@ -85,7 +85,7 @@ MicSE uses these packages.
 | System Package Name | Version |
 | :------------------ | :-----: |
 | make                | ^4.2.1  |
-| ocaml               | =4.12.0 |
+| ocaml               | =4.10.0 |
 | opam                | ^2.0.5  |
 
 | Opam Package Name |  Version  |

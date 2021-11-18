@@ -8,8 +8,6 @@
   - [Documents](#documents)
   - [Development](#development)
     - [Prerequisite](#prerequisite)
-      - [System packages](#system-packages)
-      - [Opam packages](#opam-packages)
     - [Git Commit Guidelines](#git-commit-guidelines)
   - [About](#about)
 
@@ -17,7 +15,7 @@
 
 MicSE is a tool for verifying and testing Tezos smart contracts written in Michelson. Michelson is a native smart contract language of the [Tezos Blockchain](https://tezos.foundation).
 
-MicSE can verify the absence of runtime failures of Michelson programs, e.g., no arithmetic overflow. Also, MicSE supports verification of user-provided assertions. 
+MicSE can verify the absence of runtime failures of Michelson programs, e.g., no arithmetic overflow. Also, MicSE supports verification of user-provided assertions.
 
 - *Prover* (=verifier)
 - *Refuter* (=tester, will be provided)
@@ -31,24 +29,7 @@ MicSE can verify the absence of runtime failures of Michelson programs, e.g., no
 
 ### Prerequisite
 
-#### System packages
-
-- OCaml (v.4.10.0): We use OCaml language to programming.
-- Opam (v2.0.4): We use Opam to manage package of OCaml.
-
-#### Opam packages
-
-- Batteries
-- Core (v0.14.0)
-- Dune (v2.4.0): We use Dune to manage build system of OCaml project.
-- Logs
-- Menhir
-- Mtime
-- Ptime
-- Ocamlgraph
-- Yojson
-- Z3 (v4.8.9)
-- Zarith
+[Dependencies](https://github.com/kupl/MicSE/blob/tdd/doc/INSTALLATION.md#setup-dependencies)
 
 ### Git Commit Guidelines
 
