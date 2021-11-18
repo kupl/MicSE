@@ -4,8 +4,7 @@
 export DEBIAN_FRONTEND=noninteractive
 
 # Env
-OPAM_SWITCH_VERSION=4.10.0
-Z3_VERSION=4.8.9
+OPAM_SWITCH_VERSION=4.12.0
 CORES=4
 
 # Setup System Dependencies
@@ -25,7 +24,7 @@ done
 echo "[NOTE] End-up Setup System Dependencies"
 
 # Initialize opam
-echo "[NOTE] Start Initialize OPAM"
+echo "[NOTE] Start Initialize OPAM with Installing OCAML Dependencies"
 opam init -y --bare >/dev/null
 opam update >/dev/null
 eval $(opam env)
@@ -37,45 +36,10 @@ if [[ ! "$(ocaml --version)" =~ "$OPAM_SWITCH_VERSION" ]]; then
   fi
 fi
 eval $(opam env)
+opam install -y -j 8 . --deps-only
 echo "[NOTE] Current OCAML version is $(ocaml --version | grep -P "\d+\.\d+\.\d+" -o)"
 OPAM_LIB_DIR=~/.opam/$OPAM_SWITCH_VERSION/lib/
 echo "[NOTE] End-up Initialize OPAM"
-
-# Setup OCAML Dependencies
-echo "[NOTE] Start Setup OCAML Dependencies"
-for pkg in "batteries 3.3.0" "core v0.14.0" "dune 2.4.0" "menhir 20210419" "ocamlgraph 2.0.0" "ptime 0.8.5" "yojson 1.7.0" "zarith 1.12" "ounit2 2.2.4" "bignum v0.14.0" "ppx_deriving 5.2.1" "mtime 1.2.0" "logs 0.7.0"; do
-  pkg_pair=( $pkg );
-  pkg_name=${pkg_pair[0]};
-  pkg_version=${pkg_pair[1]}
-  echo "[NOTE] $pkg_name: Install"
-  opam install -y -j $CORES "$pkg_name.$pkg_version" >/dev/null
-  # if [[ ! -d "${OPAM_LIB_DIR%%/}/$pkg_name" ]]; then
-  #   echo "[NOTE] $pkg_name: Installation started."
-  #   opam install -y -j $CORES "$pkg_name>=$pkg_version" >/dev/null
-  #   echo "[NOTE] $pkg_name: Installed successfully."
-  # else
-  #   echo "[NOTE] $pkg_name: Already installed."
-  # fi
-done
-echo "[NOTE] End-up Setup OCAML Dependencies"
-
-# Install Z3
-if [[ ! -d "${OPAM_LIB_DIR%%/}/z3" ]]; then
-  echo "[NOTE] Start Install Z3"
-  curl -L -o z3-$Z3_VERSION.tar.gz https://github.com/Z3Prover/z3/archive/z3-$Z3_VERSION.tar.gz >/dev/null 2>&1 && \
-    tar -zxvf z3-$Z3_VERSION.tar.gz >/dev/null 2>&1 && \
-    rm z3-$Z3_VERSION.tar.gz >/dev/null
-  Z3_DIR=~/z3-z3-$Z3_VERSION/
-  cd ${Z3_DIR%%/}/ && \
-    python3 scripts/mk_make.py --ml >/dev/null
-  cd ${Z3_DIR%%/}/build && \
-    eval $(opam env) && \
-    make -j $CORES >/dev/null 2>&1
-  sudo make install >/dev/null && \
-    rm -rf ${Z3_DIR%%/}
-  ln -s ${OPAM_LIB_DIR%%/}/Z3 ${OPAM_LIB_DIR%%/}/z3
-  echo "[NOTE] End-up Install Z3"
-fi
 
 # Build
 if [[ ! -d "~/MicSE" ]]; then
