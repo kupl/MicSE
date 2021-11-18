@@ -4,7 +4,7 @@
 export DEBIAN_FRONTEND=noninteractive
 
 # Env
-OPAM_SWITCH_VERSION=4.12.0
+OPAM_SWITCH_VERSION=4.10.0
 CORES=4
 
 # Setup System Dependencies
