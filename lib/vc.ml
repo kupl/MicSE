@@ -733,7 +733,26 @@ module Encoder = struct
        | MF_not f1 -> Formula.create_not ctx (fof f1)
        | MF_and fl1 -> Formula.create_and ctx (List.map fl1 ~f:fof)
        | MF_or fl1 -> Formula.create_or ctx (List.map fl1 ~f:fof)
-       | MF_eq (v1, v2) -> Formula.create_eq ctx (eov v1) (eov v2)
+       | MF_eq (v1, v2) -> (
+         match (typ_of_val v1.ctx_v).cc_v with
+         | MT_list _
+         | MT_map (_, _)
+         | MT_big_map (_, _)
+         | MT_set _ ->
+           let (cont_eq : Formula.t) =
+              Formula.create_eq ctx (eov v1) (eov v2)
+           in
+           let (sigma_eq : Formula.t list) =
+              List.map2_exn (sigma_of_cont v1.ctx_v) (sigma_of_cont v2.ctx_v)
+                ~f:(fun sigma1 sigma2 ->
+                  Formula.create_eq ctx
+                    (eov (gen_mich_v_ctx ~ctx:v1.ctx_i sigma1))
+                    (eov (gen_mich_v_ctx ~ctx:v2.ctx_i sigma2))
+              )
+           in
+           Formula.create_and ctx (cont_eq :: sigma_eq)
+         | _ -> Formula.create_eq ctx (eov v1) (eov v2)
+       )
        | MF_imply (f1, f2) -> Formula.create_imply ctx (fof f1) (fof f2)
        (* MicSE Branch *)
        | MF_is_true v1 -> Formula.create_is_true ctx (eov v1)
