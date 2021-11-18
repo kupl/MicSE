@@ -362,6 +362,7 @@ let string_of_res : config -> res -> string =
         (Utils.Time.string_of_elapsed_time cfg.cfg_timer)
         (Utils.Memory.string_of_used_memory cfg.cfg_memory)
    in
+   let (itvr : string) = Printf.sprintf "Combinations: %d" res.r_comb_cnt in
    let (summ : string) =
       Printf.sprintf "#Total: %d\t\t#Proved: %d\t\t#Refuted: %d\t\t#Failed: %d"
         tot_c p_c r_c failed_c
@@ -421,7 +422,8 @@ let string_of_res : config -> res -> string =
       Printf.sprintf "<< Failed >>\n%s"
         (QRSet.to_list failed |> List.map ~f:qres_str |> String.concat ~sep:"\n")
    in
-   String.concat ~sep:"\n" [ ""; head; conf; summ; finf; prvd; rftd; fail ]
+   String.concat ~sep:"\n"
+     [ ""; head; conf; itvr; summ; finf; prvd; rftd; fail ]
 (* function string_of_res end *)
 
 let find_precond : CSet.t SMYMap.t -> key:MState.summary -> CSet.t =
