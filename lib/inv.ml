@@ -199,10 +199,16 @@ let filter_symmetry : int -> ILSet.t -> ILSet.t =
            let ((shuffle_i : igdt list), (normal_i : igdt list)) =
               List.split_n il pos
            in
+           let (shuffled : ILSet.t) = shuffle shuffle_i in
            let (new_removed : ILSet.t) =
-              shuffle shuffle_i |> ILSet.map ~f:(fun il -> il @ normal_i)
+              ILSet.map shuffled ~f:(fun il -> il @ normal_i)
            in
-           (ILSet.union acc_removed new_removed, ILSet.add acc_il il)
+           let (new_il : ILSet.t) =
+              if ILSet.length shuffled > 1
+              then ILSet.singleton il
+              else ILSet.empty
+           in
+           (ILSet.union acc_removed new_removed, ILSet.union acc_il new_il)
          )
      )
      |> snd
