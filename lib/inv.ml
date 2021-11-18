@@ -281,7 +281,7 @@ let dummy_ctx : Tz.mich_sym_ctxt = []
 let gen_template :
     ?except_lit_only:bool ->
     ?target_mode:[ `Normal | `Asymm     of int | `Asymm_rfl ] ->
-    f:((Tz.mich_t * Tz.mich_v Tz.cc) list -> Tz.mich_f option) ->
+    f:((Tz.mich_t * Tz.mich_v Tz.cc) list -> (Tz.mich_f * MFSet.t) option) ->
     Igdt.igdt_sets ->
     Tz.mich_t Tz.cc list list ->
     CSet.t =
@@ -335,10 +335,11 @@ let gen_template :
        ILSet.fold target_comb ~init:CSet.empty ~f:(fun acc c_lst ->
            f (List.map c_lst ~f:(fun i -> (i.ig_typ.cc_v, i.ig_value)))
            |> function
-           | None      -> acc
-           | Some fmla ->
+           | None                  -> acc
+           | Some (fmla, prec_set) ->
              CSet.add acc
-               (gen_cand_by_fmla fmla ~cond:(fold_precond_lst c_lst)
+               (gen_cand_by_fmla fmla
+                  ~cond:(MFSet.union prec_set (fold_precond_lst c_lst))
                   ~igdt:(ISet.of_list c_lst)
                )
        )
@@ -359,7 +360,7 @@ let tmp_eq : Igdt.igdt_sets -> CSet.t =
        match tvl with
        | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 ->
          if not (equal_cc equal_mich_v v1 v2)
-         then Some (MF_eq (gctx v1, gctx v2))
+         then Some (MF_eq (gctx v1, gctx v2), MFSet.empty)
          else None
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_eq : wrong ingredient length" |> raise
@@ -375,12 +376,21 @@ let tmp_ge : Igdt.igdt_sets -> CSet.t =
    let (max_mtz : mich_v cc) =
       MV_lit_mutez (Bigint.of_int64 Int64.max_value) |> gen_dummy_cc
    in
+   let (zero_int : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
    let (zero_mtz : mich_v cc) = gen_dummy_cc (MV_lit_mutez Bigint.zero) in
    let (zero_nat : mich_v cc) = gen_dummy_cc (MV_lit_nat Bigint.zero) in
    let equal_mich_v_cc = equal_cc equal_mich_v in
-   let make_ge : mich_v cc * mich_v cc -> mich_f option =
+   let make_ge_by_number : mich_v cc * mich_v cc -> (mich_f * MFSet.t) option =
      fun (v1, v2) ->
-     Some (MF_is_true (gctx (gen_dummy_cc (MV_geq_ib (v1, v2)))))
+     Some (MF_is_true (gctx (gen_dummy_cc (MV_geq_ib (v1, v2)))), MFSet.empty)
+   in
+   let make_ge_by_string : mich_v cc * mich_v cc -> (mich_f * MFSet.t) option =
+     fun (v1, v2) ->
+     let (cmp : mich_v cc) = gen_dummy_cc (MV_compare (v1, v2)) in
+     Some
+       ( MF_is_true (gctx (gen_dummy_cc (MV_geq_ib (cmp, zero_int)))),
+         MFSet.empty
+       )
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -396,18 +406,24 @@ let tmp_ge : Igdt.igdt_sets -> CSet.t =
    in
    gen_template igdt_map target_types ~target_mode:`Asymm_rfl ~f:(fun tvl ->
        match tvl with
+       | [ (MT_int, v1); (MT_int, v2) ] -> make_ge_by_number (v1, v2)
        | [ (MT_mutez, v1); (MT_nat, v2) ] ->
-         if not (equal_mich_v_cc v2 zero_nat) then make_ge (v1, v2) else None
+         if not (equal_mich_v_cc v2 zero_nat)
+         then make_ge_by_number (v1, v2)
+         else None
        | [ (MT_mutez, v1); (MT_mutez, v2) ] ->
          if (not (equal_mich_v_cc v1 max_mtz))
             && not (equal_mich_v_cc v2 zero_mtz)
-         then make_ge (v1, v2)
+         then make_ge_by_number (v1, v2)
          else None
        | [ (MT_nat, v1); (MT_nat, v2) ] ->
-         if not (equal_mich_v_cc v2 zero_nat) then make_ge (v1, v2) else None
+         if not (equal_mich_v_cc v2 zero_nat)
+         then make_ge_by_number (v1, v2)
+         else None
        | [ (MT_string, v1); (MT_string, v2) ] ->
-         if not (equal_mich_v_cc v2 empty_str) then make_ge (v1, v2) else None
-       | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 -> make_ge (v1, v2)
+         if not (equal_mich_v_cc v2 empty_str)
+         then make_ge_by_string (v1, v2)
+         else None
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
    )
@@ -418,9 +434,18 @@ let tmp_gt : Igdt.igdt_sets -> CSet.t =
    let open TzUtil in
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
-   let make_gt : mich_v cc * mich_v cc -> mich_f option =
+   let (zero_int : mich_v cc) = gen_dummy_cc (MV_lit_int Bigint.zero) in
+   let make_gt_by_number : mich_v cc * mich_v cc -> (mich_f * MFSet.t) option =
      fun (v1, v2) ->
-     Some (MF_is_true (gctx (gen_dummy_cc (MV_gt_ib (v1, v2)))))
+     Some (MF_is_true (gctx (gen_dummy_cc (MV_gt_ib (v1, v2)))), MFSet.empty)
+   in
+   let make_ge_by_string : mich_v cc * mich_v cc -> (mich_f * MFSet.t) option =
+     fun (v1, v2) ->
+     let (cmp : mich_v cc) = gen_dummy_cc (MV_compare (v1, v2)) in
+     Some
+       ( MF_is_true (gctx (gen_dummy_cc (MV_geq_ib (cmp, zero_int)))),
+         MFSet.empty
+       )
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -430,7 +455,10 @@ let tmp_gt : Igdt.igdt_sets -> CSet.t =
    in
    gen_template igdt_map target_types ~target_mode:`Asymm_rfl ~f:(fun tvl ->
        match tvl with
-       | [ (t1, v1); (t2, v2) ] when equal_mich_t t1 t2 -> make_gt (v1, v2)
+       | [ (MT_int, v1); (MT_int, v2) ] -> make_gt_by_number (v1, v2)
+       | [ (MT_nat, v1); (MT_nat, v2) ] -> make_gt_by_number (v1, v2)
+       | [ (MT_mutez, v1); (MT_mutez, v2) ] -> make_gt_by_number (v1, v2)
+       | [ (MT_string, v1); (MT_string, v2) ] -> make_ge_by_string (v1, v2)
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_gt : wrong ingredient length" |> raise
    )
@@ -442,10 +470,11 @@ let tmp_add_2_eq : Igdt.igdt_sets -> CSet.t =
    let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
    (* syntax sugar *)
    let (zero_mtz : mich_v cc) = gen_dummy_cc (MV_lit_mutez Bigint.zero) in
-   let make_add_2_eq_mtz : mich_v cc * mich_v cc * mich_v cc -> mich_f option =
+   let make_add_2_eq_mtz :
+       mich_v cc * mich_v cc * mich_v cc -> (mich_f * MFSet.t) option =
      fun (v1, v2, v3) ->
      let (add : mich_v cc) = gen_dummy_cc (MV_add_mmm (v1, v2)) in
-     Some (MF_eq (gctx add, gctx v3))
+     Some (MF_eq (gctx add, gctx v3), MFSet.empty)
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -475,12 +504,14 @@ let tmp_add_3_eq : Igdt.igdt_sets -> CSet.t =
    let (zero_mtz : mich_v cc) = gen_dummy_cc (MV_lit_mutez Bigint.zero) in
    let (zero_nat : mich_v cc) = gen_dummy_cc (MV_lit_nat Bigint.zero) in
    let make_add_3_eq_mnnm :
-       mich_v cc * mich_v cc * mich_v cc * mich_v cc -> mich_f option =
+       mich_v cc * mich_v cc * mich_v cc * mich_v cc ->
+       (mich_f * MFSet.t) option =
      fun (v1, v2, v3, v4) ->
      let (add : mich_v cc) =
         gen_dummy_cc (MV_add_nnn (gen_dummy_cc (MV_add_mnn (v1, v2)), v3))
      in
-     Some (MF_eq (gctx add, gctx (gen_dummy_cc (MV_mtz_of_nat_mn v4))))
+     Some
+       (MF_eq (gctx add, gctx (gen_dummy_cc (MV_mtz_of_nat_mn v4))), MFSet.empty)
    in
    fun igdt_map ->
    let (target_types : Tz.mich_t Tz.cc list list) =
@@ -521,7 +552,7 @@ let tmp_all_elem_eq : Igdt.igdt_sets -> CSet.t =
    gen_template igdt_map target_types ~f:(fun tvl ->
        match tvl with
        | [ (_, v1); (_, v2) ] ->
-         Some (MF_all_element_equal_to (gctx v1, gctx v2))
+         Some (MF_all_element_equal_to (gctx v1, gctx v2), MFSet.empty)
        | _                    ->
          InvError "tmp_all_elem_eq : wrong ingredient length" |> raise
    )
@@ -558,7 +589,7 @@ let tmp_eq_and_all_elem_eq : Igdt.igdt_sets -> CSet.t =
           match tvl with
           | [ (_, v1); (_, v2) ] ->
             if not (equal_cc equal_mich_v v1 v2)
-            then Some (MF_eq (gctx v1, gctx v2))
+            then Some (MF_eq (gctx v1, gctx v2), MFSet.empty)
             else None
           | _                    ->
             InvError "tmp_eq_and_all_elem_eq : wrong ingredient length" |> raise
@@ -568,7 +599,7 @@ let tmp_eq_and_all_elem_eq : Igdt.igdt_sets -> CSet.t =
       gen_template igdt_map target_types_2 ~f:(fun tvl ->
           match tvl with
           | [ (_, v3); (_, v4) ] ->
-            Some (MF_all_element_equal_to (gctx v3, gctx v4))
+            Some (MF_all_element_equal_to (gctx v3, gctx v4), MFSet.empty)
           | _                    ->
             InvError "tmp_eq_and_all_elem_eq : wrong ingredient length" |> raise
       )

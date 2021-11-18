@@ -171,7 +171,7 @@ val fmla_of_cand_post : cand -> Tz.mich_f
 val gen_template :
   ?except_lit_only:bool ->
   ?target_mode:[ `Normal | `Asymm     of int | `Asymm_rfl ] ->
-  f:((Tz.mich_t * Tz.mich_v Tz.cc) list -> Tz.mich_f option) ->
+  f:((Tz.mich_t * Tz.mich_v Tz.cc) list -> (Tz.mich_f * MFSet.t) option) ->
   Igdt.igdt_sets ->
   Tz.mich_t Tz.cc list list ->
   CSet.t
