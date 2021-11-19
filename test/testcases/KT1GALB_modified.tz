@@ -1,0 +1,407 @@
+parameter (or
+            (or
+              (or
+                (unit %create_deposit)
+                (unit %remove_deposit))
+              (or
+                (or 
+                  (address %get_total_deposit)
+                  (option %set_backend address))
+                (or  
+                  (address %withdraw)
+                  (unit %withdraw_fee))))
+            (or 
+              (or
+                (mutez %set_reward_size)
+                (nat %set_fee_percent))
+              (or
+                (unit %setup_reward)
+                (unit %process_reward))));
+storage (pair
+          (pair
+            (pair
+              (list %deposits mutez)
+              (mutez %total_deposit))
+            (pair
+              (option %backend address)
+              (pair 
+                (nat %fee_percent)
+                (mutez %fee_acc))))
+          (pair
+            (pair
+              (bool %reward_flag)
+              (mutez %reward_size))
+            (mutez %avail_reward_calc)));
+code  { # param-storage disassembly
+        UNPAIR;
+        DIP
+          { # storage disassembly
+            UNPAIR;
+            DIP
+              {
+                # disassemble ((reward_flag, reward_size), avail_reward_calc)
+                UNPAIR;
+                UNPAIR; 
+              } ;
+            # disassemble ((deposits, total_deposit) (backend, (fee_percent, fee_acc)))
+            UNPAIR;
+            DIP
+              {
+                UNPAIR;
+                DIP { UNPAIR; };
+              } ;
+            UNPAIR;
+          } ;
+        # STACK FIGURE ::   
+        #   param (TOP) : deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+        # ENTRYPOINT LOGICS START
+        IF_LEFT
+          {
+            IF_LEFT
+              {
+                IF_LEFT
+                  { # ENTRYPOINT unit %create_deposit
+                    # deposits <- AMOUNT :: deposits
+                    # total_deposit <- total_deposit + AMOUNT
+                    DROP;
+                    AMOUNT;
+                    CONS;
+                    DIP { AMOUNT; ADD; } ;
+                    NIL operation;
+                  }
+                  { # ENTRYPOINT unit %remove_deposit
+                    # IF-CONS {
+                    #   deposits <- tail
+                    #   total_deposits <- total_deposits - head
+                    # }
+                    DROP;
+                    IF_CONS 
+                      {
+                        SWAP;
+                        DIP { SWAP; SUB; } ;
+                      }
+                      { NIL mutez; } ;
+                    NIL operation;
+                  } ;
+              }
+              {
+                IF_LEFT
+                  {
+                    IF_LEFT
+                      { # ENTRYPOINT address %get_total_deposit
+                        # OPERATIONS <- [TransferToken (total_deposit, 0mtz, %get_total_deposit)]
+                        NIL operation;
+                        SWAP;
+                        CONTRACT mutez;
+                        PUSH mutez 0;
+                        DUP 5;
+                        TRANSFER_TOKENS;
+                        CONS;
+                      }
+                      { # ENTRYPOINT option %set_backend address
+                        # backend <- %set_backend
+                        DIP 3 { DROP; } ;
+                        DUG 2;
+                        NIL operation;
+                      } ;
+                  }
+                  {
+                    IF_LEFT
+                      { # ENTRYPOINT address %withdraw
+                        # IF-CONS {
+                        #   ASSERT (BALANCE >= head)
+                        #   deposits <- tail
+                        #   total_deposit <- total_deposit - head
+                        #   OPERATIONS <- [TransferToken (unit, head, %withdraw)]
+                        # }
+                        CONTRACT unit;
+                        SWAP;
+                        IF_CONS
+                          {
+                            # STACK FIGURE ::   
+                            #   deposits-head : deposits-tail : Contract(%withdraw) : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            #__MICSE_CHECK { BALANCE; COMPARE; GE; } ;
+                            DUP;
+                            DIG 4;
+                            SUB;
+                            DUG 3;
+                            # STACK FIGURE ::   
+                            #   deposits-head : deposits-tail : Contract(%withdraw) : (total_deposit - deposits-head) : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            DIP { SWAP; } ;
+                            # STACK FIGURE ::   
+                            #   deposits-head : Contract(%withdraw) : deposits-tail : (total_deposit - deposits-head) : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            UNIT;
+                            TRANSFER_TOKENS;
+                            NIL operation;
+                            SWAP;
+                            CONS;
+                          }
+                          {
+                            # STACK FIGURE ::   
+                            #   Contract(%withdraw) : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            PUSH string "%withdraw deposits=[]";
+                            FAILWITH;
+                          } ;
+                      }
+                      { # ENTRYPOINT unit %withdraw_fee
+                        # IF-SOME (backend) {
+                        #   ASSERT (BALANCE >= fee_acc)
+                        #   fee_acc <- 0
+                        #   OPERATIONS <- [TransferToken (unit, last-fee_acc, backend)]
+                        # }
+                        DROP;
+                        DUP 3;
+                        IF_NONE
+                          {
+                            PUSH string "%withdraw_fee backend=None";
+                            FAILWITH;
+                          }
+                          {
+                            #__MICSE_CHECK { DUP 6; BALANCE; COMPARE; GE; } ;
+                            NIL operation;
+                            SWAP;
+                            CONTRACT unit;
+                            # STACK FIGURE ::   
+                            #   Contract(%backend) : [] : deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc    
+                            DIG 6;
+                            UNIT;
+                            TRANSFER_TOKENS;
+                            CONS;
+                            PUSH mutez 0;
+                            # STACK FIGURE ::   
+                            #   0mtz : [TransferToken] : deposits : total_deposit : backend : fee_percent : reward_flag : reward_size : avail_reward_calc
+                            DUG 5;
+                          } ;
+                      } ;
+                  } ;
+              } ;
+          }
+          {
+            IF_LEFT
+              {
+                IF_LEFT
+                  { # ENTRYPOINT mutez %set_reward_size
+                    # reward_size <- %set_reward_size
+                    DIG 7;
+                    DROP;
+                    DUG 6;
+                    NIL operation;
+                  }
+                  { # ENTRYPOINT nat %set_fee_percent
+                    # IF (%set_fee_percent < 101) {
+                    #   fee_percent <- %set_fee_percent
+                    # }
+                    #
+                    DUP;
+                    PUSH nat 101;
+                    COMPARE;
+                    GT;
+                    IF
+                      {
+                        DIG 4;
+                        DROP;
+                        DUG 3;
+                      }
+                      {
+                        PUSH string "%set_fee_percent >= 101";
+                        FAILWITH;
+                      } ;
+                    NIL operation;
+                  } ;
+              }
+              {
+                IF_LEFT
+                  { # ENTRYPOINT unit %setup_reward
+                    # let full_active_deposit <- 0
+                    # let deposits_copy <- deposits
+                    # let loop_cond <- IF_CONS (deposits_copy) {True} {False}
+                    # LOOP (IF_CONS (deposits_copy)) {
+                    #   full_active_deposit <- full_active_deposit + head
+                    #   deposits_copy <- tail
+                    #   loop_cond <- IF_CONS (deposits_copy) {True} {False}
+                    # }
+                    # ASSERT & REQUIRE (total_deposit == full_active_deposit)
+                    # avail_reward_calc <- BALANCE - full_active_deposit
+                    # reward_flag <- True
+                    DROP;
+                    PUSH mutez 0; # let full_active_deposit <- 0
+                    DUP 2;  # let deposits_copy <- deposits
+                    PUSH bool True;
+                    LOOP 
+                      { # Expeceted STACK FIGURE ::
+                        #   deposits_copy : full_active_deposit : deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                        IF_CONS
+                          { # Expeceted STACK FIGURE ::
+                            #   head : tail : full_active_deposit : deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            DIG 2;
+                            ADD;
+                            SWAP;
+                            # Expeceted STACK FIGURE ::
+                            #   tail : (full_active_deposit + head) : deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            PUSH bool True;
+                          }
+                          {
+                            NIL mutez;
+                            PUSH bool False;
+                          } ;
+                      } ;
+                    DROP;
+                    # Expeceted STACK FIGURE ::
+                    #   full_active_deposit : deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                    DUP; DUP 4; COMPARE; EQ;
+                    #__MICSE_CHECK { DROP 0; } ;
+                    ASSERT;
+                    # Expeceted STACK FIGURE ::
+                    #   full_active_deposit : deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                    BALANCE;
+                    SUB;
+                    DIG 8;
+                    DROP;
+                    DUG 7;
+                    # Expeceted STACK FIGURE ::
+                    #   deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : (BALANCE - full_active_deposit)
+                    PUSH bool True;
+                    DIG 6;
+                    DROP;
+                    DUG 5;
+                    NIL operation;
+                  }
+                  { # ENTRYPOINT unit %process_reward
+                    # REQUIRE (reward_flag)
+                    # let new_deposits <- []
+                    # let new_total_deposit <- 0
+                    # let given_rewards <- 0
+                    # LOOP (IF_CONS (deposits)) {
+                    #   deposits <- tail
+                    #   new_deposits <- (head + reward_size) :: new_deposits
+                    #   new_total_deposit <- new_total_deposit + (head + reward_size)
+                    #   given_rewards <- given_rewards + reward_size
+                    # }
+                    # deposits <- new_deposits
+                    # total_deposit <- new_total_deposit
+                    # ASSERT & REQUIRE (avail_reward_calc >= given_rewards)
+                    # let fee <- (avail_reward_calc * fee_percent) / 100
+                    # ASSERT & REQUIRE (avail_reward_calc >= fee)
+                    # fee_acc <- fee_acc + fee
+                    # reward_flag <- False
+                    DROP;
+                    DUP 6;
+                    ASSERT;
+                    PUSH mutez 0; # let new_total_deposit <- 0
+                    PUSH mutez 0; # let given_rewards <- 0
+                    NIL mutez; # let new_deposits <- []
+                    # Expeceted STACK FIGURE ::
+                    #   new_deposits : given_rewards : new_total_deposit : deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                    DIG 3;
+                    PUSH bool True;
+                    LOOP
+                      {
+                        IF_CONS
+                          { # Expeceted STACK FIGURE ::
+                            #   head : tail : new_deposits : given_rewards : new_total_deposit : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            DUP;
+                            DUG 4;
+                            DIP 4 
+                              {
+                                ADD; # head + new_total_deposit
+                              } ;
+                            # Expeceted STACK FIGURE ::
+                            #   head : tail : new_deposits : given_rewards : (head + new_total_deposit) : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            SWAP;
+                            DIP
+                              {
+                                DUP 10;
+                                ADD;  # head + reward_size
+                                CONS;
+                                DIP
+                                  {
+                                    DUP 8;
+                                    ADD;  # given_rewards + reward_size
+                                    DIP
+                                      {
+                                        DUP 7;
+                                        ADD;  # (head + new_total_deposit) + reward_size
+                                      } ;
+                                  } ;
+                              } ;
+                            # Expeceted STACK FIGURE ::
+                            #   tail : ((head + reward_size) :: new_deposits) : (given_rewards + reward_size) : (head + new_total_deposit + reward_size) : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                            PUSH bool True;
+                          }
+                          {
+                            NIL mutez;
+                            PUSH bool False;
+                          } ;
+                      } ;
+                    DROP;
+                    # Expeceted STACK FIGURE ::
+                    #   new_deposits : given_rewards : new_total_deposit : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                    DIP 3 { DROP; } ;
+                    SWAP;
+                    # Expeceted STACK FIGURE ::
+                    #   given_rewards : new_deposits : new_total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                    DUP 9;
+                    DUP 2;
+                    DUP 2;
+                    COMPARE;
+                    GE;
+                    #__MICSE_CHECK { DROP 0; } ;
+                    ASSERT;
+                    # Expeceted STACK FIGURE ::
+                    #   avail_reward_calc : given_rewards : new_deposits : new_total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                    DUP;
+                    DUP 7;
+                    MUL;
+                    PUSH nat 100;
+                    SWAP;
+                    EDIV;
+                    IF_NONE 
+                      { PUSH string "%process_reward (DIV-BY-0)"; FAILWITH; }
+                      { CAR; } ; # let fee <- (avail_reward_calc * fee_percent) / 100
+                    # Expeceted STACK FIGURE ::
+                    #   fee : avail_reward_calc : given_rewards : new_deposits : new_total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                    DUP;
+                    DIP
+                      {
+                        COMPARE;
+                        LE;
+                        #__MICSE_CHECK { DROP 0; } ;
+                        ASSERT;
+                      } ;
+                    # Expeceted STACK FIGURE ::
+                    #   fee : given_rewards : new_deposits : new_total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+                    DIG 6;
+                    ADD;
+                    DUG 5;
+                    DROP;
+                    # Expeceted STACK FIGURE ::
+                    #   new_deposits : new_total_deposit : backend : fee_percent : (fee_acc + fee) : reward_flag : reward_size : avail_reward_calc
+                    DIP 5 { DROP; PUSH bool False; } ;
+                    # Expeceted STACK FIGURE ::
+                    #   new_deposits : new_total_deposit : backend : fee_percent : (fee_acc + fee) : False : reward_size : avail_reward_calc
+                    NIL operation;
+                  } ;
+              } ;
+          } ;
+        # EVERY-ENTRYPOINT-LOGICS END
+        # Expeceted STACK FIGURE ::
+        #   OPERATIONS (TOP) : deposits : total_deposit : backend : fee_percent : fee_acc : reward_flag : reward_size : avail_reward_calc
+        # storage assembly
+        DIP 
+          {
+            PAIR;
+            DIP
+              { # assemble (backend, (fee_percent, fee_acc))
+                DIP { PAIR; } ;
+                PAIR;
+              } ;
+            PAIR;
+            DIP
+              { # assemble ((reward_flag, reward_size), avail_reward_calc)
+                PAIR; PAIR;
+              } ;
+            PAIR;
+          } ;
+        # Make (Operations, Storage)
+        PAIR;
+      }

@@ -1,0 +1,84 @@
+storage (pair (address %admin) (pair (map %owners address nat) (mutez %received)));
+parameter (or (unit %default) (unit %distribute));
+code { UNPAIR ;                   # %p : %s
+       IF_LEFT
+         { DROP ;                 # %s
+           UNPAIR ;               # %s-admin : cdr(%s)
+           SWAP ;                 # cdr(%s) : %s-admin
+           UNPAIR ;               # %s-owners : %s-received : %s-admin
+           SWAP ;                 # %s-received : %s-owners : %s-admin
+           AMOUNT ;               # %amount : %s-received : %s-owners : %s-admin
+           ADD ;                  # (%amount + %s-received) : %s-owners : %s-admin
+           SWAP ;                 # %s-owners : (%amount + %s-received) : %s-admin
+           PAIR ;                 # (%s-owners, (%amount + %s-received)) : %s-admin
+           SWAP ;                 # %s-admin : (%s-owners, (%amount + %s-received))
+           PAIR ;                 # (%s-admin, (%s-owners, (%amount + %s-received)))
+           NIL operation }        # [] : %s'
+         { SWAP ;                 # %s : %p
+           UNPAIR ;               # %s-admin : cdr(%s) : %p
+           SWAP ;                 # cdr(%s) : %s-admin : %p
+           UNPAIR ;               # %s-owners : %s-received : %s-admin : %p
+           SWAP ;                 # %s-received : %s-owners : %s-admin : %p
+           AMOUNT ;               # %amount : %s-received : %s-owners : %s-admin : %p
+           ADD ;                  # (%amount + %s-received) : %s-owners : %s-admin : %p
+           SWAP ;                 # %s-owners : (%amount + %s-received) : %s-admin : %p
+           PAIR ;                 # (%s-owners, (%amount + %s-received)) : %s-admin : %p
+           SWAP ;                 # %s-admin : (%s-owners, (%amount + %s-received)) : %p
+           PAIR ;                 # (%s-admin, (%s-owners, (%amount + %s-received))) : %p
+           SWAP ;                 # %p : %s'
+           BALANCE ;              # %balance : %p : %s'
+           BALANCE ;              # %balance : %balance : %p : %s'
+           NIL operation ;        # [] : %balance : %balance : %p : %s'
+           DUP 5 ;                # %s' : [] : %balance : %balance : %p : %s'
+           GET 3 ;                # %s-owners : [] : %balance : %balance : %p : %s'
+           ITER { DUP ;           # (k, v) : (k, v) : %opl : %b : %balance : %p : %s'
+                  DUG 2 ;         # (k, v) : %opl : (k, v) : %b : %balance : %p : %s'
+                  CAR ;           # k : %opl : (k, v) : %b : %balance : %p : %s'
+                  CONTRACT unit ; # contract(k)_opt : %opl : (k, v) : %b : %balance : %p : %s'
+                  IF_NONE { PUSH int 42 ; FAILWITH } {} ;
+                  PUSH nat 1000 ; # 1000 : contract(k) : %opl : (k, v) : %b : %balance : %p : %s'
+                  DUP 6 ;         # %balance : 1000 : contract(k) : %opl : (k, v) : %b : %balance : %p : %s'
+                  DUP 5 ;         # (k, v) : %balance : 1000 : contract(k) : %opl : (k, v) : %b : %balance : %p : %s'
+                  CDR ;           # v : %balance : 1000 : contract(k) : %opl : (k, v) : %b : %balance : %p : %s'
+                  MUL ;           # (v * %balance) : 1000 : contract(k) : %opl : (k, v) : %b : %balance : %p : %s'
+                  EDIV ;          # (((v * %balance) // 1000), ((v * %balance) mod 1000))_opt : contract(k) : %opl : (k, v) : %b : %balance : %p : %s'
+                  IF_NONE { PUSH int 41 ; FAILWITH } {} ;
+                  CAR ;           # ((v * %balance) // 1000) : contract(k) : %opl : (k, v) : %b : %balance : %p : %s'
+                  UNIT ;          # () : ((v * %balance) // 1000) : contract(k) : %opl : (k, v) : %b : %balance : %p : %s'
+                  TRANSFER_TOKENS ; # tt ((), ((v * %balance) // 1000), contract(k)) : %opl : (k, v) : %b : %balance : %p : %s'
+                  CONS ;          # (tt ((), ((v * %balance) // 1000), contract(k)))::%opl : (k, v) : %b : %balance : %p : %s'
+                  SWAP ;          # (k, v) : %opl' : %b : %balance : %p : %s'
+                  PUSH nat 1000 ; # 1000 : (k, v) : %opl' : %b : %balance : %p : %s'
+                  DUP 5 ;         # %balance : 1000 : (k, v) : %opl' : %b : %balance : %p : %s'
+                  DIG 2 ;         # (k, v) : %balance : 1000 : %opl' : %b : %balance : %p : %s'
+                  CDR ;           # v : %balance : 1000 : %opl' : %b : %balance : %p : %s'
+                  MUL ;           # (v * %balance) : 1000 : %opl' : %b : %balance : %p : %s'
+                  EDIV ;          # (((v * %balance) // 1000), ((v * %balance) mod 1000))_opt : %opl' : %b : %balance : %p : %s'
+                  IF_NONE { PUSH int 41 ; FAILWITH } {} ;
+                  CAR ;           # ((v * %balance) // 1000) : %opl' : %b : %balance : %p : %s'
+                  DIG 2 ;         # %b : ((v * %balance) // 1000) : %opl' : %balance : %p : %s'
+                  SUB ;           # (%b - ((v * %balance) // 1000)) : %opl' : %balance : %p : %s'
+                  SWAP } ;        # %opl' : %b' : %balance : %p : %s'
+           DIG 2 ;                # %balance : %opl' : %b' : %p : %s'
+           DROP ;                 # %opl' : %b' : %p : %s'
+           DIG 2 ;                # %p : %opl' : %b' : %s'
+           DROP ;                 # %opl' : %b' : %s'
+           PUSH mutez 0 ;         # 0 : %opl' : %b' : %s'
+           DUP 3 ;                # %b' : 0 : %opl' : %b' : %s'
+           COMPARE ;              # compare(%b', 0) : %opl' : %b' : %s'
+           GT ;                   # %b' < 0 : %opl' : %b' : %s'
+           IF
+             { DUP 3 ;            # %s' : %opl' : %b' : %s'
+               CAR ;              # %s-admin : %opl' : %b' : %s'
+               CONTRACT unit ;    # contract(%s-admin)_opt : %opl' : %b' : %s'
+               IF_NONE { PUSH int 46 ; FAILWITH } {} ;
+               DIG 2 ;            # %b' : contract(%s-admin) : %opl' : %b' : %s'
+               UNIT ;             # () : %b' : contract(%s-admin) : %opl' : %b' : %s'
+               TRANSFER_TOKENS ;  # tt ((), %b', contract(%s-admin)) : %opl' : %b' : %s'
+               CONS }             # (tt ((), %b', contract(%s-admin)))::%opl' : %b' : %s'
+             { SWAP ;             # %b' : %opl' : %s'
+               DROP } } ;         # %opl' : %s'
+       NIL operation ;            # [] : %opl' : %s'
+       SWAP ;                     # %opl' : [] : %s'
+       ITER { CONS } ;            # %opl'' : %s'
+       PAIR }                     # (%opl'', %s')

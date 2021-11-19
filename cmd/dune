@@ -1,10 +1,5 @@
 (executables
-  (names micse_prover)
-  (modules micse_prover)
-  (public_names micse_prover)
-  (libraries
-    micse.utils
-    micse.pre
-    micse.prover
-  )
-  (package micse))
+ (names main naive_refuter naive_prover)
+ (public_names micse micse.naive_refuter micse.naive_prover)
+ (libraries core lib utils)
+ (package micse))

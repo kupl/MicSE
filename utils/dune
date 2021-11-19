@@ -1,0 +1,6 @@
+(library
+ (name utils)
+ (public_name micse.utils)
+ (libraries core logs logs.threaded mtime mtime.clock.os)
+ (preprocess
+  (pps ppx_sexp_conv ppx_compare)))

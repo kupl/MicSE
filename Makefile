@@ -2,7 +2,7 @@
 
 CURRENT_DIR := $(shell pwd)
 BIN_DIR := $(CURRENT_DIR)/_build/install/default/bin
-BIN_LIST := micse_prover micse
+BIN_LIST := micse
 QUIET := > /dev/null
 
 .PHONY: default build install uninstall test clean
@@ -15,6 +15,7 @@ build:
 	cp -f $(foreach file,$(BIN_LIST),$(BIN_DIR)/$(file)) $(CURRENT_DIR)/bin $(QUIET)
 
 test:
+	dune build
 	dune runtest -f $(QUIET)
 
 install:

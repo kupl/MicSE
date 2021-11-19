@@ -1,0 +1,30 @@
+# LOOP, LOOP_LEFT
+
+parameter (pair (int %n) (or (int %m) unit));
+storage (unit);
+code 
+  {
+    UNPAIR;
+    UNPAIR;
+    DUP;
+    GT;
+    LOOP
+      {
+        PUSH int 1;
+        SUB;
+        DUP;
+        GT;
+      };
+    DROP;
+    LOOP_LEFT
+      {
+        PUSH int 1;
+        SUB;
+        DUP;
+        GT;
+        IF { LEFT (or int unit); } { DROP; UNIT; RIGHT (or int unit); };
+      };
+    DROP;
+    NIL operation;
+    PAIR;
+  };

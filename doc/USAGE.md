@@ -8,9 +8,9 @@
     - [MicSE Prover](#micse-prover)
       - [Options](#options)
       - [JSON Output Format](#json-output-format)
-      - [Example](#example)
-  - [User Custom Safety Property](#user-custom-safety-property)
-    - [Example](#example-1)
+      - [MicSE Prover Example](#micse-prover-example)
+  - [Specifying Custom Safety Properties](#specifying-custom-safety-properties)
+    - [Custom Safety Property Example](#custom-safety-property-example)
 
 ## Run
 
@@ -78,7 +78,7 @@ $ (PROJECT_DIR)/bin/micse_prover --input (FILE_PATH)
 }
 ```
 
-#### Example
+#### MicSE Prover Example
 
 - **Demo Video:** [Link](https://youtu.be/9itXEQY051Y)
 - **Input:** [`transfer_safe.tz`](../benchmarks/toys/transfer_safe.tz)
@@ -346,10 +346,9 @@ MtzMap_PSE(CAR(-trxStorage-0),(v25,v10),CDR(-trxStorage-0),__MTZMAP_SUM_R_(CAR(-
 
 Given a Michelson program without any annotations, MicSE basically attemps to verify the absence of arithmetic overflow.
 However, MicSE also supports verification of custom safety properties using the **`#__MICSE_CHECK {(instruction)}`** statement, where **instruction** denotes arbitrary Michelson instructions that produce boolean values. That is, for each user-provided assertion, MicSE attempts to prove that the top of the stack is the true value.
-The **`#__MICSE_CHECK {(instruction)}`** statement should be given as a single-line comment. An example usage is given below. 
+The **`#__MICSE_CHECK {(instruction)}`** statement should be given as a single-line comment. An example usage is given below.
 
-
-### Example
+### Custom Safety Property Example
 
 ``` michelson
 parameter (pair (address %receiver) (mutez %value));
