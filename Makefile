@@ -2,7 +2,7 @@
 
 CURRENT_DIR := $(shell pwd)
 BIN_DIR := $(CURRENT_DIR)/_build/install/default/bin
-BIN_LIST := micse
+BIN_LIST := micse micse.naive_prover micse.naive_refuter
 QUIET := > /dev/null
 
 .PHONY: default build install uninstall test clean
