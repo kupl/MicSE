@@ -18,7 +18,7 @@ MicSE is a tool for verifying and testing Tezos smart contracts written in Miche
 MicSE can verify the absence of runtime failures of Michelson programs, e.g., no arithmetic overflow. Also, MicSE supports verification of user-provided assertions.
 
 - *Prover* (=verifier)
-- *Refuter* (=tester, will be provided)
+- *Refuter* (=tester)
 
 ## Documents
 

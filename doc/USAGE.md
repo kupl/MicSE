@@ -5,6 +5,7 @@
 - [Usage of MicSE](#usage-of-micse)
   - [Table of Contents](#table-of-contents)
   - [Run](#run)
+    - [MicSE](#micse)
     - [MicSE Prover](#micse-prover)
       - [Options](#options)
       - [JSON Output Format](#json-output-format)
@@ -15,6 +16,38 @@
 ## Run
 
 Binary execution files are located at `(PROJECT_DIR)/bin` directory.
+
+- `micse`: Run whole MicSE for input Michelson program code
+- `micse.naive_prover`: Run only prover of MicSE for input Michelson program code
+- `micse.naive_refuter`: Run only refuter of MicSE for input Michelson program code
+
+### MicSE
+
+```base
+$ (PROJECT_DIR)/bin/micse -I (FILE_PATH) -S (FILE_PATH)
+ Final-Report : 
+=== Final Result ===
+Time: _ sec   Memory: _ GB
+Combinations: _
+#Total: _   #Proved: _    #Refuted: _   #Failed: _
+#Err: _ #UU: _  #UF: _  #FU: _  #FF: _
+<< Proved >>
+...
+
+<< Refuted >>
+...
+
+<< Failed >>
+...
+```
+
+- **Input:**
+  - Michelson program code
+  - Initial storage data
+  - (Optional) [User custom safety property](#user-custom-safety-property)
+- **Output:**
+  - Prove result of each safety property
+  - (Optional) CFG of code
 
 ### MicSE Prover
 
