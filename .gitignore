@@ -12,6 +12,7 @@ tmp/
 # Benchmark
 /scripts/output/
 /scripts/.env
+/result
 
 # Vagrant Configurations
 .vagrant/
