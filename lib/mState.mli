@@ -63,8 +63,10 @@ val get_last_ss : t -> Tz.sym_state
 
 val get_tail_ms : t -> t
 
-val cut_first_found_loop : t -> (t * t) option
-
 val get_length : t -> int
 
 val get_summary : t -> summary
+
+val cut_first_found_loop : t -> (t * t) option
+
+val extract_trx_state : t -> Tz.sym_state list

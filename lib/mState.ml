@@ -564,6 +564,13 @@ let get_last_ss : t -> Tz.sym_state = (fun ms -> List.last_exn ms |> fst)
 
 let get_tail_ms : t -> t = (fun ms -> List.tl_exn ms)
 
+let get_length : t -> int = List.length
+
+let get_summary : t -> summary =
+  fun ms ->
+  let fss = get_first_ss ms in
+  { sm_rmci = TzUtil.get_reduced_mci fss.ss_start_mci; sm_s_id = fss.ss_id }
+
 let cut_first_found_loop : t -> (t * t) option =
    let open Tz in
    let open TzUtil in
@@ -601,9 +608,13 @@ let cut_first_found_loop : t -> (t * t) option =
         )
    )
 
-let get_length : t -> int = List.length
-
-let get_summary : t -> summary =
-  fun ms ->
-  let fss = get_first_ss ms in
-  { sm_rmci = TzUtil.get_reduced_mci fss.ss_start_mci; sm_s_id = fss.ss_id }
+let extract_trx_state : t -> Tz.sym_state list =
+   let open Tz in
+   fun ms ->
+   List.fold_right ms
+     ~f:(fun (ss, _) acc_ts ->
+       if equal_mich_cut_category ss.ss_start_mci.mci_cutcat MCC_trx_entry
+       then ss :: acc_ts
+       else acc_ts)
+     ~init:[]
+(* function extract_trx_state end *)

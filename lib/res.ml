@@ -314,11 +314,39 @@ let string_of_res_rough : config -> res -> string =
 
 let string_of_res : config -> res -> string =
    let open Tz in
-   let qres_str : qres -> string =
+   let qres_info_str : qres -> string =
      fun qres ->
      Printf.sprintf "> Location:%s\n  Category:%s\n"
        (qres.qr_qid.qid_loc |> sexp_of_ccp_loc |> Sexp.to_string)
        (qres.qr_qid.qid_cat |> sexp_of_query_category |> Sexp.to_string)
+   in
+   let qres_model_str : config -> qres -> string =
+     fun cfg qres ->
+     "  Refuted Path:\n"
+     ^ ( if Option.is_none qres.qr_rft_ppath
+       then "\tErrored"
+       else (
+         let ((pp : PPath.t), (md : Smt.Model.t)) =
+            Option.value_exn qres.qr_rft_ppath
+         in
+         let (ms : MState.t) = pp.pp_mstate in
+         let (ts_lst : sym_state list) = MState.extract_trx_state ms in
+         List.mapi ts_lst ~f:(fun idx ss ->
+             let (param : Smt.Expr.t) =
+                ss.ss_start_si.si_param.ti_param
+                |> Vc.Encoder.cv_mvcc ~sctx:ss.ss_id cfg.cfg_smt_ctxt
+             in
+             Printf.sprintf "\tTrx #%d:\n\t\t%s" (idx + 1)
+               (Smt.Model.eval md param
+               |> function
+               | None   -> "None"
+               | Some e -> Smt.Expr.to_string e
+               )
+         )
+         |> String.concat ~sep:"\n"
+       )
+       )
+     ^ "\n"
    in
    fun cfg res ->
    let (cres : qres_classified) =
@@ -374,53 +402,23 @@ let string_of_res : config -> res -> string =
    let (prvd : string) =
       Printf.sprintf "<< Proved >>\n%s"
         (QRSet.to_list cres.qrc_p
-        |> List.map ~f:qres_str
+        |> List.map ~f:qres_info_str
         |> String.concat ~sep:"\n"
         )
    in
    let (rftd : string) =
       Printf.sprintf "<< Refuted >>\n%s"
         (QRSet.to_list cres.qrc_r
-        |> List.map ~f:(fun qres ->
-               qres_str qres
-               (* ^ Printf.sprintf
-                   "\t> Searched Total Paths: (#: %d)\n\t\t%s\n\t> Validated Paths:\n\t\t%s\n\t> Model:\n%s\n\t> VC:\n%s\n"
-                   (List.length qres.qr_total_ppaths)
-                   (List.map qres.qr_total_ppaths ~f:(fun (ppath, sat) ->
-                        Printf.sprintf "- %s / %d / %s"
-                          (Smt.Solver.string_of_sat sat)
-                          ppath.PPath.pp_score
-                          (MState.get_summary ppath.PPath.pp_mstate
-                          |> MState.sexp_of_summary
-                          |> Sexp.to_string
-                          )
-                    )
-                   |> String.concat ~sep:"\n\t\t"
-                   )
-                   (List.map qres.qr_validated_ppaths ~f:(fun ppath ->
-                        MState.get_summary ppath.PPath.pp_mstate
-                        |> MState.sexp_of_summary
-                        |> Sexp.to_string
-                    )
-                   |> String.concat ~sep:"\n\t\t"
-                   )
-                   (Option.value_exn qres.qr_rft_ppath
-                   |> snd
-                   |> Smt.Model.to_string
-                   )
-                   ((Option.value_exn qres.qr_rft_ppath |> fst).pp_mstate
-                   |> Vc.gen_refute_vc cfg.cfg_istrg
-                   |> Tz.sexp_of_mich_f
-                   |> SexpUtil.tz_cc_sexp_form
-                   |> Sexp.to_string
-                   ) *)
-           )
+        |> List.map ~f:(fun qres -> qres_info_str qres ^ qres_model_str cfg qres)
         |> String.concat ~sep:"\n"
         )
    in
    let (fail : string) =
       Printf.sprintf "<< Failed >>\n%s"
-        (QRSet.to_list failed |> List.map ~f:qres_str |> String.concat ~sep:"\n")
+        (QRSet.to_list failed
+        |> List.map ~f:qres_info_str
+        |> String.concat ~sep:"\n"
+        )
    in
    String.concat ~sep:"\n"
      [ ""; head; conf; itvr; summ; finf; prvd; rftd; fail ]
