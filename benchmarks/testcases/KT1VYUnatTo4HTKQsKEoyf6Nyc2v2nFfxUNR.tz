@@ -1,0 +1,82 @@
+storage (pair
+          (pair (address %administrator)
+                (pair (map %funding address mutez) (mutez %limit_balance)))
+          (pair (pair (mutez %max_amount) (big_map %metadata string bytes))
+                (pair (timestamp %time_end) (timestamp %time_start))));
+parameter (or (unit %complete) (unit %fund));
+code { UNPAIR ;
+       IF_LEFT
+         { DROP ;
+           DUP ;
+           CAR ;
+           CAR ;
+           SENDER ;
+           COMPARE ;
+           EQ ;
+           IF
+             {}
+             { PUSH string "WrongCondition: sp.sender == self.data.administrator" ;
+               FAILWITH } ;
+           NIL operation ;
+           SENDER ;
+           CONTRACT unit ;
+           IF_NONE { PUSH int 67 ; FAILWITH } {} ;
+           BALANCE ;
+           UNIT ;
+           TRANSFER_TOKENS ;
+           CONS }
+         { DROP ;
+           DUP ;
+           GET 6 ;
+           NOW ;
+           COMPARE ;
+           GE ;
+           IF {} { PUSH string "SP_EVENT_HAS_NOT_STARTED" ; FAILWITH } ;
+           DUP ;
+           GET 5 ;
+           NOW ;
+           COMPARE ;
+           LE ;
+           IF {} { PUSH string "SP_EVENT_HAS_ENDED" ; FAILWITH } ;
+           DUP ;
+           GET 3 ;
+           CAR ;
+           AMOUNT ;
+           COMPARE ;
+           LE ;
+           IF {} { PUSH string "SP_WRONG_INPUT" ; FAILWITH } ;
+           DUP ;
+           CAR ;
+           GET 4 ;
+           BALANCE ;
+           COMPARE ;
+           LE ;
+           IF {} { PUSH string "SP_OVER_BALANCE" ; FAILWITH } ;
+           DUP ;
+           CAR ;
+           GET 3 ;
+           SENDER ;
+           MEM ;
+           IF
+             { UNPAIR ;
+               UNPAIR ;
+               SWAP ;
+               UNPAIR ;
+               DUP ;
+               SENDER ;
+               DUP ;
+               DUG 2 ;
+               GET ;
+               IF_NONE { PUSH int 60 ; FAILWITH } {} ;
+               AMOUNT ;
+               ADD ;
+               SOME ;
+               SWAP ;
+               UPDATE ;
+               PAIR ;
+               SWAP ;
+               PAIR ;
+               PAIR }
+             { UNPAIR ; UNPAIR ; SWAP ; UNPAIR ; AMOUNT ; SOME ; SENDER ; UPDATE ; PAIR ; SWAP ; PAIR ; PAIR } ;
+           NIL operation } ;
+       PAIR }

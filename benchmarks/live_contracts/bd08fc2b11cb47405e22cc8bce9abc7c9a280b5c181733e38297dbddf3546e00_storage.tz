@@ -1,9 +1,0 @@
-(Pair "tz1LBEKXaxQbd5Gtzbc1ATCwc3pppu81aWGc" 
-      (Pair 
-            { Elt "KT1QB4Tib11b8gYrC77Xs9bXU8TGJTXPAK7J" 5000000 } 
-            (Pair "Tez-Baking Token" 
-                  (Pair "BAKER" 
-                        (Pair 6 
-                              (Pair 5000000 
-                                    (Pair 0 
-                                          (Pair "tz1LBEKXaxQbd5Gtzbc1ATCwc3pppu81aWGc" (Pair 1000000 1000000)))))))))
