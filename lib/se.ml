@@ -100,7 +100,7 @@ module SSGraph = struct
 
   let ss_view_succ : m_view:mci_view -> sym_state -> SSet.t =
     fun ~m_view ss ->
-    (RMCIMap.find_exn m_view (TzUtil.get_reduced_mci ss.ss_start_mci)).succ
+    (RMCIMap.find_exn m_view (TzUtil.get_reduced_mci ss.ss_block_mci)).succ
 end
 (* module SSGraph end *)
 
