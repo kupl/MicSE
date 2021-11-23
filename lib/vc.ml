@@ -265,11 +265,11 @@ module Encoder = struct
        ZNat.create_and ctx (eov v1cc) (eov v2cc)
      | MV_or_nnn (v1cc, v2cc) -> ZNat.create_or ctx (eov v1cc) (eov v2cc)
      | MV_xor_nnn (v1cc, v2cc) -> ZNat.create_xor ctx (eov v1cc) (eov v2cc)
-     | MV_size_s _ -> Not_Implemented |> raise
-     | MV_size_m _ -> Not_Implemented |> raise
+     | MV_size_s v1cc -> fv [ v1cc ]
+     | MV_size_m v1cc -> fv [ v1cc ]
      | MV_size_l v1cc -> fv [ v1cc ]
      | MV_size_str v1cc -> ZStr.create_size ctx (eov v1cc)
-     | MV_size_b _ -> Not_Implemented |> raise
+     | MV_size_b v1cc -> fv [ v1cc ]
      (*************************************************************************)
      (* String                                                                *)
      (*************************************************************************)
@@ -284,7 +284,7 @@ module Encoder = struct
      | MV_concat_bbb (v1cc, v2cc) ->
        ZBytes.create_concat ctx (eov v1cc) (eov v2cc)
      | MV_concat_list_b _ -> Not_Implemented |> raise
-     | MV_pack _ -> Not_Implemented |> raise
+     | MV_pack v1cc -> fv [ v1cc ]
      | MV_blake2b v1cc -> ZBytes.create_blake2b ctx (eov v1cc)
      | MV_sha256 v1cc -> ZBytes.create_sha256 ctx (eov v1cc)
      | MV_sha512 v1cc -> ZBytes.create_sha512 ctx (eov v1cc)
@@ -404,7 +404,7 @@ module Encoder = struct
        ZStr.create_slice ctx ~offset:(eov v1cc) ~len:(eov v2cc) (eov v3cc)
      | MV_slice_nnbo (v1cc, v2cc, v3cc) ->
        ZBytes.create_slice ctx ~offset:(eov v1cc) ~len:(eov v2cc) (eov v3cc)
-     | MV_unpack _ -> Not_Implemented |> raise
+     | MV_unpack (_, v2cc) -> fv [ v2cc ]
      | MV_contract_of_address _ -> Expr.create_dummy ctx sort
      | MV_isnat v1cc ->
        let (expr1 : Expr.t) = eov v1cc in
@@ -448,7 +448,7 @@ module Encoder = struct
      (*************************************************************************)
      | MV_lit_contract (_, v2cc) ->
        ZContract.create_expr_of_address sort (eov v2cc)
-     | MV_self _ -> Not_Implemented |> raise
+     | MV_self _ -> fv []
      | MV_implicit_account v1cc -> ZContract.create_expr sort (eov v1cc)
      (*************************************************************************)
      (* Pair                                                                  *)
@@ -809,6 +809,16 @@ module Encoder = struct
        |> raise
   (* function cv_mf end *)
 end
+
+(******************************************************************************)
+(******************************************************************************)
+(* Smt Decoder                                                                *)
+(******************************************************************************)
+(******************************************************************************)
+
+(* module Decoder = struct
+     exception Not_Implemented
+   end *)
 
 (******************************************************************************)
 (******************************************************************************)
