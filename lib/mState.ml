@@ -574,10 +574,6 @@ let cons : Tz.sym_state -> t -> t =
    (renamed_ss, connection_fmla) :: ms
 (* function cons end *)
 
-let append : t -> t -> t =
-  (fun ms1 ms2 -> List.fold ms1 ~init:ms2 ~f:(fun ms (ss, _) -> cons ss ms))
-(* function append end *)
-
 let cut_first_found_loop : t -> (t * t) option =
    let open Tz in
    let open TzUtil in

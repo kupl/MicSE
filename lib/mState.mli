@@ -61,8 +61,6 @@ val init : Tz.sym_state -> t
 
 val cons : Tz.sym_state -> t -> t
 
-val append : t -> t -> t
-
 val get_constraint : t -> Tz.mich_f list
 
 val get_first_ss : t -> Tz.sym_state
