@@ -130,17 +130,19 @@ type config = {
   (* Execution configuration *)
   cfg_timer : Utils.Time.t;
   cfg_memory : Utils.Memory.t;
+  (* Environment for SMT solver *)
+  cfg_smt_ctxt : Smt.Ctx.t;
+  cfg_smt_slvr : Smt.Solver.t;
   (* Information from symbolic execution *)
   cfg_istate : Tz.sym_state;
   cfg_istrg : Tz.mich_v Tz.cc;
   cfg_se_res : Se.se_result;
   cfg_m_view : Se.SSGraph.mci_view;
   cfg_qid_set : QIDSet.t;
+  cfg_trx_paths : MState.t list;
+  cfg_query_paths : MState.t list;
   (* Ingrdients for invariant synthesis *)
   cfg_imap : Igdt.igdts_map;
-  (* Environment for SMT solver *)
-  cfg_smt_ctxt : Smt.Ctx.t;
-  cfg_smt_slvr : Smt.Solver.t;
   (* Top-k setting *)
   cfg_ppath_k : int;
   cfg_cand_k : int;
@@ -220,39 +222,67 @@ let init_config :
     Se.se_result ->
     Tz.sym_state ->
     config =
-  fun cfg_code cfg_istrg_opt cfg_se_res cfg_istate ->
-  let (mv_literal_set : MVSet.t) = TzUtil.scrap_code_literals cfg_code in
-  let (cfg_istrg : Tz.mich_v Tz.cc) =
-     match cfg_istrg_opt with
-     | Some v -> v
-     | None   -> failwith "ExecFlow : config_base : cfg_istrg = None"
-  in
-  let (cfg_qid_set : QIDSet.t) =
-     SSet.fold cfg_se_res.sr_queries ~init:QIDSet.empty
-       ~f:(fun cfg_qid_set qs ->
-         QIDSet.add cfg_qid_set (TzUtil.qid_of_mci_exn qs.ss_block_mci)
-     )
-  in
-  let (cfg_smt_ctxt : Smt.Ctx.t) = Vc.gen_ctx () in
-  {
-    cfg_timer =
+   let open Vc in
+   fun cfg_code cfg_istrg_opt cfg_se_res cfg_istate ->
+   let (mv_literal_set : MVSet.t) = TzUtil.scrap_code_literals cfg_code in
+   (* Execution configuration *)
+   let (cfg_timer : Utils.Time.t) =
       Utils.Time.create
         ~budget:!Utils.Argument.total_timeout
-        () ~key_lst:[ "report" ];
-    cfg_memory = Utils.Memory.create ~budget:!Utils.Argument.memory_bound ();
-    cfg_istate;
-    cfg_istrg;
-    cfg_se_res;
-    cfg_qid_set;
-    cfg_m_view =
-      Se.SSGraph.construct_mci_view ~basic_blocks:cfg_se_res.sr_blocked;
-    cfg_imap = Igdt.get_igdts_map cfg_se_res.sr_blocked cfg_istrg mv_literal_set;
-    cfg_smt_ctxt;
-    cfg_smt_slvr = Vc.gen_solver cfg_smt_ctxt;
-    cfg_ppath_k = 2;
-    cfg_cand_k = 2;
-    cfg_comb_k = 50;
-  }
+        () ~key_lst:[ "report" ]
+   in
+   let (cfg_memory : Utils.Memory.t) =
+      Utils.Memory.create ~budget:!Utils.Argument.memory_bound ()
+   in
+   (* Environment for SMT solver *)
+   let (cfg_smt_ctxt : Smt.Ctx.t) = Vc.gen_ctx () in
+   let (cfg_smt_slvr : Smt.Solver.t) = Vc.gen_solver cfg_smt_ctxt in
+   (* Information from symbolic execution *)
+   let (cfg_istrg : Tz.mich_v Tz.cc) =
+      match cfg_istrg_opt with
+      | Some v -> v
+      | None   -> failwith "ExecFlow : config_base : cfg_istrg = None"
+   in
+   let (cfg_m_view : Se.SSGraph.mci_view) =
+      Se.SSGraph.construct_mci_view ~basic_blocks:cfg_se_res.sr_blocked
+   in
+   let (cfg_qid_set : QIDSet.t) =
+      SSet.fold cfg_se_res.sr_queries ~init:QIDSet.empty
+        ~f:(fun cfg_qid_set qs ->
+          QIDSet.add cfg_qid_set (TzUtil.qid_of_mci_exn qs.ss_block_mci)
+      )
+   in
+   let ((cfg_trx_paths : MState.t list), (cfg_query_paths : MState.t list)) =
+      MState.gen_trx_paths
+        ~is_path_sat:(is_path_sat cfg_smt_ctxt cfg_smt_slvr)
+        cfg_se_res.sr_queries cfg_m_view
+   in
+   (* Ingrdients for invariant synthesis *)
+   let (cfg_imap : Igdt.igdts_map) =
+      Igdt.get_igdts_map cfg_se_res.sr_blocked cfg_istrg mv_literal_set
+   in
+   {
+     (* Execution configuration *)
+     cfg_timer;
+     cfg_memory;
+     (* Environment for SMT solver *)
+     cfg_smt_ctxt;
+     cfg_smt_slvr;
+     (* Information from symbolic execution *)
+     cfg_istate;
+     cfg_istrg;
+     cfg_se_res;
+     cfg_m_view;
+     cfg_qid_set;
+     cfg_trx_paths;
+     cfg_query_paths;
+     (* Ingrdients for invariant synthesis *)
+     cfg_imap;
+     (* Top-k setting *)
+     cfg_ppath_k = 2;
+     cfg_cand_k = 2;
+     cfg_comb_k = 50;
+   }
 (* function init_config end *)
 
 (******************************************************************************)

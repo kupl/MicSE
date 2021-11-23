@@ -1310,3 +1310,13 @@ let do_cand_sat_istrg :
      let ((vld : Solver.validity), _) = check_val ctx solver vc in
      Solver.is_val vld
    )
+(* function do_can_sat_istrg end *)
+
+let is_path_sat : Smt.Ctx.t -> Smt.Solver.t -> MState.t -> bool =
+   let open Smt in
+   fun ctx solver ms ->
+   let ((sat : Solver.satisfiability), _) =
+      gen_sp_from_ms ms Tz.MF_true |> check_sat ctx solver
+   in
+   Solver.is_sat sat
+(* function is_path_sat end *)

@@ -91,6 +91,14 @@ module Setting = struct
      in
      { value; arg_lst = create_arg_lst [ "--z3-timeout"; "-Z" ] spec doc }
 
+  let path_limit : int t =
+     let (value : int ref) = ref 5 in
+     let (spec : Arg.spec) = Arg.Set_int value in
+     let (doc : Arg.doc) =
+        "limit of length for path in single transaction (default: 5)"
+     in
+     { value; arg_lst = create_arg_lst [ "--path-limit"; "-P" ] spec doc }
+
   (****************************************************************************)
   (* Dev Mode                                                                 *)
   (****************************************************************************)
@@ -140,13 +148,8 @@ module Setting = struct
   let set_random_seed : bool t =
      let (value : bool ref) = ref false in
      let (spec : Arg.spec) = Arg.Set value in
-     let (doc : Arg.doc) =
-        "set random seed (default: false)"
-     in
-     {
-       value;
-       arg_lst = create_arg_lst [ "--random_seed"; "-sr" ] spec doc;
-     }
+     let (doc : Arg.doc) = "set random seed (default: false)" in
+     { value; arg_lst = create_arg_lst [ "--random_seed"; "-sr" ] spec doc }
 
   let status_interval : int option t =
      let (value : int option ref) = ref None in
@@ -168,6 +171,7 @@ module Setting = struct
      @ memory_bound.arg_lst
      @ total_timeout.arg_lst
      @ z3_timeout.arg_lst
+     @ path_limit.arg_lst
      @ debug_mode.arg_lst
      @ inst_count.arg_lst
      @ query_pick.arg_lst
@@ -231,6 +235,8 @@ let memory_bound : int ref = Setting.memory_bound.value
 let total_timeout : int ref = Setting.total_timeout.value
 
 let z3_timeout : int ref = Setting.z3_timeout.value
+
+let path_limit : int ref = Setting.path_limit.value
 
 (****************************************************************************)
 (* Dev Mode                                                                 *)

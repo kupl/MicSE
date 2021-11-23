@@ -141,3 +141,5 @@ val do_cand_sat_istrg :
   Tz.r_mich_cut_info ->
   Inv.cand ->
   bool
+
+val is_path_sat : Smt.Ctx.t -> Smt.Solver.t -> MState.t -> bool

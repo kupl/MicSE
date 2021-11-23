@@ -8,6 +8,12 @@ open! Core
 (******************************************************************************)
 (******************************************************************************)
 
+(* Map of Tz.r_mich_cut_info *)
+module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
+
+(* Set of Tz.sym_state *)
+module SSet = Set.Make (Tz.SymState_cmp)
+
 (* Set of Igdt.igdt *)
 module ISet = Set.Make (Igdt.IGDT_cmp)
 
@@ -526,50 +532,51 @@ module SMY_cmp = struct
   type t = summary [@@deriving sexp, compare]
 end
 
-let init ss : t = [ (ss, []) ]
+let get_constraint : t -> Tz.mich_f list =
+  fun ms ->
+  List.concat (List.map ~f:(fun (ss, fl) -> ss.ss_constraints @ fl) ms)
+(* function get_constraint end *)
 
-let cons ss ms : t =
+let get_first_ss : t -> Tz.sym_state = (fun ms -> List.hd_exn ms |> fst)
+(* function get_first_ss end *)
+
+let get_last_ss : t -> Tz.sym_state = (fun ms -> List.last_exn ms |> fst)
+(* function get_last_ss end *)
+
+let get_tail_ms : t -> t = (fun ms -> List.tl_exn ms)
+(* function get_tail_ms end *)
+
+let get_length : t -> int = (fun ms -> List.length ms)
+(* function get_length end *)
+
+let get_summary : t -> summary =
+  fun ms ->
+  let fss = get_first_ss ms in
+  { sm_rmci = TzUtil.get_reduced_mci fss.ss_start_mci; sm_s_id = fss.ss_id }
+(* function get_summary end *)
+
+let init : Tz.sym_state -> t = (fun ss -> [ (ss, []) ])
+(* function init end *)
+
+let cons : Tz.sym_state -> t -> t =
    let open Tz in
    let open TzUtil in
+   fun ss ms ->
    let fst_ms_ss = List.hd_exn ms |> fst in
    let new_ctxt = ss.ss_id @ fst_ms_ss.ss_id in
-   (* let _ =
-         Utils.Log.debug (fun m -> m "DBG - MState.cons - renamed_ss before")
-      in *)
    let renamed_ss = sym_state_symbol_context_swap ~ctx:new_ctxt ss in
-   (* let _ =
-         Utils.Log.debug (fun m -> m "DBG - MState.cons - renamed_ss after")
-      in *)
-   (* let _ =
-         Utils.Log.debug (fun m -> m "DBG - MState.cons - connection_fmla before")
-      in *)
    let connection_fmla =
       stack_equality_fmlas
         (renamed_ss.ss_id, fst_ms_ss.ss_id)
         (renamed_ss.ss_block_mci.mci_cutcat, fst_ms_ss.ss_start_mci.mci_cutcat)
         (renamed_ss.ss_block_si, fst_ms_ss.ss_start_si)
    in
-   (* let _ =
-         Utils.Log.debug (fun m -> m "DBG - MState.cons - connection_fmla after")
-      in *)
    (renamed_ss, connection_fmla) :: ms
+(* function cons end *)
 
-let get_constraint : t -> Tz.mich_f list =
-  fun ms ->
-  List.concat (List.map ~f:(fun (ss, fl) -> ss.ss_constraints @ fl) ms)
-
-let get_first_ss : t -> Tz.sym_state = (fun ms -> List.hd_exn ms |> fst)
-
-let get_last_ss : t -> Tz.sym_state = (fun ms -> List.last_exn ms |> fst)
-
-let get_tail_ms : t -> t = (fun ms -> List.tl_exn ms)
-
-let get_length : t -> int = List.length
-
-let get_summary : t -> summary =
-  fun ms ->
-  let fss = get_first_ss ms in
-  { sm_rmci = TzUtil.get_reduced_mci fss.ss_start_mci; sm_s_id = fss.ss_id }
+let append : t -> t -> t =
+  (fun ms1 ms2 -> List.fold ms1 ~init:ms2 ~f:(fun ms (ss, _) -> cons ss ms))
+(* function append end *)
 
 let cut_first_found_loop : t -> (t * t) option =
    let open Tz in
@@ -607,14 +614,76 @@ let cut_first_found_loop : t -> (t * t) option =
             | (ss, _) :: remains -> (hd @ [ (ss, []) ], remains)
         )
    )
+(* function cut_first_found_loop end *)
 
 let extract_trx_state : t -> Tz.sym_state list =
-   let open Tz in
+   let open TzUtil in
    fun ms ->
    List.fold_right ms
      ~f:(fun (ss, _) acc_ts ->
-       if equal_mich_cut_category ss.ss_start_mci.mci_cutcat MCC_trx_entry
-       then ss :: acc_ts
-       else acc_ts)
+       if is_trx_entry_state ss then ss :: acc_ts else acc_ts)
      ~init:[]
 (* function extract_trx_state end *)
+
+let is_trx_path : t -> bool =
+   let open TzUtil in
+   fun ms ->
+   is_trx_entry_state (get_first_ss ms) && is_trx_exit_state (get_last_ss ms)
+(* function is_trx_path end *)
+
+let is_query_path : t -> bool =
+   let open TzUtil in
+   fun ms ->
+   is_trx_entry_state (get_first_ss ms) && is_query_exit_state (get_last_ss ms)
+(* function is_query_path end *)
+
+let gen_trx_paths :
+    is_path_sat:(t -> bool) -> SSet.t -> Se.SSGraph.mci_view -> t list * t list
+    =
+   let open Tz in
+   let open TzUtil in
+   let rec gen_trx_paths_i :
+       Se.SSGraph.mci_view -> int -> t list * t list -> t list * t list =
+      let open Se in
+      fun m_view len (tpaths, qpaths) ->
+      if equal_int len 0
+      then
+        (List.filter tpaths ~f:is_trx_path, List.filter qpaths ~f:is_query_path)
+      else (
+        let expand : t list -> t -> t list =
+          fun acc ms ->
+          if is_trx_entry_state (get_first_ss ms)
+          then ms :: acc
+          else (
+            let (first_ss : sym_state) = get_first_ss ms in
+            let (pred : SSet.t) = SSGraph.ss_view_pred ~m_view first_ss in
+            let (expanded : t list) =
+               SSet.to_list pred |> List.map ~f:(fun ss -> cons ss ms)
+            in
+            expanded @ acc
+          )
+        in
+        let (e_tpaths : t list) = List.fold tpaths ~init:[] ~f:expand in
+        let (e_qpaths : t list) = List.fold qpaths ~init:[] ~f:expand in
+        gen_trx_paths_i m_view (len - 1) (e_tpaths, e_qpaths)
+      )
+      (* inner-function gen_trx_paths_i end *)
+   in
+   fun ~is_path_sat qset m_view ->
+   let (trx_exit_state : t list) =
+      List.find_exn (RMCIMap.keys m_view) ~f:(fun rmci ->
+          equal_r_mich_cut_category rmci.rmci_cutcat RMCC_trx
+      )
+      |> RMCIMap.find_exn m_view
+      |> (fun psp -> psp.pred)
+      |> SSet.to_list
+      |> List.map ~f:init
+   in
+   let (query_state : t list) = SSet.to_list qset |> List.map ~f:init in
+   let ((trx_paths : t list), (query_paths : t list)) =
+      gen_trx_paths_i m_view
+        (!Utils.Argument.path_limit - 1)
+        (trx_exit_state, query_state)
+   in
+   (List.filter trx_paths ~f:is_path_sat, List.filter query_paths ~f:is_path_sat)
+(* function gen_trx_paths end *)

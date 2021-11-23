@@ -37,6 +37,8 @@ module Setting : sig
 
   val z3_timeout : int t
 
+  val path_limit : int t
+
   (****************************************************************************)
   (* Dev Mode                                                                 *)
   (****************************************************************************)
@@ -91,6 +93,8 @@ val memory_bound : int ref
 val total_timeout : int ref
 
 val z3_timeout : int ref
+
+val path_limit : int ref
 
 (****************************************************************************)
 (* Dev Mode                                                                 *)

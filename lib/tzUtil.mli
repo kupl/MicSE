@@ -46,6 +46,12 @@ val mvcc_fold_innerfst :
 (* Sym_state                                                                  *)
 (******************************************************************************)
 
+val is_trx_entry_state : sym_state -> bool
+
+val is_trx_exit_state : sym_state -> bool
+
+val is_query_exit_state : sym_state -> bool
+
 val find_sym_state_by_id : SSet.t -> sym_state_id -> sym_state option
 
 (******************************************************************************)

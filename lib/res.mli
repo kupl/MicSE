@@ -118,17 +118,19 @@ type config = {
   (* Execution configuration *)
   cfg_timer : Utils.Time.t;
   cfg_memory : Utils.Memory.t;
+  (* Environment for SMT solver *)
+  cfg_smt_ctxt : Smt.Ctx.t;
+  cfg_smt_slvr : Smt.Solver.t;
   (* Information from symbolic execution *)
   cfg_istate : Tz.sym_state;
   cfg_istrg : Tz.mich_v Tz.cc;
   cfg_se_res : Se.se_result;
   cfg_m_view : Se.SSGraph.mci_view;
   cfg_qid_set : QIDSet.t;
+  cfg_trx_paths : MState.t list;
+  cfg_query_paths : MState.t list;
   (* Ingrdients for invariant synthesis *)
   cfg_imap : Igdt.igdts_map;
-  (* Environment for SMT solver *)
-  cfg_smt_ctxt : Smt.Ctx.t;
-  cfg_smt_slvr : Smt.Solver.t;
   (* Top-k setting *)
   cfg_ppath_k : int;
   cfg_cand_k : int;

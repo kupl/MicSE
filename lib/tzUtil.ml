@@ -631,6 +631,21 @@ let gen_custom_cc : 'ccbase cc -> 'a -> 'a cc =
 (* Sym_state                                                                  *)
 (******************************************************************************)
 
+let is_trx_entry_state : sym_state -> bool =
+  (fun ss -> equal_mich_cut_category ss.ss_start_mci.mci_cutcat MCC_trx_entry)
+(* function is_trx_entry_state end *)
+
+let is_trx_exit_state : sym_state -> bool =
+  (fun ss -> equal_mich_cut_category ss.ss_block_mci.mci_cutcat MCC_trx_exit)
+(* function is_trx_exit_state end *)
+
+let is_query_exit_state : sym_state -> bool =
+  fun ss ->
+  match ss.ss_block_mci.mci_cutcat with
+  | MCC_query _ -> true
+  | _           -> false
+(* function is_trx_exit_state end *)
+
 let find_sym_state_by_id : SSet.t -> sym_state_id -> sym_state option =
   (fun sset id -> SSet.find sset ~f:(fun ss -> equal_sym_state_id ss.ss_id id))
 (* function find_symstate_by_id end *)
