@@ -1025,7 +1025,8 @@ let get_innertyp : mich_t cc -> mich_t cc =
   | MT_contract t ->
     t
   | _ ->
-    TzError ("get_innertyp : " ^ SexpUtil.to_string (sexp_of_cc sexp_of_mich_t ttt))
+    TzError
+      ("get_innertyp : " ^ SexpUtil.to_string (sexp_of_cc sexp_of_mich_t ttt))
     |> Stdlib.raise
 (* function get_innertyp end *)
 
@@ -1039,7 +1040,8 @@ let get_innertyp2 : mich_t cc -> mich_t cc * mich_t cc =
   | MT_big_map (t1, t2) ->
     (t1, t2)
   | _ ->
-    TzError ("get_innertyp2 : " ^ SexpUtil.to_string (sexp_of_cc sexp_of_mich_t ttt))
+    TzError
+      ("get_innertyp2 : " ^ SexpUtil.to_string (sexp_of_cc sexp_of_mich_t ttt))
     |> Stdlib.raise
 (* function get_innertyp2 end *)
 
@@ -1613,6 +1615,7 @@ let sigma_of_cont : mich_v cc -> mich_v cc list =
     )
     | _ -> []
   )
+  | MT_set _                -> []
   | _                       -> TzError "sigma_of_cont : _" |> raise
 (* function sigma_of_cont end *)
 
@@ -1712,7 +1715,7 @@ let acc_of_sigma :
   | MV_sigma_m_am_m1 _ -> (
     match (typ_of_val vcc).cc_v with
     | MT_mutez -> vcc |> opt_mvcc ~ctx
-    | _      -> TzError "acc_of_sigma : MV_sigma_m_am_m1 : _" |> raise
+    | _        -> TzError "acc_of_sigma : MV_sigma_m_am_m1 : _" |> raise
   )
   | _ -> TzError "acc_of_sigma : _" |> raise
 (* function acc_of_sigma end *)
