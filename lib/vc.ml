@@ -425,12 +425,12 @@ module Encoder = struct
      (*************************************************************************)
      (* Set                                                                   *)
      (*************************************************************************)
-     | MV_lit_set (t1cc, vcc_lst) ->
+     | MV_lit_set (_, vcc_lst) ->
        let (expr_true : Expr.t) = ZBool.create_expr ctx true in
-       List.fold vcc_lst
-         ~init:(ZSet.create_expr_empty_set ctx (sot t1cc))
+       List.fold vcc_lst ~init:(ZSet.create_expr_empty_set ctx sort)
          ~f:(fun expr vcc ->
-           ZSet.update ctx ~content:(eov vcc) ~flag:expr_true expr)
+           ZSet.update ctx ~content:(eov vcc) ~flag:expr_true expr
+       )
      | MV_empty_set _ -> ZSet.create_expr_empty_set ctx sort
      | MV_update_xbss (v1cc, v2cc, v3cc) ->
        ZSet.update ctx ~content:(eov v1cc) ~flag:(eov v2cc) (eov v3cc)
