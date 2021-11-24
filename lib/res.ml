@@ -346,37 +346,55 @@ let string_of_res : config -> res -> string =
    let open Tz in
    let qres_info_str : qres -> string =
      fun qres ->
-     Printf.sprintf "> Location:%s\n  Category:%s\n"
+     Printf.sprintf "> Location:%s\n\tCategory:%s\n"
        (qres.qr_qid.qid_loc |> sexp_of_ccp_loc |> Sexp.to_string)
        (qres.qr_qid.qid_cat |> sexp_of_query_category |> Sexp.to_string)
+     (* inner-function qres_info_str end *)
    in
    let qres_model_str : config -> qres -> string =
      fun cfg qres ->
-     "  Refuted Path:\n"
+     "\tRefuted Path:\n"
      ^ ( if Option.is_none qres.qr_rft_ppath
        then "\tErrored"
        else (
          let ((pp : PPath.t), (md : Smt.Model.t)) =
             Option.value_exn qres.qr_rft_ppath
          in
+         let tz_mvcc_to_eval : sctx:sym_state_id -> mich_v cc -> string =
+           fun ~sctx mv ->
+           Vc.Encoder.cv_mvcc ~sctx cfg.cfg_smt_ctxt mv
+           |> Smt.Model.eval md
+           |> function
+           | None   -> "None"
+           | Some e -> Smt.Expr.to_string e
+           (* inner-function tz_mvcc_to_eval end *)
+         in
          let (ms : MState.t) = pp.pp_mstate in
          let (ts_lst : sym_state list) = MState.extract_trx_state ms in
-         List.mapi ts_lst ~f:(fun idx ss ->
-             let (param : Smt.Expr.t) =
-                ss.ss_start_si.si_param.ti_param
-                |> Vc.Encoder.cv_mvcc ~sctx:ss.ss_id cfg.cfg_smt_ctxt
-             in
-             Printf.sprintf "\tTrx #%d:\n\t\t%s" (idx + 1)
-               (Smt.Model.eval md param
-               |> function
-               | None   -> "None"
-               | Some e -> Smt.Expr.to_string e
-               )
-         )
-         |> String.concat ~sep:"\n"
+         let (ts_0 : sym_state) = List.hd_exn ts_lst in
+         let (balance_0 : string) =
+            ts_0.ss_start_si.si_balance |> tz_mvcc_to_eval ~sctx:ts_0.ss_id
+         in
+         Printf.sprintf "\t\t- Initial Balance: %s\n" balance_0
+         ^ (List.mapi ts_lst ~f:(fun idx ss ->
+                let (param : string) =
+                   ss.ss_start_si.si_param.ti_param
+                   |> tz_mvcc_to_eval ~sctx:ss.ss_id
+                   |> String.substr_replace_all ~pattern:"\n" ~with_:"\n\t\t\t\t"
+                in
+                let (amount : string) =
+                   ss.ss_start_si.si_param.ti_amount
+                   |> tz_mvcc_to_eval ~sctx:ss.ss_id
+                in
+                Printf.sprintf "\t\t- Transaction #%d:\n\t\t\tAmount:%s\n\t\t\tParameter:\n\t\t\t\t%s"
+                  (idx + 1) amount param
+            )
+           |> String.concat ~sep:"\n"
+           )
        )
        )
      ^ "\n"
+     (* inner-function qres_model_str end *)
    in
    fun cfg res ->
    let (cres : qres_classified) =
