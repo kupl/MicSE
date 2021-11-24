@@ -1,0 +1,96 @@
+parameter (or (unit %default)
+              (pair %command
+                (or :action (pair :transfer (mutez %amount) (contract %dest unit))
+                            (or (option %delegate key_hash) (key %new_key)))
+                signature));
+storage (pair (pair (nat %counter) (key %key)) (mutez %balance));
+code { UNPAIR ;
+       IF_LEFT
+         { DROP ;
+           PUSH (set address) { "KT1B7SgHShXT7r1xzCa9t9vkFe72fvyCw7Yp" ;
+                   "KT1BhWLuK2NaYmj2jaau52MfXUV5iKMHpqWH" ;
+                   "KT1Gv7eJ8F2SZqx19b2sFfq2rndwo74mDJUU" ;
+                   "KT1Hw9Qo88kMJp2aHqkPQPkEjYF4wFpYvq4g" ;
+                   "KT1K8HjRAcYfnWtNWBHBtcEJTXn6kXpLPZHb" ;
+                   "KT1KCYaULopm8i2CBbGF5EHXeXLUr4R6r2dA" ;
+                   "KT1P6fW8Zkj2ALWvGc7py9WCr3V9NFyzAUAC" ;
+                   "KT1QK1n2o2FHX3EcRPdijdENuRjHSp6HA4Ya" ;
+                   "KT1QhDyBcz3W4NiH5ABaqRFvXs6m2yArE9jM" ;
+                   "KT1RWEejAAb8xzV6Fca69XABjbVQksd2PmuY" ;
+                   "KT1RfLK8Qc1QpvgWvsJcbx69965yZCTYnp43" ;
+                   "KT1SZk79pZ591RHSRHGKXJjoJguaTuFFmreM" ;
+                   "KT1TEU1eFU92Ao551Cv3Ta3THepsDFbRGTfB" ;
+                   "KT1TRw5AkSHEup8yc4sxekthNeKWvfACrypp" ;
+                   "KT1WHJFGqV9XdqxE6FzAbUZVtiztGkXEXu3z" ;
+                   "KT1XtbJpjBrXJtZD8eEByWAMuTkFWjyz2K4B" } ;
+           SENDER ;
+           MEM ;
+           { IF {} { { UNIT ; FAILWITH } } } ;
+           UNPAIR @counter_key @balance ;
+           SWAP ;
+           AMOUNT ;
+           ADD @new_balance ;
+           SWAP ;
+           PAIR ;
+           NIL operation ;
+           PAIR }
+         { AMOUNT ;
+           PUSH mutez 0 ;
+           { { COMPARE ; EQ } ; IF {} { { UNIT ; FAILWITH } } } ;
+           UNPAIR @action @signature ;
+           DIG 2 ;
+           UNPAIR @counter_key @balance ;
+           UNPAIR @counter @key ;
+           DIG 2 ;
+           DUG 4 ;
+           DUP ;
+           DUP 4 ;
+           PAIR ;
+           SENDER ;
+           SELF ;
+           ADDRESS ;
+           PAIR ;
+           CHAIN_ID ;
+           PAIR ;
+           PAIR ;
+           PACK ;
+           DIG 4 ;
+           DUP 4 ;
+           CHECK_SIGNATURE ;
+           { IF {} { { UNIT ; FAILWITH } } } ;
+           PUSH nat 1 ;
+           ADD @new_counter ;
+           PAIR @new_storage ;
+           SWAP ;
+           NIL operation ;
+           SWAP ;
+           IF_LEFT
+             { NOW ;
+               PUSH timestamp "2024-12-23T23:00:00Z" ;
+               SUB @rem_sec ;
+               PUSH @month int 2629800 ;
+               SWAP ;
+               EDIV ;
+               { IF_NONE { { UNIT ; FAILWITH } } {} } ;
+               CAR @rem_month_round_down ;
+               PUSH int 1 ;
+               ADD @rem_month_round_up ;
+               ISNAT ;
+               { IF_NONE { PUSH nat 0 } {} } ;
+               PUSH @monthly_amount mutez 12897876491 ;
+               MUL @amount_that_must_remain ;
+               DUP 2 ;
+               CAR @amount ;
+               DIG 5 ;
+               SUB @balance_after ;
+               DUP ;
+               DUG 5 ;
+               SUB ;
+               DROP ;
+               UNPAIR ;
+               UNIT ;
+               TRANSFER_TOKENS ;
+               CONS }
+             { IF_LEFT { SET_DELEGATE ; CONS } { DIG 2 ; CAR ; PAIR ; SWAP } } ;
+           DIP { PAIR } ;
+           PAIR } }
