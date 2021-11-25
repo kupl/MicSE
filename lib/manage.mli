@@ -21,3 +21,5 @@ val initial_refute_run_res_atomic_action : Res.config -> Res.res -> Res.res
 val naive_run_escape_condition : Res.config -> Res.res -> bool
 
 val naive_run : Res.config -> Res.res -> Res.res
+
+val adv_run : Res.config -> Res.res -> Res.res

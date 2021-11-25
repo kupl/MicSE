@@ -335,3 +335,57 @@ let refuter_trxpath_naive_run : string array option -> Res.config * Res.res =
 let refuter_trxpath_featurediff_run :
     string array option -> Res.config * Res.res =
    refuter_trxpath_run ~score_f_gen:Refute.featurediff_first_score_f_gen
+
+let prover_adv_refuter_toss : string array option -> Res.config * Res.res =
+   let open Res in
+   fun argv_opt ->
+   let ( (_, _, (tz_code : Tz.mich_i Tz.cc)),
+         (init_strg_opt : Tz.mich_v Tz.cc option),
+         (se_result : Se.se_result),
+         (init_state : Tz.sym_state)
+       ) =
+      upto_sym_exec argv_opt
+   in
+   let (cfg : Res.config) =
+      Res.init_config tz_code init_strg_opt se_result init_state
+   in
+   let (init_res : Res.res) = Res.init_res cfg in
+   let (init_res : Res.res) =
+      let open Res.PPath in
+      {
+        init_res with
+        r_qr_lst =
+          List.map init_res.r_qr_lst ~f:(fun qres ->
+              {
+                qres with
+                qr_exp_ppaths =
+                  cfg.cfg_query_paths
+                  |> List.map ~f:(fun ms ->
+                         {
+                           pp_mstate = ms;
+                           pp_score = [];
+                           pp_satisfiability = None;
+                         }
+                     )
+                  |> Res.PPSet.of_list;
+              }
+          );
+      }
+   in
+   let _ =
+      (* cfg.cfg_m_view and res.r_cands debugging info *)
+      let open Se in
+      let module RMCIMap = Se.SSGraph.RMCIMap in
+      RMCIMap.iteri cfg.cfg_m_view ~f:(fun ~key ~data:x ->
+          Utils.Log.debug (fun m ->
+              m
+                "%s:\n\t> # of pred state: %d\n\t> # of succ state: %d\n\t> # of candidates: %d"
+                (Tz.sexp_of_r_mich_cut_info key |> Core.Sexp.to_string)
+                (SSet.length x.pred) (SSet.length x.succ)
+                (Inv.find_cand_by_rmci init_res.r_cands key |> Map.length)
+          )
+      )
+   in
+   let (res : Res.res) = Manage.adv_run cfg init_res in
+   (cfg, res)
+(* function prover_adv_refuter_toss end *)

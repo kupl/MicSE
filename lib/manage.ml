@@ -159,3 +159,99 @@ let naive_run : Res.config -> Res.res -> Res.res =
    let _ = log_report cfg n_res in
    n_res
 (* function naive_run end *)
+
+let adv_run : Res.config -> Res.res -> Res.res =
+   let log_report : Res.config -> Res.res -> unit =
+     fun cfg res ->
+     Utils.Log.info (fun m -> m "> Report: %s" (Res.string_of_res_rough cfg res))
+     (* inner-function log_report end *)
+   in
+   let rec adv_run_i :
+       Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.res -> Res.res
+       =
+     fun cfg ~score_f res ->
+     if naive_run_escape_condition cfg res
+     then res
+     else (
+       let _ = log_report cfg res in
+       let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
+       let (p_res : Res.res) =
+          if Prove.naive_run_escape_condition cfg res
+          then res
+          else Prove.naive_run_res_atomic_action cfg res
+       in
+       let _ = Utils.Log.info (fun m -> m "> Prover Turn End") in
+       let _ = log_report cfg p_res in
+       let _ = Utils.Log.info (fun m -> m "> Refuter Turn Start") in
+       let (r_res : Res.res) =
+          if Refute.naive_run_escape_condition cfg p_res
+          then p_res
+          else Refute.trxpath_guided_run_res_atomic_action cfg ~score_f p_res
+       in
+       let _ = Utils.Log.info (fun m -> m "> Refuter Turn End") in
+       adv_run_i cfg ~score_f r_res
+     )
+   in
+   (* inner-function adv_run_i end *)
+   fun cfg res ->
+   let score_f = Refute.featurediff_first_score_f_gen cfg res in
+   let _ = log_report cfg res in
+   let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
+   let (p_res : Res.res) = initial_prove_run_res_atomic_action cfg res in
+   let _ = Utils.Log.info (fun m -> m "> Prover Turn End") in
+   let _ = log_report cfg p_res in
+   let _ = Utils.Log.info (fun m -> m "> Refuter Turn Start") in
+   let (r_res : Res.res) =
+      {
+        p_res with
+        r_qr_lst =
+          List.map p_res.r_qr_lst ~f:(fun qres ->
+              let (total_ppaths, rft_ppath_opt) =
+                 let f (tpl_acc, rftopt_acc) pp =
+                    (* 4.f.1. Check escape condition
+                            - Check if already refuted path found
+                            - No timeout check
+                    *)
+                    if Option.is_some rftopt_acc
+                    then (tpl_acc, rftopt_acc)
+                    else (
+                      (* 4.f.2. check refutability *)
+                      match
+                        Refute.refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
+                          cfg.cfg_istrg pp
+                      with
+                      | (Some tp, Some mdl) -> (tp :: tpl_acc, Some (pp, mdl))
+                      | (Some tp, None)     -> (tp :: tpl_acc, None)
+                      | (None, _)           ->
+                        (tpl_acc, rftopt_acc)
+                        (* (None, None) case exists only *)
+                    )
+                 in
+                 Res.PPSet.fold qres.qr_exp_ppaths ~init:([], None) ~f
+              in
+              let qr_total_ppaths = total_ppaths @ qres.qr_total_ppaths
+              and qr_last_picked_paths = qres.qr_exp_ppaths
+              and qr_rft_ppath = rft_ppath_opt
+              and qr_exp_cnt : int =
+                 Res.PPSet.length qres.qr_exp_ppaths + qres.qr_exp_cnt
+              and qr_rft_flag : Res.refuter_flag =
+                 match rft_ppath_opt with
+                 | None   -> RF_u
+                 | Some _ -> RF_r
+              in
+              {
+                qres with
+                qr_rft_flag;
+                qr_total_ppaths;
+                qr_last_picked_paths;
+                qr_rft_ppath;
+                qr_exp_cnt;
+              }
+          );
+      }
+   in
+   let _ = Utils.Log.info (fun m -> m "> Refuter Turn End") in
+   let (n_res : Res.res) = adv_run_i cfg ~score_f r_res in
+   let _ = log_report cfg n_res in
+   n_res
+(* function adv_run end *)

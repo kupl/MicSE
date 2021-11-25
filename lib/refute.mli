@@ -134,5 +134,8 @@ val trxpath_path_pick_N : int ref
 val trxpath_guided_run_qres :
   Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.qres -> Res.qres
 
+val trxpath_guided_run_res_atomic_action :
+  Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.res -> Res.res
+
 val trxpath_guided_run :
   Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.res -> Res.res

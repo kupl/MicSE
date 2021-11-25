@@ -776,6 +776,25 @@ let trxpath_guided_run_qres :
     }
   )
 
+let trxpath_guided_run_res_atomic_action :
+    Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.res -> Res.res =
+  fun cfg ~score_f res ->
+  let _ = Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res)) in
+  if guided_run_escape_condition cfg res
+  then res
+  else (
+    let new_res : Res.res =
+       {
+         res with
+         r_qr_lst =
+           List.map res.r_qr_lst ~f:(fun qres ->
+               trxpath_guided_run_qres cfg ~score_f qres
+           );
+       }
+    in
+    new_res
+  )
+
 let rec trxpath_guided_run :
     Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.res -> Res.res =
   fun cfg ~score_f res ->
