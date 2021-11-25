@@ -116,3 +116,23 @@ val guided_run :
   pick_f_gen:(Res.res -> Tz.qid -> PickFun.t) ->
   Res.res ->
   Res.res
+
+(******************************************************************************)
+(******************************************************************************)
+(* Refuting with Parametric Path Selection Enabled, but using TrxPaths        *)
+(******************************************************************************)
+(******************************************************************************)
+
+val shortest_first_score_f_gen :
+  Res.config -> Res.res -> Tz.qid -> MState.t -> float
+
+val featurediff_first_score_f_gen :
+  Res.config -> Res.res -> Tz.qid -> MState.t -> float
+
+val trxpath_path_pick_N : int ref
+
+val trxpath_guided_run_qres :
+  Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.qres -> Res.qres
+
+val trxpath_guided_run :
+  Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.res -> Res.res

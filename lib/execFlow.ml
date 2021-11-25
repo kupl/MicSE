@@ -61,7 +61,12 @@ let tz_rep :
 let sym_exec :
     Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc ->
     Se.se_result * Tz.sym_state =
-  (fun tz_pgm -> Se.run_inst_entry tz_pgm)
+  fun tz_pgm ->
+  let _ = Utils.Log.debug (fun m -> m "ExecFlow.sym_exec start") in
+  let result = Se.run_inst_entry tz_pgm in
+  let _ = Utils.Log.debug (fun m -> m "ExecFlow.sym_exec end") in
+  result
+
 (* function sym_exec end *)
 
 (******************************************************************************)
@@ -213,3 +218,120 @@ let prover_refuter_toss : string array option -> Res.config * Res.res =
    let (res : Res.res) = Manage.naive_run cfg init_res in
    (cfg, res)
 (* function prover_refuter_toss end *)
+
+let refuter_trxpath_run :
+    score_f_gen:(Res.config -> Res.res -> Tz.qid -> MState.t -> float) ->
+    string array option ->
+    Res.config * Res.res =
+  fun ~score_f_gen argv_opt ->
+  let ( (_, _, (tz_code : Tz.mich_i Tz.cc)),
+        (init_strg_opt : Tz.mich_v Tz.cc option),
+        (se_result : Se.se_result),
+        (init_state : Tz.sym_state)
+      ) =
+     upto_sym_exec argv_opt
+  in
+  let _ =
+     Utils.Log.debug (fun m -> m "Execflow : Execflow.refuter_trxpath_naive_run")
+  in
+  let (cfg : Res.config) =
+     Res.init_config tz_code init_strg_opt se_result init_state
+  in
+  let (init_res : Res.res) = Res.init_res cfg in
+  let (init_res : Res.res) =
+     let open Res.PPath in
+     {
+       init_res with
+       r_qr_lst =
+         List.map init_res.r_qr_lst ~f:(fun qres ->
+             {
+               qres with
+               qr_exp_ppaths =
+                 cfg.cfg_query_paths
+                 |> List.map ~f:(fun ms ->
+                        {
+                          pp_mstate = ms;
+                          pp_score = [];
+                          pp_satisfiability = None;
+                        }
+                    )
+                 |> Res.PPSet.of_list;
+             }
+         );
+     }
+  in
+  let _ =
+     (* cfg.cfg_m_view and res.r_cands debugging info *)
+     let open Se in
+     let module RMCIMap = Se.SSGraph.RMCIMap in
+     RMCIMap.iteri cfg.cfg_m_view ~f:(fun ~key ~data:x ->
+         Utils.Log.debug (fun m ->
+             m
+               "%s:\n\t> # of pred state: %d\n\t> # of succ state: %d\n\t> # of candidates: %d"
+               (Tz.sexp_of_r_mich_cut_info key |> Core.Sexp.to_string)
+               (SSet.length x.pred) (SSet.length x.succ)
+               (Inv.find_cand_by_rmci init_res.r_cands key |> Map.length)
+         )
+     )
+  in
+  (* Initial Path Refuting *)
+  let (init_res : Res.res) =
+     {
+       init_res with
+       r_qr_lst =
+         List.map init_res.r_qr_lst ~f:(fun qres ->
+             let (total_ppaths, rft_ppath_opt) =
+                let f (tpl_acc, rftopt_acc) pp =
+                   (* 4.f.1. Check escape condition
+                           - Check if already refuted path found
+                           - No timeout check
+                   *)
+                   if Option.is_some rftopt_acc
+                   then (tpl_acc, rftopt_acc)
+                   else (
+                     (* 4.f.2. check refutability *)
+                     match
+                       Refute.refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
+                         cfg.cfg_istrg pp
+                     with
+                     | (Some tp, Some mdl) -> (tp :: tpl_acc, Some (pp, mdl))
+                     | (Some tp, None)     -> (tp :: tpl_acc, None)
+                     | (None, _)           ->
+                       (tpl_acc, rftopt_acc) (* (None, None) case exists only *)
+                   )
+                in
+                Res.PPSet.fold qres.qr_exp_ppaths ~init:([], None) ~f
+             in
+             let qr_total_ppaths = total_ppaths @ qres.qr_total_ppaths
+             and qr_last_picked_paths = qres.qr_exp_ppaths
+             and qr_rft_ppath = rft_ppath_opt
+             and qr_exp_cnt : int =
+                Res.PPSet.length qres.qr_exp_ppaths + qres.qr_exp_cnt
+             and qr_rft_flag : Res.refuter_flag =
+                match rft_ppath_opt with
+                | None   -> RF_u
+                | Some _ -> RF_r
+             in
+             {
+               qres with
+               qr_rft_flag;
+               qr_total_ppaths;
+               qr_last_picked_paths;
+               qr_rft_ppath;
+               qr_exp_cnt;
+             }
+         );
+     }
+  in
+  let (res : Res.res) =
+     Refute.trxpath_guided_run cfg ~score_f:(score_f_gen cfg init_res) init_res
+  in
+  (cfg, res)
+(* function refuter_trxpath_run end *)
+
+let refuter_trxpath_naive_run : string array option -> Res.config * Res.res =
+   refuter_trxpath_run ~score_f_gen:Refute.shortest_first_score_f_gen
+
+let refuter_trxpath_featurediff_run :
+    string array option -> Res.config * Res.res =
+   refuter_trxpath_run ~score_f_gen:Refute.featurediff_first_score_f_gen

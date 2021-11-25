@@ -189,6 +189,7 @@ let init_res : config -> res =
          cfg_istate;
          _;
        } ->
+   let _ = Utils.Log.debug (fun m -> m "Res.init_res start") in
    let (acc_qsmap : SSet.t QIDMap.t) =
       SSet.fold cfg_se_res.sr_queries ~init:QIDMap.empty ~f:(fun acc_qsmap qs ->
           QIDMap.update acc_qsmap (TzUtil.qid_of_mci_exn qs.ss_block_mci)
@@ -202,18 +203,30 @@ let init_res : config -> res =
       QIDMap.to_alist acc_qsmap
       |> List.map ~f:(fun (qr_qid, qr_unk_qs) -> init_qres qr_qid qr_unk_qs)
    in
-   {
-     r_qr_lst;
-     r_inv = Inv.gen_true_inv_map cfg_se_res;
-     r_cands =
-       Inv.gen_initial_cand_map
-         ~is_cand_sat:(is_cand_sat cfg_smt_ctxt cfg_smt_slvr)
-         ~do_cand_sat_istrg:
-           (do_cand_sat_istrg cfg_smt_ctxt cfg_smt_slvr cfg_istrg cfg_istate)
-         cfg_qid_set cfg_imap;
-     r_idts = Inv.gen_initial_inductive_info_map cfg_se_res.sr_blocked;
-     r_comb_cnt = 0;
-   }
+   let _ =
+      Utils.Log.debug (fun m ->
+          m "Res.init_res : result value construction start"
+      )
+   in
+   let result =
+      {
+        r_qr_lst;
+        r_inv = Inv.gen_true_inv_map cfg_se_res;
+        r_cands =
+          Inv.gen_initial_cand_map
+            ~is_cand_sat:(is_cand_sat cfg_smt_ctxt cfg_smt_slvr)
+            ~do_cand_sat_istrg:
+              (do_cand_sat_istrg cfg_smt_ctxt cfg_smt_slvr cfg_istrg cfg_istate)
+            cfg_qid_set cfg_imap;
+        r_idts = Inv.gen_initial_inductive_info_map cfg_se_res.sr_blocked;
+        r_comb_cnt = 0;
+      }
+   in
+   let _ =
+      Utils.Log.debug (fun m -> m "Res.init_res : result value construction end")
+   in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_res end") in
+   result
 (* function init_res end *)
 
 let init_config :
