@@ -322,23 +322,23 @@ let collect_igdt_from_lst : igdt -> ISet.t * ISet.t =
    let open Tz in
    (* syntax sugar *)
    fun cur_igdt ->
-   let (cur_val : mich_v cc) = cur_igdt.ig_value in
+   (* let (cur_val : mich_v cc) = cur_igdt.ig_value in *)
    let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
    match cur_typ.cc_v with
    | MT_list _ ->
      (* sigma *)
      let ((tset : ISet.t), (nset : ISet.t)) = collect_igdt_of_sigma cur_igdt in
      (* literals *)
-     let (tset' : ISet.t) =
-        match cur_val.cc_v with
-        | MV_lit_list (_, vl) ->
-          List.fold vl ~init:tset ~f:(fun tset' vcc ->
-              let (v_igdt : igdt) = gen_custom_igdt vcc in
-              ISet.add tset' v_igdt
-          )
-        | _                   -> tset
-     in
-     (tset', nset)
+     (* let (tset' : ISet.t) =
+           match cur_val.cc_v with
+           | MV_lit_list (_, vl) ->
+             List.fold vl ~init:tset ~f:(fun tset' vcc ->
+                 let (v_igdt : igdt) = gen_custom_igdt vcc in
+                 ISet.add tset' v_igdt
+             )
+           | _                   -> tset
+        in *)
+     (tset, nset)
    | _         -> IgdtError "collect_igdt_from_lst : _" |> raise
 (* function collect_igdt_from_lst end *)
 
@@ -363,18 +363,18 @@ let collect_igdt_from_map : igdt -> ISet.t * ISet.t =
      (* sigma *)
      let ((tset : ISet.t), (nset : ISet.t)) = collect_igdt_of_sigma igdt_map in
      (* literals *)
-     let (tset' : ISet.t) =
-        match cur_val.cc_v with
-        | MV_lit_big_map (_, _, kvl)
-        | MV_lit_map (_, _, kvl) ->
-          List.fold kvl ~init:tset ~f:(fun tset' (kcc, vcc) ->
-              let (k_igdt : igdt) = gen_custom_igdt kcc in
-              let (v_igdt : igdt) = gen_custom_igdt vcc in
-              ISet.add (ISet.add tset' k_igdt) v_igdt
-          )
-        | _ -> tset
-     in
-     (tset', nset)
+     (* let (tset' : ISet.t) =
+           match cur_val.cc_v with
+           | MV_lit_big_map (_, _, kvl)
+           | MV_lit_map (_, _, kvl) ->
+             List.fold kvl ~init:tset ~f:(fun tset' (kcc, vcc) ->
+                 let (k_igdt : igdt) = gen_custom_igdt kcc in
+                 let (v_igdt : igdt) = gen_custom_igdt vcc in
+                 ISet.add (ISet.add tset' k_igdt) v_igdt
+             )
+           | _ -> tset
+        in *)
+     (tset, nset)
    | _ -> IgdtError "collect_igdt_from_map : _" |> raise
 (* function collect_igdt_from_map end *)
 
@@ -398,16 +398,16 @@ let collect_igdt_from_set : igdt -> ISet.t * ISet.t =
      (* sigma *)
      let ((tset : ISet.t), (nset : ISet.t)) = collect_igdt_of_sigma igdt_set in
      (* literals *)
-     let (tset' : ISet.t) =
-        match cur_val.cc_v with
-        | MV_lit_set (_, vl) ->
-          List.fold vl ~init:tset ~f:(fun tset' vcc ->
-              let (v_igdt : igdt) = gen_custom_igdt vcc in
-              ISet.add tset' v_igdt
-          )
-        | _                  -> tset
-     in
-     (tset', nset)
+     (* let (tset' : ISet.t) =
+           match cur_val.cc_v with
+           | MV_lit_set (_, vl) ->
+             List.fold vl ~init:tset ~f:(fun tset' vcc ->
+                 let (v_igdt : igdt) = gen_custom_igdt vcc in
+                 ISet.add tset' v_igdt
+             )
+           | _                  -> tset
+        in *)
+     (tset, nset)
    | _        -> IgdtError "collect_igdt_from_set : _" |> raise
 (* function collect_igdt_from_set end *)
 
