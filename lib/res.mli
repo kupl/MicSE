@@ -128,7 +128,7 @@ type config = {
   cfg_m_view : Se.SSGraph.mci_view;
   cfg_qid_set : QIDSet.t;
   cfg_trx_paths : MState.t list;
-  cfg_query_paths : MState.t list;
+  cfg_query_paths : MState.t list QIDMap.t;
   (* Ingrdients for invariant synthesis *)
   cfg_imap : Igdt.igdts_map;
   (* Top-k setting *)

@@ -11,6 +11,9 @@ open! Core
 (* Map of Tz.r_mich_cut_info *)
 module RMCIMap = Map.Make (Tz.RMichCutInfo_cmp)
 
+(* Map of Tz.qid *)
+module QIDMap = Map.Make (Tz.QId_cmp)
+
 (* Set of Tz.sym_state *)
 module SSet = Set.Make (Tz.SymState_cmp)
 
@@ -634,17 +637,18 @@ let is_query_path : t -> bool =
 (* function is_query_path end *)
 
 let gen_trx_paths :
-    is_path_sat:(t -> bool) -> SSet.t -> Se.SSGraph.mci_view -> t list * t list
-    =
+    is_path_sat:(t -> bool) ->
+    SSet.t ->
+    Se.SSGraph.mci_view ->
+    t list * t list QIDMap.t =
    let open Tz in
    let open TzUtil in
    let rec gen_trx_paths_i :
-       Se.SSGraph.mci_view -> int -> t list * t list -> t list * t list =
+       is_done:(t -> bool) -> Se.SSGraph.mci_view -> int -> t list -> t list =
       let open Se in
-      fun m_view len (tpaths, qpaths) ->
+      fun ~is_done m_view len tpaths ->
       if equal_int len 0
-      then
-        (List.filter tpaths ~f:is_trx_path, List.filter qpaths ~f:is_query_path)
+      then List.filter tpaths ~f:is_done
       else (
         let expand : t list -> t -> t list =
           fun acc ms ->
@@ -659,9 +663,8 @@ let gen_trx_paths :
             expanded @ acc
           )
         in
-        let (e_tpaths : t list) = List.fold tpaths ~init:[] ~f:expand in
-        let (e_qpaths : t list) = List.fold qpaths ~init:[] ~f:expand in
-        gen_trx_paths_i m_view (len - 1) (e_tpaths, e_qpaths)
+        let (e_paths : t list) = List.fold tpaths ~init:[] ~f:expand in
+        gen_trx_paths_i ~is_done m_view (len - 1) e_paths
       )
       (* inner-function gen_trx_paths_i end *)
    in
@@ -675,11 +678,30 @@ let gen_trx_paths :
       |> SSet.to_list
       |> List.map ~f:init
    in
-   let (query_state : t list) = SSet.to_list qset |> List.map ~f:init in
-   let ((trx_paths : t list), (query_paths : t list)) =
-      gen_trx_paths_i m_view
-        (!Utils.Argument.path_limit - 1)
-        (trx_exit_state, query_state)
+   let (query_state : t list QIDMap.t) =
+      SSet.group_by qset ~equiv:(fun qs1 qs2 ->
+          equal_mich_cut_info qs1.ss_block_mci qs2.ss_block_mci
+      )
+      |> List.map ~f:(fun qset ->
+             ( (SSet.choose_exn qset).ss_block_mci |> qid_of_mci_exn,
+               SSet.to_list qset |> List.map ~f:init
+             )
+         )
+      |> QIDMap.of_alist_exn
    in
-   (List.filter trx_paths ~f:is_path_sat, List.filter query_paths ~f:is_path_sat)
+   let (trx_sat_unchecked_paths : t list) =
+      gen_trx_paths_i ~is_done:is_trx_path m_view
+        (!Utils.Argument.path_limit - 1)
+        trx_exit_state
+   in
+   let (query_sat_unchecked_paths : t list QIDMap.t) =
+      QIDMap.map query_state
+        ~f:
+          (gen_trx_paths_i ~is_done:is_query_path m_view
+             (!Utils.Argument.path_limit - 1)
+          )
+   in
+   ( List.filter trx_sat_unchecked_paths ~f:is_path_sat,
+     QIDMap.map query_sat_unchecked_paths ~f:(List.filter ~f:is_path_sat)
+   )
 (* function gen_trx_paths end *)

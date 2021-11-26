@@ -140,7 +140,7 @@ type config = {
   cfg_m_view : Se.SSGraph.mci_view;
   cfg_qid_set : QIDSet.t;
   cfg_trx_paths : MState.t list;
-  cfg_query_paths : MState.t list;
+  cfg_query_paths : MState.t list QIDMap.t;
   (* Ingrdients for invariant synthesis *)
   cfg_imap : Igdt.igdts_map;
   (* Top-k setting *)
@@ -265,7 +265,7 @@ let init_config :
           QIDSet.add cfg_qid_set (TzUtil.qid_of_mci_exn qs.ss_block_mci)
       )
    in
-   let ((cfg_trx_paths : MState.t list), (cfg_query_paths : MState.t list)) =
+   let ((cfg_trx_paths : MState.t list), (cfg_query_paths : MState.t list QIDMap.t)) =
       MState.gen_trx_paths
         ~is_path_sat:(is_path_sat cfg_smt_ctxt cfg_smt_slvr)
         cfg_se_res.sr_queries cfg_m_view

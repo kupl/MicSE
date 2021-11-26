@@ -9,6 +9,9 @@
 (* Map of Tz.r_mich_cut_info *)
 module RMCIMap : module type of Core.Map.Make (Tz.RMichCutInfo_cmp)
 
+(* Map of Tz.qid *)
+module QIDMap : module type of Core.Map.Make (Tz.QId_cmp)
+
 (* Set of Tz.sym_state *)
 module SSet : module type of Core.Set.Make (Tz.SymState_cmp)
 
@@ -78,4 +81,7 @@ val cut_first_found_loop : t -> (t * t) option
 val extract_trx_state : t -> Tz.sym_state list
 
 val gen_trx_paths :
-  is_path_sat:(t -> bool) -> SSet.t -> Se.SSGraph.mci_view -> t list * t list
+  is_path_sat:(t -> bool) ->
+  SSet.t ->
+  Se.SSGraph.mci_view ->
+  t list * t list QIDMap.t
