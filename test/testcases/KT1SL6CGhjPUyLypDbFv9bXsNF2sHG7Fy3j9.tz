@@ -1,0 +1,672 @@
+parameter %main unit;
+storage (pair :storage (big_map :depositors address mutez)
+                       (pair (address %owner)
+                             (pair (mutez %min_deposit)
+                                   (pair (nat %withdraw_fee)
+                                         (pair (nat %collat_coeff)
+                                               (pair (mutez %deposited)
+                                                     (pair (mutez %borrowed)
+                                                           (pair (nat %depositors_size)
+                                                                 (key_hash %delegate)))))))));
+code { DUP ;                                            # %ps : %ps
+       DIP { CDR @storage_slash_1 } ;                   # %ps : @storage_slash_1
+       CAR @__slash_2 ;                                 # @__slash_2 : @storage_slash_1
+       PUSH @one_prec6 nat 1000000 ;                    # @one_prec6 : @__slash_2 : @storage_slash_1
+       LAMBDA                                           # l_1 : @one_prec6 : @__slash_2 : @storage_slash_1
+         (pair (pair mutez nat) nat)
+         mutez
+         { RENAME @_amount_coeff__one_prec6_slash_8 ;   # @_amount_coeff__one_prec6_slash_8
+           DUP ;                                        # @_amount_coeff__one_prec6_slash_8 : @_amount_coeff__one_prec6_slash_8
+           CDR @one_prec6_slash_3 ;                     # @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8
+           DIP { DUP } ;                                # @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8 : @_amount_coeff__one_prec6_slash_8
+           SWAP ;                                       # @_amount_coeff__one_prec6_slash_8 : @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8
+           CAR ;                                        # %(mn) : @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8
+           CDR @coeff ;                                 # @coeff : @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8
+           DIP 2 { DUP } ;                              # @coeff : @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8 : @_amount_coeff__one_prec6_slash_8
+           DIG 2 ;                                      # @_amount_coeff__one_prec6_slash_8 : @coeff : @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8
+           CAR ;                                        # %(mn) : @coeff : @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8
+           CAR @amount ;                                # @amount : @coeff : @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8
+           MUL ;                                        # @amount * @coeff : @one_prec6_slash_3 : @_amount_coeff__one_prec6_slash_8
+           EDIV ;                                       # ((@amount * @coeff / @one_prec6_slash_3), (@amount * @coeff % @one_prec6_slash_3))_opt : @_amount_coeff__one_prec6_slash_8
+           IF_NONE
+             { PUSH string "Division error in `apply_coeff`." ; FAILWITH }
+             { CAR } ;                                  # (@amount * @coeff / @one_prec6_slash_3) : @_amount_coeff__one_prec6_slash_8
+           DIP { DROP } } ;                             # (@amount * @coeff / @one_prec6_slash_3)
+
+                                                        # l_1 : @one_prec6 : @__slash_2 : @storage_slash_1
+       PAIR @apply_coeff ;                              # @apply_coeff : @__slash_2 : @storage_slash_1
+       SENDER @sender ;                                 # @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       AMOUNT @amount ;                                 # @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       BALANCE @contract_balance ;                      # @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       DIP 5 { DUP @storage } ;                         # @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage : @storage_slash_1
+       DIG 5 ;                                          # @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       DUP @s ;                                         # @s : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       { CDR ; CAR %owner } ;                           # %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       DIP 4 { DUP @sender } ;                          # %owner : @storage : @contract_balance : @amount : @sender : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       DIG 4 ;                                          # @sender : %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       COMPARE ;                                        # cmp(@sender : %owner) : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       NEQ ;                                            # @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       PUSH mutez 1000000 ;                             # 1000000_m : @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       DIP 4 { DUP @amount } ;                          # 1000000_m : @sender != %owner : @storage : @contract_balance : @amount : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       DIG 4 ;                                          # @amount : 1000000_m : @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       COMPARE ;                                        # cmp(@amount : 1000000_m) : @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       GT ;                                             # @amount > 1000000_m : @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       AND ;                                            # @amount > 1000000_m && @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+       IF
+         { DUP @s ;                                     # @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           { CDR ;
+             CDR ;
+             CAR @min_deposit %min_deposit } ;
+           DIP 3 { DUP @amount } ;
+           DIG 3 ;
+           COMPARE ;
+           LT ;
+           IF { PUSH string "Deposited amount is too small." ; FAILWITH }
+           { UNIT } ;
+           DROP ;
+           DUP @s ;
+           CAR %depositors ;
+           DIP 4 { DUP @sender } ;
+           DIG 4 ;
+           GET ;
+           IF_NONE
+             { DUP @s ;
+               DUP ;
+               CAR %depositors ;
+               SWAP ;
+               CDR ;
+               DUP ;
+               CAR %owner ;
+               SWAP ;
+               CDR ;
+               DUP ;
+               CAR %min_deposit ;
+               SWAP ;
+               CDR ;
+               DUP ;
+               CAR %withdraw_fee ;
+               SWAP ;
+               CDR ;
+               DUP ;
+               CAR %collat_coeff ;
+               SWAP ;
+               CDR ;
+               DUP ;
+               CAR %deposited ;
+               SWAP ;
+               CDR ;
+               DUP ;
+               CAR %borrowed ;
+               SWAP ;
+               CDR ;
+               CDR %delegate ;
+               PUSH nat 1 ;
+               DIP 9 { DUP @s } ;
+               DIG 9 ;
+               { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR %depositors_size } ;
+               ADD ;
+               PAIR %depositors_size %delegate ;
+               SWAP ;
+               PAIR %borrowed ;
+               SWAP ;
+               PAIR %deposited ;
+               SWAP ;
+               PAIR %collat_coeff ;
+               SWAP ;
+               PAIR %withdraw_fee ;
+               SWAP ;
+               PAIR %min_deposit ;
+               SWAP ;
+               PAIR %owner ;
+               SWAP ;
+               PAIR %depositors ;
+               DIP 3 { DUP @amount } ;
+               DIG 3 ;
+               PAIR }
+             { DIP { DUP @s } ;
+               SWAP ;
+               DIP 4 { DUP @amount } ;
+               DIG 4 ;
+               DIP 2 { DUP @b } ;
+               DIG 2 ;
+               DIP 3 { DROP } ;
+               ADD ; #Q128
+               PAIR } ;
+           RENAME @_user_balance_s ;
+           DUP ;
+           CDR @s ;
+           DUP @s ;
+           CDR ;
+           DIP { DUP @s } ;
+           SWAP ;
+           CAR %depositors ;
+           DIP 3 { DUP } ;
+           DIG 3 ;
+           CAR @user_balance ;
+           DIP 8 { DUP @sender } ;
+           DIG 8 ;
+           DIP { SOME } ;
+           UPDATE ;
+           PAIR @s %depositors ;
+           DUP @s ;
+           DUP ;
+           CAR %depositors ;
+           SWAP ;
+           CDR ;
+           DUP ;
+           CAR %owner ;
+           SWAP ;
+           CDR ;
+           DUP ;
+           CAR %min_deposit ;
+           SWAP ;
+           CDR ;
+           DUP ;
+           CAR %withdraw_fee ;
+           SWAP ;
+           CDR ;
+           DUP ;
+           CAR %collat_coeff ;
+           SWAP ;
+           CDR ;
+           CDR ;
+           DIP 11 { DUP @amount } ;
+           DIG 11 ;
+           DIP 7 { DUP @s } ;
+           DIG 7 ;
+           DIP 8 { DROP 3 } ;
+           { CDR ; CDR ; CDR ; CDR ; CDR ; CAR %deposited } ;
+           ADD ; #Q174
+           PAIR %deposited ;
+           SWAP ;
+           PAIR %collat_coeff ;
+           SWAP ;
+           PAIR %withdraw_fee ;
+           SWAP ;
+           PAIR %min_deposit ;
+           SWAP ;
+           PAIR %owner ;
+           SWAP ;
+           PAIR @s %depositors ;
+           NIL operation ;
+           PAIR }
+         { DUP @s ;                                     # @s : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           { CDR ; CAR %owner } ;                       # %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           DIP 4 { DUP @sender } ;                      # %owner : @storage : @contract_balance : @amount : @sender : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           DIG 4 ;                                      # @sender : %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           COMPARE ;                                    # cmp(@sender, %owner) : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           NEQ ;                                        # @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           PUSH mutez 1000000 ;                         # 1000000_m : @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           DIP 4 { DUP @amount } ;                      # 1000000_m : @sender != %owner : @storage : @contract_balance : @amount : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           DIG 4 ;                                      # @amount : 1000000_m : @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           COMPARE ;                                    # cmp(@amount : 1000000_m) : @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           LE ;                                         # @amount <= 1000000_m : @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           AND ;                                        # @amount <= 1000000_m && @sender != %owner : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+           IF
+             { DUP @s ;                                 # @s : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %depositors ;                        # %depositors : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 4 { DUP @sender } ;                  # %depositors : @storage : @contract_balance : @amount : @sender : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 4 ;                                  # @sender : %depositors : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               GET ;                                    # %depositors[@sender]_opt : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               IF_NONE { PUSH string "Only depositors can withdraw." ; FAILWITH }
+               {} ;                                     # %depositors[@sender] : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               RENAME @user_balance ;                   # @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 2 { DUP @contract_balance } ;        # @user_balance : @storage : @contract_balance : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 2 ;                                  # @contract_balance : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP { DUP @user_balance } ;              # @contract_balance : @user_balance : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # @user_balance : @contract_balance : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               COMPARE ;                                # cmp(@user_balance, @contract_balance) : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               GT ;                                     # @user_balance > @contract_balance : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               IF
+                 { PUSH string "Withdraw amount greater than current contract balance." ;
+                   FAILWITH }
+                 { UNIT } ;                             # () : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DROP ;                                   # @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP { DUP @s } ;                         # @user_balance : @s : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # @s : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # @s : @s : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %depositors ;                        # %depositors : @s : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # @s : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cdr(@s) : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cdr(@s) : cdr(@s) : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %owner ;                             # %owner : cdr(@s) : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cdr(@s) : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cddr(@s) : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cddr(@s) : cddr(@s) : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %min_deposit ;                       # %min_deposit : cddr(@s) : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cddr(@s) : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cdddr(@s) : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cdddr(@s) : cdddr(@s) : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %withdraw_fee ;                      # %withdraw_fee : cdddr(@s) : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cdddr(@s) : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cddddr(@s) : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cddddr(@s) : cddddr(@s) : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %collat_coeff ;                      # %collat_coeff : cddddr(@s) : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cdddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 6 { DUP @user_balance } ;            # cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 6 ;                                  # @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 8 { DUP @s } ;                       # @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @s : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 8 ;                                  # @s : @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               { CDR ;                                  # cdr(@s) : @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cddr(@s) : @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cdddr(@s) : @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cddddr(@s) : @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cdddddr(@s) : @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CAR %deposited } ;                     # %deposited : @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SUB ; #Q247                              # %deposited - @user_balance : cddddddr(@s) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %deposited ;                        # (pair %deposited' %collat_coeff) : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %collat_coeff : (pair %deposited' %collat_coeff) : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %collat_coeff ;                     # (pair %collat_coeff (pair %deposited' %collat_coeff)) : %withdraw_fee : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %withdraw_fee : (pair %collat_coeff (pair %deposited' %collat_coeff)) : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %withdraw_fee ;                     # (pair %withdraw_fee (pair %collat_coeff (pair %deposited' %collat_coeff))) : %min_deposit : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %min_deposit : (pair %withdraw_fee (pair %collat_coeff (pair %deposited' %collat_coeff))) : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %min_deposit ;                      # (pair %min_deposit (pair %withdraw_fee (pair %collat_coeff (pair %deposited' %collat_coeff)))) : %owner : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %owner : (pair %min_deposit (pair %withdraw_fee (pair %collat_coeff (pair %deposited' %collat_coeff)))) : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %owner ;                            # (pair %owner (pair %min_deposit (pair %withdraw_fee (pair %collat_coeff (pair %deposited' %collat_coeff))))) : %depositors : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %depositors : (pair %owner (pair %min_deposit (pair %withdraw_fee (pair %collat_coeff (pair %deposited' %collat_coeff))))) : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR @s %depositors ;                    # @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP @s ;                                 # @s' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cdr(@s') : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP { DUP @s } ;                         # cdr(@s') : @s' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # @s' : cdr(@s') : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %depositors ;                        # %depositors : cdr(@s') : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               NONE mutez ;                             # None : %depositors : cdr(@s') : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 8 { DUP @sender } ;                  # None : %depositors : cdr(@s') : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 8 ;                                  # @sender : None : %depositors : cdr(@s') : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               UPDATE ;                                 # %depositors' : cdr(@s') : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR @s %depositors ;                    # @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP @s ;                                 # @s'' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # @s'' : @s'' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %depositors ;                        # %depositors' : @s'' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # @s'' : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cdr(@s'') : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cdr(@s'') : cdr(@s'') : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %owner ;                             # %owner : cdr(@s'') : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cdr(@s'') : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cddr(@s'') : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cddr(@s'') : cddr(@s'') : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %min_deposit ;                       # %min_deposit : cddr(@s'') : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cddr(@s'') : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cdddr(@s'') : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cdddr(@s'') : cdddr(@s'') : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %withdraw_fee ;                      # %withdraw_fee : cdddr(@s'') : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cdddr(@s'') : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cddddr(@s'') : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cddddr(@s'') : cddddr(@s'') : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %collat_coeff ;                      # %collat_coeff : cddddr(@s'') : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cddddr(@s'') : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cdddddr(@s'') : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cdddddr(@s'') : cdddddr(@s'') : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %deposited ;                         # %deposited' : cdddddr(@s'') : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cdddddr(@s'') : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cddddddr(@s'') : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # cddddddr(@s'') : cddddddr(@s'') : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CAR %borrowed ;                          # %borrowed : cddddddr(@s'') : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # cddddddr(@s'') : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR ;                                    # cdddddddr(@s'') : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CDR %delegate ;                          # %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PUSH nat 1 ;                             # 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 9 { DUP @s } ;                       # 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 9 ;                                  # @s'' : 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               { CDR ;                                  # cdr(@s'') : 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cddr(@s'') : 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cdddr(@s'') : 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cddddr(@s'') : 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cdddddr(@s'') : 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cddddddr(@s'') : 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cdddddddr(@s'') : 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CAR %depositors_size } ;               # %depositors_size : 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SUB ;                                    # %depositors_size - 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DUP ;                                    # %depositors_size - 1_n : %depositors_size - 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               ABS ;                                    # abs(%depositors_size - 1_n) : %depositors_size - 1_n : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %depositors_size - 1_n : abs(%depositors_size - 1_n) : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               GE ;                                     # %depositors_size - 1_n >= 0 : abs(%depositors_size - 1_n) : %delegate : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               IF {} { PUSH string "Depositors counting error." ; FAILWITH } ;
+               PAIR %depositors_size %delegate ;        # (pair %depositors_size' %delegate) : %borrowed : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %borrowed : (pair %depositors_size' %delegate) : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %borrowed ;                         # (pair %borrowed (pair %depositors_size' %delegate)) : %deposited' : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %deposited' : (pair %borrowed (pair %depositors_size' %delegate)) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %deposited ;                        # (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate))) : %collat_coeff : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %collat_coeff : (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate))) : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %collat_coeff ;                     # (pair %collat_coeff (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate)))) : %withdraw_fee : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %withdraw_fee : (pair %collat_coeff (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate)))) : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %withdraw_fee ;                     # (pair %withdraw_fee (pair %collat_coeff (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate))))) : %min_deposit : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %min_deposit : (pair %withdraw_fee (pair %collat_coeff (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate))))) : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %min_deposit ;                      # (pair %min_deposit (pair %withdraw_fee (pair %collat_coeff (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate)))))) : %owner : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %owner : (pair %min_deposit (pair %withdraw_fee (pair %collat_coeff (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate)))))) : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR %owner ;                            # (pair %owner (pair %min_deposit (pair %withdraw_fee (pair %collat_coeff (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate))))))) : %depositors' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # %depositors' : (pair %owner (pair %min_deposit (pair %withdraw_fee (pair %collat_coeff (pair %deposited' (pair %borrowed (pair %depositors_size' %delegate))))))) : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR @s %depositors ;                    # @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 8 { DUP @apply_coeff } ;             # @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 8 ;                                  # @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP { DUP @s } ;                         # @apply_coeff : @s''' : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # @s''' : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               { CDR ;                                  # cdr(@s''') : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cddr(@s''') : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CDR ;                                  # cdddr(@s''') : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                 CAR %withdraw_fee } ;                  # %withdraw_fee : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 5 { DUP @user_balance } ;            # %withdraw_fee : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 5 ;                                  # @user_balance : %withdraw_fee : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR ;                                   # (pair @user_balance %withdraw_fee) : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP { DUP ;                              # (pair @user_balance %withdraw_fee) : @apply_coeff : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                     CAR ;                              # (pair @user_balance %withdraw_fee) : l_1 : @apply_coeff : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                     SWAP ;                             # (pair @user_balance %withdraw_fee) : @apply_coeff : l_1 : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+                     CDR } ;                            # (pair @user_balance %withdraw_fee) : @one_prec6 : l_1 : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               PAIR ;                                   # (pair (pair @user_balance %withdraw_fee) @one_prec6) : l_1 : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               EXEC @fee_amount ;                       # (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP { DUP @s } ;                         # (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SWAP ;                                   # @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               NIL operation ;                          # [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 10 { DUP @sender } ;                 # [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 10 ;                                 # @sender : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               CONTRACT unit ;                          # contract(@sender)_opt : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               IF_NONE                                  
+                 { PUSH string "No entrypoint default with parameter type unit" ;
+                   FAILWITH }
+                 {} ;                                   # contract(@sender) : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 10 { DUP @amount } ;                 # contract(@sender) : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 10 ;                                 # @amount : contract(@sender) : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 4 { DUP @fee_amount } ;              # @amount : contract(@sender) : [] : @s''' : @fee_amount : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 4 ;                                  # @fee_amount : @amount : contract(@sender) : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIP 9 { DUP @user_balance } ;            # @fee_amount : @amount : contract(@sender) : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               DIG 9 ;                                  # @user_balance : @fee_amount : @amount : contract(@sender) : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               SUB ; #Q351                              # @user_balance - @fee_amount : @amount : contract(@sender) : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               ADD @withdraw_amount ; #Q352             # @user_balance - @fee_amount + @amount : contract(@sender) : [] : @s''' : (@user_balance * %withdraw_fee / @one_prec6) : @s''' : @s'' : @s' : @user_balance : @storage : @contract_balance : @amount : @sender : @apply_coeff : @__slash_2 : @storage_slash_1
+               UNIT ;
+               TRANSFER_TOKENS @op_withdraw ;
+               CONS ;
+               DIP 3 { DUP @s } ;
+               DIG 3 ;
+               { CDR ; CAR %owner } ;
+               CONTRACT unit ;
+               IF_NONE
+                 { PUSH string "No entrypoint default with parameter type unit" ;
+                   FAILWITH }
+                 {} ;
+               DIP 3 { DUP @fee_amount } ;
+               DIG 3 ;
+               DIP 4 { DROP 5 } ;
+               UNIT ;
+               TRANSFER_TOKENS @op_fee ;
+               CONS ;
+               PAIR }
+             { DUP @s ;
+               { CDR ; CAR %owner } ;
+               DIP 4 { DUP @sender } ;
+               DIG 4 ;
+               COMPARE ;
+               EQ ;
+               PUSH mutez 0 ;
+               DIP 4 { DUP @amount } ;
+               DIG 4 ;
+               COMPARE ;
+               EQ ;
+               AND ;
+               IF
+                 { PUSH @one_prec6 nat 1000000 ;
+                   LAMBDA
+                     (pair nat nat)
+                     nat
+                     { RENAME @coeff__one_prec6_slash_14 ;
+                       DUP ;
+                       CAR @coeff_slash_15 ;
+                       DIP { DUP } ;
+                       SWAP ;
+                       CDR @one_prec6_slash_3 ;
+                       SUB ;
+                       DUP ;
+                       ABS ;
+                       SWAP ;
+                       GE ;
+                       IF
+                         {}
+                         { PUSH string "Invalid coefficient value in `get_coeff_compl`." ;
+                           FAILWITH } ;
+                       DIP { DROP } } ;
+                   PAIR @get_coeff_compl ;
+                   DIP 5 { DUP @apply_coeff } ;
+                   DIG 5 ;
+                   PAIR ;
+                   DIP { DUP @s } ;
+                   SWAP ;
+                   { CDR ; CDR ; CDR ; CDR ; CAR %collat_coeff } ;
+                   DIP 2 { DUP @s } ;
+                   DIG 2 ;
+                   { CDR ; CDR ; CDR ; CDR ; CDR ; CAR %deposited } ;
+                   PAIR ;
+                   PAIR ;
+                   DUP ;
+                   { CDR ; CAR @apply_coeff_slash_13 } ;
+                   DIP { DUP } ;
+                   SWAP ;
+                   { CDR ; CDR @get_coeff_compl_slash_18 } ;
+                   DIP 2 { DUP } ;
+                   DIG 2 ;
+                   CAR ;
+                   CDR @collat_coeff ;
+                   DIP { DUP ; CAR ; SWAP ; CDR } ;
+                   PAIR ;
+                   EXEC ;
+                   DIP 2 { DUP } ;
+                   DIG 2 ;
+                   CAR ;
+                   CAR @deposited ;
+                   PAIR ;
+                   DIP { DUP ; CAR ; SWAP ; CDR } ;
+                   DIP 3 { DROP } ;
+                   PAIR ;
+                   EXEC ;
+                   DIP { DUP @s } ;
+                   SWAP ;
+                   { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR %borrowed } ;
+                   DIP { DUP @max_borrowing } ;
+                   SWAP ;
+                   COMPARE ;
+                   LT ;
+                   IF
+                     { PUSH string "No available funds to borrow: contract is under-collateralized." ;
+                       FAILWITH }
+                     { UNIT } ;
+                   DROP ;
+                   DIP 2 { DUP @contract_balance } ;
+                   DIG 2 ;
+                   DIP 2 { DUP @s } ;
+                   DIG 2 ;
+                   { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR %borrowed } ;
+                   DIP 2 { DUP @max_borrowing } ;
+                   DIG 2 ;
+                   SUB ; #Q456
+                   PAIR ;
+                   DUP ;
+                   CAR @a ;
+                   DIP { DUP } ;
+                   SWAP ;
+                   CDR @b ;
+                   DUP @b ;
+                   DIP 2 { DUP @a } ;
+                   DIG 2 ;
+                   COMPARE ;
+                   GT ;
+                   IF { DUP @b } { DIP { DUP @a } ; SWAP } ;
+                   DIP { DROP 3 } ;
+                   PUSH mutez 0 ;
+                   DIP { DUP @borrowing } ;
+                   SWAP ;
+                   COMPARE ;
+                   EQ ;
+                   IF
+                     { PUSH string "No available funds to borrow." ; FAILWITH }
+                     { UNIT } ;
+                   DROP ;
+                   DIP 2 { DUP @s } ;
+                   DIG 2 ;
+                   DUP ;
+                   CAR %depositors ;
+                   SWAP ;
+                   CDR ;
+                   DUP ;
+                   CAR %owner ;
+                   SWAP ;
+                   CDR ;
+                   DUP ;
+                   CAR %min_deposit ;
+                   SWAP ;
+                   CDR ;
+                   DUP ;
+                   CAR %withdraw_fee ;
+                   SWAP ;
+                   CDR ;
+                   DUP ;
+                   CAR %collat_coeff ;
+                   SWAP ;
+                   CDR ;
+                   DUP ;
+                   CAR %deposited ;
+                   SWAP ;
+                   CDR ;
+                   CDR ;
+                   DIP 7 { DUP @borrowing } ;
+                   DIG 7 ;
+                   DIP 10 { DUP @s } ;
+                   DIG 10 ;
+                   { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR %borrowed } ;
+                   ADD ; #Q511
+                   PAIR %borrowed ;
+                   SWAP ;
+                   PAIR %deposited ;
+                   SWAP ;
+                   PAIR %collat_coeff ;
+                   SWAP ;
+                   PAIR %withdraw_fee ;
+                   SWAP ;
+                   PAIR %min_deposit ;
+                   SWAP ;
+                   PAIR %owner ;
+                   SWAP ;
+                   PAIR @s %depositors ;
+                   DUP @s ;
+                   NIL operation ;
+                   DIP 2 { DUP @s } ;
+                   DIG 2 ;
+                   { CDR ; CAR %owner } ;
+                   CONTRACT unit ;
+                   IF_NONE
+                     { PUSH string "No entrypoint default with parameter type unit" ;
+                       FAILWITH }
+                     {} ;
+                   DIP 4 { DUP @borrowing } ;
+                   DIG 4 ;
+                   DIP 4 { DROP 3 } ;
+                   UNIT ;
+                   TRANSFER_TOKENS @op ;
+                   CONS ;
+                   PAIR }
+                 { DUP @s ;
+                   { CDR ; CAR %owner } ;
+                   DIP 4 { DUP @sender } ;
+                   DIG 4 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH mutez 420000 ;
+                   DIP 4 { DUP @amount } ;
+                   DIG 4 ;
+                   COMPARE ;
+                   EQ ;
+                   AND ;
+                   IF
+                     { DUP @s ;
+                       NIL operation ;
+                       DIP 2 { DUP @s } ;
+                       DIG 2 ;
+                       { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CDR %delegate } ;
+                       SOME ;
+                       SET_DELEGATE @op_set_delegate ;
+                       CONS ;
+                       DIP 2 { DUP @s } ;
+                       DIG 2 ;
+                       { CDR ; CAR %owner } ;
+                       CONTRACT unit ;
+                       IF_NONE
+                         { PUSH string "No entrypoint default with parameter type unit" ;
+                           FAILWITH }
+                         {} ;
+                       PUSH mutez 420000 ;
+                       UNIT ;
+                       TRANSFER_TOKENS @op_refund ;
+                       CONS ;
+                       PAIR }
+                     { DUP @s ;
+                       { CDR ; CAR %owner } ;
+                       DIP 4 { DUP @sender } ;
+                       DIG 4 ;
+                       COMPARE ;
+                       EQ ;
+                       PUSH mutez 0 ;
+                       DIP 4 { DUP @amount } ;
+                       DIG 4 ;
+                       COMPARE ;
+                       GT ;
+                       AND ;
+                       IF
+                         { DUP @s ;
+                           { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR @borrowed %borrowed } ;
+                           DIP 3 { DUP @amount } ;
+                           DIG 3 ;
+                           COMPARE ;
+                           GT ;
+                           IF
+                             { PUSH string "Can't over-collateralize contract." ;
+                               FAILWITH }
+                             { UNIT } ;
+                           DROP ;
+                           DUP @s ;
+                           DUP ;
+                           CAR %depositors ;
+                           SWAP ;
+                           CDR ;
+                           DUP ;
+                           CAR %owner ;
+                           SWAP ;
+                           CDR ;
+                           DUP ;
+                           CAR %min_deposit ;
+                           SWAP ;
+                           CDR ;
+                           DUP ;
+                           CAR %withdraw_fee ;
+                           SWAP ;
+                           CDR ;
+                           DUP ;
+                           CAR %collat_coeff ;
+                           SWAP ;
+                           CDR ;
+                           DUP ;
+                           CAR %deposited ;
+                           SWAP ;
+                           CDR ;
+                           CDR ;
+                           DIP 9 { DUP @amount } ;
+                           DIG 9 ;
+                           DIP 8 { DUP @s } ;
+                           DIG 8 ;
+                           { CDR ; CDR ; CDR ; CDR ; CDR ; CDR ; CAR %borrowed } ;
+                           SUB ; #Q631
+                           PAIR %borrowed ;
+                           SWAP ;
+                           PAIR %deposited ;
+                           SWAP ;
+                           PAIR %collat_coeff ;
+                           SWAP ;
+                           PAIR %withdraw_fee ;
+                           SWAP ;
+                           PAIR %min_deposit ;
+                           SWAP ;
+                           PAIR %owner ;
+                           SWAP ;
+                           PAIR @s %depositors ;
+                           NIL operation ;
+                           PAIR }
+                         { PUSH string "You shouldn't be here." ; FAILWITH } } } } } ;
+       DIP { DROP 7 } }
