@@ -1,0 +1,5 @@
+(Pair
+  (Pair
+    (Pair {} 0)
+    (Pair None (Pair 0 0)))
+  (Pair (Pair False 0) 0))
