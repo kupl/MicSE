@@ -55,7 +55,7 @@ if [[ ! -d "${OPAM_LIB_DIR%%/}/z3" ]]; then
     make -C build -j $CORES >/dev/null 2>&1
   eval $(opam env) && \
     ocamlfind install z3 build/api/ml/* build/libz3-static.a >/dev/null && \
-    cp build/z3 /usr/bin/z3 && \
+    sudo cp build/z3 /usr/bin/z3 && \
     rm -rf ${Z3_DIR%%/}
   echo "[NOTE] End-up Install Z3"
 fi
