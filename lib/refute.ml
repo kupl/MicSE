@@ -390,15 +390,84 @@ let naive_run_escape_condition : Res.config -> Res.res -> bool =
    else false
 (* function naive_run_escape_condition end *)
 
-let rec naive_run : Res.config -> Res.res -> Res.res =
-  fun cfg res ->
-  let _ =
-     (* DEBUGGING INFOs *)
-     Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res))
-  in
-  if naive_run_escape_condition cfg res
-  then res
-  else naive_run cfg (naive_run_res_atomic_action cfg res)
+let naive_run : Res.config -> Res.res -> Res.res =
+   let log_report : Res.config -> Res.res -> unit =
+     fun cfg res ->
+     Utils.Log.info (fun m -> m "> Report: %s" (Res.string_of_res_rough cfg res))
+     (* inner-function log_report end *)
+   in
+   let rec naive_run_i : Res.config -> Res.res -> Res.res =
+     fun cfg res ->
+     if naive_run_escape_condition cfg res
+     then res
+     else (
+       let _ = log_report cfg res in
+       let _ = Utils.Log.info (fun m -> m "> Refuter Turn Start") in
+       let (r_res : Res.res) = naive_run_res_atomic_action cfg res in
+       let _ = Utils.Log.info (fun m -> m "> Refuter Turn End") in
+       naive_run_i cfg r_res
+     )
+   in
+   fun cfg res ->
+   let _ = log_report cfg res in
+   let (r_res : Res.res) =
+      {
+        res with
+        r_qr_lst =
+          List.map res.r_qr_lst ~f:(fun qres ->
+              let (qr_exp_ppaths : PPSet.t) =
+                 filter_sat_ppaths cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
+                   qres.qr_exp_ppaths
+              in
+              let ( (qr_total_ppaths :
+                      (Res.PPath.t * Smt.Solver.satisfiability) list
+                      ),
+                    (qr_rft_ppath : (Res.PPath.t * Smt.Model.t) option)
+                  ) =
+                 PPSet.fold qr_exp_ppaths ~init:(qres.qr_total_ppaths, None)
+                   ~f:(fun (t_paths, r_opt) eppath ->
+                     if Option.is_some r_opt
+                     then (t_paths, r_opt)
+                     else (
+                       let ( (total_path_opt :
+                               (Res.PPath.t * Smt.Solver.satisfiability) option
+                               ),
+                             (model_opt : Smt.Model.t option)
+                           ) =
+                          refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg
+                            eppath
+                       in
+                       if Option.is_none total_path_opt
+                       then (t_paths, r_opt)
+                       else (
+                         let (total_path
+                               : Res.PPath.t * Smt.Solver.satisfiability
+                               ) =
+                            Option.value_exn total_path_opt
+                         in
+                         ( total_path :: t_paths,
+                           Option.map model_opt ~f:(fun model ->
+                               (fst total_path, model)
+                           )
+                         )
+                       )
+                     )
+                 )
+              in
+              if Option.is_some qr_rft_ppath
+              then
+                {
+                  qres with
+                  qr_rft_flag = RF_r;
+                  qr_exp_ppaths;
+                  qr_total_ppaths;
+                  qr_rft_ppath;
+                }
+              else qres
+          );
+      }
+   in
+   naive_run_i cfg r_res
 (* function naive_run end *)
 
 (******************************************************************************)
