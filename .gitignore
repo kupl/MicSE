@@ -16,3 +16,4 @@ tmp/
 
 # Vagrant Configurations
 .vagrant/
+vagrant
