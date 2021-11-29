@@ -36,8 +36,8 @@ if [[ ! "$(ocaml --version)" =~ "$OPAM_SWITCH_VERSION" ]]; then
     opam switch $OPAM_SWITCH_VERSION >/dev/null
   fi
 fi
-eval $(opam env)
-opam install -y -j 8 . --deps-only
+eval $(opam env) && \
+  opam install -y -j $CORES /vagrant --deps-only
 echo "[NOTE] Current OCAML version is $(ocaml --version | grep -P "\d+\.\d+\.\d+" -o)"
 OPAM_LIB_DIR=~/.opam/$OPAM_SWITCH_VERSION/lib/
 echo "[NOTE] End-up Initialize OPAM"
@@ -53,7 +53,8 @@ if [[ ! -d "${OPAM_LIB_DIR%%/}/z3" ]]; then
     python2.7 scripts/mk_make.py --ml --staticlib >/dev/null
   eval $(opam env) && \
     make -C build -j $CORES >/dev/null 2>&1
-  ocamlfind install z3 build/api/ml/* build/libz3-static.a >/dev/null && \
+  eval $(opam env) && \
+    ocamlfind install z3 build/api/ml/* build/libz3-static.a >/dev/null && \
     cp build/z3 /usr/bin/z3 && \
     rm -rf ${Z3_DIR%%/}
   echo "[NOTE] End-up Install Z3"
