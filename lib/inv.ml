@@ -707,10 +707,10 @@ let gen_initial_cand_map :
         tmp_eq;
         tmp_ge;
         tmp_gt;
-        tmp_add_2_eq;
+        (* tmp_add_2_eq;
         tmp_add_3_eq;
         tmp_all_elem_eq;
-        tmp_eq_and_all_elem_eq;
+        tmp_eq_and_all_elem_eq; *)
       ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> CSet.union_list
