@@ -37,7 +37,7 @@ if [[ ! "$(ocaml --version)" =~ "$OPAM_SWITCH_VERSION" ]]; then
   fi
 fi
 eval $(opam env) && \
-  opam install -y -j $CORES /vagrant --deps-only
+  opam install -y -q -j $CORES /vagrant --deps-only
 echo "[NOTE] Current OCAML version is $(ocaml --version | grep -P "\d+\.\d+\.\d+" -o)"
 OPAM_LIB_DIR=~/.opam/$OPAM_SWITCH_VERSION/lib/
 echo "[NOTE] End-up Initialize OPAM"
