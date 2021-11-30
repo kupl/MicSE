@@ -1,0 +1,14 @@
+parameter (pair (address %receiver) (mutez %value));
+storage   (pair (map %balance address mutez) (mutez %totalSupply));
+code { 
+  UNPAIR; UNPAIR; DIP 2 { UNPAIR };                 # %receiver :: %value :: %balance :: %totalSupply :: []
+  DUP 3; SENDER; GET; IF_NONE { FAIL } {};          # %balance[@sender] :: %receiver :: %value :: %balance :: %totalSupply :: []
+  DUP 3; DUP 2; COMPARE; GE; IF {} { FAIL };        # %balance[@sender] :: %receiver :: %value :: %balance :: %totalSupply :: []
+  DIP { DIG 2; DUP 3 }; SUB; SOME; SENDER; UPDATE;  # %balance' :: %receiver :: %value :: %totalSupply :: []
+  DUP; DUP 3; GET; IF_NONE { PUSH mutez 0 } {};     # %balance'[%receiver] :: %balance' :: %receiver :: %value :: %totalSupply :: []
+  DIP { DIG 2 }; ADD;                               # (%balance'[%receiver] + %value) :: %balance' :: %receiver :: %totalSupply :: []
+  # [The user-provided assertion below should be a single-line comment]
+  #__MICSE_CHECK { DIP {DROP; DROP }; COMPARE; LE };
+  # [This notation should be in only one line]      # (%balance'[%receiver] + %value) :: %balance' :: %receiver :: %totalSupply :: []
+  SOME; DIG 2; UPDATE;                              # %balance'' :: %totalSupply :: []
+  PAIR; NIL operation; PAIR };                      # (pair [] (pair %balance'' %totalSupply)) :: []
