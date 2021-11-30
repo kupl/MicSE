@@ -49,6 +49,7 @@ Combinations: _
   - `--total-timeout`, `-T`: The time budget for overall MicSE process in seconds. (default: 360sec)
   - `--z3-timeout`, `-Z`: The time budget for Z3 solver in seconds. (default: 30sec)
   - `--path-limit`, `-P`: The length limit of the unrolled path in a single transaction. (default: 5)
+  - `--query-pick`, `-q`: Line and column number of a specified target query in an integer pair.
   - `--verbose`, `-v`: Verbose logging mode.
 - **Output:**
   - Verification result from the MicSE
@@ -79,6 +80,7 @@ Combinations: _
   - `--initial-storage`, `-S`: The file path of initial storage information that the target contract has. (REQUIRED)
   - `--z3-timeout`, `-Z`: The time budget for Z3 solver in seconds. (default: 30sec)
   - `--path-limit`, `-P`: The length limit of the unrolled path in a single transaction. (default: 5)
+  - `--query-pick`, `-q`: Line and column number of a specified target query in an integer pair.
   - `--verbose`, `-v`: Verbose logging mode.
 - **Output:**
   - Verification result from the MicSE
@@ -132,6 +134,7 @@ Combinations: _
   - `--initial-storage`, `-S`: The file path of initial storage information that the target contract has. (REQUIRED)
   - `--z3-timeout`, `-Z`: The time budget for Z3 solver in seconds. (default: 30sec)
   - `--path-limit`, `-P`: The length limit of the unrolled path in a single transaction. (default: 5)
+  - `--query-pick`, `-q`: Line and column number of a specified target query in an integer pair.
   - `--verbose`, `-v`: Verbose logging mode.
 - **Output:**
   - Refuting result from the MicSE
