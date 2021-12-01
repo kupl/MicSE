@@ -139,3 +139,24 @@ val trxpath_guided_run_res_atomic_action :
 
 val trxpath_guided_run :
   Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.res -> Res.res
+
+(******************************************************************************)
+(******************************************************************************)
+(* Refuting with Parametric Path Selection Enabled & score saved on PPath,
+   but using TrxPaths *********************************************************)
+(******************************************************************************)
+(******************************************************************************)
+
+val trxpath_score_saved_guided_run_qres :
+  pick_f:(Res.PPath.t -> float) ->
+  score_f:(Res.PPath.t -> int list) ->
+  Res.config ->
+  Res.qres ->
+  Res.qres
+
+val trxpath_score_saved_guided_run_res_atomic_action :
+  pick_f_gen:(Res.config -> Res.res -> Res.qres -> Res.PPath.t -> float) ->
+  score_f_gen:(Res.config -> Res.res -> Res.qres -> Res.PPath.t -> int list) ->
+  Res.config ->
+  Res.res ->
+  Res.res

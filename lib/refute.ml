@@ -946,3 +946,163 @@ let trxpath_guided_run :
       }
    in
    trxpath_guided_run_i cfg ~score_f r_res
+
+(******************************************************************************)
+(******************************************************************************)
+(* Refuting with Parametric Path Selection Enabled & score saved on PPath,
+   but using TrxPaths *********************************************************)
+(******************************************************************************)
+(******************************************************************************)
+
+let trxpath_score_saved_guided_run_qres :
+    pick_f:(Res.PPath.t -> float) ->
+    score_f:(Res.PPath.t -> int list) ->
+    Res.config ->
+    Res.qres ->
+    Res.qres =
+  fun ~pick_f ~score_f cfg qres ->
+  (* 1. Escape Conditions *)
+  if (* 1.1. Escape when (Timeout || (R-flag <> RF_u) || (P-flag = PF_p)) *)
+     guided_run_qres_escape_condition cfg qres
+  then qres
+  else if (* 1.2. If Size(exp-ppaths) == 0, set refuter-flag to "failed" *)
+          PPSet.is_empty qres.qr_exp_ppaths
+  then { qres with qr_rft_flag = RF_f }
+  else (
+    (* 2. Pick paths to expand *)
+    let _ = Utils.Log.debug (fun m -> m "  Pick-Path Start") in
+    let (picked_paths, unpicked_paths)
+          : (Res.PPath.t * float) list * (Res.PPath.t * float) list =
+       let scored_sorted_list : (Res.PPath.t * float) list =
+          qres.qr_exp_ppaths
+          |> PPSet.to_list
+          |> List.map ~f:(fun x -> (x, pick_f x))
+          |> List.sort ~compare:(fun (_, x_floatscore) (_, y_floatscore) ->
+                 compare_float y_floatscore x_floatscore
+             )
+       in
+       List.split_n scored_sorted_list !trxpath_path_pick_N
+    in
+    let _ =
+       Utils.Log.debug (fun m ->
+           m "  Pick-Path End >> #Picked / #Unpicked = %d / %d"
+             (List.length picked_paths)
+             (List.length unpicked_paths)
+       )
+    in
+    let _ =
+       let _ = Utils.Log.debug (fun m -> m "  Picked-Paths ::") in
+       List.iter picked_paths ~f:(fun (pp, float_score) ->
+           Utils.Log.debug (fun m ->
+               m "  > Summary = %s\tScore = %f  %s"
+                 ((MState.get_summary pp.pp_mstate).sm_s_id
+                 |> List.to_string ~f:string_of_int
+                 )
+                 float_score
+                 (List.to_string ~f:string_of_int pp.pp_score)
+           )
+       )
+    in
+    (* 3. Expand picked paths *)
+    let expanded_paths : PPSet.t =
+       let open Res.PPath in
+       List.fold picked_paths ~init:[] ~f:(fun acc (pp, _) ->
+           let score = score_f pp in
+           let trxpaths : int list list =
+              cfg.cfg_trx_paths
+              |> List.map ~f:(fun ms -> (MState.get_first_ss ms).ss_id)
+           in
+           let expanded_paths : MState.t list =
+              List.map trxpaths ~f:(fun il ->
+                  List.fold_right il
+                    ~f:(fun i ms -> MState.cons (_find_ss_by_id cfg i) ms)
+                    ~init:pp.pp_mstate
+              )
+              |> List.filter ~f:(fun ms ->
+                     Vc.is_path_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr ms
+                 )
+           in
+           let expanded_paths_pp : Res.PPath.t list =
+              List.map expanded_paths ~f:(fun ms ->
+                  {
+                    pp_mstate = ms;
+                    pp_score = score;
+                    pp_satisfiability = Some Smt.Solver.SAT;
+                  }
+              )
+           in
+           expanded_paths_pp @ acc
+       )
+       |> PPSet.of_list
+    in
+    (* 4. For each expanded paths, check refutability *)
+    let (total_ppaths, rft_ppath_opt)
+          : (Res.PPath.t * Smt.Solver.satisfiability) list
+            * (Res.PPath.t * Smt.Model.t) option =
+       let f (tpl_acc, rftopt_acc) pp =
+          (* 4.f.1. Check escape condition
+                  - Check if already refuted path found
+                  - No timeout check
+          *)
+          if Option.is_some rftopt_acc
+          then (tpl_acc, rftopt_acc)
+          else (
+            (* 4.f.2. check refutability *)
+            match refute cfg.cfg_smt_ctxt cfg.cfg_smt_slvr cfg.cfg_istrg pp with
+            | (Some tp, Some mdl) -> (tp :: tpl_acc, Some (pp, mdl))
+            | (Some tp, None)     -> (tp :: tpl_acc, None)
+            | (None, _)           ->
+              (tpl_acc, rftopt_acc) (* (None, None) case exists only *)
+          )
+       in
+       PPSet.fold expanded_paths ~init:([], None) ~f
+    in
+    (* Last. return value construction *)
+    let qr_total_ppaths = total_ppaths @ qres.qr_total_ppaths
+    and qr_last_picked_paths = List.map picked_paths ~f:fst |> PPSet.of_list
+    and qr_exp_ppaths =
+       PPSet.union expanded_paths
+         (List.map unpicked_paths ~f:fst |> PPSet.of_list)
+    and qr_rft_ppath = rft_ppath_opt
+    and qr_exp_cnt : int = PPSet.length expanded_paths + qres.qr_exp_cnt
+    and qr_rft_flag : Res.refuter_flag =
+       match rft_ppath_opt with
+       | None   -> RF_u
+       | Some _ -> RF_r
+    in
+    {
+      qres with
+      qr_rft_flag;
+      qr_total_ppaths;
+      qr_last_picked_paths;
+      qr_exp_ppaths;
+      qr_rft_ppath;
+      qr_exp_cnt;
+    }
+  )
+(* function trxpath_score_saved_guided_run_qres end *)
+
+let trxpath_score_saved_guided_run_res_atomic_action :
+    pick_f_gen:(Res.config -> Res.res -> Res.qres -> Res.PPath.t -> float) ->
+    score_f_gen:(Res.config -> Res.res -> Res.qres -> Res.PPath.t -> int list) ->
+    Res.config ->
+    Res.res ->
+    Res.res =
+  fun ~pick_f_gen ~score_f_gen cfg res ->
+  let _ = Utils.Log.debug (fun m -> m "%s" (Res.string_of_res_rough cfg res)) in
+  if guided_run_escape_condition cfg res
+  then res
+  else (
+    let new_res : Res.res =
+       {
+         res with
+         r_qr_lst =
+           List.map res.r_qr_lst ~f:(fun qres ->
+               trxpath_score_saved_guided_run_qres cfg
+                 ~pick_f:(pick_f_gen cfg res qres)
+                 ~score_f:(score_f_gen cfg res qres) qres
+           );
+       }
+    in
+    new_res
+  )
