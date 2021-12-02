@@ -84,9 +84,18 @@ module PPath = struct
 
   let rec extract_ppath_from_first_trx : t -> t list =
      let open Tz in
+     let proper_mcc : mich_cut_info -> bool =
+       fun mci ->
+       match mci.mci_cutcat with
+       | MCC_trx_exit
+       | MCC_query _ ->
+         true
+       | _ -> false
+       (* inner-function proper_mcc end *)
+     in
      fun ppath ->
      let (hd : Tz.sym_state) = MState.get_first_ss ppath.pp_mstate in
-     if equal_mich_cut_category hd.ss_block_mci.mci_cutcat MCC_trx_exit
+     if proper_mcc hd.ss_block_mci
      then [ ppath ]
      else (
        let (tl : MState.t) = MState.get_tail_ms ppath.pp_mstate in
