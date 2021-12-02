@@ -967,14 +967,23 @@ let trxpath_score_saved_guided_run_qres :
           PPSet.is_empty qres.qr_exp_ppaths
   then { qres with qr_rft_flag = RF_f }
   else (
-    (* 2. Pick paths to expand *)
+    (* 2. Pick paths to expand - If the path in qr_validated_ppaths, update score *)
     let _ = Utils.Log.debug (fun m -> m "  Pick-Path Start") in
+    let pick_score_with_update_score_f : Res.PPath.t -> Res.PPath.t * float =
+      fun pp ->
+      if List.mem qres.qr_validated_ppaths pp ~equal:Res.PPath.equal
+      then (
+        let pp' = { pp with pp_score = score_f pp } in
+        (pp', pick_f pp')
+      )
+      else (pp, pick_f pp)
+    in
     let (picked_paths, unpicked_paths)
           : (Res.PPath.t * float) list * (Res.PPath.t * float) list =
        let scored_sorted_list : (Res.PPath.t * float) list =
           qres.qr_exp_ppaths
           |> PPSet.to_list
-          |> List.map ~f:(fun x -> (x, pick_f x))
+          |> List.map ~f:pick_score_with_update_score_f
           |> List.sort ~compare:(fun (_, x_floatscore) (_, y_floatscore) ->
                  compare_float y_floatscore x_floatscore
              )
@@ -1002,10 +1011,9 @@ let trxpath_score_saved_guided_run_qres :
        )
     in
     (* 3. Expand picked paths *)
-    let expanded_paths : PPSet.t =
+    let expanded_paths_list : Res.PPath.t list =
        let open Res.PPath in
        List.fold picked_paths ~init:[] ~f:(fun acc (pp, _) ->
-           let score = score_f pp in
            let trxpaths : int list list =
               cfg.cfg_trx_paths
               |> List.map ~f:(fun ms -> (MState.get_first_ss ms).ss_id)
@@ -1024,15 +1032,15 @@ let trxpath_score_saved_guided_run_qres :
               List.map expanded_paths ~f:(fun ms ->
                   {
                     pp_mstate = ms;
-                    pp_score = score;
+                    pp_score = pp.pp_score;
                     pp_satisfiability = Some Smt.Solver.SAT;
                   }
               )
            in
            expanded_paths_pp @ acc
        )
-       |> PPSet.of_list
     in
+    let expanded_paths : PPSet.t = expanded_paths_list |> PPSet.of_list in
     (* 4. For each expanded paths, check refutability *)
     let (total_ppaths, rft_ppath_opt)
           : (Res.PPath.t * Smt.Solver.satisfiability) list
@@ -1056,7 +1064,8 @@ let trxpath_score_saved_guided_run_qres :
        PPSet.fold expanded_paths ~init:([], None) ~f
     in
     (* Last. return value construction *)
-    let qr_total_ppaths = total_ppaths @ qres.qr_total_ppaths
+    let qr_validated_ppaths = expanded_paths_list
+    and qr_total_ppaths = total_ppaths @ qres.qr_total_ppaths
     and qr_last_picked_paths = List.map picked_paths ~f:fst |> PPSet.of_list
     and qr_exp_ppaths =
        PPSet.union expanded_paths
@@ -1071,6 +1080,7 @@ let trxpath_score_saved_guided_run_qres :
     {
       qres with
       qr_rft_flag;
+      qr_validated_ppaths;
       qr_total_ppaths;
       qr_last_picked_paths;
       qr_exp_ppaths;
