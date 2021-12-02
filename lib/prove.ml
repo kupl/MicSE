@@ -391,6 +391,10 @@ let naive_run_res_atomic_action : Res.config -> Res.res -> Res.res =
        let (r_cands : cand_map) =
           strengthen_cand_map res.r_cands r_inv
             ~is_cand_sat:(Vc.is_cand_sat cfg.cfg_smt_ctxt cfg.cfg_smt_slvr)
+            ~do_cand_sat_istrg:
+              (Vc.do_cand_sat_istrg cfg.cfg_smt_ctxt cfg.cfg_smt_slvr
+                 cfg.cfg_istrg cfg.cfg_istate
+              )
        in
        (* 2-2-3. Prove all with new invariant *)
        let (r_qr_lst : qres list) =
