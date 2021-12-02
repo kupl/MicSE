@@ -624,6 +624,25 @@ let extract_trx_state : t -> Tz.sym_state list =
      ~init:[]
 (* function extract_trx_state end *)
 
+let get_trx_length : t -> int = (fun ms -> extract_trx_state ms |> List.length)
+(* function get_trx_length end *)
+
+let get_last_trx_ms : t -> t option =
+   let open Tz in
+   let rec get_last_trx_ms_i : t -> t =
+     fun ms ->
+     if equal_mich_cut_category (get_first_ss ms).ss_start_mci.mci_cutcat
+          MCC_trx_entry
+     then ms
+     else get_last_trx_ms_i (get_tail_ms ms)
+     (* function get_last_trx_ms_i end *)
+   in
+   fun ms ->
+   if equal_int (get_trx_length ms) 1
+   then None
+   else Some (get_last_trx_ms_i (get_tail_ms ms))
+(* function get_last_trx_ms end *)
+
 let is_trx_path : t -> bool =
    let open TzUtil in
    fun ms ->

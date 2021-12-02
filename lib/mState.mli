@@ -80,6 +80,10 @@ val cut_first_found_loop : t -> (t * t) option
 
 val extract_trx_state : t -> Tz.sym_state list
 
+val get_trx_length : t -> int
+
+val get_last_trx_ms : t -> t option
+
 val gen_trx_paths :
   is_path_sat:(t -> bool) ->
   SSet.t ->
