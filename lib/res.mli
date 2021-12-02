@@ -69,6 +69,8 @@ module PPath : sig
 
   val satisfiability_fill :
     Smt.Ctx.t * Smt.Solver.t -> t -> t * Smt.Model.t option
+
+  val extract_ppath_from_first_trx : t -> t list
 end
 
 module PPSet : module type of Core.Set.Make (PPath)

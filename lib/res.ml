@@ -81,6 +81,18 @@ module PPath = struct
       let (sat_result, mdl_opt) = Vc.check_sat ctx slvr vc in
       ({ ppath with pp_satisfiability = Some sat_result }, mdl_opt)
     | Some _ -> (ppath, None)
+
+  let rec extract_ppath_from_first_trx : t -> t list =
+     let open Tz in
+     fun ppath ->
+     let (hd : Tz.sym_state) = MState.get_first_ss ppath.pp_mstate in
+     if equal_mich_cut_category hd.ss_block_mci.mci_cutcat MCC_trx_exit
+     then [ ppath ]
+     else (
+       let (tl : MState.t) = MState.get_tail_ms ppath.pp_mstate in
+       ppath :: extract_ppath_from_first_trx { ppath with pp_mstate = tl }
+     )
+  (* function extract_ppath_from_first_trx end *)
 end
 
 module PPSet = Set.Make (PPath)
@@ -265,7 +277,9 @@ let init_config :
           QIDSet.add cfg_qid_set (TzUtil.qid_of_mci_exn qs.ss_block_mci)
       )
    in
-   let ((cfg_trx_paths : MState.t list), (cfg_query_paths : MState.t list QIDMap.t)) =
+   let ( (cfg_trx_paths : MState.t list),
+         (cfg_query_paths : MState.t list QIDMap.t)
+       ) =
       MState.gen_trx_paths
         ~is_path_sat:(is_path_sat cfg_smt_ctxt cfg_smt_slvr)
         cfg_se_res.sr_queries cfg_m_view
@@ -393,13 +407,15 @@ let string_of_res : config -> res -> string =
                 let (param : string) =
                    ss.ss_start_si.si_param.ti_param
                    |> tz_mvcc_to_eval ~sctx:ss.ss_id
-                   |> String.substr_replace_all ~pattern:"\n" ~with_:"\n\t\t\t\t"
+                   |> String.substr_replace_all ~pattern:"\n"
+                        ~with_:"\n\t\t\t\t"
                 in
                 let (amount : string) =
                    ss.ss_start_si.si_param.ti_amount
                    |> tz_mvcc_to_eval ~sctx:ss.ss_id
                 in
-                Printf.sprintf "\t\t- Transaction #%d:\n\t\t\tAmount:%s\n\t\t\tParameter:\n\t\t\t\t%s"
+                Printf.sprintf
+                  "\t\t- Transaction #%d:\n\t\t\tAmount:%s\n\t\t\tParameter:\n\t\t\t\t%s"
                   (idx + 1) amount param
             )
            |> String.concat ~sep:"\n"
@@ -451,7 +467,9 @@ let string_of_res : config -> res -> string =
         (Utils.Time.string_of_elapsed_time cfg.cfg_timer)
         (Utils.Memory.string_of_used_memory cfg.cfg_memory)
    in
-   let (itvr : string) = Printf.sprintf "Combinations: %d" (res.r_comb_cnt + 1) in
+   let (itvr : string) =
+      Printf.sprintf "Combinations: %d" (res.r_comb_cnt + 1)
+   in
    let (summ : string) =
       Printf.sprintf "#Total: %d\t\t#Proved: %d\t\t#Refuted: %d\t\t#Failed: %d"
         tot_c p_c r_c failed_c
