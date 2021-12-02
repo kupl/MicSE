@@ -315,7 +315,7 @@ let init_config :
      (* Ingrdients for invariant synthesis *)
      cfg_imap;
      (* Top-k setting *)
-     cfg_ppath_k = 2;
+     cfg_ppath_k = 5;
      cfg_cand_k = 2;
      cfg_comb_k = 50;
    }

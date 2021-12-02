@@ -711,8 +711,6 @@ let featurediff_first_score_f_gen :
     -. (diff_counts_len *. const_LENGTH_PENALTY_COEF)
   )
 
-let trxpath_path_pick_N : int ref = ref 10
-
 let trxpath_guided_run_qres :
     Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.qres -> Res.qres
     =
@@ -737,7 +735,7 @@ let trxpath_guided_run_qres :
           |> List.sort ~compare:(fun x y -> compare_float (snd y) (snd x))
           |> List.map ~f:fst
        in
-       List.split_n sorted_path !trxpath_path_pick_N
+       List.split_n sorted_path cfg.cfg_ppath_k
        |> (fun (x, y) -> (PPSet.of_list x, PPSet.of_list y))
     in
     let _ =
@@ -981,7 +979,7 @@ let trxpath_score_saved_guided_run_qres :
                  compare_float y_floatscore x_floatscore
              )
        in
-       List.split_n scored_sorted_list !trxpath_path_pick_N
+       List.split_n scored_sorted_list cfg.cfg_ppath_k
     in
     let _ =
        Utils.Log.debug (fun m ->
