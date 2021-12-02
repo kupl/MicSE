@@ -851,8 +851,12 @@ let find_cand_top_k :
 (* function find_cand_map_top_k end *)
 
 let strengthen_cand_map :
-    is_cand_sat:(cand -> bool) -> cand_map -> inv_map -> cand_map =
-  fun ~is_cand_sat cmap imap ->
+    is_cand_sat:(cand -> bool) ->
+    do_cand_sat_istrg:(Tz.r_mich_cut_info -> cand -> bool) ->
+    cand_map ->
+    inv_map ->
+    cand_map =
+  fun ~is_cand_sat ~do_cand_sat_istrg cmap imap ->
   RMCIMap.mapi cmap ~f:(fun ~key:rmci ~data:cset ->
       let (cur_inv : cand) = find_inv_by_rmci imap rmci in
       CMap.fold cset ~init:CMap.empty ~f:(fun ~key ~data:(f1, s1) new_cmap ->
@@ -860,7 +864,7 @@ let strengthen_cand_map :
           then new_cmap
           else (
             let (cand : cand) = join_cands cur_inv key in
-            if not (is_cand_sat cand)
+            if (not (is_cand_sat cand)) || not (do_cand_sat_istrg rmci cand)
             then new_cmap
             else
               CMap.update new_cmap cand ~f:(function

@@ -279,7 +279,11 @@ val find_cand_top_k :
   cand list
 
 val strengthen_cand_map :
-  is_cand_sat:(cand -> bool) -> cand_map -> inv_map -> cand_map
+  is_cand_sat:(cand -> bool) ->
+  do_cand_sat_istrg:(Tz.r_mich_cut_info -> cand -> bool) ->
+  cand_map ->
+  inv_map ->
+  cand_map
 
 val update_score_by_rmci :
   cand_map ->
