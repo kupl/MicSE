@@ -1302,13 +1302,19 @@ let do_cand_sat_istrg :
    if not (equal_r_mich_cut_category rmci.rmci_cutcat RMCC_trx)
    then true
    else (
+     let (prec : mich_f) =
+        MF_and (MFSet.to_list cand.c_cond)
+        |> apply_inv_with_initial_storage ~sctx:istate.ss_id istate.ss_start_mci
+             istate.ss_start_si istrg
+     in
+     let ((sat : Solver.satisfiability), _) = check_sat ctx solver prec in
      let (vc : mich_f) =
         Inv.fmla_of_cand_post cand
         |> apply_inv_with_initial_storage ~sctx:istate.ss_id istate.ss_start_mci
              istate.ss_start_si istrg
      in
      let ((vld : Solver.validity), _) = check_val ctx solver vc in
-     Solver.is_val vld
+     Solver.is_sat sat && Solver.is_val vld
    )
 (* function do_can_sat_istrg end *)
 
