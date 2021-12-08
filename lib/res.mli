@@ -146,6 +146,16 @@ type config = {
 (******************************************************************************)
 (******************************************************************************)
 
+(* EXPERIMENT MODE *)
+
+val exp_prover_no_benefit_mode : bool ref
+
+val exp_prover_path_pool : PPSet.t QIDMap.t ref
+
+val exp_prover_compare_func : PPath.t -> PPath.t -> int
+
+(* EXPERIMENT MODE *)
+
 val init_qres : Tz.qid -> SSet.t -> qres
 
 val init_res : config -> res

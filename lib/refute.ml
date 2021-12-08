@@ -1064,9 +1064,43 @@ let trxpath_score_saved_guided_run_qres :
        PPSet.fold expanded_paths ~init:([], None) ~f
     in
     (* Last. return value construction *)
+    let _ =
+       (* EXPERIMENT MODE *)
+       if !Res.exp_prover_no_benefit_mode
+       then ()
+       else
+        Res.exp_prover_path_pool :=
+           Res.QIDMap.update !Res.exp_prover_path_pool qres.qr_qid ~f:(function
+           | None       -> List.map picked_paths ~f:fst |> PPSet.of_list
+           | Some ppset ->
+             PPSet.union ppset (List.map picked_paths ~f:fst |> PPSet.of_list)
+           )
+       (* EXPERIMENT MODE *)
+    in
     let qr_validated_ppaths = expanded_paths_list
     and qr_total_ppaths = total_ppaths @ qres.qr_total_ppaths
-    and qr_last_picked_paths = List.map picked_paths ~f:fst |> PPSet.of_list
+    and qr_last_picked_paths =
+       (* EXPERIMENT MODE *)
+       if !Res.exp_prover_no_benefit_mode
+       then List.map picked_paths ~f:fst |> PPSet.of_list
+       else (
+         let (picked, remain) =
+            let sorted_list : Res.PPath.t list =
+               Res.QIDMap.find_exn !Res.exp_prover_path_pool qres.qr_qid
+               |> PPSet.to_list
+               |> List.sort ~compare:Res.exp_prover_compare_func
+            in
+            List.split_n sorted_list cfg.cfg_ppath_k
+         in
+         let _ =
+          Res.exp_prover_path_pool :=
+              Res.QIDMap.update !Res.exp_prover_path_pool qres.qr_qid ~f:(fun _ ->
+                  remain |> PPSet.of_list
+              )
+         in
+         picked |> PPSet.of_list
+       )
+    (* EXPERIMENT MODE *)
     and qr_exp_ppaths =
        PPSet.union expanded_paths
          (List.map unpicked_paths ~f:fst |> PPSet.of_list)

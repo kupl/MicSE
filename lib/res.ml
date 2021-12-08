@@ -177,9 +177,29 @@ type config = {
 (******************************************************************************)
 (******************************************************************************)
 
+(* EXPERIMENT MODE *)
+let exp_prover_no_benefit_mode : bool ref = ref true
+
+let exp_prover_path_pool : PPSet.t QIDMap.t ref = ref QIDMap.empty
+
+let exp_prover_compare_func : PPath.t -> PPath.t -> int =
+  fun p1 p2 ->
+  compare_int (MState.get_length p1.pp_mstate) (MState.get_length p2.pp_mstate)
+
+(* EXPERIMENT MODE *)
+
 let init_qres : Tz.qid -> SSet.t -> qres =
   fun qr_qid qr_unk_qs ->
   let exp_ppaths = PPSet.map qr_unk_qs ~f:(fun ss -> PPath.t_of_ss ss) in
+  let _ =
+     (* EXPERIMENT MODE *)
+     if not !exp_prover_no_benefit_mode
+     then ()
+     else
+       exp_prover_path_pool :=
+         QIDMap.update !exp_prover_path_pool qr_qid ~f:(fun _ -> exp_ppaths)
+     (* EXPERIMENT MODE *)
+  in
   {
     qr_qid;
     qr_prv_flag = PF_u;
