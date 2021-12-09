@@ -178,7 +178,7 @@ type config = {
 (******************************************************************************)
 
 (* EXPERIMENT MODE *)
-let exp_prover_no_benefit_mode : bool ref = ref true
+let exp_prover_no_benefit_mode : bool ref = ref false
 
 let exp_prover_path_pool : PPSet.t QIDMap.t ref = ref QIDMap.empty
 
