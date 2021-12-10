@@ -10,7 +10,7 @@ QUIET := > /dev/null
 default: build
 
 build:
-	dune build
+	dune build --build-dir $(PWD)/_build
 	mkdir -p $(CURRENT_DIR)/bin $(QUIET)
 	cp -f $(foreach file,$(BIN_LIST),$(BIN_DIR)/$(file)) $(CURRENT_DIR)/bin $(QUIET)
 

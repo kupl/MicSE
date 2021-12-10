@@ -17,3 +17,6 @@ tmp/
 # Vagrant Configurations
 .vagrant/
 vagrant
+
+# Python
+__pycache__
