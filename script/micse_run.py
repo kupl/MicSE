@@ -66,7 +66,12 @@ def run_each(idx, target, res, syncdata):
   job['start_time'] = time.time()
   # Launch the process
   tmp_fp = tempfile.TemporaryFile()
-  subprocess.run(job['cmd'], stdout=tmp_fp, stderr=subprocess.STDOUT, text=True, cwd=PROJECT_DIR, timeout=TOTAL_TIMEOUT*1.1)
+  try:
+    subprocess.run(job['cmd'], stdout=tmp_fp, stderr=subprocess.STDOUT, text=True, cwd=PROJECT_DIR, timeout=TOTAL_TIMEOUT*1.1)
+  except subprocess.TimeoutExpired as te:
+    LOG.warn("job #{} timed out".format(job['idx']))
+  except Exception as ex:
+    LOG.warn("job #{} errored: {}".format(job['idx'], ex))
   # Finalize job
   job['end_time'] = time.time()
   job['run_time'] = round(job['end_time'] - job['start_time'], 3)
