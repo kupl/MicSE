@@ -80,9 +80,9 @@ def run_each(idx, target, res, syncdata):
   # Log the result
   with open(job['output'], "w") as fp:
     tmp_fp.seek(0)
-    fp.write("$ {}".format(str.join(" ", job['cmd'])))
-    fp.write("{}".format(tmp_fp.read().decode()))
-    fp.write("...{}s [{}/{}]".format(job['run_time'], syncdata[0], syncdata[1]))
+    fp.write("$ {}\n".format(str.join(" ", job['cmd'])))
+    fp.write("{}\n".format(tmp_fp.read().decode()))
+    fp.write("...{}s [{}/{}]\n".format(job['run_time'], syncdata[0], syncdata[1]))
   LOG.info("job #{} is done in {}s [{}/{}].".format(idx, job['run_time'], syncdata[0], syncdata[1]))
   res.append(job)
   SLACK.post_result(job)

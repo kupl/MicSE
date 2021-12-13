@@ -98,6 +98,9 @@ if not (os.path.isdir(BENCHMARK_DIR)):
   raise Exception("ARG_VALIDATE_ERR")
 if not (os.path.isdir(OUTPUT_DIR)):
   os.mkdir(OUTPUT_DIR)
+else:
+  LOG.critical("Wrong output directory path (already exists): {}".format(OUTPUT_LOC_DIR))
+  raise Exception("ARG_VALIDATE_ERR")
 if not (MICSE_LOG_LEVEL == "-d" or MICSE_LOG_LEVEL == "-v" or MICSE_LOG_LEVEL == None):
   LOG.critical("Wrong log level: {}".format(MICSE_LOG_LEVEL))
   raise Exception("ARG_VALIDATE_ERR")
