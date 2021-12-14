@@ -1,4 +1,4 @@
-name: CI
+name: Build & Tests
 
 on:
   push:
@@ -51,3 +51,15 @@ jobs:
         run: |
           eval $(opam env)
           make
+
+  test:
+    runs-on: ubuntu-20.04
+
+    needs: [build]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      ## Test
+      - name: Test
+        run: dune test

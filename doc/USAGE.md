@@ -146,7 +146,7 @@ Combinations: _
 - **Output:**
 
 ```txt
-$ ./bin/micse.naive_prover -I ./benchmarks/examples/deposit.tz -S ./benchmarks/examples/deposit.storage.tz -q 126 29
+$ ./bin/micse.advanced_trxpath_refuter -I ./benchmarks/examples/deposit.tz -S ./benchmarks/examples/deposit.storage.tz -q 344 22
  Final-Report : 
 === Final Result ===
 Time: 23.511754 sec   Memory: 0.039196 GB
