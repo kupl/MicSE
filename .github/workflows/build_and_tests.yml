@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build_and_tests:
     runs-on: ubuntu-20.04
 
     env:
@@ -57,15 +57,3 @@ jobs:
         run: |
           eval $(opam env)
           make test
-
-  test:
-    runs-on: ubuntu-20.04
-
-    needs: [build]
-
-    steps:
-      - uses: actions/checkout@v2
-
-      ## Test
-      - name: Test
-        run: dune test
