@@ -10,12 +10,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     env:
       OPAM_SWITCH_VERSION: 4.10.0
       Z3_VERSION: 4.8.12
-      CORE: 2
+      CORES: 2
 
     steps:
       - uses: actions/checkout@v2
