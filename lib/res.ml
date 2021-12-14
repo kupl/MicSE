@@ -366,6 +366,30 @@ type qres_classified = {
   qrc_ff : QRSet.t;
 }
 
+let classify_qres : res -> qres_classified =
+  fun res ->
+  Core.List.fold res.r_qr_lst
+    ~init:
+      {
+        qrc_p = QRSet.empty;
+        qrc_r = QRSet.empty;
+        qrc_err = QRSet.empty;
+        qrc_uu = QRSet.empty;
+        qrc_uf = QRSet.empty;
+        qrc_fu = QRSet.empty;
+        qrc_ff = QRSet.empty;
+      } ~f:(fun acc qres ->
+      match (qres.qr_prv_flag, qres.qr_rft_flag) with
+      | (PF_p, RF_r) -> { acc with qrc_err = QRSet.add acc.qrc_err qres }
+      | (PF_p, _)    -> { acc with qrc_p = QRSet.add acc.qrc_p qres }
+      | (_, RF_r)    -> { acc with qrc_r = QRSet.add acc.qrc_r qres }
+      | (PF_u, RF_u) -> { acc with qrc_uu = QRSet.add acc.qrc_uu qres }
+      | (PF_u, RF_f) -> { acc with qrc_uf = QRSet.add acc.qrc_uf qres }
+      | (PF_f, RF_u) -> { acc with qrc_fu = QRSet.add acc.qrc_fu qres }
+      | (PF_f, RF_f) -> { acc with qrc_ff = QRSet.add acc.qrc_ff qres }
+  )
+(* function classify_qres end *)
+
 let string_of_res_rough : config -> res -> string =
    let soi = string_of_int in
    fun cfg res ->
@@ -455,28 +479,7 @@ let string_of_res : config -> res -> string =
      (* inner-function qres_model_str end *)
    in
    fun cfg res ->
-   let (cres : qres_classified) =
-      Core.List.fold res.r_qr_lst
-        ~init:
-          {
-            qrc_p = QRSet.empty;
-            qrc_r = QRSet.empty;
-            qrc_err = QRSet.empty;
-            qrc_uu = QRSet.empty;
-            qrc_uf = QRSet.empty;
-            qrc_fu = QRSet.empty;
-            qrc_ff = QRSet.empty;
-          } ~f:(fun acc qres ->
-          match (qres.qr_prv_flag, qres.qr_rft_flag) with
-          | (PF_p, RF_r) -> { acc with qrc_err = QRSet.add acc.qrc_err qres }
-          | (PF_p, _)    -> { acc with qrc_p = QRSet.add acc.qrc_p qres }
-          | (_, RF_r)    -> { acc with qrc_r = QRSet.add acc.qrc_r qres }
-          | (PF_u, RF_u) -> { acc with qrc_uu = QRSet.add acc.qrc_uu qres }
-          | (PF_u, RF_f) -> { acc with qrc_uf = QRSet.add acc.qrc_uf qres }
-          | (PF_f, RF_u) -> { acc with qrc_fu = QRSet.add acc.qrc_fu qres }
-          | (PF_f, RF_f) -> { acc with qrc_ff = QRSet.add acc.qrc_ff qres }
-      )
-   in
+   let (cres : qres_classified) = classify_qres res in
    let (tot_c : int) = Core.List.length res.r_qr_lst
    and (p_c : int) = QRSet.length cres.qrc_p
    and (r_c : int) = QRSet.length cres.qrc_r

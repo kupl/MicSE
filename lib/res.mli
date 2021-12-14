@@ -191,6 +191,8 @@ type qres_classified = {
   qrc_ff : QRSet.t; (* failed-failed    *)
 }
 
+val classify_qres : res -> qres_classified
+
 val string_of_res_rough : config -> res -> string
 
 val string_of_res : config -> res -> string
