@@ -43,22 +43,22 @@ OPAM_LIB_DIR=~/.opam/$OPAM_SWITCH_VERSION/lib/
 echo "[NOTE] End-up Initialize OPAM"
 
 # Install Z3
-if [[ ! -d "${OPAM_LIB_DIR%%/}/z3" ]]; then
-  echo "[NOTE] Start Install Z3"
-  curl -L -o z3-$Z3_VERSION.tar.gz https://github.com/Z3Prover/z3/archive/z3-$Z3_VERSION.tar.gz >/dev/null 2>&1 && \
-    tar -zxvf z3-$Z3_VERSION.tar.gz >/dev/null 2>&1 && \
-    rm z3-$Z3_VERSION.tar.gz >/dev/null
-  Z3_DIR=~/z3-z3-$Z3_VERSION/
-  cd ${Z3_DIR%%/}/ && \
-    python2.7 scripts/mk_make.py --ml --staticlib >/dev/null
-  eval $(opam env) && \
-    make -C build -j $CORES >/dev/null 2>&1
-  eval $(opam env) && \
-    ocamlfind install z3 build/api/ml/* build/libz3-static.a >/dev/null && \
-    sudo cp build/z3 /usr/bin/z3 && \
-    rm -rf ${Z3_DIR%%/}
-  echo "[NOTE] End-up Install Z3"
-fi
+# if [[ ! -d "${OPAM_LIB_DIR%%/}/z3" ]]; then
+#   echo "[NOTE] Start Install Z3"
+#   curl -L -o z3-$Z3_VERSION.tar.gz https://github.com/Z3Prover/z3/archive/z3-$Z3_VERSION.tar.gz >/dev/null 2>&1 && \
+#     tar -zxvf z3-$Z3_VERSION.tar.gz >/dev/null 2>&1 && \
+#     rm z3-$Z3_VERSION.tar.gz >/dev/null
+#   Z3_DIR=~/z3-z3-$Z3_VERSION/
+#   cd ${Z3_DIR%%/}/ && \
+#     python2.7 scripts/mk_make.py --ml --staticlib >/dev/null
+#   eval $(opam env) && \
+#     make -C build -j $CORES >/dev/null 2>&1
+#   eval $(opam env) && \
+#     ocamlfind install z3 build/api/ml/* build/libz3-static.a >/dev/null && \
+#     sudo cp build/z3 /usr/bin/z3 && \
+#     rm -rf ${Z3_DIR%%/}
+#   echo "[NOTE] End-up Install Z3"
+# fi
 
 # Build
 if [[ ! -d "~/MicSE" ]]; then

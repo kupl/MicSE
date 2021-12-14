@@ -26,6 +26,7 @@ depends: [
   "ppx_deriving" {= "5.2.1"}
   "mtime" {= "1.2.0"}
   "logs" {= "0.7.0"}
+  "z3" {= "4.8.11"}
 ]
 build: [
   ["dune" "subst"] {pinned}
