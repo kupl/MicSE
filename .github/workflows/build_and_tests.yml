@@ -52,6 +52,12 @@ jobs:
           eval $(opam env)
           make
 
+      ## Tests
+      - name: Tests
+        run: |
+          eval $(opam env)
+          make test
+
   test:
     runs-on: ubuntu-20.04
 
