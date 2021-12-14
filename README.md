@@ -1,5 +1,7 @@
 # MicSE (in development)
 
+[![Build & Tests](https://github.com/kupl/MicSE/actions/workflows/build_and_tests.yml/badge.svg)](https://github.com/kupl/MicSE/actions/workflows/build_and_tests.yml)
+
 ## Table of Contents
 
 - [MicSE (in development)](#micse-in-development)
