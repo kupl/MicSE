@@ -12,7 +12,7 @@ BENCHMARK_LOC_DIR = os.path.join(PROJECT_DIR, "benchmarks")
 OUTPUT_LOC_DIR = os.path.join(PROJECT_DIR, "result")
 BIN_LOC_DIR = os.path.join(PROJECT_DIR, "bin")
 DOTENV_PATH = os.path.join(BASE_DIR, ".env")
-BIN_LIST = ["micse", "micse.naive_refuter", "micse.naive_prover",
+BIN_LIST = ["micse", "micse.naive_trxpath_main", "micse.naive_refuter", "micse.naive_prover",
             "micse-s", "micse-s.enhanced_prover"]
 
 # Environments Settings

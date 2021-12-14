@@ -3,12 +3,14 @@
   main
   naive_refuter
   naive_prover
+  naive_trxpath_main
   naive_trxpath_refuter
   advanced_trxpath_refuter)
  (public_names
   micse
   micse.naive_refuter
   micse.naive_prover
+  micse.naive_trxpath_main
   micse.naive_trxpath_refuter
   micse.advanced_trxpath_refuter)
  (libraries core lib utils)

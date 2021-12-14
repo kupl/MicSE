@@ -22,4 +22,5 @@ val naive_run_escape_condition : Res.config -> Res.res -> bool
 
 val naive_run : Res.config -> Res.res -> Res.res
 
-val adv_run : Res.config -> Res.res -> Res.res
+val adv_run :
+  Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.res -> Res.res

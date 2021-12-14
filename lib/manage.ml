@@ -160,7 +160,8 @@ let naive_run : Res.config -> Res.res -> Res.res =
    n_res
 (* function naive_run end *)
 
-let adv_run : Res.config -> Res.res -> Res.res =
+let adv_run :
+    Res.config -> score_f:(Tz.qid -> MState.t -> float) -> Res.res -> Res.res =
    let log_report : Res.config -> Res.res -> unit =
      fun cfg res ->
      Utils.Log.info (fun m -> m "> Report: %s" (Res.string_of_res_rough cfg res))
@@ -193,8 +194,8 @@ let adv_run : Res.config -> Res.res -> Res.res =
      )
    in
    (* inner-function adv_run_i end *)
-   fun cfg res ->
-   let score_f = Refute.featurediff_first_score_f_gen cfg res in
+   fun cfg ~score_f res ->
+   (* let score_f = Refute.featurediff_first_score_f_gen cfg res in *)
    let _ = log_report cfg res in
    let _ = Utils.Log.info (fun m -> m "> Prover Turn Start") in
    let (p_res : Res.res) = initial_prove_run_res_atomic_action cfg res in
