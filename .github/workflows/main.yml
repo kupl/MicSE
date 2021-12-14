@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      OPAM_SWITCH_VERSION: 4.10.0
+      Z3_VERSION: 4.8.12
+      CORE: 2
+
+    steps:
+      - uses: actions/checkout@v2
+
+      ## Setup
+      - name: System Dependencies
+        run: |
+          sudo apt-get update >/dev/null
+          for pkg in "cmake" "build-essential" "python2.7" "libgmp-dev" "opam" "ocaml-findlib"; do
+            echo "[NOTE] Install $pkg: start"
+            sudo apt-get install -y -qq $pkg >/dev/null 2>&1
+            echo "[NOTE] Install $pkg: done"
+          done
+
+      - name: OPAM and OCaml Dependencies
+        run: |
+          opam init -y --bare >/dev/null
+          opam update >/dev/null
+          eval $(opam env)
+          if [[ ! "$(ocaml --version)" =~ "$OPAM_SWITCH_VERSION" ]]; then
+            if [[ "$(opam switch list 2>/dev/null | grep -c "$OPAM_SWITCH_VERSION")" -eq 0 ]]; then
+              opam switch create $OPAM_SWITCH_VERSION >/dev/null
+            else
+              opam switch $OPAM_SWITCH_VERSION >/dev/null
+            fi
+          fi
+          echo "[NOTE] Current OCAML version is $(ocaml --version | grep -P "\d+\.\d+\.\d+" -o)"
+          eval $(opam env) && \
+            opam install -y -q -j $CORES ./ --deps-only
+
+      - name: Z3
+        run: |
+          OPAM_LIB_DIR=~/.opam/$OPAM_SWITCH_VERSION/lib/
+          if [[ ! -d "${OPAM_LIB_DIR%%/}/z3" ]]; then
+            curl -L -o z3-$Z3_VERSION.tar.gz https://github.com/Z3Prover/z3/archive/z3-$Z3_VERSION.tar.gz >/dev/null 2>&1 && \
+              tar -zxvf z3-$Z3_VERSION.tar.gz >/dev/null 2>&1 && \
+              rm z3-$Z3_VERSION.tar.gz >/dev/null
+            Z3_DIR=${PWD%%/}/z3-z3-$Z3_VERSION/
+            cd ${Z3_DIR%%/}/ && \
+              python2.7 scripts/mk_make.py --ml --staticlib >/dev/null
+            eval $(opam env) && \
+              make -C build -j $CORES >/dev/null 2>&1
+            eval $(opam env) && \
+              ocamlfind install z3 build/api/ml/* build/libz3-static.a >/dev/null && \
+              sudo cp build/z3 /usr/bin/z3 && \
+              rm -rf ${Z3_DIR%%/}
+          fi
+
+      ## Build
+      - name: build
+        run: |
+          eval $(opam env)
+          make
