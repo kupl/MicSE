@@ -50,10 +50,10 @@ jobs:
       - name: Build
         run: |
           eval $(opam env)
-          make
+          dune build
 
       ## Tests
       - name: Tests
         run: |
           eval $(opam env)
-          make test
+          dune runtest -f
