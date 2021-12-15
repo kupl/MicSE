@@ -16,7 +16,7 @@ build:
 
 test:
 	dune build
-	dune runtest -f $(QUIET)
+	dune runtest -f --verbose
 
 install:
 	dune install $(QUIET)
