@@ -37,7 +37,7 @@ let rec typ_run_inst :
    match inst.cc_v with
    | MI_seq (i1, i2) -> st |> tri i1 |> tri i2
    | MI_drop zn -> nth_tl st (z2i zn)
-   | MI_dup zn -> nth st (z2i zn + 1) :: st
+   | MI_dup zn -> nth st (z2i zn - 1) :: st
    | MI_swap -> nth st 1 :: nth st 0 :: nth_tl st 2
    | MI_dig zn -> znth st zn :: (nth_hd st (z2i zn) @ nth_tl st (z2i zn + 1))
    | MI_dug zn ->

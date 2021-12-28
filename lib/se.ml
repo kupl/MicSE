@@ -858,6 +858,9 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
            ^ (inst.cc_loc |> sexp_of_ccp_loc |> Sexp.to_string)
            ^ "\nMichStack Length : "
            ^ (List.length ss.ss_block_si.si_mich |> string_of_int)
+           ^ "\nStack : \n\t["
+           ^ (List.map ss.ss_block_si.si_mich ~f:(fun v -> Tz.sexp_of_mich_v v.cc_v |> SexpUtil.to_string) |> String.concat ~sep:"; ")
+           ^ "]"
            )
       in *)
    let ctx = ss.ss_id in
