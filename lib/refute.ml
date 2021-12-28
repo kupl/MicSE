@@ -984,23 +984,8 @@ let trxpath_score_saved_guided_run_qres :
           qres.qr_exp_ppaths
           |> PPSet.to_list
           |> List.map ~f:pick_score_with_update_score_f
-          |> List.sort
-               ~compare:(fun
-                          ({ Res.PPath.pp_score = pps_x; _ }, x_floatscore)
-                          ({ Res.PPath.pp_score = pps_y; _ }, y_floatscore)
-                        ->
+          |> List.sort ~compare:(fun (_, x_floatscore) (_, y_floatscore) ->
                  compare_float y_floatscore x_floatscore
-                 |> function
-                 | 0      ->
-                   let (pps_xl, pps_yl) =
-                      (List.length pps_x, List.length pps_y)
-                   in
-                   if pps_xl < 2 || pps_yl < 2
-                   then
-                     (* For Trx-length < 3 paths, prioritize the shortest path first. *)
-                     compare_int (List.length pps_x) (List.length pps_y)
-                   else 0
-                 | _ as v -> v
              )
        in
        List.split_n scored_sorted_list cfg.cfg_ppath_k
@@ -1084,7 +1069,7 @@ let trxpath_score_saved_guided_run_qres :
        if !Res.exp_prover_no_benefit_mode
        then ()
        else
-         Res.exp_prover_path_pool :=
+        Res.exp_prover_path_pool :=
            Res.QIDMap.update !Res.exp_prover_path_pool qres.qr_qid ~f:(function
            | None       -> List.map picked_paths ~f:fst |> PPSet.of_list
            | Some ppset ->
@@ -1108,9 +1093,9 @@ let trxpath_score_saved_guided_run_qres :
             List.split_n sorted_list cfg.cfg_ppath_k
          in
          let _ =
-            Res.exp_prover_path_pool :=
-              Res.QIDMap.update !Res.exp_prover_path_pool qres.qr_qid
-                ~f:(fun _ -> remain |> PPSet.of_list
+          Res.exp_prover_path_pool :=
+              Res.QIDMap.update !Res.exp_prover_path_pool qres.qr_qid ~f:(fun _ ->
+                  remain |> PPSet.of_list
               )
          in
          picked |> PPSet.of_list
