@@ -848,21 +848,20 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    in
    (* VERY VERY NAIVE OPTIMIZATION END *)
    (* let _ =
-         (* DEBUG *)
-         print_endline ("HIHI " ^ (ctxt_sr.sr_sid_counter |> string_of_int))
-      in *)
-   (* let _ =
-         (* DEBUG *)
-         print_endline
-           ("Current Mci : "
-           ^ (inst.cc_loc |> sexp_of_ccp_loc |> Sexp.to_string)
-           ^ "\nMichStack Length : "
-           ^ (List.length ss.ss_block_si.si_mich |> string_of_int)
-           ^ "\nStack : \n\t["
-           ^ (List.map ss.ss_block_si.si_mich ~f:(fun v -> Tz.sexp_of_mich_v v.cc_v |> SexpUtil.to_string) |> String.concat ~sep:"; ")
-           ^ "]"
-           )
-      in *)
+      (* DEBUG *)
+      Utils.Log.debug (fun m ->
+          m
+            "Current MCI: %s\n\tCurrent SID: %d\n\tMichStack Length: %d\n\tStack: \n\t\t[%s]"
+            (inst.cc_loc |> sexp_of_ccp_loc |> Sexp.to_string)
+            ctxt_sr.sr_sid_counter
+            (List.length ss.ss_block_si.si_mich)
+            (List.map ss.ss_block_si.si_mich ~f:(fun v ->
+                 Tz.sexp_of_mich_v v.cc_v |> SexpUtil.to_string
+             )
+            |> String.concat ~sep:"; "
+            )
+      )
+   in *)
    let ctx = ss.ss_id in
    match inst.cc_v with
    | MI_seq (i1, i2) -> run_inst_i i1 (ctxt_sr, ss) |> run_inst i2
@@ -1275,12 +1274,15 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                      let (get : mich_v cc) =
                         MV_get_xmoy (key, tb_container_v) |> gen_custom_cc inst
                      in
+                     let (get_unopt : mich_v cc) =
+                        MV_unlift_option get |> gen_custom_cc inst
+                     in
                      let (mem : mich_v cc) =
                         MV_mem_xmb (key, tb_container_v) |> gen_custom_cc inst
                      in
                      ( updated_map,
                        MF_eq
-                         ( gen_mich_v_ctx ~ctx get,
+                         ( gen_mich_v_ctx ~ctx get_unopt,
                            gen_mich_v_ctx ~ctx value_unopt
                          )
                        :: MF_is_true (gen_mich_v_ctx ~ctx mem)
