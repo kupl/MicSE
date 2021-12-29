@@ -2,6 +2,8 @@
 
 open! Core
 
+exception MStateError of string
+
 (******************************************************************************)
 (******************************************************************************)
 (* Common Datatypes                                                           *)
@@ -128,129 +130,133 @@ let stack_equality_fmlas :
                (Tz.sexp_of_mich_cut_category mcc_2 |> string_of_sexp)
          )
       in *)
-   match (mcc_1, mcc_2) with
-   (* TRX *)
-   | (MCC_trx_exit, MCC_trx_entry) ->
-     (* 1. michelson stack - storage equality *)
-     (* NOTE : This CDR should be optimized, maybe? *)
-     let (ms_c : mich_f list) =
-        eqf
-          (MV_cdr (List.hd_exn si1.si_mich) |> gen_dummy_cc)
-          (MV_cdr (List.hd_exn si2.si_mich) |> gen_dummy_cc)
-     (* 2. dip, map, iter stacks should be emptied - No Constraints *)
-     (* 3. balance equality *)
-     and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
-     (* 4. bc_balance equality *)
-     and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
-     (* 5. time inequality *)
-     and (time_c : mich_f) =
-        MF_time_leq
-          ( gen_mich_v_ctx ~ctx:ctxt1 si1.si_param.ti_time,
-            gen_mich_v_ctx ~ctx:ctxt2 si2.si_param.ti_time
-          )
-     in
-     (* 6. contract equality *)
-     let (ctrt_c : mich_f list) =
-        eqf si1.si_param.ti_contract si2.si_param.ti_contract
-     in
-     (time_c :: ms_c) @ b_c @ bcb_c @ ctrt_c
-   (* LOOP *)
-   | (MCC_ln_loop, MCC_ln_loop)
-   | (MCC_ln_loop, MCC_lb_loop)
-   | (MCC_lb_loop, MCC_ln_loop)
-   | (MCC_lb_loop, MCC_lb_loop) ->
-     (* NOTE: question here : is (AND []) valid formula ? *)
-     let (ms_hd_c : mich_f list) =
-        let bool_v =
-           match mcc_2 with
-           | MCC_ln_loop -> false
-           | _           -> true
-        in
-        eqf_cc ctxt1 ctxt1 (List.hd_exn si1.si_mich)
-          (MV_lit_bool bool_v |> gen_dummy_cc)
-     in
-     let (ms_c : mich_f list) =
-        List.map2_exn (List.tl_exn si1.si_mich) si2.si_mich ~f:eqf |> List.join
-     and (ds_c : mich_f list) =
-        List.map2_exn si1.si_dip si2.si_dip ~f:eqf |> List.join
-     and (maps_entry_c : mich_f list) =
-        List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join
-     and (maps_exit_c : mich_f list) =
-        List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join
-     and (is_c : mich_f list) =
-        List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join
-     and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
-     and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
-     and (ti_c : mich_f list) =
-        trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param
-     in
-     ms_hd_c
-     @ ms_c
-     @ ds_c
-     @ maps_entry_c
-     @ maps_exit_c
-     @ is_c
-     @ b_c
-     @ bcb_c
-     @ ti_c
-   (* LOOP-LEFT *)
-   | (MCC_ln_loopleft, MCC_ln_loopleft)
-   | (MCC_ln_loopleft, MCC_lb_loopleft)
-   | (MCC_lb_loopleft, MCC_ln_loopleft)
-   | (MCC_lb_loopleft, MCC_lb_loopleft) ->
-     (* 1. common parts
-        - mich-stack tail, dip-stack, map-entry/exit/mapkey-stack,
-           iter-stack, balance, bc-balance, trx-images
-     *)
-     let (ms_c_common : mich_f list) =
-        List.map2_exn (List.tl_exn si1.si_mich) (List.tl_exn si2.si_mich) ~f:eqf
-        |> List.join
-     and (ds_c : mich_f list) =
-        List.map2_exn si1.si_dip si2.si_dip ~f:eqf |> List.join
-     and (map_entry_sc : mich_f list) =
-        List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join
-     and (map_exit_sc : mich_f list) =
-        List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join
-     and (map_mkey_sc : mich_f list) =
-        List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf |> List.join
-     and (is_c : mich_f list) =
-        List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join
-     and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
-     and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
-     and (ti_c : mich_f list) =
-        trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param
-     in
-     (* 2. Left/Right specific constraints *)
-     let (lr_c : mich_f list) =
-        let (h1, h2) = (List.hd_exn si1.si_mich, List.hd_exn si2.si_mich) in
-        let (left_typ, right_typ) =
-           match (typ_of_val h1).cc_v with
-           | MT_or (t1, t2) -> (t1, t2)
-           | _              ->
-             failwith
-               "MState : stack_equality_fmlas : LOOP_LEFT : 1 : unexpected"
-        in
-        match mcc_2 with
-        | MCC_ln_loopleft ->
-          (* Right *)
-          eqf h1 (MV_right (left_typ, h2) |> gen_dummy_cc)
-        | MCC_lb_loopleft ->
-          (* Left *) eqf h1 (MV_left (right_typ, h2) |> gen_dummy_cc)
-        | _               ->
-          failwith "MState : stack_equality_fmlas : LOOP_LEFT : 2 : unexpected"
-     in
-     ms_c_common
-     @ ds_c
-     @ map_entry_sc
-     @ map_exit_sc
-     @ map_mkey_sc
-     @ is_c
-     @ b_c
-     @ bcb_c
-     @ ti_c
-     @ lr_c
-   (* ITER *)
-   (*
+   try
+     match (mcc_1, mcc_2) with
+     (* TRX *)
+     | (MCC_trx_exit, MCC_trx_entry) ->
+       (* 1. michelson stack - storage equality *)
+       (* NOTE : This CDR should be optimized, maybe? *)
+       let (ms_c : mich_f list) =
+          eqf
+            (MV_cdr (List.hd_exn si1.si_mich) |> gen_dummy_cc)
+            (MV_cdr (List.hd_exn si2.si_mich) |> gen_dummy_cc)
+       (* 2. dip, map, iter stacks should be emptied - No Constraints *)
+       (* 3. balance equality *)
+       and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
+       (* 4. bc_balance equality *)
+       and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
+       (* 5. time inequality *)
+       and (time_c : mich_f) =
+          MF_time_leq
+            ( gen_mich_v_ctx ~ctx:ctxt1 si1.si_param.ti_time,
+              gen_mich_v_ctx ~ctx:ctxt2 si2.si_param.ti_time
+            )
+       in
+       (* 6. contract equality *)
+       let (ctrt_c : mich_f list) =
+          eqf si1.si_param.ti_contract si2.si_param.ti_contract
+       in
+       (time_c :: ms_c) @ b_c @ bcb_c @ ctrt_c
+     (* LOOP *)
+     | (MCC_ln_loop, MCC_ln_loop)
+     | (MCC_ln_loop, MCC_lb_loop)
+     | (MCC_lb_loop, MCC_ln_loop)
+     | (MCC_lb_loop, MCC_lb_loop) ->
+       (* NOTE: question here : is (AND []) valid formula ? *)
+       let (ms_hd_c : mich_f list) =
+          let bool_v =
+             match mcc_2 with
+             | MCC_ln_loop -> false
+             | _           -> true
+          in
+          eqf_cc ctxt1 ctxt1 (List.hd_exn si1.si_mich)
+            (MV_lit_bool bool_v |> gen_dummy_cc)
+       in
+       let (ms_c : mich_f list) =
+          List.map2_exn (List.tl_exn si1.si_mich) si2.si_mich ~f:eqf
+          |> List.join
+       and (ds_c : mich_f list) =
+          List.map2_exn si1.si_dip si2.si_dip ~f:eqf |> List.join
+       and (maps_entry_c : mich_f list) =
+          List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join
+       and (maps_exit_c : mich_f list) =
+          List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join
+       and (is_c : mich_f list) =
+          List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join
+       and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
+       and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
+       and (ti_c : mich_f list) =
+          trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param
+       in
+       ms_hd_c
+       @ ms_c
+       @ ds_c
+       @ maps_entry_c
+       @ maps_exit_c
+       @ is_c
+       @ b_c
+       @ bcb_c
+       @ ti_c
+     (* LOOP-LEFT *)
+     | (MCC_ln_loopleft, MCC_ln_loopleft)
+     | (MCC_ln_loopleft, MCC_lb_loopleft)
+     | (MCC_lb_loopleft, MCC_ln_loopleft)
+     | (MCC_lb_loopleft, MCC_lb_loopleft) ->
+       (* 1. common parts
+          - mich-stack tail, dip-stack, map-entry/exit/mapkey-stack,
+             iter-stack, balance, bc-balance, trx-images
+       *)
+       let (ms_c_common : mich_f list) =
+          List.map2_exn (List.tl_exn si1.si_mich) (List.tl_exn si2.si_mich)
+            ~f:eqf
+          |> List.join
+       and (ds_c : mich_f list) =
+          List.map2_exn si1.si_dip si2.si_dip ~f:eqf |> List.join
+       and (map_entry_sc : mich_f list) =
+          List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join
+       and (map_exit_sc : mich_f list) =
+          List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join
+       and (map_mkey_sc : mich_f list) =
+          List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf |> List.join
+       and (is_c : mich_f list) =
+          List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join
+       and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
+       and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
+       and (ti_c : mich_f list) =
+          trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param
+       in
+       (* 2. Left/Right specific constraints *)
+       let (lr_c : mich_f list) =
+          let (h1, h2) = (List.hd_exn si1.si_mich, List.hd_exn si2.si_mich) in
+          let (left_typ, right_typ) =
+             match (typ_of_val h1).cc_v with
+             | MT_or (t1, t2) -> (t1, t2)
+             | _              ->
+               failwith
+                 "MState : stack_equality_fmlas : LOOP_LEFT : 1 : unexpected"
+          in
+          match mcc_2 with
+          | MCC_ln_loopleft ->
+            (* Right *)
+            eqf h1 (MV_right (left_typ, h2) |> gen_dummy_cc)
+          | MCC_lb_loopleft ->
+            (* Left *) eqf h1 (MV_left (right_typ, h2) |> gen_dummy_cc)
+          | _               ->
+            failwith
+              "MState : stack_equality_fmlas : LOOP_LEFT : 2 : unexpected"
+       in
+       ms_c_common
+       @ ds_c
+       @ map_entry_sc
+       @ map_exit_sc
+       @ map_mkey_sc
+       @ is_c
+       @ b_c
+       @ bcb_c
+       @ ti_c
+       @ lr_c
+     (* ITER *)
+     (*
     (* WARNING: Below Spec is DEPRECATED *)
     [ln-ln]
       mich1-tail = mich2
@@ -271,92 +277,96 @@ let stack_equality_fmlas :
       iter1-head = mich2-head + iter2-head
       (set,map : iter2-head has no mich2-head key)
   *)
-   | (MCC_ln_iter, MCC_ln_iter)
-   | (MCC_ln_iter, MCC_lb_iter)
-   | (MCC_lb_iter, MCC_ln_iter)
-   | (MCC_lb_iter, MCC_lb_iter) ->
-     (* 1. common parts
-        - dip-stack, map-entry/exit/mapkey-stack, balance, bc-balance, trx-images
-     *)
-     let (ds_c : mich_f list) =
-        List.map2_exn si1.si_dip si2.si_dip ~f:eqf |> List.join
-     and (map_entry_sc : mich_f list) =
-        List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join
-     and (map_exit_sc : mich_f list) =
-        List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join
-     and (map_mkey_sc : mich_f list) =
-        List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf |> List.join
-     and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
-     and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
-     and (ti_c : mich_f list) =
-        trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param
-     in
-     (* 2. non-common parts - mich-stack & iter-stack *)
-     let (ms_c_common, is_c_common, iter_specific_c)
-           : mich_f list * mich_f list * mich_f list =
-        match (mcc_1, mcc_2) with
-        | (MCC_ln_iter, MCC_ln_iter) ->
-          let (m1h, m1t, m2) =
-             (List.hd_exn si1.si_mich, List.tl_exn si1.si_mich, si2.si_mich)
-          in
-          let (empty_container : mich_v cc) =
-             match (typ_of_val m1h).cc_v with
-             | MT_list t       -> MV_nil t |> gen_dummy_cc
-             | MT_set t        -> MV_empty_set t |> gen_dummy_cc
-             | MT_map (t1, t2) -> MV_empty_map (t1, t2) |> gen_dummy_cc
-             | _               ->
-               failwith "MState : stack_equality_fmlas : ITER : 2 : unexpected"
-          in
-          ( List.map2_exn m1t m2 ~f:eqf |> List.join,
-            List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join,
-            eqf_cc ctxt1 ctxt1 m1h empty_container
-          )
-        | (MCC_ln_iter, MCC_lb_iter) ->
-          let (m1h, m1t) = (List.hd_exn si1.si_mich, List.tl_exn si1.si_mich) in
-          let (i1, i2h, i2t) =
-             (si1.si_iter, List.hd_exn si2.si_iter, List.tl_exn si2.si_iter)
-          in
-          ( List.map2_exn m1t si2.si_mich ~f:eqf |> List.join,
-            List.map2_exn i1 i2t ~f:eqf |> List.join,
-            eqf m1h i2h
-          )
-        | (MCC_lb_iter, MCC_ln_iter) ->
-          let (i1h, i1t, i2) =
-             (List.hd_exn si1.si_iter, List.tl_exn si1.si_iter, si2.si_iter)
-          in
-          let (empty_container : mich_v cc) =
-             match (typ_of_val i1h).cc_v with
-             | MT_list t       -> MV_nil t |> gen_dummy_cc
-             | MT_set t        -> MV_empty_set t |> gen_dummy_cc
-             | MT_map (t1, t2) -> MV_empty_map (t1, t2) |> gen_dummy_cc
-             | _               ->
-               failwith "MState : stack_equality_fmlas : ITER : 4 : unexpected"
-          in
-          ( List.map2_exn si1.si_mich si2.si_mich ~f:eqf |> List.join,
-            List.map2_exn i1t i2 ~f:eqf |> List.join,
-            eqf_cc ctxt1 ctxt1 i1h empty_container
-          )
-        | (MCC_lb_iter, MCC_lb_iter) ->
-          let (m1 : mich_v cc list) = si1.si_mich in
-          ( List.map2_exn m1 si2.si_mich ~f:eqf |> List.join,
-            List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join,
-            []
-          )
-        | _                          ->
-          failwith "MState : stack_equality_fmlas : ITER : 1 : unexpected"
-     in
-     ds_c
-     @ map_entry_sc
-     @ map_exit_sc
-     @ map_mkey_sc
-     @ b_c
-     @ bcb_c
-     @ ti_c
-     @ ms_c_common
-     @ is_c_common
-     @ iter_specific_c
-   (* MAP *)
-   (*
+     | (MCC_ln_iter, MCC_ln_iter)
+     | (MCC_ln_iter, MCC_lb_iter)
+     | (MCC_lb_iter, MCC_ln_iter)
+     | (MCC_lb_iter, MCC_lb_iter) ->
+       (* 1. common parts
+          - dip-stack, map-entry/exit/mapkey-stack, balance, bc-balance, trx-images
+       *)
+       let (ds_c : mich_f list) =
+          List.map2_exn si1.si_dip si2.si_dip ~f:eqf |> List.join
+       and (map_entry_sc : mich_f list) =
+          List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join
+       and (map_exit_sc : mich_f list) =
+          List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join
+       and (map_mkey_sc : mich_f list) =
+          List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf |> List.join
+       and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
+       and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
+       and (ti_c : mich_f list) =
+          trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param
+       in
+       (* 2. non-common parts - mich-stack & iter-stack *)
+       let (ms_c_common, is_c_common, iter_specific_c)
+             : mich_f list * mich_f list * mich_f list =
+          match (mcc_1, mcc_2) with
+          | (MCC_ln_iter, MCC_ln_iter) ->
+            let (m1h, m1t, m2) =
+               (List.hd_exn si1.si_mich, List.tl_exn si1.si_mich, si2.si_mich)
+            in
+            let (empty_container : mich_v cc) =
+               match (typ_of_val m1h).cc_v with
+               | MT_list t       -> MV_nil t |> gen_dummy_cc
+               | MT_set t        -> MV_empty_set t |> gen_dummy_cc
+               | MT_map (t1, t2) -> MV_empty_map (t1, t2) |> gen_dummy_cc
+               | _               ->
+                 failwith
+                   "MState : stack_equality_fmlas : ITER : 2 : unexpected"
+            in
+            ( List.map2_exn m1t m2 ~f:eqf |> List.join,
+              List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join,
+              eqf_cc ctxt1 ctxt1 m1h empty_container
+            )
+          | (MCC_ln_iter, MCC_lb_iter) ->
+            let (m1h, m1t) =
+               (List.hd_exn si1.si_mich, List.tl_exn si1.si_mich)
+            in
+            let (i1, i2h, i2t) =
+               (si1.si_iter, List.hd_exn si2.si_iter, List.tl_exn si2.si_iter)
+            in
+            ( List.map2_exn m1t si2.si_mich ~f:eqf |> List.join,
+              List.map2_exn i1 i2t ~f:eqf |> List.join,
+              eqf m1h i2h
+            )
+          | (MCC_lb_iter, MCC_ln_iter) ->
+            let (i1h, i1t, i2) =
+               (List.hd_exn si1.si_iter, List.tl_exn si1.si_iter, si2.si_iter)
+            in
+            let (empty_container : mich_v cc) =
+               match (typ_of_val i1h).cc_v with
+               | MT_list t       -> MV_nil t |> gen_dummy_cc
+               | MT_set t        -> MV_empty_set t |> gen_dummy_cc
+               | MT_map (t1, t2) -> MV_empty_map (t1, t2) |> gen_dummy_cc
+               | _               ->
+                 failwith
+                   "MState : stack_equality_fmlas : ITER : 4 : unexpected"
+            in
+            ( List.map2_exn si1.si_mich si2.si_mich ~f:eqf |> List.join,
+              List.map2_exn i1t i2 ~f:eqf |> List.join,
+              eqf_cc ctxt1 ctxt1 i1h empty_container
+            )
+          | (MCC_lb_iter, MCC_lb_iter) ->
+            let (m1 : mich_v cc list) = si1.si_mich in
+            ( List.map2_exn m1 si2.si_mich ~f:eqf |> List.join,
+              List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join,
+              []
+            )
+          | _                          ->
+            failwith "MState : stack_equality_fmlas : ITER : 1 : unexpected"
+       in
+       ds_c
+       @ map_entry_sc
+       @ map_exit_sc
+       @ map_mkey_sc
+       @ b_c
+       @ bcb_c
+       @ ti_c
+       @ ms_c_common
+       @ is_c_common
+       @ iter_specific_c
+     (* MAP *)
+     (*
     (* WARNING: Below Spec is DEPRECATED *)
     [ln-ln]
       mich1-tail = mich2-tail
@@ -397,124 +407,156 @@ let stack_equality_fmlas :
       (map : entry1-head = (key2-head, mich2-head) + entry2-head)
       (map : entry2-head has no key2-head)
   *)
-   | (MCC_ln_map, MCC_ln_map)
-   | (MCC_ln_map, MCC_lb_map)
-   | (MCC_lb_map, MCC_ln_map)
-   | (MCC_lb_map, MCC_lb_map) ->
-     (* 1. common parts *)
-     (* 1.1. mich-stack tail, dip-stack, iter-stack, balance, bc-balance, trx-image *)
-     let (ms_c_common : mich_f list) =
-        List.map2_exn (List.tl_exn si1.si_mich) (List.tl_exn si2.si_mich) ~f:eqf
-        |> List.join
-     and (ds_c : mich_f list) =
-        List.map2_exn si1.si_dip si2.si_dip ~f:eqf |> List.join
-     and (is_c : mich_f list) =
-        List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join
-     and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
-     and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
-     and (ti_c : mich_f list) =
-        trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param
-     in
-     let ( (maps_entry_c_common : mich_f list),
-           (maps_exit_c_common : mich_f list),
-           (mapkeys_c_common : mich_f list),
-           (maps_specific_c : mich_f list)
-         ) =
-        let (container_t : mich_t cc) =
-           match mcc_1 with
-           | MCC_ln_map -> typ_of_val (List.hd_exn si1.si_mich)
-           | MCC_lb_map -> typ_of_val (List.hd_exn si1.si_map_entry)
-           | _          ->
-             failwith "MState : stack_equality_fmlas : MAP : 2 : unexpected"
-        in
-        let empty_container mvcc =
-           match (typ_of_val mvcc).cc_v with
-           | MT_list t       -> MV_nil t |> gen_dummy_cc
-           | MT_set t        -> MV_empty_set t |> gen_dummy_cc
-           | MT_map (t1, t2) -> MV_empty_map (t1, t2) |> gen_dummy_cc
-           | _               ->
-             failwith "MState : stack_equality_fmlas : ITER : 2 : unexpected"
-        in
-        match (mcc_1, mcc_2, container_t.cc_v) with
-        | (MCC_ln_map, MCC_ln_map, _) ->
-          let (m1h, m2h) = (List.hd_exn si1.si_mich, List.hd_exn si2.si_mich) in
-          ( List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join,
-            List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join,
-            List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf
-            |> List.join,
-            eqf_cc ctxt1 ctxt1 m1h (empty_container m1h)
-            @ eqf_cc ctxt2 ctxt2 m2h (empty_container m2h)
-          )
-        | (MCC_ln_map, MCC_lb_map, MT_map _) ->
-          ( List.map2_exn si1.si_map_entry (List.tl_exn si2.si_map_entry) ~f:eqf
-            |> List.join,
-            List.map2_exn si1.si_map_exit (List.tl_exn si2.si_map_exit) ~f:eqf
-            |> List.join,
-            List.map2_exn si1.si_map_mapkey
-              (List.tl_exn si2.si_map_mapkey)
+     | (MCC_ln_map, MCC_ln_map)
+     | (MCC_ln_map, MCC_lb_map)
+     | (MCC_lb_map, MCC_ln_map)
+     | (MCC_lb_map, MCC_lb_map) ->
+       (* 1. common parts *)
+       (* 1.1. mich-stack tail, dip-stack, iter-stack, balance, bc-balance, trx-image *)
+       let (ms_c_common : mich_f list) =
+          (match (mcc_1, mcc_2) with
+          | (MCC_ln_map, MCC_ln_map) ->
+            List.map2_exn (List.tl_exn si1.si_mich) (List.tl_exn si2.si_mich)
               ~f:eqf
-            |> List.join,
-            eqf (List.hd_exn si1.si_mich) (List.hd_exn si2.si_map_entry)
-          )
-        | (MCC_ln_map, MCC_lb_map, _) ->
-          ( List.map2_exn si1.si_map_entry (List.tl_exn si2.si_map_entry) ~f:eqf
-            |> List.join,
-            List.map2_exn si1.si_map_exit (List.tl_exn si2.si_map_exit) ~f:eqf
-            |> List.join,
-            List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf
-            |> List.join,
-            eqf (List.hd_exn si1.si_mich) (List.hd_exn si2.si_map_entry)
-          )
-        | (MCC_lb_map, MCC_ln_map, MT_map _) ->
-          ( List.map2_exn (List.tl_exn si1.si_map_entry) si2.si_map_entry ~f:eqf
-            |> List.join,
-            List.map2_exn (List.tl_exn si1.si_map_exit) si2.si_map_exit ~f:eqf
-            |> List.join,
-            List.map2_exn
-              (List.tl_exn si1.si_map_mapkey)
-              si2.si_map_mapkey ~f:eqf
-            |> List.join,
-            eqf (List.hd_exn si1.si_map_exit) (List.hd_exn si2.si_mich)
-          )
-        | (MCC_lb_map, MCC_ln_map, _) ->
-          ( List.map2_exn (List.tl_exn si1.si_map_entry) si2.si_map_entry ~f:eqf
-            |> List.join,
-            List.map2_exn (List.tl_exn si1.si_map_exit) si2.si_map_exit ~f:eqf
-            |> List.join,
-            List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf
-            |> List.join,
-            eqf (List.hd_exn si1.si_map_exit) (List.hd_exn si2.si_mich)
-          )
-        | (MCC_lb_map, MCC_lb_map, MT_map _) ->
-          ( List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join,
-            List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join,
-            List.map2_exn
-              (List.tl_exn si1.si_map_mapkey)
-              (List.tl_exn si2.si_map_mapkey)
-              ~f:eqf
-            |> List.join,
-            []
-          )
-        | (MCC_lb_map, MCC_lb_map, _) ->
-          ( List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join,
-            List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join,
-            List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf
-            |> List.join,
-            []
-          )
-        | _ -> failwith "MState : stack_equality_fmlas : MAP : 3 : unexpected"
-     in
-     ms_c_common
-     @ ds_c
-     @ is_c
-     @ b_c
-     @ bcb_c
-     @ ti_c
-     @ maps_entry_c_common
-     @ maps_exit_c_common
-     @ mapkeys_c_common
-     @ maps_specific_c
-   | _ -> failwith "MState : stack_equality_fmlas : 1 : unexpected"
+          | (MCC_ln_map, MCC_lb_map) ->
+            List.map2_exn (List.tl_exn si1.si_mich) si2.si_mich ~f:eqf
+          | (MCC_lb_map, MCC_ln_map) ->
+            List.map2_exn si1.si_mich (List.tl_exn si2.si_mich) ~f:eqf
+          | (MCC_lb_map, MCC_lb_map) ->
+            List.map2_exn si1.si_mich si2.si_mich ~f:eqf
+          | _                        ->
+            failwith "MState : stack_equality_fmlas : MAP : 4 : unexpected")
+          |> List.join
+       and (ds_c : mich_f list) =
+          List.map2_exn si1.si_dip si2.si_dip ~f:eqf |> List.join
+       and (is_c : mich_f list) =
+          List.map2_exn si1.si_iter si2.si_iter ~f:eqf |> List.join
+       and (b_c : mich_f list) = eqf si1.si_balance si2.si_balance
+       and (bcb_c : mich_f list) = eqf si1.si_bc_balance si2.si_bc_balance
+       and (ti_c : mich_f list) =
+          trx_image_equality_fmla ctxt1 ctxt2 si1.si_param si2.si_param
+       in
+       let ( (maps_entry_c_common : mich_f list),
+             (maps_exit_c_common : mich_f list),
+             (mapkeys_c_common : mich_f list),
+             (maps_specific_c : mich_f list)
+           ) =
+          let (container_t : mich_t cc) =
+             match mcc_1 with
+             | MCC_ln_map -> typ_of_val (List.hd_exn si1.si_mich)
+             | MCC_lb_map -> typ_of_val (List.hd_exn si1.si_map_entry)
+             | _          ->
+               failwith "MState : stack_equality_fmlas : MAP : 2 : unexpected"
+          in
+          let empty_container mvcc =
+             match (typ_of_val mvcc).cc_v with
+             | MT_list t       -> MV_nil t |> gen_dummy_cc
+             | MT_set t        -> MV_empty_set t |> gen_dummy_cc
+             | MT_map (t1, t2) -> MV_empty_map (t1, t2) |> gen_dummy_cc
+             | _               ->
+               failwith "MState : stack_equality_fmlas : ITER : 2 : unexpected"
+          in
+          match (mcc_1, mcc_2, container_t.cc_v) with
+          | (MCC_ln_map, MCC_ln_map, _) ->
+            let (m1h, m2h) =
+               (List.hd_exn si1.si_mich, List.hd_exn si2.si_mich)
+            in
+            ( List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join,
+              List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join,
+              List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf
+              |> List.join,
+              eqf_cc ctxt1 ctxt1 m1h (empty_container m1h)
+              @ eqf_cc ctxt2 ctxt2 m2h (empty_container m2h)
+            )
+          | (MCC_ln_map, MCC_lb_map, MT_map _) ->
+            ( List.map2_exn si1.si_map_entry
+                (List.tl_exn si2.si_map_entry)
+                ~f:eqf
+              |> List.join,
+              List.map2_exn si1.si_map_exit (List.tl_exn si2.si_map_exit) ~f:eqf
+              |> List.join,
+              List.map2_exn si1.si_map_mapkey
+                (List.tl_exn si2.si_map_mapkey)
+                ~f:eqf
+              |> List.join,
+              eqf (List.hd_exn si1.si_mich) (List.hd_exn si2.si_map_entry)
+            )
+          | (MCC_ln_map, MCC_lb_map, _) ->
+            ( List.map2_exn si1.si_map_entry
+                (List.tl_exn si2.si_map_entry)
+                ~f:eqf
+              |> List.join,
+              List.map2_exn si1.si_map_exit (List.tl_exn si2.si_map_exit) ~f:eqf
+              |> List.join,
+              List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf
+              |> List.join,
+              eqf (List.hd_exn si1.si_mich) (List.hd_exn si2.si_map_entry)
+            )
+          | (MCC_lb_map, MCC_ln_map, MT_map _) ->
+            ( List.map2_exn
+                (List.tl_exn si1.si_map_entry)
+                si2.si_map_entry ~f:eqf
+              |> List.join,
+              List.map2_exn (List.tl_exn si1.si_map_exit) si2.si_map_exit ~f:eqf
+              |> List.join,
+              List.map2_exn
+                (List.tl_exn si1.si_map_mapkey)
+                si2.si_map_mapkey ~f:eqf
+              |> List.join,
+              eqf (List.hd_exn si1.si_map_exit) (List.hd_exn si2.si_mich)
+            )
+          | (MCC_lb_map, MCC_ln_map, _) ->
+            ( List.map2_exn
+                (List.tl_exn si1.si_map_entry)
+                si2.si_map_entry ~f:eqf
+              |> List.join,
+              List.map2_exn (List.tl_exn si1.si_map_exit) si2.si_map_exit ~f:eqf
+              |> List.join,
+              List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf
+              |> List.join,
+              eqf (List.hd_exn si1.si_map_exit) (List.hd_exn si2.si_mich)
+            )
+          | (MCC_lb_map, MCC_lb_map, MT_map _) ->
+            ( List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join,
+              List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join,
+              List.map2_exn
+                (List.tl_exn si1.si_map_mapkey)
+                (List.tl_exn si2.si_map_mapkey)
+                ~f:eqf
+              |> List.join,
+              []
+            )
+          | (MCC_lb_map, MCC_lb_map, _) ->
+            ( List.map2_exn si1.si_map_entry si2.si_map_entry ~f:eqf |> List.join,
+              List.map2_exn si1.si_map_exit si2.si_map_exit ~f:eqf |> List.join,
+              List.map2_exn si1.si_map_mapkey si2.si_map_mapkey ~f:eqf
+              |> List.join,
+              []
+            )
+          | _ -> failwith "MState : stack_equality_fmlas : MAP : 3 : unexpected"
+       in
+       ms_c_common
+       @ ds_c
+       @ is_c
+       @ b_c
+       @ bcb_c
+       @ ti_c
+       @ maps_entry_c_common
+       @ maps_exit_c_common
+       @ mapkeys_c_common
+       @ maps_specific_c
+     | _ -> failwith "MState : stack_equality_fmlas : 1 : unexpected"
+   with
+   | exn ->
+     Utils.Log.err (fun m ->
+         m "Error occurred in MState\n%s\n" (Printexc.get_backtrace ())
+     );
+     MStateError
+       (Printf.sprintf "MState : %s :  %s ++ %s" (Exn.to_string exn)
+          (List.to_string ~f:string_of_int ctxt1)
+          (List.to_string ~f:string_of_int ctxt2)
+       )
+     |> raise
 (* function stack_equality_fmlas end *)
 
 (******************************************************************************)
