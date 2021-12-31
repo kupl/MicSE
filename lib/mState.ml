@@ -480,6 +480,7 @@ let stack_equality_fmlas :
                 ~f:eqf
               |> List.join,
               eqf (List.hd_exn si1.si_mich) (List.hd_exn si2.si_map_entry)
+              @ eqf (List.hd_exn si1.si_mich) (List.hd_exn si2.si_map_exit)
             )
           | (MCC_ln_map, MCC_lb_map, _) ->
             ( List.map2_exn si1.si_map_entry
