@@ -1356,6 +1356,12 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
             sr_blocked =
               SSet.union
                 (SSet.map tb_sr_result_raw.sr_running ~f:(fun rss ->
+                     let (exit_container : mich_v cc) =
+                        tb_exit_container_block_v rss.ss_block_si
+                     in
+                     let (container_constraints : mich_f list) =
+                        michv_typ_constraints ~ctx ~v:exit_container
+                     in
                      {
                        rss with
                        ss_block_si =
@@ -1363,10 +1369,12 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                            rss.ss_block_si with
                            si_mich = List.tl_exn rss.ss_block_si.si_mich;
                            si_map_exit =
-                             tb_exit_container_block_v rss.ss_block_si
+                             exit_container
                              :: List.tl_exn rss.ss_block_si.si_map_exit;
                          };
                        ss_block_mci = thenbr_mci;
+                       ss_constraints =
+                         container_constraints @ rss.ss_constraints;
                      }
                  )
                 )
@@ -1423,21 +1431,21 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
                 MV_symbol (MT_mutez |> gen_custom_cc inst, MSC_bc_balance)
                 |> gen_custom_cc inst
              in
+             let eb_out_container_v =
+                MV_symbol (out_container_t, MSC_mich_stack (List.length michst))
+                |> gen_custom_cc inst
+             in
              let constraints_abp =
                 ge_balance_amount_in_non_trx_entry_constraint ~ctx
                   ~amount_v:eb_trx_image.ti_amount ~balance_v
                 :: michv_typ_constraints ~ctx ~v:eb_trx_image.ti_param
+                @ michv_typ_constraints ~ctx ~v:eb_out_container_v
                 @ [
                     mtz_comes_from_constraint ~ctx ~mtz_v:eb_trx_image.ti_amount
                       ~from_v:balance_v;
                   ]
                 @ amount_balance_mutez_constraints ~ctx
                     ~amount_v:eb_trx_image.ti_amount ~balance_v ~bc_balance_v
-             in
-             (* no need to check & add constraints of eb_container_v or eb_out_container_v *)
-             let eb_out_container_v =
-                MV_symbol (out_container_t, MSC_mich_stack (List.length michst))
-                |> gen_custom_cc inst
              in
              ( {
                  si_mich = eb_out_container_v :: michst;
