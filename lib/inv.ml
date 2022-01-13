@@ -532,6 +532,63 @@ let tmp_add_3_eq : Igdt.igdt_sets -> CSet.t =
    )
 (* function tmp_add_3_eq end *)
 
+let tmp_add_2_ge : Igdt.igdt_sets -> CSet.t =
+   let open Tz in
+   let open TzUtil in
+   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* syntax sugar *)
+   let (zero_mtz : mich_v cc) = gen_dummy_cc (MV_lit_mutez Bigint.zero) in
+   let make_add_2_ge_mtz :
+       mich_v cc * mich_v cc * mich_v cc -> (mich_f * MFSet.t) option =
+     fun (v1, v2, v3) ->
+     let (add : mich_v cc) = gen_dummy_cc (MV_add_mmm (v1, v2)) in
+     Some (MF_is_true (gctx (gen_dummy_cc (MV_geq_ib (add, v3)))), MFSet.empty)
+   in
+   let make_ge_add_2_mtz :
+       mich_v cc * mich_v cc * mich_v cc -> (mich_f * MFSet.t) option =
+     fun (v1, v2, v3) ->
+     let (add : mich_v cc) = gen_dummy_cc (MV_add_mmm (v2, v3)) in
+     Some (MF_is_true (gctx (gen_dummy_cc (MV_geq_ib (v1, add)))), MFSet.empty)
+   in
+   fun igdt_map ->
+   let (target_types : Tz.mich_t Tz.cc list list) =
+      List.map [ MT_mutez ] ~f:(fun t ->
+          List.init 3 ~f:(fun _ -> gen_dummy_cc t)
+      )
+   in
+   let (cset_add_2_ge : CSet.t) =
+      gen_template igdt_map target_types ~target_mode:(`Asymm 2) ~f:(fun tvl ->
+          match tvl with
+          | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3) ] ->
+            if (not (equal_cc equal_mich_v v1 v3))
+               && (not (equal_cc equal_mich_v v2 v3))
+               && (not (equal_cc equal_mich_v v1 zero_mtz))
+               && (not (equal_cc equal_mich_v v2 zero_mtz))
+               && not (equal_cc equal_mich_v v3 zero_mtz)
+            then make_add_2_ge_mtz (v1, v2, v3)
+            else None
+          | [ (_, _); (_, _); (_, _) ] -> None
+          | _ -> InvError "tmp_add_2_ge : wrong ingredient length" |> raise
+      )
+   in
+   let (cset_ge_add_2 : CSet.t) =
+      gen_template igdt_map target_types ~target_mode:`Normal ~f:(fun tvl ->
+          match tvl with
+          | [ (MT_mutez, v1); (MT_mutez, v2); (MT_mutez, v3) ] ->
+            if (not (equal_cc equal_mich_v v1 v2))
+               && (not (equal_cc equal_mich_v v1 v3))
+               && (not (equal_cc equal_mich_v v1 zero_mtz))
+               && (not (equal_cc equal_mich_v v2 zero_mtz))
+               && not (equal_cc equal_mich_v v3 zero_mtz)
+            then make_ge_add_2_mtz (v1, v2, v3)
+            else None
+          | [ (_, _); (_, _); (_, _) ] -> None
+          | _ -> InvError "tmp_add_2_ge : wrong ingredient length" |> raise
+      )
+   in
+   CSet.union cset_add_2_ge cset_ge_add_2
+(* function tmp_add_2_ge end *)
+
 let tmp_all_elem_eq : Igdt.igdt_sets -> CSet.t =
    let open Tz in
    let open TzUtil in
@@ -707,8 +764,9 @@ let gen_initial_cand_map :
         tmp_eq;
         tmp_ge;
         tmp_gt;
-        (* tmp_add_2_eq;
+        tmp_add_2_eq;
         tmp_add_3_eq;
+        (* tmp_add_2_ge;
         tmp_all_elem_eq;
         tmp_eq_and_all_elem_eq; *)
       ]
