@@ -1,7 +1,7 @@
-let print_position outx lexbuf =
+let print_position lexbuf =
    let open Lexing in
    let pos = lexbuf.lex_curr_p in
-   Printf.fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
+   Printf.sprintf "%s:%d:%d" pos.pos_fname pos.pos_lnum
      (pos.pos_cnum - pos.pos_bol + 1)
 
 let parse : filename:string -> Mich.program =
@@ -14,11 +14,11 @@ let parse : filename:string -> Mich.program =
     res
   with
   | MichLexer.Lexing_error msg as e ->
-    Printf.fprintf stderr "%a: %s\n" print_position lexbuf msg;
+    Utils.Log.err (fun m -> m "%s: %s\n" (print_position lexbuf) msg);
     close_in in_c;
     raise e
   | MichParser.Error as e ->
-    Printf.fprintf stderr "%s%a: syntax error\n" filename print_position lexbuf;
+    Utils.Log.err (fun m -> m "%s%s: syntax error\n" filename (print_position lexbuf));
     close_in in_c;
     raise e
 
@@ -32,10 +32,10 @@ let parse_data : filename:string -> Mich.data Mich.t =
     res
   with
   | MichLexer.Lexing_error msg as e ->
-    Printf.fprintf stderr "%a: %s\n" print_position lexbuf msg;
+    Utils.Log.err (fun m -> m "%s: %s\n" (print_position lexbuf) msg);
     close_in in_c;
     raise e
   | MichParser.Error as e ->
-    Printf.fprintf stderr "%s%a: syntax error\n" filename print_position lexbuf;
+    Utils.Log.err (fun m -> m "%s%s: syntax error\n" filename (print_position lexbuf));
     close_in in_c;
     raise e
