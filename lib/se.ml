@@ -848,20 +848,20 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
    in
    (* VERY VERY NAIVE OPTIMIZATION END *)
    (* let _ =
-      (* DEBUG *)
-      Utils.Log.debug (fun m ->
-          m
-            "Current MCI: %s\n\tCurrent SID: %d\n\tMichStack Length: %d\n\tStack: \n\t\t[%s]"
-            (inst.cc_loc |> sexp_of_ccp_loc |> Sexp.to_string)
-            ctxt_sr.sr_sid_counter
-            (List.length ss.ss_block_si.si_mich)
-            (List.map ss.ss_block_si.si_mich ~f:(fun v ->
-                 Tz.sexp_of_mich_v v.cc_v |> SexpUtil.to_string
-             )
-            |> String.concat ~sep:"; "
-            )
-      )
-   in *)
+         (* DEBUG *)
+         Utils.Log.debug (fun m ->
+             m
+               "Current MCI: %s\n\tCurrent SID: %d\n\tMichStack Length: %d\n\tStack: \n\t\t[%s]"
+               (inst.cc_loc |> sexp_of_ccp_loc |> Sexp.to_string)
+               ctxt_sr.sr_sid_counter
+               (List.length ss.ss_block_si.si_mich)
+               (List.map ss.ss_block_si.si_mich ~f:(fun v ->
+                    Tz.sexp_of_mich_v v.cc_v |> SexpUtil.to_string
+                )
+               |> String.concat ~sep:"; "
+               )
+         )
+      in *)
    let ctx = ss.ss_id in
    match inst.cc_v with
    | MI_seq (i1, i2) -> run_inst_i i1 (ctxt_sr, ss) |> run_inst i2
@@ -3132,5 +3132,70 @@ let run_inst_entry :
              );
       }
    in
+   (* let _ =
+         (* DEBUG *)
+         let increase_depth_str : int -> string -> string =
+           fun d s ->
+           let (tab : string) = String.make d '\t' in
+           tab ^ String.substr_replace_all s ~pattern:"\n" ~with_:("\n" ^ tab)
+         in
+         let string_of_mf : mich_f -> string =
+           (fun mf -> sexp_of_mich_f mf |> SexpUtil.to_string)
+         in
+         let string_of_mflst : mich_f list -> string list =
+           (fun mfl -> List.map mfl ~f:string_of_mf)
+         in
+         let string_of_mvcc : mich_v cc -> string =
+           (fun mvcc -> sexp_of_mich_v mvcc.cc_v |> SexpUtil.to_string)
+         in
+         let string_of_mvcclst : mich_v cc list -> string list =
+           (fun mvl -> List.map mvl ~f:string_of_mvcc)
+         in
+         let string_of_sid : sym_state_id -> string =
+           fun sid ->
+           Printf.sprintf "[%s]"
+             (List.map sid ~f:string_of_int |> String.concat ~sep:"; ")
+         in
+         let string_of_mci : mich_cut_info -> string =
+           (fun mci -> sexp_of_mich_cut_info mci |> SexpUtil.to_string)
+         in
+         let string_of_si : sym_image -> string =
+           fun si ->
+           Printf.sprintf "> MICH:\n\t[\n%s\n\t]"
+             (string_of_mvcclst si.si_mich
+             |> String.concat ~sep:" ;\n"
+             |> increase_depth_str 2
+             )
+         in
+         let string_of_ss : sym_state -> string =
+           fun ss ->
+           Printf.sprintf
+             "> ID: %s\n\n> START: \n\t> MCI: %s\n\t> SI: \n\t\t[\n%s\n\t\t]\n\n> BLOCK: \n\t> MCI: %s\n\t> SI: \n\t\t[\n%s\n\t\t]\n\n> CONSTRAINT: \n\t[\n%s\n\t]"
+             (string_of_sid ss.ss_id)
+             (string_of_mci ss.ss_start_mci)
+             (string_of_si ss.ss_start_si |> increase_depth_str 3)
+             (string_of_mci ss.ss_block_mci)
+             (string_of_si ss.ss_block_si |> increase_depth_str 3)
+             (string_of_mflst ss.ss_constraints
+             |> String.concat ~sep:" ;\n"
+             |> increase_depth_str 2
+             )
+         in
+         SSet.fold result_constraint_optimized.sr_blocked ~init:0 ~f:(fun id ss ->
+             Utils.Log.debug (fun m ->
+                 m "BLOCK_STATE [#%d]\n%s" id (string_of_ss ss)
+             );
+             id + 1
+         )
+         |> ignore;
+         SSet.fold result_constraint_optimized.sr_queries ~init:0 ~f:(fun id ss ->
+             Utils.Log.debug (fun m ->
+                 m "QUERY_STATE [#%d]\n%s" id (string_of_ss ss)
+             );
+             id + 1
+         )
+         |> ignore;
+         exit 0
+      in *)
    (result_constraint_optimized, initial_ss)
 (* function run_inst_entry end *)
