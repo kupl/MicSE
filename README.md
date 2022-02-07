@@ -1,4 +1,4 @@
-# MicSE (in development)
+# MicSE
 
 [![Build & Tests](https://github.com/kupl/MicSE/actions/workflows/build_and_tests.yml/badge.svg)](https://github.com/kupl/MicSE/actions/workflows/build_and_tests.yml)
 
@@ -15,7 +15,7 @@
 
 ## Introduction
 
-MicSE is a tool for verifying and testing Tezos smart contracts written in Michelson. Michelson is a native smart contract language of the [Tezos Blockchain](https://tezos.foundation).
+MicSE is a tool for automatically verifying and testing Tezos smart contracts written in Michelson. Michelson is the native smart contract language of the [Tezos Blockchain](https://tezos.foundation).
 
 MicSE can verify the absence of runtime failures of Michelson programs, e.g., no arithmetic overflow. Also, MicSE supports verification of user-provided assertions.
 
