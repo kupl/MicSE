@@ -97,7 +97,7 @@ MicSE uses these packages.
 | Ocamlgraph        |  =2.0.0   |
 | Ptime             |  =0.8.5   |
 | Yojson            |  =1.7.0   |
-| Z3                |  =4.8.11  |
+| Z3                |  =4.8.13  |
 | Zarith            |   =1.12   |
 | OUnit2            |  =2.2.4   |
 | BigNum            | =v0.14.0  |
