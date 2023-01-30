@@ -120,7 +120,7 @@ let refute :
    then (None, None)
    else (
      let (vc : mich_f) = gen_refute_vc istrg ppath.pp_mstate |> TzUtil.opt_mf in
-     let _ = (Printf.ifprintf Stdlib.stdout "%s" (Core.Sexp.to_string (Tz.sexp_of_mich_f vc))) in
+     let _ = (Printf.ifprintf Stdlib.stdout "%s" ((function | MF_true -> "t"  | _ -> "f") vc)) in
      let ((sat : Solver.satisfiability), (m_opt : Smt.Model.t option)) =
         check_sat ctx slvr vc
      in
