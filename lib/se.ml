@@ -967,12 +967,18 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
      |> running_ss_to_sr ctxt_sr
    | MI_left t ->
      update_top_1_bmstack
-       ~f:(fun h -> [ MV_left (t, h) |> gen_custom_cc inst ])
+     (* ~f:(fun h -> [ MV_left (t, h) |> gen_custom_cc inst ]) *)
+       ~f:(fun h ->
+         let ty = MT_or (typ_of_val h, t) |> gen_custom_cc inst in
+         [ MV_left (ty, h) |> gen_custom_cc inst ])
        ss
      |> running_ss_to_sr ctxt_sr
    | MI_right t ->
      update_top_1_bmstack
-       ~f:(fun h -> [ MV_right (t, h) |> gen_custom_cc inst ])
+     (* ~f:(fun h -> [ MV_right (t, h) |> gen_custom_cc inst ]) *)
+       ~f:(fun h ->
+         let ty = MT_or (t, typ_of_val h) |> gen_custom_cc inst in
+         [ MV_right (ty, h) |> gen_custom_cc inst ])
        ss
      |> running_ss_to_sr ctxt_sr
    | MI_if_left (i1, i2) ->
@@ -2187,6 +2193,52 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
         | _              ->
           failwith "run_inst_i : MI_loop_left : left_elem_t, right_elem_t"
      in
+     (* Convert LOOP_LEFT to LOOP
+        LOOP_LEFT {BODY} ===
+          PUSH bool True;
+          LOOP {
+           IF_LEFT {BODY; PUSH bool True} {RIGHT left_elem_t; PUSH bool False}
+          };
+          IF_LEFT {FAILWITH} { }
+     *)
+     let _ = ignore (blocked_mci, thenbr_mci, elsebr_mci, right_elem_t) in
+     let typ_bool : mich_t cc = gen_dummy_cc MT_bool in
+     let push_bool_inst b =
+        gen_dummy_cc (MI_push (typ_bool, gen_dummy_cc (MV_lit_bool b)))
+     in
+     let loop_inst : mich_i cc =
+        gen_dummy_cc
+          (let body_true_seq : mich_i cc =
+              gen_dummy_cc (MI_seq (i, push_bool_inst true))
+           in
+           let right_false_seq : mich_i cc =
+              gen_dummy_cc
+                (MI_seq
+                   (gen_dummy_cc (MI_right left_elem_t), push_bool_inst false)
+                )
+           in
+           let if_left_inst : mich_i cc =
+              gen_dummy_cc (MI_if_left (body_true_seq, right_false_seq))
+           in
+           MI_loop if_left_inst
+          )
+     in
+     let last_if_left_inst : mich_i cc =
+        gen_dummy_cc
+          (MI_if_left
+             (gen_dummy_cc MI_failwith, gen_dummy_cc (MI_drop (Bigint.of_int 0)))
+          )
+     in
+     let new_inst =
+        gen_dummy_cc
+          (MI_seq
+             ( push_bool_inst true,
+               gen_dummy_cc (MI_seq (loop_inst, last_if_left_inst))
+             )
+          )
+     in
+     run_inst_i new_inst (ctxt_sr, ss)
+   (*
      (* 1. Construct blocked-state *)
      let blocked_state : sym_state = { ss with ss_block_mci = blocked_mci } in
      (* 2. If this LOOP_LEFT-instruction is the instruction already met before, return only blocked-state. *)
@@ -2426,6 +2478,7 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
          sr_blocked = SSet.add ctxt_sr.sr_blocked blocked_state;
        }
      )
+    *)
    | MI_lambda (t1, t2, i) ->
      push_bmstack ~v:(MV_lit_lambda (t1, t2, i) |> gen_custom_cc inst) ss
      |> running_ss_to_sr ctxt_sr
