@@ -2199,41 +2199,44 @@ and run_inst_i : Tz.mich_i Tz.cc -> se_result * Tz.sym_state -> se_result =
           LOOP {
            IF_LEFT {BODY; PUSH bool True} {RIGHT left_elem_t; PUSH bool False}
           };
-          IF_LEFT {FAILWITH} { }
+          IF_LEFT {PUSH bool False; FAILWITH} { }
      *)
      let _ = ignore (blocked_mci, thenbr_mci, elsebr_mci, right_elem_t) in
-     let typ_bool : mich_t cc = gen_dummy_cc MT_bool in
+     let gcc_inst : mich_i -> mich_i cc = gen_custom_cc inst in
+     let gcc_inst_t : mich_t -> mich_t cc = gen_custom_cc inst in
+     let gcc_inst_v : mich_v -> mich_v cc = gen_custom_cc inst in
+     let typ_bool : mich_t cc = gcc_inst_t MT_bool in
      let push_bool_inst b =
-        gen_dummy_cc (MI_push (typ_bool, gen_dummy_cc (MV_lit_bool b)))
+        gcc_inst (MI_push (typ_bool, gcc_inst_v (MV_lit_bool b)))
      in
      let loop_inst : mich_i cc =
-        gen_dummy_cc
+        gcc_inst
           (let body_true_seq : mich_i cc =
-              gen_dummy_cc (MI_seq (i, push_bool_inst true))
+              gcc_inst (MI_seq (i, push_bool_inst true))
            in
            let right_false_seq : mich_i cc =
-              gen_dummy_cc
-                (MI_seq
-                   (gen_dummy_cc (MI_right left_elem_t), push_bool_inst false)
-                )
+              gcc_inst
+                (MI_seq (gcc_inst (MI_right left_elem_t), push_bool_inst false))
            in
            let if_left_inst : mich_i cc =
-              gen_dummy_cc (MI_if_left (body_true_seq, right_false_seq))
+              gcc_inst (MI_if_left (body_true_seq, right_false_seq))
            in
            MI_loop if_left_inst
           )
      in
      let last_if_left_inst : mich_i cc =
-        gen_dummy_cc
+        gcc_inst
           (MI_if_left
-             (gen_dummy_cc MI_failwith, gen_dummy_cc (MI_drop (Bigint.of_int 0)))
+             ( gcc_inst (MI_seq (push_bool_inst false, gcc_inst MI_failwith)),
+               gcc_inst (MI_drop (Bigint.of_int 0))
+             )
           )
      in
      let new_inst =
-        gen_dummy_cc
+        gcc_inst
           (MI_seq
              ( push_bool_inst true,
-               gen_dummy_cc (MI_seq (loop_inst, last_if_left_inst))
+               gcc_inst (MI_seq (loop_inst, last_if_left_inst))
              )
           )
      in
