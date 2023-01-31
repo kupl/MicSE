@@ -253,9 +253,18 @@ let fmla_of_cand_pre : cand -> Tz.mich_f =
 (* function fmla_of_cand_pre end *)
 
 let fmla_of_cand_post : cand -> Tz.mich_f =
-  (fun cand -> MF_and (MFSet.to_list cand.c_fmla @ MFSet.to_list cand.c_cond))
-  (* fun cand ->
-  MF_imply
+  fun cand ->
+  MF_and [
+    MF_imply (
+      MF_and (MFSet.to_list cand.c_cond),
+      MF_and (MFSet.to_list cand.c_fmla)
+    );
+    MF_imply (
+      MF_not (MF_and (MFSet.to_list cand.c_cond)),
+      MF_false
+    )
+  ]
+  (* MF_imply
     (MF_and (MFSet.to_list cand.c_cond), MF_and (MFSet.to_list cand.c_fmla)) *)
 (* function fmla_of_cand_pre end *)
 
@@ -470,7 +479,7 @@ let tmp_or : Igdt.igdt_sets -> CSet.t =
       | [ (_, _); (_, _) ] -> None
       | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
   )
-(* function tmp_ge end *)
+(* function tmp_or end *)
 
 let tmp_gt : Igdt.igdt_sets -> CSet.t =
    let open Tz in
