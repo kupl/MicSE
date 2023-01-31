@@ -313,7 +313,7 @@ let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
         { cur_igdt with ig_value = val_right; ig_precond_lst = prec_right }
      in
      ( ISet.of_list [ igdt_left_unlifted; igdt_right_unlifted ],
-       ISet.of_list [ igdt_left; igdt_right ]
+       ISet.of_list [ cur_igdt; igdt_left; igdt_right ]
      )
    | _                  -> IgdtError "collect_igdt_from_or : _" |> raise
 (* function collect_igdt_from_or end *)

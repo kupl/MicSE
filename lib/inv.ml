@@ -253,9 +253,10 @@ let fmla_of_cand_pre : cand -> Tz.mich_f =
 (* function fmla_of_cand_pre end *)
 
 let fmla_of_cand_post : cand -> Tz.mich_f =
-  fun cand ->
+  (fun cand -> MF_and (MFSet.to_list cand.c_fmla @ MFSet.to_list cand.c_cond))
+  (* fun cand ->
   MF_imply
-    (MF_and (MFSet.to_list cand.c_cond), MF_and (MFSet.to_list cand.c_fmla))
+    (MF_and (MFSet.to_list cand.c_cond), MF_and (MFSet.to_list cand.c_fmla)) *)
 (* function fmla_of_cand_pre end *)
 
 let cand_combination : CSet.t list -> CSet.t =
@@ -427,6 +428,49 @@ let tmp_ge : Igdt.igdt_sets -> CSet.t =
        | [ (_, _); (_, _) ] -> None
        | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
    )
+(* function tmp_ge end *)
+
+let tmp_or : Igdt.igdt_sets -> CSet.t =
+  let open Tz in
+  let open TzUtil in
+  let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+  (* syntax sugar *)
+  let make_or_le : mich_v cc * mich_v cc -> (mich_f * MFSet.t) option =
+    fun (v1, v2) ->
+    let (unlift_left : mich_v cc) = gen_dummy_cc (MV_unlift_left v1) in
+    let (unlift_right : mich_v cc) = gen_dummy_cc (MV_unlift_right v1) in
+    Some (
+      MF_and [
+        MF_imply (
+          MF_is_left (gctx v1),
+          MF_is_true (gctx (gen_dummy_cc (MV_leq_ib (unlift_left, v2))))
+        );
+        MF_imply (
+          MF_not (MF_is_left (gctx v1)),
+          MF_is_true (gctx (gen_dummy_cc (MV_leq_ib (unlift_right, v2))))
+        )
+      ],
+      MFSet.empty
+    )
+  in
+  fun igdt_map ->
+  let (target_types : Tz.mich_t Tz.cc list list) =
+    MTMap.keys igdt_map
+    |> List.map ~f:(fun t ->
+      match t.cc_v with
+      | MT_or (t1, t2) when equal_mich_t t1.cc_v t2.cc_v ->
+        if equal_mich_t t1.cc_v MT_int then [ t; t1 ]
+        else []
+      | _ -> [])
+  in
+  gen_template igdt_map target_types ~target_mode:`Asymm_rfl ~f:(fun tvl ->
+      match tvl with
+      | [ (MT_or (_, _), v1); (MT_int, v2) ] ->
+       let _ = Utils.Log.info (fun m -> m "!!!OR!!!: %s & %s" (v1.cc_v |> Tz.sexp_of_mich_v |> SexpUtil.to_string) ((v2.cc_v |> Tz.sexp_of_mich_v |> SexpUtil.to_string))) in
+       make_or_le (v1, v2)
+      | [ (_, _); (_, _) ] -> None
+      | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
+  )
 (* function tmp_ge end *)
 
 let tmp_gt : Igdt.igdt_sets -> CSet.t =
@@ -763,6 +807,7 @@ let gen_initial_cand_map :
       [
         tmp_eq;
         tmp_ge;
+        tmp_or;
         tmp_gt;
         tmp_add_2_eq;
         tmp_add_3_eq;
