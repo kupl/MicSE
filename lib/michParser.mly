@@ -25,8 +25,14 @@
       | hd :: tl -> gen_t (T_pair (hd, foldf tl))
     in
     fun ttl -> foldf ttl
-
-%}
+  let construct_data_pair_comb : (data t list) -> (data t)
+  = let rec foldf = function
+      | [] | (_ :: []) ->  Stdlib.failwith "Parser.mly : construct_data_pair_comb : length < 2"
+      | [h1; h2] -> gen_t (D_pair (h1,h2))
+      | hd :: tl -> gen_t (D_pair (hd, foldf tl))
+    in
+    fun ttl -> foldf ttl
+  %}
 
 
 
@@ -344,7 +350,8 @@ data_entry:
 
 data_t:
   | d=data_t_dt_noreq a=annots { gen_t_a a d }
-  | PAIR a=annots d_1=data d_2=data  { gen_t_a a (D_pair (d_1, d_2)) }
+  (*| PAIR a=annots d_1=data d_2=data  { gen_t_a a (D_pair (d_1, d_2)) }*)
+  | PAIR a=annots d_l=nonempty_list(data) { gen_t_a a (construct_data_pair_comb (d_l)).d }
   | LEFT a=annots d=data { gen_t_a a (D_left d) }
   | RIGHT a=annots d=data  { gen_t_a a (D_right d) }
   | SOME a=annots d=data { gen_t_a a (D_some d) }
