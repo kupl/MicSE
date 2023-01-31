@@ -254,18 +254,8 @@ let fmla_of_cand_pre : cand -> Tz.mich_f =
 
 let fmla_of_cand_post : cand -> Tz.mich_f =
   fun cand ->
-  MF_and [
-    MF_imply (
-      MF_and (MFSet.to_list cand.c_cond),
-      MF_and (MFSet.to_list cand.c_fmla)
-    );
-    MF_imply (
-      MF_not (MF_and (MFSet.to_list cand.c_cond)),
-      MF_false
-    )
-  ]
-  (* MF_imply
-    (MF_and (MFSet.to_list cand.c_cond), MF_and (MFSet.to_list cand.c_fmla)) *)
+  MF_imply
+    (MF_and (MFSet.to_list cand.c_cond), MF_and (MFSet.to_list cand.c_fmla))
 (* function fmla_of_cand_pre end *)
 
 let cand_combination : CSet.t list -> CSet.t =

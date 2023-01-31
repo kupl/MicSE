@@ -166,22 +166,23 @@ let collect_igdt_of_sigma : igdt -> ISet.t * ISet.t =
 
 let collect_igdt_from_option : igdt -> ISet.t * ISet.t =
    let open Tz in
-   let open TzUtil in
-   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* let open TzUtil in *)
+   (* let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in *)
    (* syntax sugar *)
    fun cur_igdt ->
-   let (cur_val : mich_v cc) = cur_igdt.ig_value in
+   (* let (cur_val : mich_v cc) = cur_igdt.ig_value in *)
    let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
-   let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in
+   (* let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in *)
    match cur_typ.cc_v with
-   | MT_option t1cc ->
+   (* | MT_option t1cc -> *)
+   | MT_option _ ->
      (* preconditions *)
-     let (prec_none : mich_f list) = MF_is_none (gctx cur_val) :: cur_plst in
+     (* let (prec_none : mich_f list) = MF_is_none (gctx cur_val) :: cur_plst in
      let (prec_some : mich_f list) =
         MF_not (MF_is_none (gctx cur_val)) :: cur_plst
-     in
+     in *)
      (* values *)
-     let (val_unlifted : mich_v cc) =
+     (* let (val_unlifted : mich_v cc) =
         match cur_val.cc_v with
         | MV_some v1cc -> v1cc
         | _            -> gen_custom_cc cur_val (MV_unlift_option cur_val)
@@ -189,9 +190,9 @@ let collect_igdt_from_option : igdt -> ISet.t * ISet.t =
      let (val_none : mich_v cc) = gen_custom_cc cur_val (MV_none t1cc) in
      let (val_some : mich_v cc) =
         gen_custom_cc cur_val (MV_some val_unlifted)
-     in
+     in *)
      (* ingredients *)
-     let (igdt_unlifted : igdt) =
+     (* let (igdt_unlifted : igdt) =
         {
           cur_igdt with
           ig_value = val_unlifted;
@@ -205,7 +206,8 @@ let collect_igdt_from_option : igdt -> ISet.t * ISet.t =
      let (igdt_some : igdt) =
         { cur_igdt with ig_value = val_some; ig_precond_lst = prec_some }
      in
-     (ISet.of_list [ igdt_unlifted ], ISet.of_list [ igdt_none; igdt_some ])
+     (ISet.of_list [ igdt_unlifted ], ISet.of_list [ igdt_none; igdt_some ]) *)
+     (ISet.empty, ISet.singleton cur_igdt)
    | _              -> IgdtError "collect_igdt_from_option : _" |> raise
 (* function collect_igdt_from_option end *)
 
@@ -258,22 +260,23 @@ let collect_igdt_from_pair : igdt -> ISet.t * ISet.t =
 
 let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
    let open Tz in
-   let open TzUtil in
-   let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in
+   (* let open TzUtil in *)
+   (* let gctx = gen_mich_v_ctx ~ctx:dummy_ctx in *)
    (* syntax sugar *)
    fun cur_igdt ->
-   let (cur_val : mich_v cc) = cur_igdt.ig_value in
+   (* let (cur_val : mich_v cc) = cur_igdt.ig_value in *)
    let (cur_typ : mich_t cc) = cur_igdt.ig_typ in
-   let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in
+   (* let (cur_plst : mich_f list) = cur_igdt.ig_precond_lst in *)
    match cur_typ.cc_v with
-   | MT_or (t1cc, t2cc) ->
+   (* | MT_or (t1cc, t2cc) -> *)
+   | MT_or (_, _) ->
      (* preconditions *)
-     let (prec_left : mich_f list) = MF_is_left (gctx cur_val) :: cur_plst in
+     (* let (prec_left : mich_f list) = MF_is_left (gctx cur_val) :: cur_plst in
      let (prec_right : mich_f list) =
         MF_not (MF_is_left (gctx cur_val)) :: cur_plst
-     in
+     in *)
      (* values *)
-     let (val_left_unlifted : mich_v cc) =
+     (* let (val_left_unlifted : mich_v cc) =
         match cur_val.cc_v with
         | MV_left (_, v2cc) -> v2cc
         | _                 -> gen_custom_cc cur_val (MV_unlift_left cur_val)
@@ -288,9 +291,9 @@ let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
      in
      let (val_right : mich_v cc) =
         gen_custom_cc cur_val (MV_right (cur_typ, val_right_unlifted))
-     in
+     in *)
      (* ingredients *)
-     let (igdt_left_unlifted : igdt) =
+     (* let (igdt_left_unlifted : igdt) =
         {
           cur_igdt with
           ig_value = val_left_unlifted;
@@ -314,7 +317,8 @@ let collect_igdt_from_or : igdt -> ISet.t * ISet.t =
      in
      ( ISet.of_list [ igdt_left_unlifted; igdt_right_unlifted ],
        ISet.of_list [ cur_igdt; igdt_left; igdt_right ]
-     )
+     ) *)
+     (ISet.empty, ISet.singleton cur_igdt)
    | _                  -> IgdtError "collect_igdt_from_or : _" |> raise
 (* function collect_igdt_from_or end *)
 
