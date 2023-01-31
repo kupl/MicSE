@@ -466,7 +466,6 @@ let tmp_or : Igdt.igdt_sets -> CSet.t =
   gen_template igdt_map target_types ~target_mode:`Asymm_rfl ~f:(fun tvl ->
       match tvl with
       | [ (MT_or (_, _), v1); (MT_int, v2) ] ->
-       let _ = Utils.Log.info (fun m -> m "!!!OR!!!: %s & %s" (v1.cc_v |> Tz.sexp_of_mich_v |> SexpUtil.to_string) ((v2.cc_v |> Tz.sexp_of_mich_v |> SexpUtil.to_string))) in
        make_or_le (v1, v2)
       | [ (_, _); (_, _) ] -> None
       | _ -> InvError "tmp_ge : wrong ingredient length" |> raise
