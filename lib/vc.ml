@@ -659,7 +659,8 @@ module Encoder = struct
        Formula.if_then_else ctx
          ~if_:(Formula.create_neq ctx cmp_fst zero)
          ~then_:cmp_fst ~else_:cmp_snd
-     | (MT_bytes, MT_bytes) -> raise Not_Implemented
+     (*| (MT_bytes, MT_bytes) -> raise Not_Implemented*)
+	 | (MT_bytes, MT_bytes) -> dummy
      | (MT_signature, MT_signature) ->
        Formula.if_then_else ctx
          ~if_:(Formula.create_is_signature_str expr1)
