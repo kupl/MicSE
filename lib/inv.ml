@@ -796,12 +796,13 @@ let gen_initial_cand_map :
     Igdt.igdts_map ->
     cand_map =
   fun ~is_cand_sat ~do_cand_sat_istrg qset igdt_map ->
+  let _ = Utils.Log.debug (fun m -> m "Inv.gen_initial_cand_map start") in
   let (default_score : (int * int) QIDMap.t) =
      QIDSet.to_list qset
      |> List.map ~f:(fun rmci -> (rmci, (0, 0)))
      |> QIDMap.of_alist_exn
   in
-  RMCIMap.mapi igdt_map ~f:(fun ~key:rmci ~data:igdt_sets ->
+  let res = RMCIMap.mapi igdt_map ~f:(fun ~key:rmci ~data:igdt_sets ->
       [
         tmp_eq;
         tmp_ge;
@@ -815,6 +816,13 @@ let gen_initial_cand_map :
       ]
       |> List.map ~f:(fun tmp -> tmp igdt_sets)
       |> CSet.union_list
+      |> (fun cset ->
+        let _ = Utils.Log.debug (fun m ->
+          m "Inv.gen_initial_cand_map: cset length:\n%s\n\t> # of raw candidates: %d"
+            (Tz.sexp_of_r_mich_cut_info rmci |> SexpUtil.to_string)
+            (CSet.length cset)
+        ) in
+        cset)
       |> CSet.fold ~init:CMap.empty ~f:(fun acc_cmap cand ->
              if (not (is_cand_sat cand)) || not (do_cand_sat_istrg rmci cand)
              then acc_cmap
@@ -825,7 +833,9 @@ let gen_initial_cand_map :
                  InvError "gen_initial_cand_map : duplicate key" |> raise
                | `Ok cmap   -> cmap
          )
-  )
+    ) in
+  let _ = Utils.Log.debug (fun m -> m "Inv.gen_initial_cand_map end") in
+  res
 (* function gen_initial_cand_map end *)
 
 let find_cand_by_rmci : cand_map -> Tz.r_mich_cut_info -> cands =

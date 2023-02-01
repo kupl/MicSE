@@ -230,7 +230,7 @@ let init_res : config -> res =
          cfg_istate;
          _;
        } ->
-   let _ = Utils.Log.debug (fun m -> m "Res.init_res start") in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_res:acc_qsmap start") in
    let (acc_qsmap : SSet.t QIDMap.t) =
       SSet.fold cfg_se_res.sr_queries ~init:QIDMap.empty ~f:(fun acc_qsmap qs ->
           QIDMap.update acc_qsmap (TzUtil.qid_of_mci_exn qs.ss_block_mci)
@@ -240,10 +240,13 @@ let init_res : config -> res =
           )
       )
    in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_res:acc_qsmap end") in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_res:r_qr_lst start") in
    let (r_qr_lst : qres list) =
       QIDMap.to_alist acc_qsmap
       |> List.map ~f:(fun (qr_qid, qr_unk_qs) -> init_qres qr_qid qr_unk_qs)
    in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_res:r_qr_lst end") in
    let _ =
       Utils.Log.debug (fun m ->
           m "Res.init_res : result value construction start"
@@ -280,32 +283,47 @@ let init_config :
    fun cfg_code cfg_istrg_opt cfg_se_res cfg_istate ->
    let (mv_literal_set : MVSet.t) = TzUtil.scrap_code_literals cfg_code in
    (* Execution configuration *)
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_timer start") in
    let (cfg_timer : Utils.Time.t) =
       Utils.Time.create
         ~budget:!Utils.Argument.total_timeout
         () ~key_lst:[ "report" ]
    in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_timer end") in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_memory start") in
    let (cfg_memory : Utils.Memory.t) =
       Utils.Memory.create ~budget:!Utils.Argument.memory_bound ()
    in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_memory end") in
    (* Environment for SMT solver *)
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_smt_ctxt start") in
    let (cfg_smt_ctxt : Smt.Ctx.t) = Vc.gen_ctx () in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_smt_ctxt end") in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_smt_slvr start") in
    let (cfg_smt_slvr : Smt.Solver.t) = Vc.gen_solver cfg_smt_ctxt in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_smt_slvr end") in
    (* Information from symbolic execution *)
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_istrg start") in
    let (cfg_istrg : Tz.mich_v Tz.cc) =
       match cfg_istrg_opt with
       | Some v -> v
       | None   -> failwith "ExecFlow : config_base : cfg_istrg = None"
    in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_istrg end") in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_m_view start") in
    let (cfg_m_view : Se.SSGraph.mci_view) =
       Se.SSGraph.construct_mci_view ~basic_blocks:cfg_se_res.sr_blocked
    in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_m_view end") in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_qid_set start") in
    let (cfg_qid_set : QIDSet.t) =
       SSet.fold cfg_se_res.sr_queries ~init:QIDSet.empty
         ~f:(fun cfg_qid_set qs ->
           QIDSet.add cfg_qid_set (TzUtil.qid_of_mci_exn qs.ss_block_mci)
       )
    in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_qid_set end") in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_*_paths start") in
    let ( (cfg_trx_paths : MState.t list),
          (cfg_query_paths : MState.t list QIDMap.t)
        ) =
@@ -313,10 +331,13 @@ let init_config :
         ~is_path_sat:(is_path_sat cfg_smt_ctxt cfg_smt_slvr)
         cfg_se_res.sr_queries cfg_m_view
    in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_*_paths end") in
    (* Ingrdients for invariant synthesis *)
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_imap start") in
    let (cfg_imap : Igdt.igdts_map) =
       Igdt.get_igdts_map cfg_se_res.sr_blocked cfg_istrg mv_literal_set
    in
+   let _ = Utils.Log.debug (fun m -> m "Res.init_config:cfg_imap end") in
    {
      (* Execution configuration *)
      cfg_timer;

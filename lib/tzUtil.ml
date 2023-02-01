@@ -1448,7 +1448,10 @@ let rec scrap_code_literals_i : init:MVSet.t -> mich_i cc -> MVSet.t =
   | _ -> init
 
 let scrap_code_literals : mich_i cc -> MVSet.t =
-   scrap_code_literals_i ~init:MVSet.empty
+   let _ = Utils.Log.debug (fun m -> m "TzUtil.scrap_code_literals start") in
+   let res = scrap_code_literals_i ~init:MVSet.empty in
+   let _ = Utils.Log.debug (fun m -> m "TzUtil.scrap_code_literals start") in
+   res
 
 (******************************************************************************)
 (* List                                                                       *)

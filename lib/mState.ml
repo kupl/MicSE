@@ -731,6 +731,7 @@ let gen_trx_paths :
       (* inner-function gen_trx_paths_i end *)
    in
    fun ~is_path_sat qset m_view ->
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:trx_exit_state start") in
    let (trx_exit_state : t list) =
       List.find_exn (RMCIMap.keys m_view) ~f:(fun rmci ->
           equal_r_mich_cut_category rmci.rmci_cutcat RMCC_trx
@@ -740,6 +741,8 @@ let gen_trx_paths :
       |> SSet.to_list
       |> List.map ~f:init
    in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:trx_exit_state end") in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:query_state start") in
    let (query_state : t list QIDMap.t) =
       SSet.group_by qset ~equiv:(fun qs1 qs2 ->
           equal_mich_cut_info qs1.ss_block_mci qs2.ss_block_mci
@@ -751,11 +754,15 @@ let gen_trx_paths :
          )
       |> QIDMap.of_alist_exn
    in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:query_state end") in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:trx_sat_unchecked_paths start") in
    let (trx_sat_unchecked_paths : t list) =
       gen_trx_paths_i ~is_done:is_trx_path m_view
         (!Utils.Argument.path_limit - 1)
         trx_exit_state
    in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:trx_sat_unchecked_paths end") in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:query_sat_unchecked_paths start") in
    let (query_sat_unchecked_paths : t list QIDMap.t) =
       QIDMap.map query_state
         ~f:
@@ -763,7 +770,20 @@ let gen_trx_paths :
              (!Utils.Argument.path_limit - 1)
           )
    in
-   ( List.filter trx_sat_unchecked_paths ~f:is_path_sat,
-     QIDMap.map query_sat_unchecked_paths ~f:(List.filter ~f:is_path_sat)
-   )
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:query_sat_unchecked_paths end") in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:trx_paths start: %d" (List.length trx_sat_unchecked_paths)) in
+   let trx_paths = List.filter trx_sat_unchecked_paths ~f:is_path_sat in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:trx_paths end: %d" (List.length trx_paths)) in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:query_paths start") in
+   let query_paths = QIDMap.mapi query_sat_unchecked_paths ~f:(fun ~key:qid ~data:paths ->
+      let res = List.filter ~f:is_path_sat paths in
+      let _ = Utils.Log.debug (fun m ->
+         m "MState.gen_trx_paths:query_paths: \n%s\n\t> # of raw query paths: %d\n\t> # of sat query paths : %d"
+          (Tz.sexp_of_qid qid |> SexpUtil.to_string)
+          (List.length paths)
+          (List.length res)
+      ) in
+      res) in
+   let _ = Utils.Log.debug (fun m -> m "MState.gen_trx_paths:query_paths end") in
+   (trx_paths, query_paths)
 (* function gen_trx_paths end *)

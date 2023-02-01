@@ -10,6 +10,7 @@ open! Core
 
 let initial_system_setting : string array option -> unit =
   fun argv_opt ->
+  let _ = Utils.Log.debug (fun m -> m "ExecFlow.initial_system_setting start") in
   let _ = Utils.Argument.create argv_opt in
   let _ = Utils.Log.create () in
   let _ = Printexc.record_backtrace true in
@@ -18,11 +19,13 @@ let initial_system_setting : string array option -> unit =
      then Random.self_init ()
      else Random.init 0
   in
+  let _ = Utils.Log.debug (fun m -> m "ExecFlow.initial_system_setting end") in
   ()
 (* function initial_system_setting end *)
 
 let parsing : unit -> Mich.program * Mich.data Mich.t option =
   fun () ->
+  let _ = Utils.Log.debug (fun m -> m "ExecFlow.parsing start") in
   let (pgm : Mich.program) =
      MichParse.parse ~filename:!Utils.Argument.input_file
      |> Mich.subst_standard_macro_all_pgm
@@ -39,6 +42,7 @@ let parsing : unit -> Mich.program * Mich.data Mich.t option =
          m "> # of Instructions: %d" (Mich.count_inst_pgm pgm)
      )
   in
+  let _ = Utils.Log.debug (fun m -> m "ExecFlow.parsing end") in
   (pgm, strg_opt)
 (* function parsing end *)
 
@@ -47,6 +51,7 @@ let tz_rep :
     (Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc)
     * Tz.mich_v Tz.cc option =
   fun (mich_pgm, mich_init_strg_opt) ->
+  let _ = Utils.Log.debug (fun m -> m "ExecFlow.tz_rep start") in
   let (tz_pgm : Tz.mich_t Tz.cc * Tz.mich_t Tz.cc * Tz.mich_i Tz.cc) =
      TzUtil.M2T.cv_program mich_pgm
   in
@@ -55,6 +60,7 @@ let tz_rep :
          TzUtil.M2T.cv_datat mich_pgm.storage d
      )
   in
+  let _ = Utils.Log.debug (fun m -> m "ExecFlow.tz_rep end") in
   (tz_pgm, tz_init_strg_opt)
 (* function tz_rep end *)
 
