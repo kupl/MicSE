@@ -795,7 +795,7 @@ let gen_initial_cand_map :
     QIDSet.t ->
     Igdt.igdts_map ->
     cand_map =
-  fun ~is_cand_sat ~do_cand_sat_istrg qset igdt_map ->
+  fun ~is_cand_sat:_ ~do_cand_sat_istrg qset igdt_map ->
   let _ = Utils.Log.debug (fun m -> m "Inv.gen_initial_cand_map start") in
   let (default_score : (int * int) QIDMap.t) =
      QIDSet.to_list qset
@@ -824,7 +824,7 @@ let gen_initial_cand_map :
         ) in
         cset)
       |> CSet.fold ~init:CMap.empty ~f:(fun acc_cmap cand ->
-             if (not (is_cand_sat cand)) || not (do_cand_sat_istrg rmci cand)
+             if (*(not (is_cand_sat cand)) ||*) not (do_cand_sat_istrg rmci cand)
              then acc_cmap
              else
                CMap.add acc_cmap ~key:cand ~data:(true, default_score)
